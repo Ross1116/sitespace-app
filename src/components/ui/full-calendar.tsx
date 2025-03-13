@@ -215,7 +215,7 @@ const EventGroup = ({
   hour: Date;
 }) => {
   return (
-    <div className="h-12 border-t last:border-b">
+    <div className="h-12 border-t last:border-b w-11/12">
       {events
         .filter((event) => isSameHour(event.start, hour))
         .map((event) => {
@@ -589,27 +589,27 @@ const CalendarTodayTrigger = forwardRef<
 });
 CalendarTodayTrigger.displayName = 'CalendarTodayTrigger';
 
-const CalendarCurrentDate = () => {
-    const { date, view } = useCalendar();
-  
-    // Ensure date is valid; fallback to current date if necessary
-    const stableDate = useMemo(() => {
-      const validDate = date && !isNaN(new Date(date).getTime()) ? new Date(date) : new Date();
-      validDate.setHours(0, 0, 0, 0);
-      return validDate.toISOString();
-    }, [date]);
-  
-    const formattedDate = useMemo(() => {
-      const validDate = new Date(stableDate);
-      return format(validDate, view === "day" ? "dd MMMM yyyy" : "MMMM yyyy");
-    }, [stableDate, view]);
-  
-    return (
-      <time dateTime={stableDate} className="tabular-nums">
-        {formattedDate}
-      </time>
-    );
-  };
+const CalendarCurrentDate = ({ className = "" }: { className?: string }) => {
+  const { date, view } = useCalendar();
+
+  // Ensure date is valid; fallback to current date if necessary
+  const stableDate = useMemo(() => {
+    const validDate = date && !isNaN(new Date(date).getTime()) ? new Date(date) : new Date();
+    validDate.setHours(0, 0, 0, 0);
+    return validDate.toISOString();
+  }, [date]);
+
+  const formattedDate = useMemo(() => {
+    const validDate = new Date(stableDate);
+    return format(validDate, view === "day" ? "dd MMMM yyyy" : "MMMM yyyy");
+  }, [stableDate, view]);
+
+  return (
+    <time dateTime={stableDate} className={`tabular-nums ${className}`}>
+      {formattedDate}
+    </time>
+  );
+};
   
   
 const TimeTable = () => {
