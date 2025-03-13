@@ -180,13 +180,13 @@ export default function Page() {
             </div>
             <CalendarCurrentDate className="md:text-base text-sm" />
             <div className="flex items-center md:space-x-2 space-x-1">
-              <CalendarPrevTrigger>
-                <ChevronLeft size={20} />
+              <CalendarPrevTrigger className="w-8 md:w-10">
+                <ChevronLeft size={10} />
                 <span className="sr-only">Previous</span>
               </CalendarPrevTrigger>
-              <CalendarTodayTrigger>Today</CalendarTodayTrigger>
-              <CalendarNextTrigger>
-                <ChevronRight size={20} />
+              <CalendarTodayTrigger className="px-2 md:px-5">Today</CalendarTodayTrigger>
+              <CalendarNextTrigger className="w-8 md:w-10">
+                <ChevronRight size={10} />
                 <span className="sr-only">Next</span>
               </CalendarNextTrigger>
             </div>
