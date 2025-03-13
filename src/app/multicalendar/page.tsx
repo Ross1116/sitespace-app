@@ -153,7 +153,7 @@ export default function Page() {
       <Card
         className={`p-6 ml-4 md:ml-0 h-fit mb-4 ${
           isCollapsed ? "col-span-12" : "col-span-12 lg:col-span-9"
-        } row-span-12 flex flex-col bg-gradient-to-tr from-amber-100 to-emerald-50-50 rounded-2xl transition-all duration-600`}
+        } row-span-12 flex flex-col bg-gradient-to-tr from-amber-50 to-orange-50 rounded-2xl transition-all duration-600`}
       >
         <Calendar date={currentDate} onDateChange={setCurrentDate} view="day">
           <div className="mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
