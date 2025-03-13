@@ -116,6 +116,21 @@
   --sidebar-ring: oklch(0.439 0 0);
 }
 
+/* Sidebar styling */
+.sidebar-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: 4rem; /* 16px × 4 = 64px */
+  z-index: 50;
+  overflow: visible;
+}
+
+.sidebar-container:hover {
+  width: 12rem; /* 16px × 12 = 192px */
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

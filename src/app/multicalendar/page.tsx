@@ -113,7 +113,7 @@ export default function Page() {
   );
 
   return (
-    <div className="h-full p-6 grid grid-cols-12 grid-rows-12 gap-2">
+    <div className="h-full p-6 pl-1 grid grid-cols-12 grid-rows-12 gap-2">
       {/* month calendar date picker */}
       <Card
         className={`${
@@ -151,9 +151,9 @@ export default function Page() {
 
       {/* full calendar day wise */}
       <Card
-        className={`p-6 ${
+        className={`p-6 h-fit mb-4 ${
           isCollapsed ? "col-span-12" : "col-span-12 lg:col-span-9"
-        } row-span-12 flex flex-col bg-gradient-to-tr from-amber-100 to-emerald-50-50 rounded-2xl -mb-4 transition-all duration-600`}
+        } row-span-12 flex flex-col bg-gradient-to-tr from-amber-100 to-emerald-50-50 rounded-2xl transition-all duration-600`}
       >
         <Calendar date={currentDate} onDateChange={setCurrentDate} view="day">
           <div className="mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -220,7 +220,7 @@ export default function Page() {
       <Card
         className={`${
           isCollapsed ? "lg:hidden" : "col-span-3 lg:flex"
-        } row-span-3 overflow-hidden hidden bg-amber-50 rounded-2xl transition-all duration-600`}
+        } row-span-3 overflow-hidden hidden bg-amber-50 rounded-2xl transition-all duration-600 px-4`}
       >
         <CardHeader>
           <CardTitle>Assets Filter</CardTitle>
