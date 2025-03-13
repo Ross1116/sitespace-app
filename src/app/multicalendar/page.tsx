@@ -118,7 +118,7 @@ export default function Page() {
       <Card
         className={`${
           isCollapsed ? "hidden" : "col-span-3 lg:flex"
-        } row-span-6 overflow-hidden bg-amber-50 rounded-2xl h-full transition-all duration-600`}
+        } row-span-6 overflow-hidden hidden bg-amber-50 rounded-2xl h-full transition-all duration-600`}
       >
         <Calendar
           view="month"
@@ -151,7 +151,7 @@ export default function Page() {
 
       {/* full calendar day wise */}
       <Card
-        className={`p-6 h-fit mb-4 ${
+        className={`p-6 ml-4 md:ml-0 h-fit mb-4 ${
           isCollapsed ? "col-span-12" : "col-span-12 lg:col-span-9"
         } row-span-12 flex flex-col bg-gradient-to-tr from-amber-100 to-emerald-50-50 rounded-2xl transition-all duration-600`}
       >

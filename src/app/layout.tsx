@@ -28,14 +28,28 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-orange-50`}
       >
-        <div className="h-screen flex">
-          <div className="sidebar-container">
+        {/* Mobile SideNav (only visible on mobile) */}
+        <div className="md:hidden">
+          <SideNav />
+        </div>
+        
+        {/* Desktop layout (hidden on mobile) */}
+        <div className="hidden md:flex h-screen">
+          <div className="w-16 flex-shrink-0 z-50 relative">
             <SideNav />
           </div>
-          <div className="flex-1 pl-16">
+          
+          <div className="flex-1">
             {children}
           </div>
         </div>
+        
+        {/* Mobile content (only visible on mobile) */}
+        <main className="md:hidden min-h-screen">
+          <div className="pt-16">
+            {children}
+          </div>
+        </main>
       </body>
     </html>
   );
