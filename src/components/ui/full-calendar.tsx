@@ -1,6 +1,12 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { VariantProps, cva } from "class-variance-authority";
 import {
@@ -226,20 +232,38 @@ const EventGroup = ({
             differenceInMinutes(event.end, event.start) / 60;
           const startPosition = event.start.getMinutes() / 60;
 
+          // Format times for the tooltip
+          const startTime = format(event.start, "h:mm a");
+          const endTime = format(event.end, "h:mm a");
+
           return (
-            <div
-              key={event.id}
-              className={cn(
-                "relative",
-                dayEventVariants({ variant: event.color })
-              )}
-              style={{
-                top: `${startPosition * 100}%`,
-                height: `${hoursDifference * 100}%`,
-              }}
-            >
-              {event.title}
-            </div>
+            <TooltipProvider key={event.id}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div
+                    className={cn(
+                      "relative cursor-pointer",
+                      dayEventVariants({ variant: event.color })
+                    )}
+                    style={{
+                      top: `${startPosition * 100}%`,
+                      height: `${hoursDifference * 100}%`,
+                    }}
+                  >
+                    {event.title}
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <div className="flex flex-col gap-1">
+                    <p className="font-medium">{event.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {startTime} - {endTime}
+                    </p>
+                    <p>Hello Event Description</p>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           );
         })}
     </div>
@@ -349,12 +373,17 @@ const CalendarWeekView = () => {
 };
 
 const CalendarMonthView = () => {
-  const { date, view, events, locale } = useCalendar();
+  const { date, view, events, locale, setDate } = useCalendar();
 
   const monthDates = useMemo(() => getDaysInMonth(date), [date]);
   const weekDays = useMemo(() => generateWeekdays(locale), [locale]);
 
   if (view !== "month") return null;
+
+  // Handler for clicking on a date
+  const handleDateClick = (selectedDate: Date) => {
+    setDate(selectedDate);
+  };
 
   return (
     <div className="h-full flex flex-col">
@@ -377,18 +406,25 @@ const CalendarMonthView = () => {
             isSameDay(event.start, _date)
           );
 
+          // Check if this date is the currently selected date
+          const isSelectedDate = isSameDay(_date, date);
+
           return (
             <div
               className={cn(
-                "ring-1 p-2 text-sm text-muted-foreground ring-border overflow-auto",
+                "ring-1 p-2 text-sm text-muted-foreground ring-border overflow-auto cursor-pointer hover:bg-muted/50 transition-colors",
                 !isSameMonth(date, _date) && "text-muted-foreground/50"
               )}
               key={_date.toString()}
+              onClick={() => handleDateClick(_date)}
             >
               <span
                 className={cn(
                   "size-6 grid place-items-center rounded-full mb-1 sticky top-0",
-                  isToday(_date) && "bg-primary text-primary-foreground"
+                  isToday(_date) && "bg-primary text-primary-foreground",
+                  isSelectedDate &&
+                    !isToday(_date) &&
+                    "bg-orange-100 text-orange-800 font-medium" // Grey-orange circle for selected date
                 )}
               >
                 {format(_date, "d")}
