@@ -165,43 +165,47 @@ export default function HomePage() {
 
   // Dashboard for authenticated users
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <Card className="px-6 my-8 mx-4 bg-amber-50">
       {/* Header with greeting */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">
+      <div className="p-3 sm:p-6">
+        <h1 className="text-xl sm:text-3xl font-bold text-gray-900">
           {greeting}, {user?.username || "there"}!
         </h1>
-        <p className="text-gray-600 mt-2">
+        <p className="text-sm sm:text-base text-gray-500 mt-1">
           Welcome to your site management dashboard
         </p>
       </div>
 
       {/* Quick access cards */}
-      <h2 className="text-xl font-semibold text-gray-800 mb-4">Quick Access</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {getQuickAccessCards().map((card, index) => (
-          <Link href={card.link} key={`card-${index}`}>
-            <Card
-              className={`p-4 h-full hover:shadow-md transition-shadow ${card.color}`}
-            >
-              <div className="flex items-start">
-                <div className="p-2 rounded-full bg-white mr-3">
-                  <card.icon size={24} />
+      <div className="p-3 sm:p-6">
+        <h2 className="text-xl font-semibold text-gray-800 mb-4">
+          Quick Access
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {getQuickAccessCards().map((card, index) => (
+            <Link href={card.link} key={`card-${index}`}>
+              <Card
+                className={`p-4 h-full hover:shadow-md transition-shadow ${card.color}`}
+              >
+                <div className="flex items-start">
+                  <div className="p-2 rounded-full bg-white mr-3">
+                    <card.icon size={24} />
+                  </div>
+                  <div>
+                    <h3 className="font-medium text-gray-800">{card.title}</h3>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {card.description}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-medium text-gray-800">{card.title}</h3>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {card.description}
-                  </p>
-                </div>
-              </div>
-            </Card>
-          </Link>
-        ))}
+              </Card>
+            </Link>
+          ))}
+        </div>
       </div>
 
       {/* Recent activity */}
-      <div className="flex flex-col md:flex-row gap-6">
+      <div className="flex flex-col md:flex-row gap-6 p-3 sm:p-6">
         <div className="flex-1">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">
             Recent Activity
@@ -245,7 +249,7 @@ export default function HomePage() {
                 View your upcoming bookings and schedule
               </p>
               <Button className="mt-4 bg-amber-500 hover:bg-amber-600">
-                <Link href="/bookings">View Calendar</Link>
+                <Link href="/multicalendar">View Calendar</Link>
               </Button>
             </div>
           </Card>
@@ -256,6 +260,6 @@ export default function HomePage() {
       <div className="mt-8 text-center text-gray-500 text-sm">
         <p>© 2025 Sitespace. All rights reserved.</p>
       </div>
-    </div>
+    </Card>
   );
 }
