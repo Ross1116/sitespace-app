@@ -77,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem("accessToken", data.accessToken);
       localStorage.setItem("user", JSON.stringify(userData));
 
-      router.push("/multicalendar");
+      router.push("/home");
     } catch (error) {
       console.error("Login error:", error);
       throw error;
