@@ -12,6 +12,7 @@ import {
   Wrench,
 } from "lucide-react";
 import { bookings } from "@/lib/data";
+import { Card } from "@/components/ui/card";
 
 export default function BookingsPage() {
   const [activeTab, setActiveTab] = useState("Upcoming");
@@ -42,7 +43,7 @@ export default function BookingsPage() {
     return { day, month, dayOfWeek, date }; // Added date to the return
   };
 
-  // Format time in hh:mm a format 
+  // Format time in hh:mm a format
   const formatTime = (dateString: string, durationMins: number) => {
     const date = new Date(dateString);
 
@@ -114,7 +115,7 @@ export default function BookingsPage() {
 
   return (
     <div className="min-h-screen p-6">
-      <div className="mx-auto bg-stone-50 rounded-xl shadow-sm overflow-y-auto w-full mt-4">
+      <div className="mx-auto bg-stone-100 rounded-xl shadow-sm overflow-y-auto w-full mt-4">
         <div className="p-6">
           <h1 className="text-2xl font-semibold text-gray-900">Bookings</h1>
           <p className="text-gray-500 mt-1">
@@ -165,20 +166,30 @@ export default function BookingsPage() {
                     const today = isToday(date);
 
                     return (
-                      <div
+                      <Card
                         key={booking.bookingKey}
-                        className="border-b last:border-b-0"
+                        className="border-b last:border-b-0 my-2 bg-stone-50"
                       >
-                        <div className="flex py-4">
-                          {/* Date column */}
-                          <div className="w-24 flex-shrink-0 text-center">
-                            <div className="text-gray-500">{dayOfWeek}</div>
+                        <div className="flex w-full">
+                          {/* Date column - fixed width */}
+                          <div className="w-32 flex-shrink-0 flex flex-col items-center text-center justify-center border-r-2 mr-4">
                             <div
-                              className={`text-3xl font-semibold ${
+                              className={`text-gray-500 text-lg ${
                                 today
                                   ? "text-orange-500"
                                   : booking.bookingStatus === "Pending"
                                   ? "text-yellow-400"
+                                  : "text-gray-500"
+                              }`}
+                            >
+                              {dayOfWeek}
+                            </div>
+                            <div
+                              className={`text-4xl font-semibold ${
+                                today
+                                  ? "text-orange-600"
+                                  : booking.bookingStatus === "Pending"
+                                  ? "text-yellow-500"
                                   : "text-gray-800"
                               }`}
                             >
@@ -186,119 +197,129 @@ export default function BookingsPage() {
                             </div>
                           </div>
 
-                          {/* Details column */}
-                          <div className="flex-grow">
-                            <div className="flex items-center text-gray-500 mb-1">
-                              <Clock size={16} className="mr-1" />
-                              <span>{timeRange}</span>
-                              {booking.bookingStatus === "Pending" && (
-                                <AlertCircle
+                          {/* Content area with fixed widths */}
+                          <div className="flex flex-1">
+                            {/* Left details column - fixed width */}
+                            <div className="w-80 flex-shrink-0 flex flex-col">
+                              <div className="flex items-center text-gray-500 mb-1">
+                                <Clock size={16} className="mr-1" />
+                                <span>{timeRange}</span>
+                                {booking.bookingStatus === "Pending" && (
+                                  <AlertCircle
+                                    size={16}
+                                    className="ml-2 text-yellow-400"
+                                  />
+                                )}
+                              </div>
+
+                              <div className="flex items-center text-gray-500 mb-1">
+                                {getBookingIcon(booking.bookingFor)}
+                                <span>{booking.bookingFor}</span>
+                              </div>
+
+                              {/* Asset tags */}
+                              <div className="flex flex-wrap gap-1 mt-2">
+                                {booking.bookedAssets.map((asset: string) => (
+                                  <span
+                                    key={asset}
+                                    className="px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full"
+                                  >
+                                    {asset}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Middle description column - fixed width with text-left */}
+                            <div className="w-max px-4">
+                              <div className="font-semibold text-lg text-gray-900 mb-1 text-left ">
+                                {booking.bookingTitle}
+                              </div>
+                              <div className="text-md text-gray-700 mb-2 text-left">
+                                {booking.bookingDescription}
+                              </div>
+                              <div className="text-sm text-gray-500 mb-2 text-left">
+                                {booking.bookingNotes}
+                              </div>
+                            </div>
+
+                            {/* Right action column - fixed width */}
+                            <div className="w-24 ml-auto flex-shrink-0 flex items-start justify-end relative mr-8">
+                              <button
+                                onClick={() =>
+                                  toggleDropdown(booking.bookingKey)
+                                }
+                                className={`px-4 py-2 text-sm rounded-md flex items-center
+                                  ${
+                                    booking.bookingStatus === "Pending"
+                                      ? "bg-gray-800 text-white hover:bg-gray-700"
+                                      : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+                                  }`}
+                              >
+                                Edit
+                                <ChevronDown
                                   size={16}
-                                  className="ml-2 text-yellow-400"
+                                  className={`ml-1 transition-transform ${
+                                    openDropdown === booking.bookingKey
+                                      ? "rotate-180"
+                                      : ""
+                                  }`}
                                 />
-                              )}
-                            </div>
+                              </button>
 
-                            <div className="font-medium text-gray-900 mb-1">
-                              {booking.bookingTitle}
-                            </div>
-
-                            <div className="flex items-center text-gray-500 mb-1">
-                              {getBookingIcon(booking.bookingFor)}
-                              <span>{booking.bookingFor}</span>
-                              {/* <span className="mx-2">•</span> */}
-                              {/* <Building size={16} className="mr-1" /> */}
-                              {/* <span>Project: {booking.bookingProject}</span> */}
-                            </div>
-
-                            <div className="text-sm text-gray-500 mb-2">
-                              {booking.bookingDescription}
-                            </div>
-
-                            {/* Asset tags */}
-                            <div className="flex flex-wrap gap-1">
-                              {booking.bookedAssets.map((asset: string) => (
-                                <span
-                                  key={asset}
-                                  className="px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full"
-                                >
-                                  {asset}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Action column */}
-                          <div className="w-24 flex-shrink-0 flex items-start justify-end relative">
-                            <button
-                              onClick={() => toggleDropdown(booking.bookingKey)}
-                              className={`px-4 py-2 text-sm rounded-md flex items-center
-                                ${
-                                  booking.bookingStatus === "Pending"
-                                    ? "bg-gray-800 text-white hover:bg-gray-700"
-                                    : "bg-gray-100 text-gray-800 hover:bg-gray-200"
-                                }`}
-                            >
-                              Edit
-                              <ChevronDown
-                                size={16}
-                                className={`ml-1 transition-transform ${
-                                  openDropdown === booking.bookingKey
-                                    ? "rotate-180"
-                                    : ""
-                                }`}
-                              />
-                            </button>
-
-                            {/* Dropdown menu */}
-                            {openDropdown === booking.bookingKey && (
-                              <div className="absolute top-12 right-0 w-56 bg-white rounded-md shadow-lg z-10 border">
-                                <div className="py-1">
-                                  {booking.bookingStatus === "Pending" && (
-                                    <>
-                                      <button className="flex items-center px-4 py-2 text-sm text-green-600 hover:bg-gray-100 w-full text-left">
-                                        <Calendar size={16} className="mr-2" />
-                                        Confirm booking
-                                      </button>
+                              {/* Dropdown menu */}
+                              {openDropdown === booking.bookingKey && (
+                                <div className="absolute top-12 right-0 w-56 bg-white rounded-md shadow-lg z-10 border">
+                                  <div className="py-1">
+                                    {booking.bookingStatus === "Pending" && (
+                                      <>
+                                        <button className="flex items-center px-4 py-2 text-sm text-green-600 hover:bg-gray-100 w-full text-left">
+                                          <Calendar
+                                            size={16}
+                                            className="mr-2"
+                                          />
+                                          Confirm booking
+                                        </button>
+                                        <button className="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-gray-100 w-full text-left">
+                                          <X size={16} className="mr-2" />
+                                          Deny booking
+                                        </button>
+                                        <div className="border-t my-1"></div>
+                                      </>
+                                    )}
+                                    <button className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">
+                                      <Calendar size={16} className="mr-2" />
+                                      Reschedule booking
+                                    </button>
+                                    {booking.bookingStatus === "Confirmed" && (
                                       <button className="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-gray-100 w-full text-left">
                                         <X size={16} className="mr-2" />
-                                        Deny booking
+                                        Cancel booking
                                       </button>
-                                      <div className="border-t my-1"></div>
-                                    </>
-                                  )}
-                                  <button className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">
-                                    <Calendar size={16} className="mr-2" />
-                                    Reschedule booking
-                                  </button>
-                                  {booking.bookingStatus === "Confirmed" && (
-                                    <button className="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-gray-100 w-full text-left">
-                                      <X size={16} className="mr-2" />
-                                      Cancel booking
-                                    </button>
-                                  )}
+                                    )}
+                                  </div>
                                 </div>
-                              </div>
-                            )}
+                              )}
 
-                            {/* Status badge */}
-                            <div
-                              className={`absolute -bottom-3 right-0 text-xs px-2 py-1 rounded
-                              ${
-                                booking.bookingStatus === "Confirmed"
-                                  ? "bg-green-100 text-green-800"
-                                  : booking.bookingStatus === "Pending"
-                                  ? "bg-yellow-100 text-yellow-800"
-                                  : booking.bookingStatus === "Denied"
-                                  ? "bg-red-100 text-red-800"
-                                  : "bg-gray-100 text-gray-800"
-                              }`}
-                            >
-                              {booking.bookingStatus}
+                              {/* Status badge */}
+                              <div
+                                className={`absolute bottom-0 right-0 text-xs px-2 py-1 rounded
+                                ${
+                                  booking.bookingStatus === "Confirmed"
+                                    ? "bg-green-100 text-green-800"
+                                    : booking.bookingStatus === "Pending"
+                                    ? "bg-yellow-100 text-yellow-800"
+                                    : booking.bookingStatus === "Denied"
+                                    ? "bg-red-100 text-red-800"
+                                    : "bg-gray-100 text-gray-800"
+                                }`}
+                              >
+                                {booking.bookingStatus}
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
+                      </Card>
                     );
                   })}
               </div>
