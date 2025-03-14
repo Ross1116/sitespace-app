@@ -164,7 +164,7 @@ const SideNav = () => {
 
       {/* Desktop Sidebar */}
       <Card
-        className={`hidden md:block transition-all duration-300 text-sm bg-amber-50 h-full z-30
+        className={`fixed hidden md:block transition-all duration-300 text-sm bg-amber-50 h-full z-30
           rounded-r-2xl rounded-b-2xl rounded-l-none rounded-bl-none
           ${isExpanded ? "w-48" : "w-16"}`}
         onMouseEnter={() => setIsExpanded(true)}

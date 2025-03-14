@@ -157,7 +157,7 @@ export default function Page() {
         .map((calendar, index) => (
           <div
             key={calendar.id || index}
-            className="border rounded-md flex flex-col h-full min-h-96 overflow-hidden"
+            className="border rounded-md flex flex-col h-fit overflow-hidden mb-1"
           >
             <div className="p-3 bg-orange-200 font-medium border-b">
               {calendar.name}

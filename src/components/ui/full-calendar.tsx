@@ -283,10 +283,10 @@ const CalendarDayView = () => {
   if (view !== "day") return null;
 
   // Create array with hours from 5am (5) to 8pm (20)
-  const hours = [...Array(16)].map((_, i) => setHours(date, i + 5));
+  const hours = [...Array(14)].map((_, i) => setHours(date, i + 6));
 
   return (
-    <div className="flex relative pt-2 overflow-y-auto overflow-x-hidden h-full">
+    <div className="flex relative py-7 overflow-y-auto overflow-x-hidden">
       <TimeTable />
       <div className="flex-1">
         {hours.map((hour) => (
@@ -674,8 +674,8 @@ const TimeTable = () => {
 
   return (
     <div className="pr-2 w-12">
-      {Array.from(Array(16)).map((_, index) => {
-        const hour = index + 5;
+      {Array.from(Array(15)).map((_, index) => {
+        const hour = index + 6;
         return (
           <div
             className="text-right relative text-xs text-muted-foreground/50 h-12 last:h-0"
@@ -683,7 +683,7 @@ const TimeTable = () => {
           >
             {now.getHours() === hour && (
               <div
-                className="absolute z- left-full translate-x-2 w-dvw h-[2px] bg-red-500"
+                className="absolute left-full translate-x-2 w-dvw h-[2px] bg-red-500"
                 style={{
                   top: `${(now.getMinutes() / 60) * 100}%`,
                 }}
