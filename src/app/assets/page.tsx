@@ -79,11 +79,11 @@ export default function AssetsTable() {
       <div className="flex overflow-x-auto shadow-md rounded-lg">
         <table className="min-w-full w-full h-full bg-amber-50">
           <thead>
-            <tr className="bg-orange-200 text-gray-700 uppercase text-sm">
-              <th className="sticky top-0 py-6 px-6 text-left">Title</th>
-              <th className="sticky top-0 py-6 px-6 text-left">Location</th>
-              <th className="sticky top-0 py-6 px-6 text-left">Status</th>
-              <th className="sticky top-0 py-6 px-6 text-left">
+            <tr className="sticky top-0 text-left bg-orange-200 text-gray-700 uppercase text-sm">
+              <th className="py-6 px-6">Title</th>
+              <th>Location</th>
+              <th>Status</th>
+              <th>
                 Contact Person
               </th>
               <th className="sticky top-0 py-3 px-6 text-center">Edit</th>

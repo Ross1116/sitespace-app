@@ -28,13 +28,13 @@ export default function Page() {
       <div className="flex-grow overflow-x-auto shadow-md rounded-lg">
         <table className="min-w-full w-full h-full bg-amber-50">
           <thead>
-            <tr className="bg-orange-200 text-gray-700 uppercase text-sm">
-              <th className="sticky top-0 py-3 px-6 text-left">Name</th>
-              <th className="sticky top-0 py-3 px-6 text-left">Company</th>
-              <th className="sticky top-0 py-3 px-6 text-left">Trade</th>
-              <th className="sticky top-0 py-3 px-6 text-left">Email</th>
-              <th className="sticky top-0 py-3 px-6 text-left">Phone</th>
-              <th className="sticky top-0 py-3 px-6 text-center">Edit</th>
+            <tr className="sticky top-0 text-left bg-orange-200 text-gray-700 uppercase text-sm">
+              <th className="sticky top-0 py-6 px-6 text-left">Name</th>
+              <th>Company</th>
+              <th>Trade</th>
+              <th>Email</th>
+              <th>Phone</th>
+              <th className="text-center">Edit</th>
             </tr>
           </thead>
           <tbody className="text-gray-600 divide-y divide-gray-200">
