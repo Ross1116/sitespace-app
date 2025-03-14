@@ -43,7 +43,7 @@ import {
 } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 
-const monthEventVariants = cva("size-2 rounded-full", {
+export const monthEventVariants = cva("size-2 rounded-full", {
   variants: {
     variant: {
       default: "bg-primary",
@@ -96,7 +96,14 @@ export type CalendarEvent = {
   start: Date;
   end: Date;
   title: string;
+  description?: string;
   color?: VariantProps<typeof monthEventVariants>["variant"];
+};
+
+export type AssetCalendar = {
+  id: string;
+  name: string;
+  events: CalendarEvent[];
 };
 
 type CalendarProps = {
@@ -259,7 +266,7 @@ const EventGroup = ({
                     <p className="text-xs text-muted-foreground">
                       {startTime} - {endTime}
                     </p>
-                    <p>Hello Event Description</p>
+                    <p>{event.description}</p>
                   </div>
                 </TooltipContent>
               </Tooltip>

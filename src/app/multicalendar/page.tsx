@@ -8,6 +8,9 @@ import {
   CalendarPrevTrigger,
   CalendarTodayTrigger,
   CalendarMonthView,
+  AssetCalendar,
+  CalendarEvent,
+  monthEventVariants,
 } from "@/components/ui/full-calendar";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { SetStateAction, useState } from "react";
@@ -18,7 +21,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { calendars } from "@/lib/data";
 import {
   Card,
   CardContent,
@@ -27,16 +29,73 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { announcements } from "@/lib/data";
+import { announcements, bookings, assets } from "@/lib/data";
 import { Button } from "@/components/ui/button";
+
+export type VariantProps<Component extends (...args: any) => any> = Omit<
+  OmitUndefined<Parameters<Component>[0]>,
+  "class" | "className"
+>;
+export type OmitUndefined<T> = T extends undefined ? never : T;
+
+// Update the convertBookingToCalendarEvent function with the correct type
+function convertBookingToCalendarEvent(booking: any): CalendarEvent {
+  // Calculate end time by adding duration in minutes to start time
+  const startDate = new Date(booking.bookingTimedt);
+  const endDate = new Date(
+    startDate.getTime() + booking.bookingDurationMins * 60000
+  );
+
+  // Determine color based on booking type or status
+  let color: VariantProps<typeof monthEventVariants>["variant"] = "default";
+  if (booking.bookingFor === "Equipment") color = "blue";
+  if (booking.bookingStatus === "Confirmed") color = "green";
+  if (booking.bookingNotes?.includes("Emergency")) color = "pink";
+
+  return {
+    id: booking.bookingKey,
+    start: startDate,
+    end: endDate,
+    title: booking.bookingTitle,
+    description: booking.bookingDescription,
+    color: color,
+  };
+}
 
 export default function Page() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedAssetIndex, setSelectedAssetIndex] = useState(0);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
+  // Create a map of asset keys to asset titles for easy lookup
+  const assetTitleMap = assets.reduce((map, asset) => {
+    map[asset.assetKey] = asset.assetTitle;
+    return map;
+  }, {} as Record<string, string>);
+
+  // Group bookings by asset with proper typing
+  const assetBookings = bookings.reduce<Record<string, AssetCalendar>>(
+    (acc, booking) => {
+      booking.bookedAssets.forEach((assetId) => {
+        if (!acc[assetId]) {
+          acc[assetId] = {
+            id: assetId,
+            name: assetTitleMap[assetId] || `Asset ${assetId}`, // You can replace this with actual asset names if available
+            events: [],
+          };
+        }
+        acc[assetId].events.push(convertBookingToCalendarEvent(booking));
+      });
+      return acc;
+    },
+    {}
+  );
+
+  // Convert to array for easier use
+  const assetCalendars: AssetCalendar[] = Object.values(assetBookings);
+
   // Get the selected calendar's events
-  const selectedCalendar = calendars[selectedAssetIndex];
+  const selectedCalendar = assetCalendars[selectedAssetIndex];
 
   // Function to handle date changes from the month calendar
   const handleMonthDateChange = (date: SetStateAction<Date>) => {
@@ -46,7 +105,7 @@ export default function Page() {
 
   // State to track visible assets
   const [visibleAssets, setVisibleAssets] = useState(
-    calendars.map((_, index) => index)
+    assetCalendars.map((_, index) => index)
   );
 
   // Function to toggle asset visibility
@@ -66,7 +125,7 @@ export default function Page() {
   const mobileView = (
     <div className="flex-1 overflow-hidden">
       <div className="border rounded-md flex flex-col h-full min-h-96 overflow-hidden">
-        <div className="p-3 bg-muted font-medium border-b">
+        <div className="p-3 bg-orange-200 font-medium">
           {selectedCalendar.name}
         </div>
         <div className="flex-1 overflow-hidden">
@@ -84,22 +143,28 @@ export default function Page() {
     </div>
   );
 
-  // Desktop view shows grid of assets
+  // Desktop view shows grid of assets with responsive columns
   const desktopView = (
-    <div className="grid grid-cols-2 lg:grid-cols-4 flex-1 gap-1 overflow-visible">
-      {calendars
+    <div
+      className={`grid ${
+        isCollapsed
+          ? "grid-cols-2 lg:grid-cols-5 xl:grid-cols-6" // More columns when collapsed
+          : "grid-cols-2 lg:grid-cols-4" // Fewer columns when sidebar is visible
+      } flex-1 gap-1 overflow-visible`}
+    >
+      {assetCalendars
         .filter((_, index) => visibleAssets.includes(index))
-        .map((calendar) => (
+        .map((calendar, index) => (
           <div
-            key={calendar.name} // Using calendar name as key instead of index since filtered array changes
+            key={calendar.id || index}
             className="border rounded-md flex flex-col h-full min-h-96 overflow-hidden"
           >
-            <div className="p-3 bg-muted font-medium border-b">
+            <div className="p-3 bg-orange-200 font-medium border-b">
               {calendar.name}
             </div>
             <div className="flex-1 overflow-hidden">
               <Calendar
-                key={`desktop-calendar-${calendar.name}`}
+                key={`desktop-calendar-${calendar.id || index}`}
                 events={calendar.events}
                 view="day"
                 date={currentDate}
@@ -185,7 +250,7 @@ export default function Page() {
                     <SelectValue placeholder="Select asset" />
                   </SelectTrigger>
                   <SelectContent>
-                    {calendars.map((calendar, index) => (
+                    {assetCalendars.map((calendar, index) => (
                       <SelectItem key={index} value={index.toString()}>
                         {calendar.name}
                       </SelectItem>
@@ -228,9 +293,9 @@ export default function Page() {
             Choose which assets you would like to view
           </CardDescription>
         </CardHeader>
-        <CardContent className="-mt-2">
+        <CardContent className="-mt-2 overflow-auto">
           <div className="flex flex-col justify-evenly space-y-2">
-            {calendars.map((calendar, index) => (
+            {assetCalendars.map((calendar, index) => (
               <div key={index} className="flex items-center space-x-2">
                 <Checkbox
                   id={`asset-${index}`}
