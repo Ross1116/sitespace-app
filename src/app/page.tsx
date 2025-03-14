@@ -26,8 +26,8 @@ export default function Page() {
         },
         {
           id: '2',
-          start: addHours(new Date(), 1.5),
-          end: addHours(new Date(), 3),
+          start: new Date(),
+          end: addHours(new Date(), 4),
           title: 'Asset B',
           color: 'blue',
         },

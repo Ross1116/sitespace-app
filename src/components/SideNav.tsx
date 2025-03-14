@@ -53,7 +53,7 @@ const menuItems = [
       {
         icon: Speaker,
         label: "Announcements",
-        href: "/announcements",
+        href: "#",
         visible: ["admin", "manager", "subcontractor"],
       },
     ],
@@ -63,19 +63,19 @@ const menuItems = [
       {
         icon: User,
         label: "Profile",
-        href: "/profile",
+        href: "#",
         visible: ["admin", "manager", "subcontractor"],
       },
       {
         icon: Settings,
         label: "Settings",
-        href: "/settings",
+        href: "#",
         visible: ["admin", "manager", "subcontractor"],
       },
       {
         icon: LogOut,
         label: "Logout",
-        href: "/logout",
+        href: "#",
         visible: ["admin", "manager", "subcontractor"],
       },
     ],
