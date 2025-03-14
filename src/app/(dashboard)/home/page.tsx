@@ -89,7 +89,7 @@ export default function HomePage() {
             </Button>
 
             <p className="mt-4 text-gray-500">
-              Don't have an account? Contact your manager.
+              Don&apos;t have an account? Contact your manager.
             </p>
           </div>
 
