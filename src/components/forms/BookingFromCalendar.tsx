@@ -6,7 +6,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,7 +46,6 @@ export function BookingFromCalendar({
   isOpen,
   onClose,
   startTime,
-  endTime,
   onSave,
   selectedAssetId,
   bookedAssets = [],
@@ -110,7 +108,7 @@ export function BookingFromCalendar({
         setCustomEndTime(calculatedEndTime);
         setEndTimeString(format(calculatedEndTime, "HH:mm"));
       } catch (error) {
-        console.error("Invalid time format");
+        console.error(`Invalid time format with error ${error}`);
       }
     }
   };
@@ -137,7 +135,7 @@ export function BookingFromCalendar({
         else if (durationInMinutes === 240) setDuration("240");
         else setDuration(durationInMinutes.toString());
       } catch (error) {
-        console.error("Invalid time format");
+        console.error(`Invalid time format with error ${error}`);
       }
     }
   };
