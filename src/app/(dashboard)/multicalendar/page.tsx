@@ -8,10 +8,11 @@ import {
   CalendarPrevTrigger,
   CalendarTodayTrigger,
   CalendarMonthView,
-  AssetCalendar,
-  CalendarEvent,
-  monthEventVariants,
-} from "@/components/ui/full-calendar";
+  type AssetCalendar,
+  type CalendarEvent,
+} from "@/components/ui/full-calendar/index";
+import { monthEventVariants } from "@/components/ui/full-calendar/calendar-utils";
+
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { SetStateAction, useState } from "react";
 import {
