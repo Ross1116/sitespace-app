@@ -12,6 +12,7 @@ import { VariantProps, cva } from "class-variance-authority";
 import {
   Locale,
   addDays,
+  addHours,
   addMonths,
   addWeeks,
   addYears,
@@ -22,7 +23,6 @@ import {
   isSameHour,
   isSameMonth,
   isToday,
-  setHours,
   setMonth,
   startOfMonth,
   startOfWeek,
@@ -42,6 +42,7 @@ import {
   useState,
 } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
+import { BookingFromCalendar } from "../forms/BookingFromCalendar";
 
 export const monthEventVariants = cva("size-2 rounded-full", {
   variants: {
@@ -278,27 +279,120 @@ const EventGroup = ({
 };
 
 const CalendarDayView = () => {
-  const { view, events, date } = useCalendar();
+  const { view, events, date, setEvents, onEventClick } = useCalendar();
+  const [isBookingFormOpen, setIsBookingFormOpen] = useState(false);
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<{
+    start: Date | null;
+    end: Date | null;
+  }>({
+    start: null,
+    end: null,
+  });
 
   if (view !== "day") return null;
 
-  // Create array with hours from 5am (5) to 8pm (20)
-  const hours = [...Array(14)].map((_, i) => setHours(date, i + 6));
+  // Create array with hours from 6am (6) to 8pm (20), ensuring minutes are set to 0
+  const hours = [...Array(14)].map((_, i) => {
+    const hourDate = new Date(date);
+    hourDate.setHours(i + 6, 0, 0, 0); // Set hours with minutes, seconds, ms all at 0
+    return hourDate;
+  });
+
+  // Handler for clicking on a time slot
+  const handleTimeSlotClick = (hour: Date) => {
+    const startTime = new Date(hour); // Clone the date to avoid mutations
+    const endTime = addHours(startTime, 1); // Default 1 hour duration
+
+    setSelectedTimeSlot({
+      start: startTime,
+      end: endTime,
+    });
+    setIsBookingFormOpen(true);
+
+    console.log(
+      "Create event at:",
+      format(startTime, "h:mm a"),
+      "to",
+      format(endTime, "h:mm a")
+    );
+  };
+
+  // Handler for saving a new event
+  const handleSaveEvent = (newEvent: Partial<CalendarEvent>) => {
+    if (setEvents && events) {
+      // Only proceed if we have the minimum required properties
+      if (newEvent.start && newEvent.title) {
+        // Create a complete event with default values for missing properties
+        const completeEvent: CalendarEvent = {
+          id: newEvent.id || Math.random().toString(36).substring(2, 11), // Generate ID if missing
+          start: newEvent.start,
+          end: newEvent.end || addHours(newEvent.start, 1), // Default to 1 hour if end not provided
+          title: newEvent.title,
+          description: newEvent.description || "",
+          color: newEvent.color || "default",
+        };
+
+        setEvents([...events, completeEvent]);
+
+        // If there's an event click handler, call it with the new event
+        if (onEventClick) {
+          onEventClick(completeEvent);
+        }
+      }
+    }
+  };
 
   return (
-    <div className="flex relative py-7 overflow-y-auto overflow-x-hidden">
+    <div className="flex relative py-7 overflow-y-auto overflow-x-hidden h-full mr-4">
       <TimeTable />
-      <div className="flex-1">
-        {hours.map((hour) => (
-          <EventGroup key={hour.toString()} hour={hour} events={events} />
-        ))}
+      <div className="flex-1 relative">
+        {" "}
+        {/* Added right padding */}
+        {/* Existing events layer */}
+        <div className="absolute inset-0 pointer-events-none">
+          {hours.map((hour) => (
+            <EventGroup key={hour.toString()} hour={hour} events={events} />
+          ))}
+        </div>
+        {/* Clickable grid layer */}
+        <div className="absolute inset-0 grid grid-rows-[repeat(14,1fr)]">
+          {hours.map((hour) => (
+            <div
+              key={`slot-${hour.toString()}`}
+              className="border-t last:border-b w-full h-full cursor-pointer hover:bg-orange-100/60 transition-colors"
+              onClick={() => handleTimeSlotClick(hour)}
+            >
+              {/* Time slot is empty - just clickable */}
+            </div>
+          ))}
+        </div>
       </div>
+
+      {/* Booking form dialog */}
+      {isBookingFormOpen && (
+        <BookingFromCalendar
+          isOpen={isBookingFormOpen}
+          onClose={() => setIsBookingFormOpen(false)}
+          startTime={selectedTimeSlot.start}
+          endTime={selectedTimeSlot.end}
+          onSave={handleSaveEvent}
+        />
+      )}
     </div>
   );
 };
 
 const CalendarWeekView = () => {
-  const { view, date, locale, events } = useCalendar();
+  const { view, date, locale, events, setEvents, onEventClick } = useCalendar();
+  const [isBookingFormOpen, setIsBookingFormOpen] = useState(false);
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<{
+    start: Date | null;
+    end: Date | null;
+    dayIndex?: number;
+  }>({
+    start: null,
+    end: null,
+  });
 
   const weekDates = useMemo(() => {
     const start = startOfWeek(date, { weekStartsOn: 0 });
@@ -306,7 +400,12 @@ const CalendarWeekView = () => {
 
     for (let i = 0; i < 7; i++) {
       const day = addDays(start, i);
-      const hours = [...Array(16)].map((_, i) => setHours(day, i + 5));
+      // Create hours with precise time (minutes = 0)
+      const hours = [...Array(16)].map((_, hourIndex) => {
+        const hourDate = new Date(day);
+        hourDate.setHours(hourIndex + 5, 0, 0, 0); // Ensure minutes are 0
+        return hourDate;
+      });
       weekDates.push(hours);
     }
 
@@ -321,6 +420,50 @@ const CalendarWeekView = () => {
     }
     return daysOfWeek;
   }, [date]);
+
+  // Handler for clicking on a time slot
+  const handleTimeSlotClick = (hour: Date) => {
+    const startTime = new Date(hour); // Clone to avoid mutations
+    const endTime = addHours(startTime, 1); // Default 1 hour duration
+
+    setSelectedTimeSlot({
+      start: startTime,
+      end: endTime,
+    });
+    setIsBookingFormOpen(true);
+
+    console.log(
+      "Create event at:",
+      format(startTime, "h:mm a"),
+      "to",
+      format(endTime, "h:mm a")
+    );
+  };
+
+  // Handler for saving a new event
+  const handleSaveEvent = (newEvent: Partial<CalendarEvent>) => {
+    if (setEvents && events) {
+      // Only proceed if we have the minimum required properties
+      if (newEvent.start && newEvent.title) {
+        // Create a complete event with default values for missing properties
+        const completeEvent: CalendarEvent = {
+          id: newEvent.id || Math.random().toString(36).substring(2, 11), // Generate ID if missing
+          start: newEvent.start,
+          end: newEvent.end || addHours(newEvent.start, 1), // Default to 1 hour if end not provided
+          title: newEvent.title,
+          description: newEvent.description || "",
+          color: newEvent.color || "default",
+        };
+
+        setEvents([...events, completeEvent]);
+
+        // If there's an event click handler, call it with the new event
+        if (onEventClick) {
+          onEventClick(completeEvent);
+        }
+      }
+    }
+  };
 
   if (view !== "week") return null;
 
@@ -353,28 +496,66 @@ const CalendarWeekView = () => {
         <div className="w-fit">
           <TimeTable />
         </div>
-        <div className="grid grid-cols-7 flex-1">
-          {weekDates.map((hours, i) => {
-            return (
+        <div className="grid grid-cols-7 flex-1 relative pr-4">
+          {" "}
+          {/* Added right padding */}
+          {/* Existing events layer */}
+          <div className="absolute inset-0 grid grid-cols-7 pointer-events-none">
+            {weekDates.map((hours, i) => {
+              return (
+                <div
+                  className={cn(
+                    "h-full text-sm text-muted-foreground border-l first:border-l-0",
+                    [0, 6].includes(i) && "bg-muted/50"
+                  )}
+                  key={hours[0].toString()}
+                >
+                  {hours.map((hour) => (
+                    <EventGroup
+                      key={hour.toString()}
+                      hour={hour}
+                      events={events}
+                    />
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+          {/* Clickable grid layer */}
+          <div className="absolute inset-0 grid grid-cols-7">
+            {weekDates.map((hours, dayIndex) => (
               <div
+                key={`clickable-${dayIndex}`}
                 className={cn(
-                  "h-full text-sm text-muted-foreground border-l first:border-l-0",
-                  [0, 6].includes(i) && "bg-muted/50"
+                  "grid grid-rows-[repeat(16,1fr)] h-full border-l first:border-l-0",
+                  [0, 6].includes(dayIndex) && "bg-muted/50"
                 )}
-                key={hours[0].toString()}
               >
                 {hours.map((hour) => (
-                  <EventGroup
-                    key={hour.toString()}
-                    hour={hour}
-                    events={events}
-                  />
+                  <div
+                    key={`slot-${hour.toString()}`}
+                    className="border-t last:border-b w-full h-full cursor-pointer hover:bg-muted/30 transition-colors"
+                    onClick={() => handleTimeSlotClick(hour)}
+                  >
+                    {/* Time slot is empty - just clickable */}
+                  </div>
                 ))}
               </div>
-            );
-          })}
+            ))}
+          </div>
         </div>
       </div>
+
+      {/* Booking form dialog */}
+      {isBookingFormOpen && (
+        <BookingFromCalendar
+          isOpen={isBookingFormOpen}
+          onClose={() => setIsBookingFormOpen(false)}
+          startTime={selectedTimeSlot.start}
+          endTime={selectedTimeSlot.end}
+          onSave={handleSaveEvent}
+        />
+      )}
     </div>
   );
 };
@@ -419,7 +600,7 @@ const CalendarMonthView = () => {
           return (
             <div
               className={cn(
-                "ring-1 p-2 text-sm text-muted-foreground ring-border overflow-auto cursor-pointer hover:bg-muted/50 transition-colors",
+                "ring-1 p-2 text-sm text-muted-foreground ring-border overflow-auto cursor-pointer hover:bg-orange-100/60 transition-colors",
                 !isSameMonth(date, _date) && "text-muted-foreground/50"
               )}
               key={_date.toString()}
