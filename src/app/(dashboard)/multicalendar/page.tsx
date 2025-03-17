@@ -32,10 +32,10 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { bookings, assets } from "@/lib/data";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/app/context/AuthContext";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
-import ProtectedRoute from "@/components/ProtectedRoute";
+// import { useAuth } from "@/app/context/AuthContext";
+// import { useRouter } from "next/navigation";
+// import { useEffect } from "react";
+// import ProtectedRoute from "@/components/ProtectedRoute";
 
 
 export type VariantProps<Component extends (...args: any) => any> = Omit<
@@ -69,14 +69,14 @@ function convertBookingToCalendarEvent(booking: any): CalendarEvent {
 }
 
 export default function Page() {
-  const { isAuthenticated } = useAuth();
-  const router = useRouter();
+  // const { isAuthenticated } = useAuth();
+  // const router = useRouter();
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.push("/login");
-    }
-  }, [isAuthenticated, router]);
+  // useEffect(() => {
+  //   if (!isAuthenticated) {
+  //     router.push("/login");
+  //   }
+  // }, [isAuthenticated, router]);
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedAssetIndex, setSelectedAssetIndex] = useState(0);
@@ -193,7 +193,7 @@ export default function Page() {
   );
 
   return (
-    <ProtectedRoute requiredRoles={["admin", "manager"]}>
+    // <ProtectedRoute requiredRoles={["admin", "manager"]}>
       <div className="h-full p-6 pl-1 grid grid-cols-12 grid-rows-12 gap-2">
         {/* month calendar date picker */}
         <Card
@@ -367,6 +367,6 @@ export default function Page() {
           </Card>
         </div> */}
       </div>
-    </ProtectedRoute>
+    // </ProtectedRoute>
   );
 }
