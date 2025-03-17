@@ -29,12 +29,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { announcements, bookings, assets } from "@/lib/data";
+import { bookings, assets } from "@/lib/data";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/app/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import ProtectedRoute from "@/components/ProtectedRoute";
+
 
 export type VariantProps<Component extends (...args: any) => any> = Omit<
   OmitUndefined<Parameters<Component>[0]>,
@@ -329,7 +330,7 @@ export default function Page() {
           </CardContent>
         </Card>
 
-        {/* Announcements tab */}
+        {/* Announcements tab
         <div
           className={`${
             isCollapsed ? "hidden" : "col-span-3 lg:flex"
@@ -363,7 +364,7 @@ export default function Page() {
               </div>
             </CardContent>
           </Card>
-        </div>
+        </div> */}
       </div>
     </ProtectedRoute>
   );

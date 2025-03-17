@@ -49,7 +49,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (username: string, password: string) => {
     try {
       setIsLoading(true);
-      console.log("Using API URL:", API_URL); // Debug log
 
       // Use the full URL from environment variables
       const response = await fetch(`${API_URL}/api/auth/signin`, {

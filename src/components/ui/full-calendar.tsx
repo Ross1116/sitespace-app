@@ -673,12 +673,12 @@ const TimeTable = () => {
   const now = new Date();
 
   return (
-    <div className="pr-2 w-12">
+    <div className="pr-2 w-12 ">
       {Array.from(Array(15)).map((_, index) => {
         const hour = index + 6;
         return (
           <div
-            className="text-right relative text-xs text-muted-foreground/50 h-12 last:h-0"
+            className="text-right relative text-xs text-gray-800 h-12 last:h-0"
             key={hour}
           >
             {now.getHours() === hour && (
