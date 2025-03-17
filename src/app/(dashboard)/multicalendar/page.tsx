@@ -8,10 +8,11 @@ import {
   CalendarPrevTrigger,
   CalendarTodayTrigger,
   CalendarMonthView,
-  AssetCalendar,
-  CalendarEvent,
-  monthEventVariants,
-} from "@/components/ui/full-calendar";
+  type AssetCalendar,
+  type CalendarEvent,
+} from "@/components/ui/full-calendar/index";
+import { monthEventVariants } from "@/components/ui/full-calendar/calendar-utils";
+
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { SetStateAction, useState } from "react";
 import {
@@ -29,12 +30,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { announcements, bookings, assets } from "@/lib/data";
+import { bookings, assets } from "@/lib/data";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/app/context/AuthContext";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
-import ProtectedRoute from "@/components/ProtectedRoute";
+// import { useAuth } from "@/app/context/AuthContext";
+// import { useRouter } from "next/navigation";
+// import { useEffect } from "react";
+// import ProtectedRoute from "@/components/ProtectedRoute";
+
 
 export type VariantProps<Component extends (...args: any) => any> = Omit<
   OmitUndefined<Parameters<Component>[0]>,
@@ -67,14 +69,14 @@ function convertBookingToCalendarEvent(booking: any): CalendarEvent {
 }
 
 export default function Page() {
-  const { isAuthenticated } = useAuth();
-  const router = useRouter();
+  // const { isAuthenticated } = useAuth();
+  // const router = useRouter();
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.push("/login");
-    }
-  }, [isAuthenticated, router]);
+  // useEffect(() => {
+  //   if (!isAuthenticated) {
+  //     router.push("/login");
+  //   }
+  // }, [isAuthenticated, router]);
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedAssetIndex, setSelectedAssetIndex] = useState(0);
@@ -191,7 +193,7 @@ export default function Page() {
   );
 
   return (
-    <ProtectedRoute requiredRoles={["admin", "manager"]}>
+    // <ProtectedRoute requiredRoles={["admin", "manager"]}>
       <div className="h-full p-6 pl-1 grid grid-cols-12 grid-rows-12 gap-2">
         {/* month calendar date picker */}
         <Card
@@ -329,7 +331,7 @@ export default function Page() {
           </CardContent>
         </Card>
 
-        {/* Announcements tab */}
+        {/* Announcements tab
         <div
           className={`${
             isCollapsed ? "hidden" : "col-span-3 lg:flex"
@@ -363,8 +365,8 @@ export default function Page() {
               </div>
             </CardContent>
           </Card>
-        </div>
+        </div> */}
       </div>
-    </ProtectedRoute>
+    // </ProtectedRoute>
   );
 }
