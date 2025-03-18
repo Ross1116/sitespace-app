@@ -20,6 +20,14 @@ type AuthContextType = {
   user: User | null;
   token: string | null;
   login: (username: string, password: string) => Promise<void>;
+  register: (
+    fullName: string, 
+    companyName: string, 
+    tradeCategory: string, 
+    email: string, 
+    phoneNumber: string, 
+    password: string
+  ) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
 };
@@ -85,6 +93,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const register = async (
+    fullName: string, 
+    companyName: string, 
+    tradeCategory: string, 
+    email: string, 
+    phoneNumber: string, 
+    password: string
+  ) => {
+    try {
+      setIsLoading(true);
+
+      // Extract username from email or use first part of fullName
+      const username = email.split('@')[0] || fullName.split(' ')[0].toLowerCase();
+
+      const response = await fetch(`${API_URL}/api/auth/signup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username,
+          fullName,
+          companyName,
+          tradeCategory,
+          email,
+          phoneNumber,
+          password,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Registration failed");
+      }
+
+      const data = await response.json();
+      
+      // After successful registration, you can either:
+      // 1. Automatically log the user in
+      // 2. Redirect them to the login page
+      
+      // Option 1: Auto login
+      // await login(username, password);
+      
+      // Option 2: Redirect to login
+      router.push("/login?registered=true");
+      
+    } catch (error) {
+      console.error("Registration error:", error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const logout = () => {
     setUser(null);
     setToken(null);
@@ -99,6 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         token,
         login,
+        register,
         logout,
         isAuthenticated: !!token,
       }}
