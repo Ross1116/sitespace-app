@@ -126,7 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error(errorData.message || "Registration failed");
       }
 
-      const data = await response.json();
+      // const data = await response.json();
       
       // After successful registration, you can either:
       // 1. Automatically log the user in

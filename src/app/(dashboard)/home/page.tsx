@@ -9,7 +9,6 @@ import {
   Construction,
   Users,
   Clock,
-  Bell,
   ChevronRight,
   LogIn,
 } from "lucide-react";
@@ -106,37 +105,38 @@ export default function HomePage() {
     // Default cards for all users
     const cards = [
       {
+        title: "Asset Live View",
+        icon: Construction,
+        description: "View all your bookings and schedule",
+        link: "/multicalendar",
+        color: "bg-green-100",
+      },
+      {
         title: "Bookings",
         icon: Calendar,
         description: "View and manage your scheduled bookings",
         link: "/bookings",
         color: "bg-blue-100",
-      },
-      {
-        title: "Announcements",
-        icon: Bell,
-        description: "Check the latest updates and notices",
-        link: "#",
-        color: "bg-amber-100",
-      },
+      }      
     ];
 
     // Add role-specific cards
     if (user?.roles?.includes("admin") || user?.roles?.includes("manager")) {
       cards.unshift(
         {
-          title: "Assets",
-          icon: Construction,
-          description: "Manage your construction assets",
-          link: "/assets",
-          color: "bg-green-100",
-        },
-        {
           title: "Subcontractors",
           icon: Users,
           description: "View and manage your subcontractors",
           link: "/subcontractors",
           color: "bg-purple-100",
+        }
+        ,
+        {
+          title: "Assets",
+          icon: Users,
+          description: "View and manage your subcontractors",
+          link: "/assets",
+          color: "bg-amber-100",
         }
       );
     }
