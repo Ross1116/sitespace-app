@@ -105,7 +105,7 @@ export default function HomePage() {
     // Default cards for all users
     const cards = [
       {
-        title: "Asset Live View",
+        title: "Live Asset View",
         icon: Construction,
         description: "View all your bookings and schedule",
         link: "/multicalendar",
@@ -122,7 +122,7 @@ export default function HomePage() {
 
     // Add role-specific cards
     if (user?.roles?.includes("admin") || user?.roles?.includes("manager")) {
-      cards.unshift(
+      cards.push(
         {
           title: "Subcontractors",
           icon: Users,

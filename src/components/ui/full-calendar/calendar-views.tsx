@@ -95,27 +95,34 @@ export const CalendarDayView = () => {
     }
   };
 
+  // Create a map to check if an hour has events
+  const hourHasEvents = hours.reduce((acc, hour) => {
+    acc[hour.toString()] = (events || []).some(event => 
+      isSameHour(event.start, hour)
+    );
+    return acc;
+  }, {} as Record<string, boolean>);
+
   return (
     <div className="flex relative py-7 overflow-y-auto overflow-x-hidden h-full mr-4">
       <TimeTable />
       <div className="flex-1 relative">
-        {" "}
-        {/* Added right padding */}
-        {/* Existing events layer */}
-        <div className="absolute inset-0 pointer-events-none">
+        {/* Combined grid and events in a single layer */}
+        <div className="grid grid-rows-[repeat(14,1fr)] w-full h-full">
           {hours.map((hour) => (
-            <EventGroup key={hour.toString()} hour={hour} events={events} />
-          ))}
-        </div>
-        {/* Clickable grid layer */}
-        <div className="absolute inset-0 grid grid-rows-[repeat(14,1fr)]">
-          {hours.map((hour) => (
-            <div
-              key={`slot-${hour.toString()}`}
-              className="border-t last:border-b w-full h-full cursor-pointer hover:bg-orange-100/60 transition-colors"
-              onClick={() => handleTimeSlotClick(hour)}
+            <div 
+              key={hour.toString()}
+              className="relative border-t last:border-b w-full"
             >
-              {/* Time slot is empty - just clickable */}
+              {/* Clickable background with hover effect */}
+              <div
+                className="absolute inset-0 w-full h-full cursor-pointer hover:bg-orange-100/60 transition-colors"
+                onClick={() => handleTimeSlotClick(hour)}
+                style={{ pointerEvents: hourHasEvents[hour.toString()] ? 'none' : 'auto' }}
+              />
+              
+              {/* Events for this hour */}
+              <EventGroup hour={hour} events={events || []} />
             </div>
           ))}
         </div>
@@ -287,7 +294,7 @@ export const CalendarWeekView = () => {
                 {hours.map((hour) => (
                   <div
                     key={`slot-${hour.toString()}`}
-                    className="border-t last:border-b w-full h-full cursor-pointer hover:bg-muted/30 transition-colors"
+                    className="border-t last:border-b w-full h-full cursor-pointer hover:bg-orange-200 transition-colors"
                     onClick={() => handleTimeSlotClick(hour)}
                   >
                     {/* Time slot is empty - just clickable */}
@@ -469,49 +476,56 @@ export const EventGroup = ({
   events: CalendarEvent[];
   hour: Date;
 }) => {
+  const filteredEvents = events.filter((event) => isSameHour(event.start, hour));
+  
+  if (filteredEvents.length === 0) {
+    return null; // Don't render anything if no events
+  }
+  
   return (
-    <div className="h-12 border-t last:border-b w-11/12">
-      {events
-        .filter((event) => isSameHour(event.start, hour))
-        .map((event) => {
-          const hoursDifference =
-            differenceInMinutes(event.end, event.start) / 60;
-          const startPosition = event.start.getMinutes() / 60;
+    <div className="absolute inset-0 w-11/12 z-10">
+      {filteredEvents.map((event) => {
+        const hoursDifference =
+          differenceInMinutes(event.end, event.start) / 60;
+        const startPosition = event.start.getMinutes() / 60;
 
-          // Format times for the tooltip
-          const startTime = format(event.start, "h:mm a");
-          const endTime = format(event.end, "h:mm a");
+        // Format times for the tooltip
+        const startTime = format(event.start, "h:mm a");
+        const endTime = format(event.end, "h:mm a");
 
-          return (
-            <TooltipProvider key={event.id}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div
-                    className={cn(
-                      "relative cursor-pointer",
-                      dayEventVariants({ variant: event.color })
-                    )}
-                    style={{
-                      top: `${startPosition * 100}%`,
-                      height: `${hoursDifference * 100}%`,
-                    }}
-                  >
-                    {event.title}
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <div className="flex flex-col gap-1">
-                    <p className="font-medium">{event.title}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {startTime} - {endTime}
-                    </p>
-                    <p>{event.description}</p>
-                  </div>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          );
-        })}
+        return (
+          <TooltipProvider key={event.id}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div
+                  className={cn(
+                    "absolute cursor-pointer", 
+                    dayEventVariants({ variant: event.color })
+                  )}
+                  style={{
+                    top: `${startPosition * 100}%`,
+                    height: `${hoursDifference * 100}%`,
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation(); // Stop event from reaching background
+                  }}
+                >
+                  {event.title}
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <div className="flex flex-col gap-1">
+                  <p className="font-medium">{event.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {startTime} - {endTime}
+                  </p>
+                  <p>{event.description}</p>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        );
+      })}
     </div>
   );
 };
