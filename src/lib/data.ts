@@ -318,3 +318,118 @@ export const assets = [
     usageInstructions: "Keep away from water sources"
   }
 ];
+
+export const bookings = [
+  {
+    bookingKey: "BKG001",
+    bookingProject: "PRJ001",
+    bookingTitle: "Foundation Excavation",
+    bookingFor: "Equipment",
+    bookedAssets: ["AST001", "AST003"],
+    bookingStatus: "Pending",
+    bookingTimedt: "2025-03-13T20:00:00Z", // March 13, 7am AEDT (UTC+11)
+    bookingDurationMins: 240, // 4 hours, ends at 11am AEDT
+    bookingDescription: "Excavation for the main building foundation",
+    bookingNotes: "Need crane and excavator for the entire morning",
+    bookingCreatedBy: "USR002",
+    bookingCreatedDt: "2025-03-10T14:30:00Z"
+  },
+  {
+    bookingKey: "BKG002",
+    bookingProject: "PRJ002",
+    bookingTitle: "Concrete Pouring",
+    bookingFor: "Equipment",
+    bookedAssets: ["AST002", "AST005"],
+    bookingStatus: "Confirmed",
+    bookingTimedt: "2025-03-13T22:30:00Z", // March 13, 9:30am AEDT
+    bookingDurationMins: 180, // 3 hours, ends at 12:30pm AEDT
+    bookingDescription: "Pouring concrete for the south building foundation",
+    bookingNotes: "Will need mixer and generator",
+    bookingCreatedBy: "USR001",
+    bookingCreatedDt: "2025-03-12T10:15:00Z"
+  },
+  {
+    bookingKey: "BKG003",
+    bookingProject: "PRJ003",
+    bookingTitle: "Scaffolding Installation",
+    bookingFor: "Equipment",
+    bookedAssets: ["AST004", "AST008"],
+    bookingStatus: "Pending",
+    bookingTimedt: "2025-03-14T20:00:00Z", // March 14, 7am AEDT
+    bookingDurationMins: 300, // 5 hours, ends at 12pm AEDT
+    bookingDescription: "Setting up scaffolding on the west wing",
+    bookingNotes: "Will need forklift to move materials",
+    bookingCreatedBy: "USR004",
+    bookingCreatedDt: "2025-03-11T16:45:00Z"
+  },
+  {
+    bookingKey: "BKG004",
+    bookingProject: "PRJ001",
+    bookingTitle: "Tool Maintenance",
+    bookingFor: "Service",
+    bookedAssets: ["AST009"],
+    bookingStatus: "Confirmed",
+    bookingTimedt: "2025-03-14T02:00:00Z", // March 14, 1pm AEDT
+    bookingDurationMins: 120, // 2 hours, ends at 3pm AEDT
+    bookingDescription: "Regular maintenance of air compressor",
+    bookingNotes: "Need to be completed before weekend work",
+    bookingCreatedBy: "USR002",
+    bookingCreatedDt: "2025-03-12T09:30:00Z"
+  },
+  {
+    bookingKey: "BKG005",
+    bookingProject: "PRJ002",
+    bookingTitle: "Site Survey",
+    bookingFor: "Equipment",
+    bookedAssets: ["AST010"],
+    bookingStatus: "Denied",
+    bookingTimedt: "2025-03-14T23:00:00Z", // March 14, 10am AEDT
+    bookingDurationMins: 180, // 3 hours, ends at 1pm AEDT
+    bookingDescription: "Topographical survey of extension area",
+    bookingNotes: "Equipment needed for another project",
+    bookingCreatedBy: "USR003",
+    bookingCreatedDt: "2025-03-11T11:20:00Z"
+  },
+  {
+    bookingKey: "BKG006",
+    bookingProject: "PRJ004",
+    bookingTitle: "Cement Delivery",
+    bookingFor: "Equipment",
+    bookedAssets: ["AST011", "AST006"],
+    bookingStatus: "Pending",
+    bookingTimedt: "2025-03-15T21:30:00Z", // March 15, 8:30am AEDT
+    bookingDurationMins: 90, // 1.5 hours, ends at 10am AEDT
+    bookingDescription: "Receiving cement delivery at batch plant",
+    bookingNotes: "Need portable office for paperwork",
+    bookingCreatedBy: "USR005",
+    bookingCreatedDt: "2025-03-12T14:10:00Z"
+  },
+  {
+    bookingKey: "BKG007",
+    bookingProject: "PRJ003",
+    bookingTitle: "Lighting Setup",
+    bookingFor: "Equipment",
+    bookedAssets: ["AST012"],
+    bookingStatus: "Confirmed",
+    bookingTimedt: "2025-03-13T04:00:00Z", // March 13, 3pm AEDT
+    bookingDurationMins: 180, // 3 hours, ends at 6pm AEDT
+    bookingDescription: "Setting up lighting for evening work",
+    bookingNotes: "Will need lighting setup before sunset",
+    bookingCreatedBy: "USR004",
+    bookingCreatedDt: "2025-03-12T15:30:00Z"
+  },
+  {
+    bookingKey: "BKG008",
+    bookingProject: "PRJ005",
+    bookingTitle: "Basement Drainage",
+    bookingFor: "Equipment",
+    bookedAssets: ["AST007"],
+    bookingStatus: "Pending",
+    bookingTimedt: "2025-03-15T00:00:00Z", // March 15, 11am AEDT
+    bookingDurationMins: 240, // 4 hours, ends at 3pm AEDT
+    bookingDescription: "Pumping water from basement after rainfall",
+    bookingNotes: "Emergency request",
+    bookingCreatedBy: "USR006",
+    bookingCreatedDt: "2025-03-13T07:45:00Z"
+  }
+];

@@ -30,6 +30,8 @@ type AuthContextType = {
   ) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
+  error: string | null;
+  clearError: () => void;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -38,6 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -54,20 +57,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false);
   }, []);
 
+  const clearError = () => {
+    setError(null);
+  };
+
   const login = async (username: string, password: string) => {
     try {
       setIsLoading(true);
+      clearError();
 
       // Use the full URL from environment variables
       const response = await fetch(`${API_URL}/api/auth/signin`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
+      }).catch(err => {
+        // Network error (server down, no connection, etc.)
+        throw new Error("Cannot connect to server. Please check your connection or try again later.", err);
       });
 
-      if (!response.ok) throw new Error("Login failed");
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.message || 
+          (response.status === 401 ? "Invalid username or password" : 
+           response.status === 403 ? "Access denied" : 
+           `Login failed (${response.status})`);
+        
+        throw new Error(errorMessage);
+      }
 
-      const data = await response.json();
+      const data = await response.json().catch(() => {
+        throw new Error("Invalid response from server");
+      });
+
+      if (!data.accessToken) {
+        throw new Error("Invalid login response (no token)");
+      }
 
       // Store user and token
       const userData = {
@@ -87,6 +112,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       router.push("/home");
     } catch (error) {
       console.error("Login error:", error);
+      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+      setError(errorMessage);
+      
+      // Display alert for user feedback
+      alert(`Login failed: ${errorMessage}`);
+      
       throw error;
     } finally {
       setIsLoading(false);
@@ -103,6 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   ) => {
     try {
       setIsLoading(true);
+      clearError();
 
       // Extract username from email or use first part of fullName
       const username = email.split('@')[0] || fullName.split(' ')[0].toLowerCase();
@@ -119,27 +151,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           phoneNumber,
           password,
         }),
+      }).catch(err => {
+        // Network error (server down, no connection, etc.)
+        throw new Error("Cannot connect to server. Please check your connection or try again later.", err);
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Registration failed");
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.message || `Registration failed (${response.status})`;
+        throw new Error(errorMessage);
       }
 
-      // const data = await response.json();
-      
-      // After successful registration, you can either:
-      // 1. Automatically log the user in
-      // 2. Redirect them to the login page
-      
-      // Option 1: Auto login
-      // await login(username, password);
-      
-      // Option 2: Redirect to login
+      // After successful registration, redirect to login
       router.push("/login?registered=true");
       
     } catch (error) {
       console.error("Registration error:", error);
+      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+      setError(errorMessage);
+      
+      // Display alert for user feedback
+      alert(`Registration failed: ${errorMessage}`);
+      
       throw error;
     } finally {
       setIsLoading(false);
@@ -163,6 +196,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         register,
         logout,
         isAuthenticated: !!token,
+        error,
+        clearError,
       }}
     >
       {!isLoading && children}

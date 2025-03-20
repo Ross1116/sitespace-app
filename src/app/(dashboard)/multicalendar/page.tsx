@@ -29,6 +29,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Skeleton } from "@/components/ui/skeleton";
 import api from "@/lib/api";
 import { Button } from "@/components/ui/button";
 // import { useAuth } from "@/app/context/AuthContext";
@@ -88,10 +89,12 @@ export default function Page() {
       try {
         setLoading(true);
         // Get current user ID from localStorage or context
-        const userId = localStorage.getItem("userId") || "";
+        // const userId = localStorage.getItem("userId") || "";
+        const userId = "SM001";
 
         // Get current project ID from localStorage or context
-        const projectId = localStorage.getItem("projectId") || "";
+        // const projectId = localStorage.getItem("projectId") || "";
+        const projectId = "P001";
 
         const response = await api.get(
           "/api/auth/slotBooking/getslotBookingList",
@@ -187,12 +190,16 @@ export default function Page() {
     <div className="flex-1 overflow-hidden">
       <div className="border rounded-md flex flex-col h-full min-h-96 overflow-hidden">
         <div className="p-3 bg-orange-200 font-medium">
-          {selectedCalendar.name}
+          {loading ? <Skeleton className="h-6 w-40" /> : selectedCalendar.name}
         </div>
         <div className="flex-1 overflow-hidden">
           {loading ? (
-            <div className="flex items-center justify-center h-full">
-              <p>Loading bookings...</p>
+            <div className="p-4 space-y-3">
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
             </div>
           ) : (
             <Calendar
@@ -214,14 +221,27 @@ export default function Page() {
     <div
       className={`grid ${
         isCollapsed
-          ? "grid-cols-2 lg:grid-cols-5 xl:grid-cols-6" // More columns when collapsed
-          : "grid-cols-2 lg:grid-cols-4" // Fewer columns when sidebar is visible
+          ? "grid-cols-2 lg:grid-cols-5 xl:grid-cols-6"
+          : "grid-cols-2 lg:grid-cols-4"
       } flex-1 gap-1 overflow-visible`}
     >
       {loading ? (
-        <div className="col-span-full flex items-center justify-center h-64">
-          <p>Loading bookings...</p>
-        </div>
+        // Create multiple skeleton placeholders in a grid
+        Array.from({ length: 6 }).map((_, index) => (
+          <div
+            key={index}
+            className="border rounded-md flex flex-col h-fit overflow-hidden mb-1"
+          >
+            <div className="p-3 bg-orange-200 font-medium border-b">
+              <Skeleton className="h-6 w-40" />
+            </div>
+            <div className="p-4 space-y-3">
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+            </div>
+          </div>
+        ))
       ) : assetCalendars.length === 0 ? (
         <div className="col-span-full flex items-center justify-center h-64">
           <p>No bookings found</p>
@@ -360,23 +380,29 @@ export default function Page() {
       </Card>
 
       {/* filter assets checkbox */}
-      {loading ? (
-        <p>Loading assets...</p>
-      ) : assetCalendars.length === 0 ? (
-        <p>No assets available</p>
-      ) : (
-        <Card
-          className={`${
-            isCollapsed ? "lg:hidden" : "col-span-3 lg:flex"
-          } row-span-3 overflow-hidden hidden bg-amber-50 rounded-2xl transition-all duration-600 px-4`}
-        >
-          <CardHeader>
-            <CardTitle>Assets Filter</CardTitle>
-            <CardDescription>
-              Choose which assets you would like to view
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="-mt-2 overflow-auto">
+      <Card
+        className={`${
+          isCollapsed ? "lg:hidden" : "col-span-3 lg:flex"
+        } row-span-3 overflow-hidden hidden bg-amber-50 rounded-2xl transition-all duration-600 px-4`}
+      >
+        <CardHeader>
+          <CardTitle>Assets Filter</CardTitle>
+          <CardDescription>
+            Choose which assets you would like to view
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="-mt-2 overflow-auto">
+          {loading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-6 w-full" />
+              <Skeleton className="h-6 w-full" />
+              <Skeleton className="h-6 w-full" />
+              <Skeleton className="h-6 w-full" />
+              <Skeleton className="h-6 w-full" />
+            </div>
+          ) : assetCalendars.length === 0 ? (
+            <p>No assets available</p>
+          ) : (
             <div className="flex flex-col justify-evenly space-y-2">
               {assetCalendars.map((calendar, index) => (
                 <div key={index} className="flex items-center space-x-2">
@@ -395,9 +421,9 @@ export default function Page() {
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
 
       {/* Announcements tab
         <div
