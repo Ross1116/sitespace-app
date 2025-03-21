@@ -3,8 +3,48 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { assets } from "@/lib/data";
+import api from "@/lib/api";
+import { useEffect } from "react";
 
 export default function AssetsTable() {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [assets, setAssets] = useState<any[]>([]);
+
+ // Fetch bookings from API
+ useEffect(() => {
+  const fetchAssets = async () => {
+    try {
+      setLoading(true);
+      // Get current project ID from localStorage or context
+      // const projectId = localStorage.getItem('projectId') || '';
+      const assetProject = "P001";
+
+      const response = await api.get(
+        "api/auth/Asset/getAssetList",
+        {
+          params: {
+            assetProject,
+          },
+        }
+      );
+
+      // Extract bookings from response based on the structure
+      const assetsData = response.data?.assetlist || [];
+      setAssets(assetsData);
+    } catch (error) {
+      console.error("Error fetching bookings:", error);
+      setError("Failed to load bookings. Please try again later.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  console.log(error)
+    fetchAssets();
+  }, []);
+
+
   // Project data for the dropdown - extracted from asset data
   const projectSet = new Set(assets.map((asset) => asset.assetProject));
   const projects = [
@@ -24,6 +64,7 @@ export default function AssetsTable() {
       };
     }),
   ];
+  
 
   const [selectedProject, setSelectedProject] = useState("ALL");
   const [currentPage, setCurrentPage] = useState(1);
