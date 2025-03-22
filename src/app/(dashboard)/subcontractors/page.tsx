@@ -17,7 +17,7 @@ export default function Page() {
   );
   const totalPages = Math.ceil(subcontractors.length / itemsPerPage);
 
-  // Handle page changes
+  // Handle page  changes
   const handlePageChange = (pageNumber: number) => {
     setCurrentPage(pageNumber);
   };

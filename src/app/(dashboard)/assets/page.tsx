@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { assets } from "@/lib/data";
 import api from "@/lib/api";
 import { useEffect } from "react";
+import { Loader2 } from "lucide-react";
 
 export default function AssetsTable() {
   const [loading, setLoading] = useState(true);
@@ -92,6 +92,26 @@ export default function AssetsTable() {
   const handlePageChange = (pageNumber: number) => {
     setCurrentPage(pageNumber);
   };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col h-screen w-full p-4 pt-8 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+        <p className="mt-2 text-gray-600">Loading assets...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col h-screen w-full p-4 pt-8 items-center justify-center">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+          <strong className="font-bold">Error! </strong>
+          <span className="block sm:inline">{error}</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen w-full p-4 pt-8">
