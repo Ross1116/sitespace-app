@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useAuth } from "@/app/context/AuthContext";
-import Image from "next/image";
 
 export default function Login() {
   const [username, setUsername] = useState("");
@@ -65,7 +64,7 @@ export default function Login() {
 
           {/* Create Account Text */}
           <p className="text-gray-600 mb-8">
-            Don't have an account?{" "}
+            Don&apos;t have an account?{" "}
             <a href="#" className="text-blue-600 font-medium">
               Create a new account now
             </a>
