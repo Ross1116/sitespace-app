@@ -469,6 +469,7 @@ export const CalendarYearView = () => {
 };
 
 // EventGroup component used by both Day and Week views
+// make this clickable
 export const EventGroup = ({
   events,
   hour,

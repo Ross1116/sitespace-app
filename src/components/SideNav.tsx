@@ -65,7 +65,7 @@ const SideNav = () => {
         },
         {
           icon: Calendar,
-          label: "Live asset view",
+          label: "Live calendar view",
           href: "/multicalendar",
           visible: ["admin", "manager"],
         },

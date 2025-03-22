@@ -105,15 +105,15 @@ export default function HomePage() {
     // Default cards for all users
     const cards = [
       {
-        title: "Live Asset View",
-        icon: Construction,
+        title: "Live Calendar View",
+        icon: Calendar,
         description: "View all your bookings and schedule",
         link: "/multicalendar",
         color: "bg-green-100",
       },
       {
-        title: "Bookings",
-        icon: Calendar,
+        title: "Manage Bookings",
+        icon: Construction,
         description: "View and manage your scheduled bookings",
         link: "/bookings",
         color: "bg-blue-100",
