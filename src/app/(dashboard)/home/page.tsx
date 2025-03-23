@@ -165,7 +165,7 @@ export default function HomePage() {
 
   // Dashboard for authenticated users
   return (
-    <Card className="px-6 my-8 mx-4 bg-amber-50">
+    <Card className="px-6 sm:my-8 mx-4 bg-amber-50">
       {/* Header with greeting */}
       <div className="p-3 sm:p-6">
         <h1 className="text-xl sm:text-3xl font-bold text-gray-900">

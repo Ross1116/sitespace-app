@@ -156,7 +156,7 @@ export default function BookingsPage() {
   });
 
   return (
-    <Card className="px-6 my-8 mx-4 bg-stone-100">
+    <Card className="px-6 sm:my-8 mx-4 bg-stone-100">
       <div className="p-3 sm:p-6">
         <h1 className="text-xl sm:text-3xl font-bold text-gray-900">
           Bookings

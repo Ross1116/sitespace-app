@@ -275,7 +275,7 @@ export default function Page() {
 
   return (
     // <ProtectedRoute requiredRoles={["admin", "manager"]}>
-    <div className="h-full p-6 pl-1 grid grid-cols-12 grid-rows-12 gap-2">
+    <div className="h-full pt-0 px-6 sm:p-6 pl-1 grid grid-cols-12 grid-rows-12 gap-2">
       {/* month calendar date picker */}
       <Card
         className={`${
