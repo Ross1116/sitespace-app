@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, X } from "lucide-react";
+import { X } from "lucide-react";
 import api from "@/lib/api";
 
 interface Asset {
@@ -28,7 +28,8 @@ export default function AssetsTable() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
-  const [selectedProject, setSelectedProject] = useState("ALL");
+  // const [selectedProject, setSelectedProject] = useState("ALL");
+  const selectedProject = "ALL";
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -93,11 +94,11 @@ export default function AssetsTable() {
   const currentAssets = filteredAssets.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredAssets.length / itemsPerPage);
 
-  // Handle project selection change
-  const handleProjectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedProject(e.target.value);
-    setCurrentPage(1); // Reset to first page when changing projects
-  };
+  // // Handle project selection change
+  // const handleProjectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  //   setSelectedProject(e.target.value);
+  //   setCurrentPage(1); // Reset to first page when changing projects
+  // };
 
   // Handle page changes
   const handlePageChange = (pageNumber: number) => {
