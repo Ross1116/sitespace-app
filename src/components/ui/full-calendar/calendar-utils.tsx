@@ -11,6 +11,7 @@ export const monthEventVariants = cva("size-2 rounded-full", {
       green: "bg-green-500",
       pink: "bg-pink-500",
       purple: "bg-purple-500",
+      yellow: "bg-yello-500",
     },
   },
   defaultVariants: {

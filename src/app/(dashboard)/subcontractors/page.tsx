@@ -59,20 +59,19 @@ export default function Page() {
   return (
     <Card className="px-6 sm:my-8 mx-4 bg-stone-100">
       <div className="p-3 sm:p-6">
-        <h3 className="text-gray-500 pb-1 sm:pb-3 text-xs">MAR&apos;25</h3>
         <h1 className="text-xl sm:text-3xl font-bold text-gray-900">
           Subcontractors
         </h1>
 
         {/* Mobile-only column headers */}
-        <div className="sm:hidden text-xs text-gray-500 font-medium px-2 mb-2">
+        <div className="sm:hidden text-xs text-gray-500 font-medium mb-2">
           Tap on a contractor to view details
         </div>
 
         <div className="flex-grow overflow-x-auto rounded-lg">
           <div className="min-w-full w-full">
             {/* Header - Hidden on mobile */}
-            <div className="hidden sm:grid sticky top-0 text-gray-700 uppercase text-sm grid-cols-6 px-2">
+            <div className="hidden sm:grid sticky top-0 text-gray-700 uppercase text-sm grid-cols-6 px-2 border-b last:border-b-0 pt-8">
               <div className="px-6 py-4 text-left">Name</div>
               <div className="px-6 py-4 text-left">Company</div>
               <div className="px-6 py-4 text-left">Trade</div>
@@ -90,11 +89,11 @@ export default function Page() {
                 >
                   <Card
                     className={`w-full p-0 cursor-pointer px-2 my-2 transition-colors duration-200 
-    ${
-      isSelected(contractor.contractorKey)
-        ? "bg-orange-400"
-        : "hover:bg-orange-100"
-    }`}
+                                ${
+                                  isSelected(contractor.contractorKey)
+                                    ? "bg-orange-400"
+                                    : "hover:bg-orange-100"
+                                }`}
                   >
                     {/* Desktop view */}
                     <div className="hidden sm:grid grid-cols-6 w-full py-6">
@@ -190,7 +189,7 @@ export default function Page() {
 
       {/* Sidebar */}
       <div
-        className={`fixed inset-y-0 right-0 w-full sm:w-1/4 bg-white shadow-lg transform transition-transform duration-300 ease-in-out z-40 ${
+        className={`fixed inset-y-0 right-0 w-full sm:w-1/3 bg-white shadow-lg transform transition-transform duration-300 ease-in-out z-40 ${
           sidebarOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >

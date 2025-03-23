@@ -54,6 +54,7 @@ function convertBookingToCalendarEvent(booking: any): CalendarEvent {
   // Determine color based on booking type or status
   let color: VariantProps<typeof monthEventVariants>["variant"] = "default";
   if (booking.bookingFor === "Equipment") color = "blue";
+  if (booking.bookingStatus === "Pending") color = "yellow";
   if (booking.bookingStatus === "Confirmed") color = "green";
   if (booking.bookingNotes?.includes("Emergency")) color = "pink";
 
