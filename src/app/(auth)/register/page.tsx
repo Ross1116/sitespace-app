@@ -24,16 +24,23 @@ export default function Register() {
     }
 
     try {
-      await register(fullName, companyName, tradeCategory, email, phoneNumber, password);
+      await register(
+        fullName,
+        companyName,
+        tradeCategory,
+        email,
+        phoneNumber,
+        password
+      );
     } catch (err) {
       setError(`Registration failed: ${err}. Please try again.`);
     }
   };
 
   return (
-    <div className="flex min-h-screen w-full">
+    <div className="flex flex-col md:flex-row min-h-screen w-full">
       {/* Left Side */}
-      <div className="w-1/2 bg-amber-700 px-32 py-16 flex flex-col justify-between relative">
+      <div className="hidden md:flex md:w-1/2 bg-amber-700 px-32 py-16 flex-col justify-between relative">
         <div className="z-10 mx-auto">
           {/* Asterisk/Star Logo */}
           <div className="text-white text-9xl my-12">*</div>
@@ -41,14 +48,15 @@ export default function Register() {
           {/* Main Text */}
           <h1 className="text-7xl font-bold text-white mb-12">
             Join
-            <br className="mb-4"/>
+            <br className="mb-4" />
             Sitespace!<span className="text-7xl">🚀</span>
           </h1>
 
           {/* Subtext */}
           <p className="text-gray-300 text-xl max-w-8/12">
-            Start managing your projects efficiently. Get organized, collaborate better,
-            and deliver projects on time with our powerful scheduling platform!
+            Start managing your projects efficiently. Get organized, collaborate
+            better, and deliver projects on time with our powerful scheduling
+            platform!
           </p>
         </div>
 
@@ -64,13 +72,15 @@ export default function Register() {
       </div>
 
       {/* Right Side - White Section */}
-      <div className="w-1/2 bg-orange-50 p-16 flex flex-col justify-center">
-        <div className="max-w-md mx-auto w-full">
+      <div className="w-full md:w-1/2 bg-orange-50 flex items-center justify-center min-h-screen md:min-h-0 md:p-16">
+        <div className="max-w-md w-full px-6 py-12 md:p-0">
           {/* Logo */}
-          <h2 className="text-5xl font-bold mb-8">Sitespace</h2>
+          <h2 className="text-4xl md:text-5xl font-bold mb-8">Sitespace</h2>
 
           {/* Welcome Text */}
-          <h3 className="text-3xl font-bold mb-2">Create Account</h3>
+          <h3 className="text-2xl md:text-3xl font-bold mb-2">
+            Create Account
+          </h3>
 
           {/* Already have account text */}
           <p className="text-gray-600 mb-8">
@@ -190,6 +200,11 @@ export default function Register() {
               </button>
             </div>
           </form>
+
+          {/* Mobile-only footer */}
+          <div className="md:hidden text-center text-gray-500 text-xs mt-8">
+            © 2025 Sitespace. All rights reserved.
+          </div>
         </div>
       </div>
     </div>
