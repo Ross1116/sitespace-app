@@ -268,18 +268,18 @@ import { TopNav } from "@/components/TopNav";
 export default function HomePage() {
   return (
     <div>
-      <div className="fixed">
+      <div>
         <TopNav />
       </div>
-      <div className="block mt-8">
+      <div className="block max-h-dvh">
         <Hero />
       </div>
-      <div className="container mx-auto">
+      {/* <div className="container mx-auto">
         <Feature />
       </div>
       <div className="container pb-20 mx-auto">
         <Testimonials testimonials={testimonials} />
-      </div>
+      </div> */}
     </div>
   );
 }

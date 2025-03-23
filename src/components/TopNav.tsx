@@ -68,7 +68,7 @@ function TopNav() {
 
   const [isOpen, setOpen] = useState(false);
   return (
-    <header className="w-full z-40 fixed top-0 left-0 bg-amber-50">
+    <header className="w-full z-40 top-0 left-0 bg-amber-50 fixed">
       <div className="container relative mx-auto min-h-20 flex gap-4 flex-row lg:grid lg:grid-cols-3 items-center">
         <div className="justify-start items-center gap-4 lg:flex hidden flex-row">
           <NavigationMenu className="flex justify-start items-start">
