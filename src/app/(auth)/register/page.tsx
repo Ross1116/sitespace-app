@@ -31,154 +31,166 @@ export default function Register() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center py-12">
-      <div className="w-full max-w-md p-8 space-y-8 bg-stone-50 rounded-lg shadow-md">
-        <div className="text-center">
-          <h1 className="text-3xl font-extrabold text-gray-900">Create Account</h1>
+    <div className="flex min-h-screen w-full">
+      {/* Left Side */}
+      <div className="w-1/2 bg-amber-700 px-32 py-16 flex flex-col justify-between relative">
+        <div className="z-10 mx-auto">
+          {/* Asterisk/Star Logo */}
+          <div className="text-white text-9xl my-12">*</div>
+
+          {/* Main Text */}
+          <h1 className="text-7xl font-bold text-white mb-12">
+            Join
+            <br className="mb-4"/>
+            Sitespace!<span className="text-7xl">🚀</span>
+          </h1>
+
+          {/* Subtext */}
+          <p className="text-gray-300 text-xl max-w-8/12">
+            Start managing your projects efficiently. Get organized, collaborate better,
+            and deliver projects on time with our powerful scheduling platform!
+          </p>
         </div>
 
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-            {error}
-          </div>
-        )}
+        {/* Copyright */}
+        <div className="text-white/70 text-sm">
+          © 2025 Sitespace. All rights reserved.
+        </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div>
-            <label
-              htmlFor="fullName"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Full Name
-            </label>
-            <input
-              id="fullName"
-              name="fullName"
-              type="text"
-              required
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 border bg-white border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-            />
-          </div>
+        {/* Background Pattern - Subtle curved lines */}
+        <div className="absolute inset-0 opacity-10">
+          {/* This would be better with an actual SVG but using a div for simplicity */}
+        </div>
+      </div>
 
-          <div>
-            <label
-              htmlFor="companyName"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Company Name
-            </label>
-            <input
-              id="companyName"
-              name="companyName"
-              type="text"
-              required
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 border bg-white border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-            />
-          </div>
+      {/* Right Side - White Section */}
+      <div className="w-1/2 bg-orange-50 p-16 flex flex-col justify-center">
+        <div className="max-w-md mx-auto w-full">
+          {/* Logo */}
+          <h2 className="text-5xl font-bold mb-8">Sitespace</h2>
 
-          <div>
-            <label
-              htmlFor="tradeCategory"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Trade Category
-            </label>
-            <input
-              id="tradeCategory"
-              name="tradeCategory"
-              type="text"
-              required
-              value={tradeCategory}
-              onChange={(e) => setTradeCategory(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 border bg-white border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-            />
-          </div>
+          {/* Welcome Text */}
+          <h3 className="text-3xl font-bold mb-2">Create Account</h3>
 
-          <div>
-            <label
-              htmlFor="email"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Email
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 border bg-white border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-            />
-          </div>
+          {/* Already have account text */}
+          <p className="text-gray-600 mb-8">
+            Already have an account?{" "}
+            <a href="/login" className="text-blue-600 font-medium">
+              Login here
+            </a>
+            .
+          </p>
 
-          <div>
-            <label
-              htmlFor="phoneNumber"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Phone Number
-            </label>
-            <input
-              id="phoneNumber"
-              name="phoneNumber"
-              type="tel"
-              required
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 border bg-white border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-            />
-          </div>
+          {/* Error Message */}
+          {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+              {error}
+            </div>
+          )}
 
-          <div>
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Password
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 border bg-white border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-            />
-          </div>
+          {/* Registration Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <input
+                id="fullName"
+                name="fullName"
+                type="text"
+                required
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Full Name"
+                className="w-full p-3 border-b border-gray-300 focus:border-blue-500 focus:outline-none bg-gray-100 rounded-lg"
+              />
+            </div>
 
-          <div>
-            <label
-              htmlFor="confirmPassword"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Confirm Password
-            </label>
-            <input
-              id="confirmPassword"
-              name="confirmPassword"
-              type="password"
-              required
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 border bg-white border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-            />
-          </div>
+            <div>
+              <input
+                id="companyName"
+                name="companyName"
+                type="text"
+                required
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                placeholder="Company Name"
+                className="w-full p-3 border-b border-gray-300 focus:border-blue-500 focus:outline-none bg-gray-100 rounded-lg"
+              />
+            </div>
 
-          <div>
-            <button
-              type="submit"
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              Register
-            </button>
-          </div>
-        </form>
+            <div>
+              <input
+                id="tradeCategory"
+                name="tradeCategory"
+                type="text"
+                required
+                value={tradeCategory}
+                onChange={(e) => setTradeCategory(e.target.value)}
+                placeholder="Trade Category"
+                className="w-full p-3 border-b border-gray-300 focus:border-blue-500 focus:outline-none bg-gray-100 rounded-lg"
+              />
+            </div>
+
+            <div>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email Address"
+                className="w-full p-3 border-b border-gray-300 focus:border-blue-500 focus:outline-none bg-gray-100 rounded-lg"
+              />
+            </div>
+
+            <div>
+              <input
+                id="phoneNumber"
+                name="phoneNumber"
+                type="tel"
+                required
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                placeholder="Phone Number"
+                className="w-full p-3 border-b border-gray-300 focus:border-blue-500 focus:outline-none bg-gray-100 rounded-lg"
+              />
+            </div>
+
+            <div>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password"
+                className="w-full p-3 border-b border-gray-300 focus:border-blue-500 focus:outline-none bg-gray-100 rounded-lg"
+              />
+            </div>
+
+            <div>
+              <input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                required
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm Password"
+                className="w-full p-3 border-b border-gray-300 focus:border-blue-500 focus:outline-none bg-gray-100 rounded-lg"
+              />
+            </div>
+
+            <div className="pt-6">
+              <button
+                type="submit"
+                className="w-full py-3 px-4 bg-black text-white font-medium rounded"
+              >
+                Create Account
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );

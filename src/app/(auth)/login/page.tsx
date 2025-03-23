@@ -22,8 +22,8 @@ export default function Login() {
 
   return (
     <div className="flex min-h-screen w-full">
-      {/* Left Side - Blue Section */}
-      <div className="w-1/2 bg-amber-800 px-32 py-16 flex flex-col justify-between relative">
+      {/* Left Side */}
+      <div className="w-1/2 bg-amber-700 px-32 py-16 flex flex-col justify-between relative">
         <div className="z-10 mx-auto">
           {/* Asterisk/Star Logo */}
           <div className="text-white text-9xl my-12">*</div>
@@ -65,7 +65,7 @@ export default function Login() {
           {/* Create Account Text */}
           <p className="text-gray-600 mb-8">
             Don&apos;t have an account?{" "}
-            <a href="#" className="text-blue-600 font-medium">
+            <a href="/register" className="text-blue-600 font-medium">
               Create a new account now
             </a>
             .
