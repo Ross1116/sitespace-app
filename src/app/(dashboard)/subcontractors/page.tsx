@@ -58,7 +58,7 @@ export default function Page() {
 
   return (
     <Card className="px-6 sm:my-8 mx-4 bg-stone-100">
-      <div className="p-3 sm:p-6">
+      <div className="p-3 sm:px-6">
         <h1 className="text-xl sm:text-3xl font-bold text-gray-900">
           Subcontractors
         </h1>
@@ -71,7 +71,7 @@ export default function Page() {
         <div className="flex-grow overflow-x-auto rounded-lg">
           <div className="min-w-full w-full">
             {/* Header - Hidden on mobile */}
-            <div className="hidden sm:grid sticky top-0 text-gray-700 uppercase text-sm grid-cols-6 px-2 border-b last:border-b-0 pt-8">
+            <div className="hidden sm:grid sticky top-0 text-gray-700 uppercase text-sm grid-cols-6 px-2 border-b last:border-b-0 pt-4">
               <div className="px-6 py-4 text-left">Name</div>
               <div className="px-6 py-4 text-left">Company</div>
               <div className="px-6 py-4 text-left">Trade</div>

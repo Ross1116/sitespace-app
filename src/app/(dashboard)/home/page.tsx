@@ -10,7 +10,7 @@ import {
   Users,
   Clock,
   ChevronRight,
-  LogIn,
+  // LogIn,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -93,6 +93,7 @@ export default function HomePage() {
   return (
     <Card className="px-6 sm:my-8 mx-4 bg-amber-50">
       {/* Header with greeting */}
+      {isAuthenticated}
       <div className="p-3 sm:p-6">
         <h1 className="text-xl sm:text-3xl font-bold text-gray-900">
           {greeting}, {user?.username || "there"}!
