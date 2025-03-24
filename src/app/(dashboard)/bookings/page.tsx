@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Clock,
   ChevronDown,
@@ -13,13 +13,16 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import api from "@/lib/api";
+import { useAuth } from "@/app/context/AuthContext";
 
 export default function BookingsPage() {
   const [activeTab, setActiveTab] = useState("Upcoming");
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
+  const hasFetched = useRef(false);
+  // const [error, setError] = useState<string | null>(null);
 
   // Get current date for highlighting
   const currentDate = new Date();
@@ -29,40 +32,50 @@ export default function BookingsPage() {
 
   // Fetch bookings from API
   useEffect(() => {
+    if (!user || hasFetched.current) return;
+
+    // Load cached bookings from localStorage
+    const cachedBookings = localStorage.getItem("bookings");
+
+    if (cachedBookings) {
+      try {
+        const parsedBookings = JSON.parse(cachedBookings);
+        if (Array.isArray(parsedBookings)) {
+          setBookings(parsedBookings);
+          setLoading(false); // Hide loading immediately if valid data exists
+        }
+      } catch (error) {
+        console.error("Error parsing cached bookings:", error);
+        localStorage.removeItem("bookings"); // Clear corrupted data
+      }
+    }
+
     const fetchBookings = async () => {
       try {
-        setLoading(true);
-        // Get current user ID from localStorage or context
-        // const userId = localStorage.getItem('userId') || '';
-        const userId = "SM001";
-        // Get current project ID from localStorage or context
-        // const projectId = localStorage.getItem('projectId') || '';
-        const projectId = "P001";
-
         const response = await api.get(
           "/api/auth/slotBooking/getslotBookingList",
           {
-            params: {
-              userId,
-              projectId,
-            },
+            params: { projectId: "P001", userId: "SM001" },
           }
         );
 
-        // Extract bookings from response based on the structure
         const bookingsData = response.data?.bookingList || [];
         setBookings(bookingsData);
+        localStorage.setItem("bookings", JSON.stringify(bookingsData));
       } catch (error) {
         console.error("Error fetching bookings:", error);
-        setError("Failed to load bookings. Please try again later.");
       } finally {
-        setLoading(false);
+        if (!cachedBookings) setLoading(false);
       }
     };
 
-    console.log(error);
     fetchBookings();
-  }, []);
+    hasFetched.current = true; // Prevent double fetch
+
+    const interval = setInterval(fetchBookings, 300000); // Fetch every 5 mins
+
+    return () => clearInterval(interval);
+  }, [user]);
 
   // Function to check if a date is today
   const isToday = (date: Date) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
@@ -34,23 +34,30 @@ export default function AssetsTable() {
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const itemsPerPage = 10;
+  const hasFetched = useRef(false);
 
   // Fetch assets from API
   useEffect(() => {
+    if (hasFetched.current) return;
+
+    
+    // Load cached assets from localStorage
+    const cachedAssets = localStorage.getItem("assets");
+    if (cachedAssets) {
+      setAssets(JSON.parse(cachedAssets));
+      setLoading(false); // Disable loading if cached data exists
+    }
+
     const fetchAssets = async () => {
       try {
-        setLoading(true);
         const assetProject = "P001";
-
         const response = await api.get("api/auth/Asset/getAssetList", {
-          params: {
-            assetProject,
-          },
+          params: { assetProject },
         });
 
-        // Extract assets from response
         const assetsData = response.data?.assetlist || [];
         setAssets(assetsData);
+        localStorage.setItem("assets", JSON.stringify(assetsData));
       } catch (error) {
         console.error("Error fetching assets:", error);
         setError("Failed to load assets. Please try again later.");
@@ -60,6 +67,7 @@ export default function AssetsTable() {
     };
 
     fetchAssets();
+    hasFetched.current = true;
   }, []);
 
   // Project data for the dropdown - extracted from asset data

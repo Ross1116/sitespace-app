@@ -32,9 +32,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import api from "@/lib/api";
 import { Button } from "@/components/ui/button";
-// import { useAuth } from "@/app/context/AuthContext";
-// import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { useAuth } from "@/app/context/AuthContext";
 // import ProtectedRoute from "@/components/ProtectedRoute";
 
 export type VariantProps<Component extends (...args: any) => any> = Omit<
@@ -69,55 +68,60 @@ function convertBookingToCalendarEvent(booking: any): CalendarEvent {
 }
 
 export default function Page() {
-  // const { isAuthenticated } = useAuth();
-  // const router = useRouter();
-
-  // useEffect(() => {
-  //   if (!isAuthenticated) {
-  //     router.push("/login");
-  //   }
-  // }, [isAuthenticated, router]);
-
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedAssetIndex, setSelectedAssetIndex] = useState(0);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const hasFetched = useRef(false);
 
   // Fetch bookings from the API
   useEffect(() => {
+    if (!user || hasFetched.current) return;
+
+    // Load cached bookings from localStorage
+    const cachedBookings = localStorage.getItem("bookings");
+
+    if (cachedBookings) {
+      try {
+        const parsedBookings = JSON.parse(cachedBookings);
+        if (Array.isArray(parsedBookings)) {
+          setBookings(parsedBookings);
+          setLoading(false); // Hide loading immediately if valid data exists
+        }
+      } catch (error) {
+        console.error("Error parsing cached bookings:", error);
+        localStorage.removeItem("bookings"); // Clear corrupted data
+      }
+    }
+
     const fetchBookings = async () => {
       try {
-        setLoading(true);
-        // Get current user ID from localStorage or context
-        // const userId = localStorage.getItem("userId") || "";
-        const userId = "SM001";
-
-        // Get current project ID from localStorage or context
-        // const projectId = localStorage.getItem("projectId") || "";
-        const projectId = "P001";
-
         const response = await api.get(
           "/api/auth/slotBooking/getslotBookingList",
           {
-            params: {
-              userId,
-              projectId,
-            },
+            params: { projectId: "P001", userId: "SM001" },
           }
         );
 
         const bookingsData = response.data?.bookingList || [];
         setBookings(bookingsData);
+        localStorage.setItem("bookings", JSON.stringify(bookingsData));
       } catch (error) {
         console.error("Error fetching bookings:", error);
       } finally {
-        setLoading(false);
+        if (!cachedBookings) setLoading(false);
       }
     };
 
     fetchBookings();
-  }, []);
+    hasFetched.current = true; // Prevent double fetch
+
+    const interval = setInterval(fetchBookings, 300000); // Fetch every 5 mins
+
+    return () => clearInterval(interval);
+  }, [user]);
 
   // Group bookings by asset with proper typing
   const assetBookings = Array.isArray(bookings)
