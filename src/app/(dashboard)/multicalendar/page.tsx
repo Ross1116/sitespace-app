@@ -79,47 +79,50 @@ export default function Page() {
   // Fetch bookings from the API
   useEffect(() => {
     if (!user || hasFetched.current) return;
-
+  
+    const userId = user.id; // Ensure user ID is used
+    const storageKey = `bookings_${userId}`; // Unique key per user
+  
     // Load cached bookings from localStorage
-    const cachedBookings = localStorage.getItem("bookings");
-
+    const cachedBookings = localStorage.getItem(storageKey);
+  
     if (cachedBookings) {
       try {
         const parsedBookings = JSON.parse(cachedBookings);
         if (Array.isArray(parsedBookings)) {
           setBookings(parsedBookings);
-          setLoading(false); // Hide loading immediately if valid data exists
+          setLoading(false); // Hide loading if valid data exists
         }
       } catch (error) {
         console.error("Error parsing cached bookings:", error);
-        localStorage.removeItem("bookings"); // Clear corrupted data
+        localStorage.removeItem(storageKey); // Clear corrupted data
       }
     }
-
+  
     const fetchBookings = async () => {
       try {
         const response = await api.get(
           "/api/auth/slotBooking/getslotBookingList",
           {
-            params: { projectId: "P001", userId: "SM001" },
+            params: { projectId: "P001", userId },
           }
         );
-
+  
         const bookingsData = response.data?.bookingList || [];
         setBookings(bookingsData);
-        localStorage.setItem("bookings", JSON.stringify(bookingsData));
+        localStorage.setItem(storageKey, JSON.stringify(bookingsData));
       } catch (error) {
         console.error("Error fetching bookings:", error);
       } finally {
         if (!cachedBookings) setLoading(false);
       }
     };
-
+  
     fetchBookings();
     hasFetched.current = true; // Prevent double fetch
-
+  
     const interval = setInterval(fetchBookings, 300000); // Fetch every 5 mins
-
+  
     return () => clearInterval(interval);
   }, [user]);
 

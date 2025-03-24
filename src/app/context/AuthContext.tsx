@@ -65,35 +65,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setIsLoading(true);
       clearError();
-
-      // Use the full URL from environment variables
+  
       const response = await fetch(`${API_URL}/api/auth/signin`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
-      }).catch(err => {
-        // Network error (server down, no connection, etc.)
-        throw new Error("Cannot connect to server. Please check your connection or try again later.", err);
       });
-
+  
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        const errorMessage = errorData.message || 
-          (response.status === 401 ? "Invalid username or password" : 
-           response.status === 403 ? "Access denied" : 
-           `Login failed (${response.status})`);
-        
-        throw new Error(errorMessage);
+        throw new Error(errorData.message || `Login failed (${response.status})`);
       }
-
-      const data = await response.json().catch(() => {
-        throw new Error("Invalid response from server");
-      });
-
-      if (!data.accessToken) {
-        throw new Error("Invalid login response (no token)");
-      }
-
+  
+      const data = await response.json();
+      if (!data.accessToken) throw new Error("Invalid login response (no token)");
+  
       // Store user and token
       const userData = {
         id: data.id,
@@ -101,24 +87,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: data.email,
         roles: data.roles,
       };
-
+  
       setUser(userData);
       setToken(data.accessToken);
-
+  
       // Save to localStorage
       localStorage.setItem("accessToken", data.accessToken);
       localStorage.setItem("user", JSON.stringify(userData));
-
-      router.push("/home");
-    } catch (error) {
+  
+      // Redirect to home AFTER storing everything
+      await router.push("/home");
+  
+    } catch (error : any) {
       console.error("Login error:", error);
-      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
-      setError(errorMessage);
-      
-      // Display alert for user feedback
-      alert(`Login failed: ${errorMessage}`);
-      
-      throw error;
+      setError(error instanceof Error ? error.message : "An unknown error occurred");
+      alert(`Login failed: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -184,6 +167,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(null);
     localStorage.removeItem("accessToken");
     localStorage.removeItem("user");
+    localStorage.removeItem("assets");
+    localStorage.removeItem("bookings");
     router.push("/login");
   };
 

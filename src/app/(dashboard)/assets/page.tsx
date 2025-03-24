@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 import api from "@/lib/api";
+import { useAuth } from "@/app/context/AuthContext";
 
 interface Asset {
   assetKey: string;
@@ -35,40 +36,54 @@ export default function AssetsTable() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const itemsPerPage = 10;
   const hasFetched = useRef(false);
+  const { user } = useAuth();
 
   // Fetch assets from API
   useEffect(() => {
-    if (hasFetched.current) return;
-
-    
+    if (!user || hasFetched.current) return;
+  
+    const userId = user.id; // Ensure we use the logged-in user's ID
+    const storageKey = `assets_${userId}`; // Unique key per user
+  
     // Load cached assets from localStorage
-    const cachedAssets = localStorage.getItem("assets");
+    const cachedAssets = localStorage.getItem(storageKey);
+  
     if (cachedAssets) {
-      setAssets(JSON.parse(cachedAssets));
-      setLoading(false); // Disable loading if cached data exists
+      try {
+        const parsedAssets = JSON.parse(cachedAssets);
+        if (Array.isArray(parsedAssets)) {
+          setAssets(parsedAssets);
+          setLoading(false); // Hide loading if cached data exists
+        }
+      } catch (error) {
+        console.error("Error parsing cached assets:", error);
+        localStorage.removeItem(storageKey); // Remove corrupted data
+      }
     }
-
+  
     const fetchAssets = async () => {
       try {
         const assetProject = "P001";
         const response = await api.get("api/auth/Asset/getAssetList", {
-          params: { assetProject },
+          params: { assetProject, userId }, // Include user ID in API request if needed
         });
-
+  
         const assetsData = response.data?.assetlist || [];
         setAssets(assetsData);
-        localStorage.setItem("assets", JSON.stringify(assetsData));
+        localStorage.setItem(storageKey, JSON.stringify(assetsData));
       } catch (error) {
         console.error("Error fetching assets:", error);
         setError("Failed to load assets. Please try again later.");
       } finally {
-        setLoading(false);
+        if (!cachedAssets) setLoading(false);
       }
     };
-
+  
     fetchAssets();
     hasFetched.current = true;
-  }, []);
+  
+  }, [user]);
+  
 
   // Project data for the dropdown - extracted from asset data
   const projectSet = new Set(assets.map((asset) => asset.assetProject));

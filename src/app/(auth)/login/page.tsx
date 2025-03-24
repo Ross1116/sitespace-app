@@ -12,10 +12,10 @@ export default function Login() {
   const { login, isAuthenticated } = useAuth();
   const router = useRouter();
 
-  // Check authentication status and redirect if already authenticated
+  // Redirect only when authentication is fully confirmed
   useEffect(() => {
     if (isAuthenticated) {
-      router.push("/home");
+      router.replace("/home");
     }
   }, [isAuthenticated, router]);
 
@@ -26,26 +26,38 @@ export default function Login() {
 
     try {
       await login(username, password);
-      // After successful login, redirect to home
-    } catch (err: any) {
-      // Handle different types of errors with user-friendly messages
-      if (!navigator.onLine) {
-        setError("Network error: Please check your internet connection.");
-      } else if (err.message?.includes("timeout") || err.code === "ECONNABORTED") {
-        setError("Connection timeout: The server is taking too long to respond. Please try again later.");
-      } else if (err.response?.status === 401 || err.response?.status === 403) {
-        setError("Invalid username or password. Please try again.");
-      } else if (err.response?.status >= 500) {
-        setError("Server error: Something went wrong on our end. Please try again later.");
-      } else {
-        setError(`Login failed: ${err.message || "Unknown error"}. Please try again.`);
-      }
+    } catch (err) {
       console.error("Login error:", err);
-    } finally {
-      setIsLoading(false);
+      setError("Login failed. Please check your credentials.");
     }
-    router.push("/home");
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <svg
+          className="animate-spin h-10 w-10 text-amber-700"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <circle
+            className="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="4"
+          ></circle>
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+          ></path>
+        </svg>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen w-full">
@@ -58,7 +70,7 @@ export default function Login() {
           {/* Main Text */}
           <h1 className="text-7xl font-bold text-white mb-12">
             Hello
-            <br className="mb-4"/>
+            <br className="mb-4" />
             Sitespacer!<span className="text-7xl">👋</span>
           </h1>
 
@@ -84,7 +96,9 @@ export default function Login() {
       <div className="w-full md:w-1/2 bg-orange-50 flex items-center justify-center min-h-screen md:min-h-0 md:p-16">
         <div className="max-w-md w-full px-6 py-12 md:p-0">
           {/* Logo */}
-          <h2 className="text-4xl md:text-5xl font-bold mb-8 md:mb-16">Sitespace</h2>
+          <h2 className="text-4xl md:text-5xl font-bold mb-8 md:mb-16">
+            Sitespace
+          </h2>
 
           {/* Welcome Text */}
           <h3 className="text-2xl md:text-3xl font-bold mb-2">Welcome Back!</h3>
@@ -148,9 +162,25 @@ export default function Login() {
                   <>
                     <span className="opacity-0">Login Now</span>
                     <span className="absolute inset-0 flex items-center justify-center">
-                      <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      <svg
+                        className="animate-spin h-5 w-5 text-white"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
                       </svg>
                     </span>
                   </>
@@ -167,7 +197,7 @@ export default function Login() {
               </a>
             </div> */}
           </form>
-          
+
           {/* Mobile-only footer */}
           <div className="md:hidden text-center text-gray-500 text-xs mt-8">
             © 2025 Sitespace. All rights reserved.
