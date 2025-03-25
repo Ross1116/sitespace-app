@@ -35,7 +35,7 @@ export function MobileView({
               view="day"
               date={currentDate}
             >
-              <CalendarDayView />
+              <CalendarDayView assetCalendar={selectedCalendar} />
             </Calendar>
           )}
         </div>

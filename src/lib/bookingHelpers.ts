@@ -34,13 +34,6 @@ export const formatTime = (dateString: string, durationMins: number) => {
   return `${startTime} - ${endTime}`;
 };
 
-interface BookingIconProps {
-  icon: string;
-  size?: number;
-  className?: string;
-  color?: string;
-}
-
 export const getBookingIcon = (bookingFor: string) => {
   switch (bookingFor.toLowerCase()) {
     case "equipment":

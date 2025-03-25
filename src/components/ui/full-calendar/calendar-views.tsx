@@ -30,16 +30,23 @@ import {
 import { getDaysInMonth, generateWeekdays } from "./calendar-helpers";
 import { TimeTable } from "./calendar-utils";
 import { BookingFromCalendar } from "../../forms/BookingFromCalendar";
+import { AssetCalendar } from "./calendar-context";
 
-export const CalendarDayView = () => {
+export const CalendarDayView = ({
+  assetCalendar,
+}: {
+  assetCalendar?: AssetCalendar;
+}) => {
   const { view, events, date, setEvents, onEventClick } = useCalendar();
   const [isBookingFormOpen, setIsBookingFormOpen] = useState(false);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<{
     start: Date | null;
     end: Date | null;
+    assetName?: string;
   }>({
     start: null,
     end: null,
+    assetName: assetCalendar?.name,
   });
 
   if (view !== "day") return null;
@@ -59,6 +66,7 @@ export const CalendarDayView = () => {
     setSelectedTimeSlot({
       start: startTime,
       end: endTime,
+      assetName: assetCalendar?.name,
     });
     setIsBookingFormOpen(true);
 
@@ -66,20 +74,50 @@ export const CalendarDayView = () => {
       "Create event at:",
       format(startTime, "h:mm a"),
       "to",
-      format(endTime, "h:mm a")
+      format(endTime, "h:mm a"),
+      "for asset:",
+      assetCalendar?.name || "Unknown"
     );
   };
 
   // Handler for saving a new event
-  const handleSaveEvent = (newEvent: Partial<CalendarEvent>) => {
-    if (setEvents && events) {
-      // Only proceed if we have the minimum required properties
+  const handleSaveEvent = (
+    newEvent: Partial<CalendarEvent> | Partial<CalendarEvent>[]
+  ) => {
+    if (!setEvents || !events) return;
+
+    if (Array.isArray(newEvent)) {
+      // Handle array of events
+      const completeEvents = newEvent
+        .filter((event) => event.start && event.title) // Only include events with required properties
+        .map((event) => {
+          // At this point we know event.start exists due to the filter above
+          const start = event.start as Date; // Type assertion since we filtered for this
+
+          return {
+            id: event.id || Math.random().toString(36).substring(2, 11),
+            start,
+            end: event.end || addHours(start, 1),
+            title: event.title as string, // We filtered for this too
+            description: event.description || "",
+            color: event.color || "yellow",
+          } as CalendarEvent;
+        });
+
+      // Add all events to the calendar
+      setEvents([...events, ...completeEvents]);
+
+      // If there's an event click handler, call it with the last event
+      if (onEventClick && completeEvents.length > 0) {
+        onEventClick(completeEvents[completeEvents.length - 1]);
+      }
+    } else {
+      // Handle single event
       if (newEvent.start && newEvent.title) {
-        // Create a complete event with default values for missing properties
         const completeEvent: CalendarEvent = {
-          id: newEvent.id || Math.random().toString(36).substring(2, 11), // Generate ID if missing
+          id: newEvent.id || Math.random().toString(36).substring(2, 11),
           start: newEvent.start,
-          end: newEvent.end || addHours(newEvent.start, 1), // Default to 1 hour if end not provided
+          end: newEvent.end || addHours(newEvent.start, 1),
           title: newEvent.title,
           description: newEvent.description || "",
           color: newEvent.color || "default",
@@ -87,7 +125,6 @@ export const CalendarDayView = () => {
 
         setEvents([...events, completeEvent]);
 
-        // If there's an event click handler, call it with the new event
         if (onEventClick) {
           onEventClick(completeEvent);
         }
@@ -97,7 +134,7 @@ export const CalendarDayView = () => {
 
   // Create a map to check if an hour has events
   const hourHasEvents = hours.reduce((acc, hour) => {
-    acc[hour.toString()] = (events || []).some(event => 
+    acc[hour.toString()] = (events || []).some((event) =>
       isSameHour(event.start, hour)
     );
     return acc;
@@ -110,7 +147,7 @@ export const CalendarDayView = () => {
         {/* Combined grid and events in a single layer */}
         <div className="grid grid-rows-[repeat(14,1fr)] w-full h-full">
           {hours.map((hour) => (
-            <div 
+            <div
               key={hour.toString()}
               className="relative border-t last:border-b w-full"
             >
@@ -118,16 +155,20 @@ export const CalendarDayView = () => {
               <div
                 className="absolute inset-0 w-full h-full cursor-pointer hover:bg-orange-100/60 transition-colors"
                 onClick={() => handleTimeSlotClick(hour)}
-                style={{ pointerEvents: hourHasEvents[hour.toString()] ? 'none' : 'auto' }}
+                style={{
+                  pointerEvents: hourHasEvents[hour.toString()]
+                    ? "none"
+                    : "auto",
+                }}
               />
-              
-              {/* Events for this hour */}
-              <EventGroup hour={hour} events={events || []} />
+  
+              {/* Events for this hour - updated to handle side-by-side display */}
+              <EventGroupSideBySide hour={hour} events={events || []} />
             </div>
           ))}
         </div>
       </div>
-
+  
       {/* Booking form dialog */}
       {isBookingFormOpen && (
         <BookingFromCalendar
@@ -135,6 +176,8 @@ export const CalendarDayView = () => {
           onClose={() => setIsBookingFormOpen(false)}
           startTime={selectedTimeSlot.start}
           endTime={selectedTimeSlot.end}
+          defaultAsset={assetCalendar?.id} // Pass the asset ID to the booking form
+          defaultAssetName={assetCalendar?.name} // Pass the asset name to the booking form
           onSave={handleSaveEvent}
         />
       )}
@@ -200,16 +243,43 @@ export const CalendarWeekView = () => {
     );
   };
 
-  // Handler for saving a new event
-  const handleSaveEvent = (newEvent: Partial<CalendarEvent>) => {
-    if (setEvents && events) {
-      // Only proceed if we have the minimum required properties
+  const handleSaveEvent = (
+    newEvent: Partial<CalendarEvent> | Partial<CalendarEvent>[]
+  ) => {
+    if (!setEvents || !events) return;
+
+    if (Array.isArray(newEvent)) {
+      // Handle array of events
+      const completeEvents = newEvent
+        .filter((event) => event.start && event.title) // Only include events with required properties
+        .map((event) => {
+          // At this point we know event.start exists due to the filter above
+          const start = event.start as Date; // Type assertion since we filtered for this
+
+          return {
+            id: event.id || Math.random().toString(36).substring(2, 11),
+            start,
+            end: event.end || addHours(start, 1),
+            title: event.title as string,
+            description: event.description || "",
+            color: event.color || "yellow",
+          } as CalendarEvent;
+        });
+
+      // Add all events to the calendar
+      setEvents([...events, ...completeEvents]);
+
+      // If there's an event click handler, call it with the last event
+      if (onEventClick && completeEvents.length > 0) {
+        onEventClick(completeEvents[completeEvents.length - 1]);
+      }
+    } else {
+      // Handle single event
       if (newEvent.start && newEvent.title) {
-        // Create a complete event with default values for missing properties
         const completeEvent: CalendarEvent = {
-          id: newEvent.id || Math.random().toString(36).substring(2, 11), // Generate ID if missing
+          id: newEvent.id || Math.random().toString(36).substring(2, 11),
           start: newEvent.start,
-          end: newEvent.end || addHours(newEvent.start, 1), // Default to 1 hour if end not provided
+          end: newEvent.end || addHours(newEvent.start, 1),
           title: newEvent.title,
           description: newEvent.description || "",
           color: newEvent.color || "default",
@@ -217,7 +287,6 @@ export const CalendarWeekView = () => {
 
         setEvents([...events, completeEvent]);
 
-        // If there's an event click handler, call it with the new event
         if (onEventClick) {
           onEventClick(completeEvent);
         }
@@ -477,12 +546,14 @@ export const EventGroup = ({
   events: CalendarEvent[];
   hour: Date;
 }) => {
-  const filteredEvents = events.filter((event) => isSameHour(event.start, hour));
-  
+  const filteredEvents = events.filter((event) =>
+    isSameHour(event.start, hour)
+  );
+
   if (filteredEvents.length === 0) {
     return null; // Don't render anything if no events
   }
-  
+
   return (
     <div className="absolute inset-0 w-11/12 z-10">
       {filteredEvents.map((event) => {
@@ -500,7 +571,7 @@ export const EventGroup = ({
               <TooltipTrigger asChild>
                 <div
                   className={cn(
-                    "absolute cursor-pointer", 
+                    "absolute cursor-pointer",
                     dayEventVariants({ variant: event.color })
                   )}
                   style={{
@@ -521,6 +592,91 @@ export const EventGroup = ({
                     {startTime} - {endTime}
                   </p>
                   <p>{event.description}</p>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        );
+      })}
+    </div>
+  );
+};
+
+type EventGroupSideBySideProps = {
+  hour: Date;
+  events: CalendarEvent[];
+};
+
+const EventGroupSideBySide = ({ hour, events }: EventGroupSideBySideProps) => {
+  const { onEventClick } = useCalendar();
+  // Filter events that start in this hour
+  const eventsInHour = events.filter((event) => 
+    isSameHour(event.start, hour)
+  );
+  
+  if (eventsInHour.length === 0) return null;
+  
+  // Calculate width for each event based on count
+  // Ensure minimum width of 80px or 25% of container
+  const eventCount = eventsInHour.length;
+  const widthPercent = Math.max(25, 100 / eventCount);
+  
+  return (
+    <div className="absolute inset-0 flex w-full h-full">
+      {eventsInHour.map((event) => {
+        // Calculate minutes from the start of the hour (0-59)
+        const minutesOffset = event.start.getMinutes();
+        // Calculate duration in minutes, capped to this hour if it extends beyond
+        const endWithinHour = new Date(hour);
+        endWithinHour.setHours(hour.getHours() + 1, 0, 0, 0);
+        const durationMinutes = Math.min(
+          differenceInMinutes(event.end, event.start),
+          differenceInMinutes(endWithinHour, event.start)
+        );
+        
+        // Convert to percentages for positioning
+        const topPercent = (minutesOffset / 60) * 100;
+        const heightPercent = (durationMinutes / 60) * 100;
+        
+        return (
+          <TooltipProvider key={event.id}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div
+                  className={cn(
+                    dayEventVariants({ variant: event.color }),
+                    "absolute cursor-pointer overflow-hidden text-xs min-h-[24px]"
+                  )}
+                  style={{
+                    top: `${topPercent}%`,
+                    height: `${Math.max(heightPercent, 10)}%`, // Minimum height 10%
+                    width: `${widthPercent}%`,
+                    left: `${(eventsInHour.indexOf(event) * widthPercent)}%`,
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEventClick?.(event);
+                  }}
+                >
+                  <div className="font-medium truncate">{event.title}</div>
+                  {durationMinutes >= 20 && ( // Only show time if enough space
+                    <div className="text-[10px] opacity-70">
+                      {format(event.start, "h:mm a")} - {format(event.end, "h:mm a")}
+                    </div>
+                  )}
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <div>
+                  <div className="font-bold">{event.title}</div>
+                  <div className="text-xs">
+                    {format(event.start, "h:mm a")} - {format(event.end, "h:mm a")}
+                  </div>
+                  {event.description && (
+                    <div className="mt-1 text-xs max-w-[300px]">
+                      {event.description}
+                    </div>
+                  )}
                 </div>
               </TooltipContent>
             </Tooltip>

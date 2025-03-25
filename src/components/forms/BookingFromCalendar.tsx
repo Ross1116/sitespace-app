@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { format, addMinutes } from "date-fns";
+import { differenceInMinutes, format, addMinutes } from "date-fns";
 import { CalendarEvent } from "@/components/ui/full-calendar";
 import { assets } from "@/lib/data";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -31,15 +31,19 @@ import {
   AlignLeft,
   Briefcase,
 } from "lucide-react";
+import { useAuth } from "@/app/context/AuthContext";
+import api from "@/lib/api";
 
 type BookingFromCalendar = {
   isOpen: boolean;
   onClose: () => void;
   startTime: Date | null;
   endTime: Date | null;
-  onSave: (event: Partial<CalendarEvent>) => void;
+  onSave: (events: Partial<CalendarEvent> | Partial<CalendarEvent>[]) => void;
   selectedAssetId?: string;
   bookedAssets?: string[];
+  defaultAsset?: string;
+  defaultAssetName?: string;
 };
 
 export function BookingFromCalendar({
@@ -47,6 +51,7 @@ export function BookingFromCalendar({
   onClose,
   startTime,
   onSave,
+  defaultAssetName,
   selectedAssetId,
   bookedAssets = [],
 }: BookingFromCalendar) {
@@ -54,20 +59,17 @@ export function BookingFromCalendar({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [selectedAssets, setSelectedAssets] = useState<string[]>(
-    selectedAssetId ? [selectedAssetId] : []
+    defaultAssetName ? [defaultAssetName] : []
   );
   const [duration, setDuration] = useState("60");
   const [activeTab, setActiveTab] = useState("time");
+  const { user } = useAuth();
 
   // Time state
   const [customStartTime, setCustomStartTime] = useState<Date | null>(
     startTime
   );
   const [customEndTime, setCustomEndTime] = useState<Date | null>(null);
-
-  // Remove these unused variables or use them in your component
-  // const [startTimeString, setStartTimeString] = useState("");
-  // const [endTimeString, setEndTimeString] = useState("");
 
   // Split time state into hour and minute components
   const [startHour, setStartHour] = useState<string>("");
@@ -249,54 +251,94 @@ export function BookingFromCalendar({
   };
 
   // Handle form submission
-  const handleSubmit = () => {
+  // Modified handleSubmit function to make API call
+  const handleSubmit = async () => {
     if (!customStartTime || !customEndTime || selectedAssets.length === 0)
       return;
-
-    // Get asset names for the description
-    const assetNames = selectedAssets
-      .map((assetKey) => {
-        const asset = assets.find((a) => a.assetKey === assetKey);
-        return asset?.assetTitle || assetKey;
-      })
-      .join(", ");
-
-    // Create a base description
-    const baseDesc = description
-      ? `${description}\n\nAssets: ${assetNames}`
-      : `Assets: ${assetNames}`;
-
-    // Create an event for the first asset
-    const primaryEvent: Partial<CalendarEvent> = {
-      title,
-      description: baseDesc,
-      start: customStartTime,
-      end: customEndTime,
-      color: "blue",
-      id: Math.random().toString(36).substring(2, 11),
-    };
-
-    // Save the primary event
-    onSave(primaryEvent);
-
-    // Create events for additional assets
-    if (selectedAssets.length > 1) {
-      selectedAssets.slice(1).forEach((assetKey) => {
-        const linkedEvent: Partial<CalendarEvent> = {
-          title: `${title} (${assetKey})`,
-          description: baseDesc,
-          start: customStartTime,
-          end: customEndTime,
-          color: "green",
-          id: Math.random().toString(36).substring(2, 11),
-        };
-
-        onSave(linkedEvent);
-      });
+  
+    try {
+      // Calculate duration in minutes
+      const durationMins = differenceInMinutes(customEndTime, customStartTime);
+  
+      // Format date for API
+      const bookingTimeDt = format(customStartTime, "yyyy-MM-dd'T'HH:mm:ss");
+  
+      // Get the current user info - replace with your actual user data logic
+      const userId = user?.id || "default-user";
+  
+      // Create booking payload
+      const bookingData = {
+        bookedAssets: selectedAssets,
+        bookingCreatedBy: userId,
+        bookingDescription: description,
+        bookingDurationMins: durationMins,
+        bookingFor: userId,
+        bookingKey: "",
+        bookingNotes: "",
+        bookingProject: "P001",
+        bookingStatus: "Confirmed",
+        bookingTimeDt: bookingTimeDt,
+        bookingTitle: title,
+      };
+  
+      let apiSuccess = false;
+      let responseData: { ID: any; };
+      
+      // Send API request using your api client
+      try {
+        const response = await api.post("/api/auth/slotBooking/saveSlotBooking", bookingData);
+        console.log("Booking saved successfully:", response.data);
+        responseData = response.data;
+        apiSuccess = true;
+      } catch (error) {
+        console.error("Error posting bookings:", error);
+        apiSuccess = false;
+      }
+  
+      // Get asset names for the description
+      const assetNames = selectedAssets
+        .map((assetKey) => {
+          const asset = assets.find((a) => a.assetKey === assetKey);
+          return asset?.assetTitle || assetKey;
+        })
+        .join(", ");
+  
+      // Create a base description
+      const baseDesc = description
+        ? `${description}\n\nAssets: ${assetNames}`
+        : `Assets: ${assetNames}`;
+  
+      // If API failed, create local calendar events for all selected assets
+      if (!apiSuccess) {
+        // Create an event for each selected asset
+        const events = selectedAssets.map((assetKey) => {
+          const asset = assets.find((a) => a.assetKey === assetKey);
+          const assetTitle = asset?.assetTitle || assetKey;
+          
+          return {
+            title: `${title} - ${assetTitle}`,
+            description: baseDesc,
+            start: customStartTime,
+            end: customEndTime,
+            id: responseData.ID || `local-${assetKey}-${Date.now()}`,
+          } as Partial<CalendarEvent>;
+        });
+        
+        // Save all events
+        onSave(events);
+      } else {
+        // API was successful, no need to use onSave for fallback
+        // You could optionally still call onSave to update the UI immediately
+        // if the API doesn't trigger a refresh
+      }
+  
+      resetForm();
+      onClose();
+    } catch (error) {
+      console.error("Error saving booking:", error);
+      // Optionally show an error message to the user
+      alert("Failed to save booking. Please try again.");
     }
-
-    resetForm();
-    onClose();
   };
 
   // Reset form fields

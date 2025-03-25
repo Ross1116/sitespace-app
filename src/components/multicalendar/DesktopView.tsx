@@ -64,7 +64,7 @@ export function DesktopView({
                   view="day"
                   date={currentDate}
                 >
-                  <CalendarDayView />
+                  <CalendarDayView assetCalendar={calendar} />
                 </Calendar>
               </div>
             </div>
