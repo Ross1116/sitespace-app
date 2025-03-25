@@ -88,6 +88,23 @@ export default function MulticalendarPage() {
 
   const handleActionComplete = () => {
     console.log("Parent: handleActionComplete called");
+    if (!user) return;
+    const userId = user.id;
+    const storageKey = `bookings_${userId}`;
+
+    const cachedBookings = localStorage.getItem(storageKey);
+
+    if (cachedBookings) {
+      try {
+        const parsedBookings = JSON.parse(cachedBookings);
+        if (Array.isArray(parsedBookings)) {
+          setBookings(parsedBookings);
+        }
+      } catch (error) {
+        console.error("Error parsing cached bookings:", error);
+        localStorage.removeItem(storageKey);
+      }
+    }
     fetchBookings();
   };
 

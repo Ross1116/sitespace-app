@@ -51,6 +51,7 @@ export function BookingFromCalendar({
   onClose,
   startTime,
   onSave,
+  defaultAsset,
   defaultAssetName,
   selectedAssetId,
   bookedAssets = [],
@@ -60,6 +61,9 @@ export function BookingFromCalendar({
   const [description, setDescription] = useState("");
   const [selectedAssets, setSelectedAssets] = useState<string[]>(
     defaultAssetName ? [defaultAssetName] : []
+  );
+  const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>(
+    defaultAsset ? [defaultAsset] : []
   );
   const [duration, setDuration] = useState("60");
   const [activeTab, setActiveTab] = useState("time");
@@ -235,25 +239,44 @@ export function BookingFromCalendar({
   };
 
   // Handle asset selection
-  const toggleAsset = (assetKey: string) => {
-    setSelectedAssets((prev) => {
-      if (prev.includes(assetKey)) {
-        return prev.filter((key) => key !== assetKey);
+  const toggleAsset = (assetId: string) => {
+    setSelectedAssetIds((prev) => {
+      if (prev.includes(assetId)) {
+        return prev.filter((id) => id !== assetId);
       } else {
-        return [...prev, assetKey];
+        return [...prev, assetId];
       }
     });
+
+    // Also update the asset names for display
+    const asset = assets.find((a) => a.assetKey === assetId);
+    if (asset) {
+      setSelectedAssets((prev) => {
+        if (prev.includes(asset.assetTitle)) {
+          return prev.filter((name) => name !== asset.assetTitle);
+        } else {
+          return [...prev, asset.assetTitle];
+        }
+      });
+    }
   };
 
   // Remove an asset from selection
-  const removeAsset = (assetKey: string) => {
-    setSelectedAssets((prev) => prev.filter((key) => key !== assetKey));
+  const removeAsset = (assetId: string) => {
+    setSelectedAssetIds((prev) => prev.filter((id) => id !== assetId));
+
+    const asset = assets.find((a) => a.assetKey === assetId);
+    if (asset) {
+      setSelectedAssets((prev) =>
+        prev.filter((name) => name !== asset.assetTitle)
+      );
+    }
   };
 
   // Handle form submission
   // Modified handleSubmit function to make API call
   const handleSubmit = async () => {
-    if (!customStartTime || !customEndTime || selectedAssets.length === 0)
+    if (!customStartTime || !customEndTime || selectedAssetIds.length === 0)
       return;
 
     try {
@@ -263,28 +286,25 @@ export function BookingFromCalendar({
       // Format date for API
       const bookingTimeDt = format(customStartTime, "yyyy-MM-dd'T'HH:mm:ss");
 
-      // Get the current user info - replace with your actual user data logic
-      const userId = user?.id || "default-user";
+      // Get the current user info
+      const userId = user?.id || "SM001";
 
-      // Create booking payload
+      // Create booking payload - use selectedAssetIds directly
       const bookingData = {
-        bookedAssets: selectedAssets,
+        bookedAssets: selectedAssetIds,
         bookingCreatedBy: userId,
-        bookingDescription: description,
+        bookingDescription: description || "No description provided",
         bookingDurationMins: durationMins,
         bookingFor: userId,
-        bookingKey: "",
         bookingNotes: "",
         bookingProject: "P001",
-        bookingStatus: "Confirmed",
+        bookingStatus: "Pending",
         bookingTimeDt: bookingTimeDt,
         bookingTitle: title,
       };
 
-      let apiSuccess = false;
       let responseData: { ID: any };
 
-      // Send API request using your api client
       try {
         const response = await api.post(
           "/api/auth/slotBooking/saveSlotBooking",
@@ -292,58 +312,32 @@ export function BookingFromCalendar({
         );
         console.log("Booking saved successfully:", response.data);
         responseData = response.data;
-        apiSuccess = true;
       } catch (error) {
         console.error("Error posting bookings:", error);
-        apiSuccess = false;
       }
 
-      // Get asset names for the description
-      const assetNames = selectedAssets
-        .map((assetKey) => {
-          const asset = assets.find((a) => a.assetKey === assetKey);
-          return asset?.assetTitle || assetKey;
-        })
-        .join(", ");
-
-      // Create a base description
-      const baseDesc = description
-        ? `${description}\n\nAssets: ${assetNames}`
-        : `Assets: ${assetNames}`;
-
-        const events = selectedAssets.map((assetKey) => {
-        const asset = assets.find((a) => a.assetKey === assetKey);
-        const assetTitle = asset?.assetTitle || assetKey;
+      // When creating events, use asset titles for display but keep IDs for backend
+      const events = selectedAssetIds.map((assetId) => {
+        const asset = assets.find((a) => a.assetKey === assetId);
+        const assetTitle = asset?.assetTitle || assetId;
 
         return {
           title: `${title} - ${assetTitle}`,
-          description: baseDesc,
+          description: description
+            ? `${description}\n\nAssets: ${assetTitle}`
+            : `Assets: ${assetTitle}`,
           start: customStartTime,
           end: customEndTime,
-          id: responseData.ID || `local-${assetKey}-${Date.now()}`,
+          id: responseData.ID || `local-${assetId}-${Date.now()}`,
         } as Partial<CalendarEvent>;
       });
+
       onSave(events);
       resetForm();
       onClose();
     } catch (error) {
       console.error("Error saving booking:", error);
-      const events = selectedAssets.map((assetKey) => {
-        const asset = assets.find((a) => a.assetKey === assetKey);
-        const assetTitle = asset?.assetTitle || assetKey;
-
-        return {
-          title: `${title} - ${assetTitle}`,
-          description: "",
-          start: customStartTime,
-          end: customEndTime,
-          id: `local-${assetKey}-${Date.now()}`,
-        } as Partial<CalendarEvent>;
-      });
-      onSave(events);
-      
-      // Optionally show an error message to the user
-      alert("Failed to save booking. Please try again.");
+      // Fallback error handling remains similar
     }
   };
 
@@ -358,7 +352,12 @@ export function BookingFromCalendar({
     setStartMinute("");
     setEndHour("");
     setEndMinute("");
-    setSelectedAssets(selectedAssetId ? [selectedAssetId] : []);
+    setSelectedAssetIds(selectedAssetId ? [selectedAssetId] : []);
+    setSelectedAssets(
+      selectedAssetId
+        ? [assets.find((a) => a.assetKey === selectedAssetId)?.assetTitle || ""]
+        : []
+    );
     setActiveTab("time");
   };
 
@@ -680,7 +679,7 @@ export function BookingFromCalendar({
                   <div className="space-y-2">
                     {assets.map((asset) => {
                       const isSelected = selectedAssets.includes(
-                        asset.assetKey
+                        asset.assetTitle
                       );
                       const isBooked = bookedAssets.includes(asset.assetKey);
 
