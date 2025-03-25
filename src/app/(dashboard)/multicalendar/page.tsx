@@ -104,7 +104,7 @@ export default function Page() {
         const response = await api.get(
           "/api/auth/slotBooking/getslotBookingList",
           {
-            params: { projectId: "P001", userId },
+            params: { projectId: "P001", userId: "SM001" },
           }
         );
   
