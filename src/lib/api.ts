@@ -27,6 +27,7 @@ api.interceptors.response.use(
     // Handle server timeout
     if (error.code === 'ECONNABORTED' || !error.response) {
       console.error('Server connection timeout or server down');
+      alert('Server connection timeout or server down')
       // You could show a notification to the user here
       return Promise.reject(new Error('Server is unreachable. Please try again later.'));
     }
@@ -49,7 +50,7 @@ api.interceptors.response.use(
 // Helper function to check if the server is available
 export const checkServerHealth = async () => {
   try {
-    await api.get('/health', { timeout: 5000 }); // Use shorter timeout for health check
+    await api.get('/health', { timeout: 5000 });
     return true;
   } catch (error) {
     console.log(error)

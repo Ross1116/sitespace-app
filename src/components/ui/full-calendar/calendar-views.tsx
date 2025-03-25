@@ -34,9 +34,12 @@ import { AssetCalendar } from "./calendar-context";
 
 export const CalendarDayView = ({
   assetCalendar,
+  onActionComplete,
 }: {
   assetCalendar?: AssetCalendar;
+  onActionComplete?: () => void;
 }) => {
+  console.log("CalendarDayView received onActionComplete:", !!onActionComplete);
   const { view, events, date, setEvents, onEventClick } = useCalendar();
   const [isBookingFormOpen, setIsBookingFormOpen] = useState(false);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<{
@@ -84,6 +87,7 @@ export const CalendarDayView = ({
   const handleSaveEvent = (
     newEvent: Partial<CalendarEvent> | Partial<CalendarEvent>[]
   ) => {
+    console.log("Save event worked")
     if (!setEvents || !events) return;
 
     if (Array.isArray(newEvent)) {
@@ -130,6 +134,9 @@ export const CalendarDayView = ({
         }
       }
     }
+    console.log("About to call onActionComplete");
+    onActionComplete?.();
+    console.log("onActionComplete called");
   };
 
   // Create a map to check if an hour has events
@@ -161,14 +168,14 @@ export const CalendarDayView = ({
                     : "auto",
                 }}
               />
-  
+
               {/* Events for this hour - updated to handle side-by-side display */}
               <EventGroupSideBySide hour={hour} events={events || []} />
             </div>
           ))}
         </div>
       </div>
-  
+
       {/* Booking form dialog */}
       {isBookingFormOpen && (
         <BookingFromCalendar
@@ -610,17 +617,15 @@ type EventGroupSideBySideProps = {
 const EventGroupSideBySide = ({ hour, events }: EventGroupSideBySideProps) => {
   const { onEventClick } = useCalendar();
   // Filter events that start in this hour
-  const eventsInHour = events.filter((event) => 
-    isSameHour(event.start, hour)
-  );
-  
+  const eventsInHour = events.filter((event) => isSameHour(event.start, hour));
+
   if (eventsInHour.length === 0) return null;
-  
+
   // Calculate width for each event based on count
   // Ensure minimum width of 80px or 25% of container
   const eventCount = eventsInHour.length;
   const widthPercent = Math.max(25, 100 / eventCount);
-  
+
   return (
     <div className="absolute inset-0 flex w-full h-full">
       {eventsInHour.map((event) => {
@@ -633,11 +638,11 @@ const EventGroupSideBySide = ({ hour, events }: EventGroupSideBySideProps) => {
           differenceInMinutes(event.end, event.start),
           differenceInMinutes(endWithinHour, event.start)
         );
-        
+
         // Convert to percentages for positioning
         const topPercent = (minutesOffset / 60) * 100;
         const heightPercent = (durationMinutes / 60) * 100;
-        
+
         return (
           <TooltipProvider key={event.id}>
             <Tooltip>
@@ -651,7 +656,7 @@ const EventGroupSideBySide = ({ hour, events }: EventGroupSideBySideProps) => {
                     top: `${topPercent}%`,
                     height: `${Math.max(heightPercent, 10)}%`, // Minimum height 10%
                     width: `${widthPercent}%`,
-                    left: `${(eventsInHour.indexOf(event) * widthPercent)}%`,
+                    left: `${eventsInHour.indexOf(event) * widthPercent}%`,
                   }}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -661,7 +666,8 @@ const EventGroupSideBySide = ({ hour, events }: EventGroupSideBySideProps) => {
                   <div className="font-medium truncate">{event.title}</div>
                   {durationMinutes >= 20 && ( // Only show time if enough space
                     <div className="text-[10px] opacity-70">
-                      {format(event.start, "h:mm a")} - {format(event.end, "h:mm a")}
+                      {format(event.start, "h:mm a")} -{" "}
+                      {format(event.end, "h:mm a")}
                     </div>
                   )}
                 </div>
@@ -670,7 +676,8 @@ const EventGroupSideBySide = ({ hour, events }: EventGroupSideBySideProps) => {
                 <div>
                   <div className="font-bold">{event.title}</div>
                   <div className="text-xs">
-                    {format(event.start, "h:mm a")} - {format(event.end, "h:mm a")}
+                    {format(event.start, "h:mm a")} -{" "}
+                    {format(event.end, "h:mm a")}
                   </div>
                   {event.description && (
                     <div className="mt-1 text-xs max-w-[300px]">

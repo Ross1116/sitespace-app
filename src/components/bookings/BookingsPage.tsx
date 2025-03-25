@@ -14,11 +14,37 @@ export default function BookingsPage() {
   const hasFetched = useRef(false);
 
   // Fetch bookings from API
+  const fetchBookings = async () => {
+    if (!user) return;
+    
+    const userId = user.id;
+    const storageKey = `bookings_${userId}`;
+    
+    setLoading(true);
+    
+    try {
+      const response = await api.get(
+        "/api/auth/slotBooking/getslotBookingList",
+        {
+          params: { projectId: "P001", userId: "SM001" },
+        }
+      );
+
+      const bookingsData = response.data?.bookingList || [];
+      setBookings(bookingsData);
+      localStorage.setItem(storageKey, JSON.stringify(bookingsData));
+    } catch (error) {
+      console.error("Error fetching bookings:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!user || hasFetched.current) return;
 
-    const userId = user.id; // Ensure user ID is used
-    const storageKey = `bookings_${userId}`; // Unique key per user
+    const userId = user.id;
+    const storageKey = `bookings_${userId}`;
 
     // Load cached bookings from localStorage
     const cachedBookings = localStorage.getItem(storageKey);
@@ -28,40 +54,25 @@ export default function BookingsPage() {
         const parsedBookings = JSON.parse(cachedBookings);
         if (Array.isArray(parsedBookings)) {
           setBookings(parsedBookings);
-          setLoading(false); // Hide loading if valid data exists
+          setLoading(false);
         }
       } catch (error) {
         console.error("Error parsing cached bookings:", error);
-        localStorage.removeItem(storageKey); // Clear corrupted data
+        localStorage.removeItem(storageKey);
       }
     }
 
-    const fetchBookings = async () => {
-      try {
-        const response = await api.get(
-          "/api/auth/slotBooking/getslotBookingList",
-          {
-            params: { projectId: "P001", userId: "SM001" },
-          }
-        );
-
-        const bookingsData = response.data?.bookingList || [];
-        setBookings(bookingsData);
-        localStorage.setItem(storageKey, JSON.stringify(bookingsData));
-      } catch (error) {
-        console.error("Error fetching bookings:", error);
-      } finally {
-        if (!cachedBookings) setLoading(false);
-      }
-    };
-
     fetchBookings();
-    hasFetched.current = true; // Prevent double fetch
+    hasFetched.current = true;
 
-    const interval = setInterval(fetchBookings, 300000); // Fetch every 5 mins
+    const interval = setInterval(fetchBookings, 300000);
 
     return () => clearInterval(interval);
   }, [user]);
+
+  const handleActionComplete = () => {
+    fetchBookings();
+  };
 
   return (
     <Card className="px-6 sm:my-8 mx-4 bg-stone-100">
@@ -105,6 +116,7 @@ export default function BookingsPage() {
             bookings={bookings}
             activeTab={activeTab}
             loading={loading}
+            onActionComplete={handleActionComplete}
           />
         </div>
       </div>

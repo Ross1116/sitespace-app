@@ -8,9 +8,10 @@ import BookingCardDropdown from './BookingCardDropdown';
 
 interface BookingCardDesktopProps {
   booking: any;
+  onActionComplete?: () => void;
 }
 
-export default function BookingCardDesktop({ booking }: BookingCardDesktopProps) {
+export default function BookingCardDesktop({ booking, onActionComplete }: BookingCardDesktopProps) {
   const [openDropdown, setOpenDropdown] = useState<boolean>(false);
   
   const { day, dayOfWeek, date } = formatDate(booking.bookingTimeDt);
@@ -104,6 +105,7 @@ export default function BookingCardDesktop({ booking }: BookingCardDesktopProps)
               bookingStatus={booking.bookingStatus}
               isOpen={openDropdown}
               onToggle={toggleDropdown}
+              onActionComplete={onActionComplete}
             />
 
             {/* Status badge */}

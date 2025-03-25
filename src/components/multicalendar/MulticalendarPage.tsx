@@ -1,7 +1,13 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Calendar, CalendarCurrentDate, CalendarMonthView, CalendarNextTrigger, CalendarPrevTrigger } from "@/components/ui/full-calendar/index";
+import {
+  Calendar,
+  CalendarCurrentDate,
+  CalendarMonthView,
+  CalendarNextTrigger,
+  CalendarPrevTrigger,
+} from "@/components/ui/full-calendar/index";
 import { Card } from "@/components/ui/card";
 import { useAuth } from "@/app/context/AuthContext";
 import api from "@/lib/api";
@@ -23,14 +29,40 @@ export default function MulticalendarPage() {
   const { user } = useAuth();
   const hasFetched = useRef(false);
 
+  // Function to fetch bookings
+  const fetchBookings = async () => {
+    if (!user) return;
+
+    const userId = user.id;
+    const storageKey = `bookings_${userId}`;
+
+    setLoading(true);
+
+    try {
+      const response = await api.get(
+        "/api/auth/slotBooking/getslotBookingList",
+        {
+          params: { projectId: "P001", userId: "SM001" },
+        }
+      );
+
+      const bookingsData = response.data?.bookingList || [];
+      setBookings(bookingsData);
+      localStorage.setItem(storageKey, JSON.stringify(bookingsData));
+    } catch (error) {
+      console.error("Error fetching bookings:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Fetch bookings from the API
   useEffect(() => {
     if (!user || hasFetched.current) return;
 
-    const userId = user.id; // Ensure user ID is used
-    const storageKey = `bookings_${userId}`; // Unique key per user
+    const userId = user.id;
+    const storageKey = `bookings_${userId}`;
 
-    // Load cached bookings from localStorage
     const cachedBookings = localStorage.getItem(storageKey);
 
     if (cachedBookings) {
@@ -38,53 +70,34 @@ export default function MulticalendarPage() {
         const parsedBookings = JSON.parse(cachedBookings);
         if (Array.isArray(parsedBookings)) {
           setBookings(parsedBookings);
-          setLoading(false); // Hide loading if valid data exists
+          setLoading(false);
         }
       } catch (error) {
         console.error("Error parsing cached bookings:", error);
-        localStorage.removeItem(storageKey); // Clear corrupted data
+        localStorage.removeItem(storageKey);
       }
     }
 
-    const fetchBookings = async () => {
-      try {
-        const response = await api.get(
-          "/api/auth/slotBooking/getslotBookingList",
-          {
-            params: { projectId: "P001", userId: "SM001" },
-          }
-        );
-
-        const bookingsData = response.data?.bookingList || [];
-        setBookings(bookingsData);
-        localStorage.setItem(storageKey, JSON.stringify(bookingsData));
-      } catch (error) {
-        console.error("Error fetching bookings:", error);
-      } finally {
-        if (!cachedBookings) setLoading(false);
-      }
-    };
-
     fetchBookings();
-    hasFetched.current = true; // Prevent double fetch
+    hasFetched.current = true;
 
-    const interval = setInterval(fetchBookings, 300000); // Fetch every 5 mins
+    const interval = setInterval(fetchBookings, 300000);
 
     return () => clearInterval(interval);
   }, [user]);
 
-  // Group bookings by asset
-  const assetBookings = groupBookingsByAsset(bookings);
+  const handleActionComplete = () => {
+    console.log("Parent: handleActionComplete called");
+    fetchBookings();
+  };
 
-  // Convert to array for easier use
+  const assetBookings = groupBookingsByAsset(bookings);
   const assetCalendars: AssetCalendar[] = Object.values(assetBookings);
 
-  // State to track visible assets
   const [visibleAssets, setVisibleAssets] = useState(
     assetCalendars.map((_, index) => index)
   );
 
-  // Initialize visible assets when assetCalendars changes
   useEffect(() => {
     if (assetCalendars.length > 0 && visibleAssets.length === 0) {
       setVisibleAssets(assetCalendars.map((_, index) => index));
@@ -153,6 +166,7 @@ export default function MulticalendarPage() {
               loading={loading}
               selectedCalendar={selectedCalendar}
               currentDate={currentDate}
+              onActionComplete={handleActionComplete}
             />
           </div>
           <div className="hidden md:block">
@@ -162,6 +176,7 @@ export default function MulticalendarPage() {
               assetCalendars={assetCalendars}
               visibleAssets={visibleAssets}
               currentDate={currentDate}
+              onActionComplete={handleActionComplete}
             />
           </div>
         </Calendar>

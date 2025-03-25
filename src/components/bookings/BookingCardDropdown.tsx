@@ -9,7 +9,7 @@ interface BookingCardDropdownProps {
   bookingStatus: string;
   isOpen: boolean;
   onToggle: () => void;
-  onActionComplete?: () => void; // Optional callback for after successful actions
+  onActionComplete?: () => void;
 }
 
 export default function BookingCardDropdown({

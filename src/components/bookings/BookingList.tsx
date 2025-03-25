@@ -11,12 +11,14 @@ interface BookingListProps {
   bookings: any[];
   activeTab: string;
   loading: boolean;
+  onActionComplete?: () => void;
 }
 
 export default function BookingList({
   bookings,
   activeTab,
   loading,
+  onActionComplete,
 }: BookingListProps) {
   const [groupedBookings, setGroupedBookings] = useState<any>({});
 
@@ -107,10 +109,10 @@ export default function BookingList({
             {monthBookings.map((booking: any) => (
               <Fragment key={booking.bookingKey}>
                 <div className="block md:hidden">
-                  <BookingCardMobile booking={booking} />
+                  <BookingCardMobile booking={booking} onActionComplete={onActionComplete} />
                 </div>
                 <div className="hidden md:block">
-                  <BookingCardDesktop booking={booking} />
+                  <BookingCardDesktop booking={booking} onActionComplete={onActionComplete}/>
                 </div>
               </Fragment>
             ))}

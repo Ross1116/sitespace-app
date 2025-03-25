@@ -6,12 +6,14 @@ interface MobileViewProps {
   loading: boolean;
   selectedCalendar: AssetCalendar;
   currentDate: Date;
+  onActionComplete?: () => void;
 }
 
 export function MobileView({ 
   loading, 
   selectedCalendar, 
-  currentDate 
+  currentDate,
+  onActionComplete 
 }: MobileViewProps) {
   return (
     <div className="flex-1 overflow-hidden">
@@ -35,7 +37,7 @@ export function MobileView({
               view="day"
               date={currentDate}
             >
-              <CalendarDayView assetCalendar={selectedCalendar} />
+              <CalendarDayView assetCalendar={selectedCalendar} onActionComplete={onActionComplete}/>
             </Calendar>
           )}
         </div>

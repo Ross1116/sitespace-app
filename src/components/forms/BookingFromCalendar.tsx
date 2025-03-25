@@ -255,17 +255,17 @@ export function BookingFromCalendar({
   const handleSubmit = async () => {
     if (!customStartTime || !customEndTime || selectedAssets.length === 0)
       return;
-  
+
     try {
       // Calculate duration in minutes
       const durationMins = differenceInMinutes(customEndTime, customStartTime);
-  
+
       // Format date for API
       const bookingTimeDt = format(customStartTime, "yyyy-MM-dd'T'HH:mm:ss");
-  
+
       // Get the current user info - replace with your actual user data logic
       const userId = user?.id || "default-user";
-  
+
       // Create booking payload
       const bookingData = {
         bookedAssets: selectedAssets,
@@ -280,13 +280,16 @@ export function BookingFromCalendar({
         bookingTimeDt: bookingTimeDt,
         bookingTitle: title,
       };
-  
+
       let apiSuccess = false;
-      let responseData: { ID: any; };
-      
+      let responseData: { ID: any };
+
       // Send API request using your api client
       try {
-        const response = await api.post("/api/auth/slotBooking/saveSlotBooking", bookingData);
+        const response = await api.post(
+          "/api/auth/slotBooking/saveSlotBooking",
+          bookingData
+        );
         console.log("Booking saved successfully:", response.data);
         responseData = response.data;
         apiSuccess = true;
@@ -294,7 +297,7 @@ export function BookingFromCalendar({
         console.error("Error posting bookings:", error);
         apiSuccess = false;
       }
-  
+
       // Get asset names for the description
       const assetNames = selectedAssets
         .map((assetKey) => {
@@ -302,40 +305,43 @@ export function BookingFromCalendar({
           return asset?.assetTitle || assetKey;
         })
         .join(", ");
-  
+
       // Create a base description
       const baseDesc = description
         ? `${description}\n\nAssets: ${assetNames}`
         : `Assets: ${assetNames}`;
-  
-      // If API failed, create local calendar events for all selected assets
-      if (!apiSuccess) {
-        // Create an event for each selected asset
+
         const events = selectedAssets.map((assetKey) => {
-          const asset = assets.find((a) => a.assetKey === assetKey);
-          const assetTitle = asset?.assetTitle || assetKey;
-          
-          return {
-            title: `${title} - ${assetTitle}`,
-            description: baseDesc,
-            start: customStartTime,
-            end: customEndTime,
-            id: responseData.ID || `local-${assetKey}-${Date.now()}`,
-          } as Partial<CalendarEvent>;
-        });
-        
-        // Save all events
-        onSave(events);
-      } else {
-        // API was successful, no need to use onSave for fallback
-        // You could optionally still call onSave to update the UI immediately
-        // if the API doesn't trigger a refresh
-      }
-  
+        const asset = assets.find((a) => a.assetKey === assetKey);
+        const assetTitle = asset?.assetTitle || assetKey;
+
+        return {
+          title: `${title} - ${assetTitle}`,
+          description: baseDesc,
+          start: customStartTime,
+          end: customEndTime,
+          id: responseData.ID || `local-${assetKey}-${Date.now()}`,
+        } as Partial<CalendarEvent>;
+      });
+      onSave(events);
       resetForm();
       onClose();
     } catch (error) {
       console.error("Error saving booking:", error);
+      const events = selectedAssets.map((assetKey) => {
+        const asset = assets.find((a) => a.assetKey === assetKey);
+        const assetTitle = asset?.assetTitle || assetKey;
+
+        return {
+          title: `${title} - ${assetTitle}`,
+          description: "",
+          start: customStartTime,
+          end: customEndTime,
+          id: `local-${assetKey}-${Date.now()}`,
+        } as Partial<CalendarEvent>;
+      });
+      onSave(events);
+      
       // Optionally show an error message to the user
       alert("Failed to save booking. Please try again.");
     }

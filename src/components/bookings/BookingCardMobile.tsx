@@ -8,9 +8,10 @@ import BookingCardDropdown from './BookingCardDropdown';
 
 interface BookingCardMobileProps {
   booking: any;
+  onActionComplete?: () => void;
 }
 
-export default function BookingCardMobile({ booking }: BookingCardMobileProps) {
+export default function BookingCardMobile({ booking, onActionComplete }: BookingCardMobileProps) {
   const [openDropdown, setOpenDropdown] = useState<boolean>(false);
   
   const { day, dayOfWeek, date } = formatDate(booking.bookingTimeDt);
@@ -121,6 +122,7 @@ export default function BookingCardMobile({ booking }: BookingCardMobileProps) {
                   bookingStatus={booking.bookingStatus}
                   isOpen={openDropdown}
                   onToggle={toggleDropdown}
+                  onActionComplete={onActionComplete}
                 />
               </div>
             </div>

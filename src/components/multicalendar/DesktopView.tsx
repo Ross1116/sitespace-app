@@ -8,15 +8,18 @@ interface DesktopViewProps {
   assetCalendars: AssetCalendar[];
   visibleAssets: number[];
   currentDate: Date;
+  onActionComplete?: () => void;
 }
 
-export function DesktopView({ 
-  loading, 
-  isCollapsed, 
-  assetCalendars, 
-  visibleAssets, 
-  currentDate 
+export function DesktopView({
+  loading,
+  isCollapsed,
+  assetCalendars,
+  visibleAssets,
+  currentDate,
+  onActionComplete,
 }: DesktopViewProps) {
+  console.log("DesktopView received onActionComplete:", !!onActionComplete);
   return (
     <div
       className={`grid ${
@@ -64,7 +67,10 @@ export function DesktopView({
                   view="day"
                   date={currentDate}
                 >
-                  <CalendarDayView assetCalendar={calendar} />
+                  <CalendarDayView
+                    assetCalendar={calendar}
+                    onActionComplete={onActionComplete}
+                  />
                 </Calendar>
               </div>
             </div>
