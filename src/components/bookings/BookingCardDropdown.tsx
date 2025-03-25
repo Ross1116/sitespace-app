@@ -1,10 +1,13 @@
 import { Calendar, X, ChevronDown } from "lucide-react";
+import api from "@/lib/api";
+import { useState } from "react";
 
 interface BookingCardDropdownProps {
   bookingKey: string;
   bookingStatus: string;
   isOpen: boolean;
   onToggle: () => void;
+  onActionComplete?: () => void; // Optional callback for after successful actions
 }
 
 export default function BookingCardDropdown({
@@ -12,12 +15,117 @@ export default function BookingCardDropdown({
   bookingStatus,
   isOpen,
   onToggle,
+  onActionComplete,
 }: BookingCardDropdownProps) {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const getBookingDetails = async () => {
+    try {
+      const response = await api.post(
+        "/api/auth/slotBooking/editSlotBookingDetails",
+        {},
+        {
+          params: { bookingKey: bookingKey },
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching booking details:", error);
+      throw error;
+    }
+  };
+
+  const confirmBooking = async () => {
+    setIsLoading(true);
+    try {
+      const bookingDetails = await getBookingDetails();
+      
+      const updatedBooking = {
+        ...bookingDetails,
+        bookingStatus: "Confirmed"
+      };
+      
+      await api.post("/api/auth/slotBooking/updateSlotBooking", {
+        objAsset: updatedBooking
+      });
+      
+      onActionComplete?.();
+    } catch (error) {
+      console.error("Error confirming booking:", error);
+    } finally {
+      setIsLoading(false);
+      onToggle();
+    }
+  };
+
+  const denyBooking = async () => {
+    setIsLoading(true);
+    try {
+      const bookingDetails = await getBookingDetails();
+      
+      const updatedBooking = {
+        ...bookingDetails,
+        bookingStatus: "Denied"
+      };
+      
+      await api.post("/api/auth/slotBooking/updateSlotBooking", {
+        objAsset: updatedBooking
+      });
+      
+      onActionComplete?.();
+    } catch (error) {
+      console.error("Error denying booking:", error);
+    } finally {
+      setIsLoading(false);
+      onToggle();
+    }
+  };
+
+  const cancelBooking = async () => {
+    setIsLoading(true);
+    try {
+      const bookingDetails = await getBookingDetails();
+      
+      await api.post("/api/auth/slotBooking/deleteSlotBooking", {
+        delete: bookingDetails
+      });
+      
+      onActionComplete?.();
+    } catch (error) {
+      console.error("Error canceling booking:", error);
+    } finally {
+      setIsLoading(false);
+      onToggle();
+    }
+  };
+
+  const rescheduleBooking = async () => {
+    setIsLoading(true);
+    try {
+      const bookingDetails = await getBookingDetails();
+      
+      // Here you would typically navigate to a reschedule form
+      // or open a modal with the booking details
+      console.log("Booking details for reschedule:", bookingDetails);
+      
+      // You might want to store these details in a state or context
+      // and navigate to a reschedule page
+      
+      onToggle();
+    } catch (error) {
+      console.error("Error fetching booking details for reschedule:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="relative">
       <button
         onClick={onToggle}
+        disabled={isLoading}
         className={`px-3 py-1 text-xs rounded-md flex items-center
+        ${isLoading ? "opacity-50 cursor-not-allowed" : ""}
         ${
           bookingStatus === "Pending"
             ? "bg-gray-800 text-white hover:bg-gray-700"
@@ -38,23 +146,39 @@ export default function BookingCardDropdown({
           <div className="py-1">
             {bookingStatus === "Pending" && (
               <>
-                <button className="flex items-center px-3 py-2 text-xs text-green-600 hover:bg-gray-100 w-full text-left">
+                <button 
+                  onClick={confirmBooking}
+                  disabled={isLoading}
+                  className="flex items-center px-3 py-2 text-xs text-green-600 hover:bg-gray-100 w-full text-left"
+                >
                   <Calendar size={14} className="mr-2" />
                   Confirm booking
                 </button>
-                <button className="flex items-center px-3 py-2 text-xs text-red-600 hover:bg-gray-100 w-full text-left">
+                <button 
+                  onClick={denyBooking}
+                  disabled={isLoading}
+                  className="flex items-center px-3 py-2 text-xs text-red-600 hover:bg-gray-100 w-full text-left"
+                >
                   <X size={14} className="mr-2" />
                   Deny booking
                 </button>
                 <div className="border-t my-1"></div>
               </>
             )}
-            <button className="flex items-center px-3 py-2 text-xs text-gray-700 hover:bg-gray-100 w-full text-left">
+            <button 
+              onClick={rescheduleBooking}
+              disabled={isLoading}
+              className="flex items-center px-3 py-2 text-xs text-gray-700 hover:bg-gray-100 w-full text-left"
+            >
               <Calendar size={14} className="mr-2" />
               Reschedule booking
             </button>
             {bookingStatus === "Confirmed" && (
-              <button className="flex items-center px-3 py-2 text-xs text-red-600 hover:bg-gray-100 w-full text-left">
+              <button 
+                onClick={cancelBooking}
+                disabled={isLoading}
+                className="flex items-center px-3 py-2 text-xs text-red-600 hover:bg-gray-100 w-full text-left"
+              >
                 <X size={14} className="mr-2" />
                 Cancel booking
               </button>
