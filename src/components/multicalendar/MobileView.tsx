@@ -1,5 +1,3 @@
-"use client";
-
 import { Calendar, CalendarDayView } from "@/components/ui/full-calendar/index";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AssetCalendar } from "@/lib/multicalendarHelpers";

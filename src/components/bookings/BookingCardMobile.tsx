@@ -1,5 +1,7 @@
+"use client";
+
 import { useState } from 'react';
-import { Clock, ChevronDown, AlertCircle } from "lucide-react";
+import { Clock, AlertCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { formatDate, formatTime, getBookingIcon, isToday } from './../../lib/bookingHelpers';
 import BookingCardDropdown from './BookingCardDropdown';

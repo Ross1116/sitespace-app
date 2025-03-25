@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect, Fragment } from "react";
 import { Calendar } from "lucide-react";
 import { Card } from "@/components/ui/card";
