@@ -64,23 +64,25 @@ export default function BookingsPage() {
     } finally {
       setLoading(false);
     }
+
+    initialLoadComplete.current = true;
   };
 
   useEffect(() => {
-    if (!user || hasFetched.current) return;
+    if (!user) return;
 
     const userId = user.userId;
     const storageKey = `bookings_${userId}`;
 
-    // Load cached bookings from localStorage
+    // First attempt to load from localStorage
     const cachedBookings = localStorage.getItem(storageKey);
-
     if (cachedBookings) {
       try {
         const parsedBookings = JSON.parse(cachedBookings);
         if (Array.isArray(parsedBookings)) {
           setBookings(parsedBookings);
-          setLoading(false);
+          setLoading(false); // Important: Stop loading if we have cached data
+          initialLoadComplete.current = true;
         }
       } catch (error) {
         console.error("Error parsing cached bookings:", error);
@@ -88,12 +90,15 @@ export default function BookingsPage() {
       }
     }
 
-    fetchBookings();
-    hasFetched.current = true;
+    // Then fetch fresh data if we haven't already fetched or if forcing refresh
+    if (!hasFetched.current) {
+      fetchBookings();
+      hasFetched.current = true;
+      initialLoadComplete.current = true;
 
-    const interval = setInterval(fetchBookings, 300000);
-
-    return () => clearInterval(interval);
+      const interval = setInterval(() => fetchBookings(true), 300000);
+      return () => clearInterval(interval);
+    }
   }, [user]);
 
   const handleActionComplete = () => {
@@ -105,7 +110,7 @@ export default function BookingsPage() {
   };
 
   const handleSaveBooking = () => {
-    console.log("save booking works")
+    console.log("save booking works");
     setIsBookingFormOpen(false);
     fetchBookings(true);
   };

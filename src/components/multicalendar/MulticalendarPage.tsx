@@ -33,8 +33,12 @@ export default function MulticalendarPage() {
   const projectStorageKey = `project_${userId}`;
 
   // Function to fetch bookings
-  const fetchBookings = async () => {
+  const fetchBookings = async (forceRefresh = false) => {
+    // Skip if no user
     if (!user) return;
+
+    // Skip if this is not a forced refresh and we've already fetched
+    if (hasFetched.current && !forceRefresh) return;
 
     setLoading(true);
 
@@ -47,6 +51,7 @@ export default function MulticalendarPage() {
     }
 
     try {
+      console.log("Fetching bookings...");
       const project = JSON.parse(projectString);
 
       const response = await api.get(
@@ -57,8 +62,12 @@ export default function MulticalendarPage() {
       );
 
       const bookingsData = response.data?.bookingList || [];
+      console.log("Bookings fetched:", bookingsData.length);
       setBookings(bookingsData);
       localStorage.setItem(storageKey, JSON.stringify(bookingsData));
+
+      // Mark as fetched
+      hasFetched.current = true;
     } catch (error) {
       console.error("Error fetching bookings:", error);
     } finally {
@@ -68,8 +77,9 @@ export default function MulticalendarPage() {
 
   // Fetch bookings from the API
   useEffect(() => {
-    if (!user || hasFetched.current) return;
+    if (!user) return;
 
+    // Try to load from cache first
     const cachedBookings = localStorage.getItem(storageKey);
 
     if (cachedBookings) {
@@ -85,16 +95,16 @@ export default function MulticalendarPage() {
       }
     }
 
+    // Fetch from API (will only fetch if not already fetched)
     fetchBookings();
-    hasFetched.current = true;
 
-    const interval = setInterval(fetchBookings, 300000);
+    // Set up interval for periodic refreshes
+    const interval = setInterval(() => fetchBookings(true), 300000);
 
     return () => clearInterval(interval);
   }, [user]);
 
   const handleActionComplete = () => {
-    console.log("Parent: handleActionComplete called");
     if (!user) return;
     const userId = user.userId;
     const storageKey = `bookings_${userId}`;
@@ -112,7 +122,7 @@ export default function MulticalendarPage() {
         localStorage.removeItem(storageKey);
       }
     }
-    fetchBookings();
+    fetchBookings(true);
   };
 
   const assetBookings = groupBookingsByAsset(bookings);

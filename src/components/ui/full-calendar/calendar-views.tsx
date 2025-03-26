@@ -31,6 +31,7 @@ import { getDaysInMonth, generateWeekdays } from "./calendar-helpers";
 import { TimeTable } from "./calendar-utils";
 import { BookingFromCalendar } from "../../forms/BookingFromCalendar";
 import { AssetCalendar } from "./calendar-context";
+import Link from "next/link";
 
 export const CalendarDayView = ({
   assetCalendar,
@@ -86,7 +87,7 @@ export const CalendarDayView = ({
   const handleSaveEvent = (
     newEvent: Partial<CalendarEvent> | Partial<CalendarEvent>[]
   ) => {
-    console.log("Save event worked")
+    console.log("Save event worked");
     if (!setEvents || !events) return;
 
     if (Array.isArray(newEvent)) {
@@ -134,7 +135,6 @@ export const CalendarDayView = ({
     }
 
     onActionComplete?.();
-
   };
 
   // Create a map to check if an hour has events
@@ -582,7 +582,7 @@ export const EventGroup = ({
                     height: `${hoursDifference * 100}%`,
                   }}
                   onClick={(e) => {
-                    e.stopPropagation(); // Stop event from reaching background
+                    e.stopPropagation();
                   }}
                 >
                   {event.title}
