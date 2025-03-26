@@ -93,16 +93,15 @@ export const CalendarDayView = ({
     if (Array.isArray(newEvent)) {
       // Handle array of events
       const completeEvents = newEvent
-        .filter((event) => event.start && event.title) // Only include events with required properties
+        .filter((event) => event.start && event.title)
         .map((event) => {
-          // At this point we know event.start exists due to the filter above
-          const start = event.start as Date; // Type assertion since we filtered for this
+          const start = event.start as Date;
 
           return {
             id: event.id || Math.random().toString(36).substring(2, 11),
             start,
             end: event.end || addHours(start, 1),
-            title: event.title as string, // We filtered for this too
+            title: event.title as string,
             description: event.description || "",
             color: event.color || "yellow",
           } as CalendarEvent;
