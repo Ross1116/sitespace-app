@@ -1,11 +1,12 @@
 "use client";
 
-import { subcontractors } from "@/lib/data";
 import { Button } from "@/components/ui/button";
-import { SetStateAction, useState } from "react";
+import { SetStateAction, useEffect, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { X, Plus } from "lucide-react";
 import SubFormModal from "@/components/forms/InviteSubForm";
+import { useAuth } from "@/app/context/AuthContext";
+import api from "@/lib/api";
 
 interface Contractor {
   contractorKey: string;
@@ -22,11 +23,41 @@ interface Contractor {
 
 export default function Page() {
   const [currentPage, setCurrentPage] = useState(1);
+  const [subcontractors, setSubs] = useState<Contractor[]>([]);
   const [selectedContractor, setSelectedContractor] =
     useState<Contractor | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isSubFormOpen, setIsSubFormOpen] = useState(false);
   const itemsPerPage = 9;
+  const { user } = useAuth();
+  const userId = user?.userId;
+  const hasFetched = useRef(false);
+
+  const fetchSubs = async () => {
+    try {
+      if (!user || hasFetched.current) {
+        return;
+      }
+
+      const response = await api.get("/api/auth/siteProject/getSubcontractorList", {
+        params: { currentUserId: userId },
+      });
+
+      const subsData = response.data?.contractorList || [];
+      setSubs(subsData);
+      if (subsData.length > 0) {
+        console.log(subsData);
+      }
+    } catch (error) {
+      console.error("Error fetching contractors:", error);
+    }
+    hasFetched.current = true;
+  };
+
+  useEffect(() => {
+    if (!user || hasFetched.current) return;
+    fetchSubs();
+  }, [user]);
 
   // Calculate pagination
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -36,6 +67,12 @@ export default function Page() {
     indexOfLastItem
   );
   const totalPages = Math.ceil(subcontractors.length / itemsPerPage);
+
+  // const handleSaveContractor = (newContractor: Contractor) => {
+  //   setSubs((prev) => [...prev, newContractor]);
+  //   hasFetched.current = false;
+  //   fetchSubs();
+  // };
 
   // Handle page changes
   const handlePageChange = (pageNumber: SetStateAction<number>) => {
@@ -64,7 +101,7 @@ export default function Page() {
 
   const handleSaveSubs = () => {
     setIsSubFormOpen(false);
-    // fetchSubs();
+    fetchSubs();
   };
 
   return (
@@ -83,9 +120,9 @@ export default function Page() {
           {/* Desktop button */}
           <Button
             onClick={handleOnClickButton}
-            className="hidden sm:flex mt-4 sm:mt-0"
+            className="hidden sm:flex mt-4 sm:mt-0 cursor-pointer"
           >
-            Create new booking
+            Invite a subcontractor
           </Button>
 
           {/* Mobile button - icon only */}
@@ -161,12 +198,12 @@ export default function Page() {
                         <div className="font-medium">
                           {contractor.contractorName}
                         </div>
-                        <Button
+                        {/* <Button
                           className="bg-transparent text-gray-700 hover:bg-amber-100 rounded-full shadow-md hover:cursor-pointer h-6 w-6 p-0"
                           onClick={(e) => e.stopPropagation()}
                         >
                           ...
-                        </Button>
+                        </Button> */}
                       </div>
                       <div className="text-sm text-gray-500">
                         {contractor.contractorCompany}

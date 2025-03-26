@@ -20,21 +20,27 @@ interface AssetModalProps {
   isOpen: boolean;
   onClose: (open: boolean) => void;
   onSave: (asset: Asset) => void;
+  assetData: Asset;
 }
 
 interface Asset {
-  assetTitle: string;
-  assetLocation: string;
-  maintanenceStartdt: string;
-  maintanenceEnddt: string;
-  assetPoc: string;
-  assetStatus: string;
-  usageInstructions: string;
-  assetKey?: string;
-  assetProject: string;
-}
+    assetTitle: string;
+    assetLocation: string;
+    maintanenceStartdt: string;
+    maintanenceEnddt: string;
+    assetPoc: string;
+    assetStatus: string;
+    usageInstructions: string;
+    assetKey: string;
+    assetProject: string;
+  }
 
-const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
+const UpdateAssetModal: React.FC<AssetModalProps> = ({
+  isOpen,
+  onClose,
+  onSave,
+  assetData,
+}) => {
   const [project, setProject] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuth();
@@ -49,7 +55,15 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
     assetStatus: "Operational",
     usageInstructions: "",
     assetProject: project,
+    assetKey: "",
   });
+
+  // Load asset data when modal opens or assetData changes
+  useEffect(() => {
+    if (assetData) {
+      setAsset(assetData);
+    }
+  }, [assetData]);
 
   // Load project from localStorage when component mounts or userId changes
   useEffect(() => {
@@ -64,11 +78,13 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
       const parsedId = parsedProjects.id;
       setProject(parsedId);
 
-      // Update the asset with the project as well
-      setAsset((prev) => ({
-        ...prev,
-        assetProject: parsedProjects,
-      }));
+      // Only update the assetProject if it's not already set
+      if (!asset.assetProject) {
+        setAsset((prev) => ({
+          ...prev,
+          assetProject: parsedProjects,
+        }));
+      }
     } catch (error) {
       console.error("Error parsing project:", error);
     }
@@ -89,8 +105,10 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
     }));
   };
 
-  const handleStatusChange = (status: "Operational" | "Out of Service") => {
-    setAsset((prev) => ({ ...prev, assetStatus: status })); // Fixed: should update assetStatus, not status
+  const handleStatusChange = (
+    status: "Operational" | "Out of Service"
+  ) => {
+    setAsset((prev) => ({ ...prev, assetStatus: status }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -109,27 +127,15 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
           : "",
       };
 
-      const response = await api.post("/api/auth/Asset/saveAsset", {
+      const response = await api.post("/api/auth/Asset/updateAsset", {
         obj: formattedAsset,
       });
 
       const data = response.data;
       onSave(data);
       onClose(false);
-
-      // Reset form
-      setAsset({
-        assetTitle: "",
-        assetLocation: "",
-        maintanenceStartdt: "",
-        maintanenceEnddt: "",
-        assetPoc: "",
-        assetStatus: "Operational",
-        usageInstructions: "",
-        assetProject: project, // Keep the current project
-      });
     } catch (error) {
-      console.error("Error saving asset:", error);
+      console.error("Error updating asset:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -147,10 +153,10 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
 
         <DialogHeader className="text-center">
           <DialogTitle className="text-2xl font-semibold">
-            Define Assets
+            Update Asset
           </DialogTitle>
           <p className="text-sm text-gray-600 mt-1">
-            Add and manage assets for the construction site
+            Modify asset details for the construction site
           </p>
         </DialogHeader>
 
@@ -186,13 +192,21 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
                 <Input
                   type="date"
                   name="maintanenceStartdt"
-                  value={asset.maintanenceStartdt}
+                  value={
+                    asset.maintanenceStartdt
+                      ? asset.maintanenceStartdt.split("T")[0]
+                      : ""
+                  }
                   onChange={handleMaintenanceChange}
                 />
                 <Input
                   type="date"
                   name="maintanenceEnddt"
-                  value={asset.maintanenceEnddt}
+                  value={
+                    asset.maintanenceEnddt
+                      ? asset.maintanenceEnddt.split("T")[0]
+                      : ""
+                  }
                   onChange={handleMaintenanceChange}
                 />
               </div>
@@ -249,7 +263,7 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
               <Textarea
                 id="usageInstructions"
                 name="usageInstructions"
-                value={asset.usageInstructions}
+                value={asset.usageInstructions || ""}
                 onChange={handleChange}
                 placeholder="Enter asset description and instructions"
                 className="min-h-[100px]"
@@ -257,13 +271,20 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
             </div>
           </div>
 
-          <div className="mt-8 flex justify-center">
+          <div className="mt-8 flex justify-end space-x-4">
+            <Button
+              type="button"
+              className="bg-gray-200 text-gray-800 hover:bg-gray-300"
+              onClick={() => onClose(false)}
+            >
+              Cancel
+            </Button>
             <Button
               type="submit"
               className="bg-black text-white hover:bg-gray-800"
               disabled={isSubmitting}
             >
-              {isSubmitting ? "Saving..." : "Save Asset"}
+              {isSubmitting ? "Saving..." : "Update Asset"}
             </Button>
           </div>
         </form>
@@ -272,4 +293,4 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
   );
 };
 
-export default AssetModal;
+export default UpdateAssetModal;

@@ -3,21 +3,23 @@
 import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { X, Plus } from "lucide-react";
+import { X, Plus, PencilIcon } from "lucide-react";
 import api from "@/lib/api";
 import { useAuth } from "@/app/context/AuthContext";
 import CreateAssetForm from "@/components/forms/CreateAssetForm";
+import UpdateAssetModal from "@/components/forms/UpdateAssetForm";
+import { format } from "date-fns";
 
 interface Asset {
-  assetKey: string;
   assetTitle: string;
   assetLocation: string;
-  assetStatus: string;
+  maintanenceStartdt: string;
+  maintanenceEnddt: string;
   assetPoc: string;
+  assetStatus: string;
+  usageInstructions: string;
+  assetKey: string;
   assetProject: string;
-  assetDescription?: string;
-  assetValue?: number;
-  assetPurchaseDate?: string;
 }
 
 interface Project {
@@ -35,6 +37,9 @@ export default function AssetsTable() {
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isAssetFormOpen, setIsAssetFormOpen] = useState(false);
+  const [selectedAssetForUpdate, setSelectedAssetForUpdate] =
+    useState<Asset | null>(null);
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const itemsPerPage = 10;
   const hasFetched = useRef(false);
   const { user } = useAuth();
@@ -119,6 +124,15 @@ export default function AssetsTable() {
   //   setCurrentPage(1); // Reset to first page when changing projects
   // };
 
+  // Update the assets list with the updated asset
+  const handleUpdateAsset = (updatedAsset: Asset) => {
+    setAssets((prevAssets) =>
+      prevAssets.map((a) =>
+        a.assetKey === updatedAsset.assetKey ? updatedAsset : a
+      )
+    );
+  };
+
   // Handle page changes
   const handlePageChange = (pageNumber: number) => {
     setCurrentPage(pageNumber);
@@ -165,9 +179,9 @@ export default function AssetsTable() {
           {/* Desktop button */}
           <Button
             onClick={handleOnClickButton}
-            className="hidden sm:flex mt-4 sm:mt-0"
+            className="hidden sm:flex mt-4 sm:mt-0 cursor-pointer"
           >
-            Create new booking
+            Create new asset
           </Button>
 
           {/* Mobile button - icon only */}
@@ -273,11 +287,11 @@ export default function AssetsTable() {
                   >
                     <Card
                       className={`w-full p-0 cursor-pointer px-2 my-2 transition-colors duration-200 
-            ${
-              isSelected(asset.assetKey)
-                ? "bg-orange-200 hover:bg-orange-300"
-                : "hover:bg-orange-100"
-            }`}
+                        ${
+                          isSelected(asset.assetKey)
+                            ? "bg-orange-200 hover:bg-orange-300"
+                            : "hover:bg-orange-100"
+                        }`}
                     >
                       {/* Desktop view */}
                       <div className="hidden sm:grid grid-cols-6 w-full py-6">
@@ -286,13 +300,13 @@ export default function AssetsTable() {
                         <div className="px-6">
                           <span
                             className={`px-2 py-1 rounded-full text-xs font-semibold 
-                  ${
-                    asset.assetStatus === "Active"
-                      ? "bg-green-100 text-green-800"
-                      : asset.assetStatus === "Maintenance"
-                      ? "bg-yellow-100 text-yellow-800"
-                      : "bg-red-100 text-red-800"
-                  }`}
+                              ${
+                                asset.assetStatus === "Active"
+                                  ? "bg-green-100 text-green-800"
+                                  : asset.assetStatus === "Maintenance"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : "bg-red-100 text-red-800"
+                              }`}
                           >
                             {asset.assetStatus}
                           </span>
@@ -306,11 +320,15 @@ export default function AssetsTable() {
                           </div>
                         </div>
                         <div
-                          className="px-6 text-center"
-                          onClick={(e) => e.stopPropagation()}
+                          className="px-6 py-0 -my-1 text-center"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedAssetForUpdate(asset);
+                            setIsUpdateModalOpen(true);
+                          }}
                         >
-                          <Button className="bg-transparent text-gray-700 hover:bg-amber-100 rounded-full shadow-md hover:cursor-pointer h-0">
-                            ...
+                          <Button className="bg-transparent text-gray-700 hover:bg-amber-100 rounded-full shadow-md hover:cursor-pointer h-8">
+                            <PencilIcon className="h-4 w-4" />
                           </Button>
                         </div>
                       </div>
@@ -319,12 +337,18 @@ export default function AssetsTable() {
                       <div className="sm:hidden p-4">
                         <div className="flex justify-between items-center mb-2">
                           <div className="font-medium">{asset.assetTitle}</div>
-                          <Button
-                            className="bg-transparent text-gray-700 hover:bg-amber-100 rounded-full shadow-md hover:cursor-pointer h-6 w-6 p-0"
-                            onClick={(e) => e.stopPropagation()}
+                          <div
+                            className="text-center"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedAssetForUpdate(asset);
+                              setIsUpdateModalOpen(true);
+                            }}
                           >
-                            ...
-                          </Button>
+                            <Button className="bg-transparent text-gray-700 hover:bg-amber-100 rounded-full shadow-md hover:cursor-pointer h-8">
+                              <PencilIcon className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                         <div className="text-sm text-gray-500">
                           {asset.assetLocation}
@@ -484,24 +508,33 @@ export default function AssetsTable() {
                   <Card className="p-4">
                     <div className="space-y-3">
                       <div>
-                        <p className="text-sm text-gray-500">Description</p>
+                        <p className="text-sm text-gray-500">Project</p>
                         <p className="font-medium">
-                          {selectedAsset.assetDescription ||
+                          {`${selectedAsset.assetProject} - ${project?.text}` ||
+                            "Not specified"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">
+                          Usage Instruction
+                        </p>
+                        <p className="font-medium">
+                          {selectedAsset.usageInstructions ||
                             "No description available"}
                         </p>
                       </div>
                       <div>
-                        <p className="text-sm text-gray-500">Purchase Date</p>
-                        <p className="font-medium">
-                          {selectedAsset.assetPurchaseDate || "Not specified"}
+                        <p className="text-sm text-gray-500">
+                          Maintenance Dates
                         </p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Value</p>
                         <p className="font-medium">
-                          {selectedAsset.assetValue
-                            ? `$${selectedAsset.assetValue.toLocaleString()}`
-                            : "Not specified"}
+                          {`${format(
+                            selectedAsset.maintanenceStartdt,
+                            "dd-MMM-yyyy"
+                          )} to ${format(
+                            selectedAsset.maintanenceStartdt,
+                            "dd-MMM-yyyy"
+                          )}` || "Not specified"}
                         </p>
                       </div>
                     </div>
@@ -512,15 +545,17 @@ export default function AssetsTable() {
 
             <div className="mt-6 flex space-x-3">
               <Button
-                className="flex-1 bg-orange-500 hover:bg-orange-600 text-white"
-                onClick={() => {
-                  /* Handle edit action */
+                className="flex-1 bg-orange-600 hover:bg-orange-700 text-white cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedAssetForUpdate(selectedAsset);
+                  setIsUpdateModalOpen(true);
                 }}
               >
                 Edit Details
               </Button>
               <Button
-                className="flex-1 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+                className="flex-1 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 cursor-pointer"
                 onClick={closeSidebar}
               >
                 Close
@@ -536,6 +571,15 @@ export default function AssetsTable() {
           className="fixed inset-0 bg-black/30 z-30 sm:block hidden"
           onClick={closeSidebar}
         ></div>
+      )}
+
+      {selectedAssetForUpdate && (
+        <UpdateAssetModal
+          isOpen={isUpdateModalOpen}
+          onClose={() => setIsUpdateModalOpen(false)}
+          onSave={handleUpdateAsset}
+          assetData={selectedAssetForUpdate}
+        />
       )}
     </Card>
   );
