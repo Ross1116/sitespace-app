@@ -4,7 +4,8 @@ import { subcontractors } from "@/lib/data";
 import { Button } from "@/components/ui/button";
 import { SetStateAction, useState } from "react";
 import { Card } from "@/components/ui/card";
-import { X } from "lucide-react";
+import { X, Plus } from "lucide-react";
+import SubFormModal from "@/components/forms/InviteSubForm";
 
 interface Contractor {
   contractorKey: string;
@@ -24,6 +25,7 @@ export default function Page() {
   const [selectedContractor, setSelectedContractor] =
     useState<Contractor | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isSubFormOpen, setIsSubFormOpen] = useState(false);
   const itemsPerPage = 9;
 
   // Calculate pagination
@@ -56,12 +58,53 @@ export default function Page() {
     return sidebarOpen && selectedContractor?.contractorKey === contractorKey;
   };
 
+  const handleOnClickButton = () => {
+    setIsSubFormOpen(true);
+  };
+
+  const handleSaveSubs = () => {
+    setIsSubFormOpen(false);
+    // fetchSubs();
+  };
+
   return (
     <Card className="px-6 sm:my-8 mx-4 bg-stone-100">
       <div className="p-3 sm:px-6">
-        <h1 className="text-xl sm:text-3xl font-bold text-gray-900">
-          Subcontractors
-        </h1>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
+          <div>
+            <h1 className="text-xl sm:text-3xl font-bold text-gray-900">
+              Subcontractors
+            </h1>
+            <p className="text- sm:text-base text-gray-500 mt-1">
+              Manage your subcontractors here
+            </p>
+          </div>
+
+          {/* Desktop button */}
+          <Button
+            onClick={handleOnClickButton}
+            className="hidden sm:flex mt-4 sm:mt-0"
+          >
+            Create new booking
+          </Button>
+
+          {/* Mobile button - icon only */}
+          <Button
+            onClick={handleOnClickButton}
+            className="sm:hidden fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-lg z-10"
+            size="icon"
+          >
+            <Plus size={24} />
+          </Button>
+        </div>
+
+        {isSubFormOpen && (
+          <SubFormModal
+            isOpen={isSubFormOpen}
+            onClose={() => setIsSubFormOpen(false)}
+            onSave={handleSaveSubs}
+          />
+        )}
 
         {/* Mobile-only column headers */}
         <div className="sm:hidden text-xs text-gray-500 font-medium mb-2">
@@ -71,7 +114,7 @@ export default function Page() {
         <div className="flex-grow overflow-x-auto rounded-lg">
           <div className="min-w-full w-full">
             {/* Header - Hidden on mobile */}
-            <div className="hidden sm:grid sticky top-0 text-gray-700 uppercase text-sm grid-cols-6 px-2 border-b last:border-b-0 pt-4">
+            <div className="hidden sm:grid sticky top-0 text-gray-700 uppercase text-sm grid-cols-6 px-2 border-b last:border-b-0">
               <div className="px-6 py-4 text-left">Name</div>
               <div className="px-6 py-4 text-left">Company</div>
               <div className="px-6 py-4 text-left">Trade</div>
