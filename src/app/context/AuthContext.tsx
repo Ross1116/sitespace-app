@@ -26,7 +26,8 @@ type AuthContextType = {
     tradeCategory: string, 
     email: string, 
     phoneNumber: string, 
-    password: string
+    password: string,
+    project: string,
   ) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
@@ -113,7 +114,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     tradeCategory: string, 
     email: string, 
     phoneNumber: string, 
-    password: string
+    password: string,
+    project: string,
   ) => {
     try {
       setIsLoading(true);
@@ -133,6 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email,
           phoneNumber,
           password,
+          project,
         }),
       }).catch(err => {
         // Network error (server down, no connection, etc.)

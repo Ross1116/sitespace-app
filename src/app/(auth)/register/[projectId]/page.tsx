@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useAuth } from "@/app/context/AuthContext";
+import { useParams } from "next/navigation";
 
 export default function Register() {
   const [fullName, setFullName] = useState("");
@@ -13,6 +14,8 @@ export default function Register() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const { register } = useAuth();
+  const params = useParams();
+  const project = params.projectId as string;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,7 +33,8 @@ export default function Register() {
         tradeCategory,
         email,
         phoneNumber,
-        password
+        password,
+        project
       );
     } catch (err) {
       setError(`Registration failed: ${err}. Please try again.`);
@@ -42,17 +46,14 @@ export default function Register() {
       {/* Left Side */}
       <div className="hidden md:flex md:w-1/2 bg-amber-700 px-32 py-16 flex-col justify-between relative">
         <div className="z-10 mx-auto">
-          {/* Asterisk/Star Logo */}
           <div className="text-white text-9xl my-12">*</div>
 
-          {/* Main Text */}
           <h1 className="text-7xl font-bold text-white mb-12">
             Join
             <br className="mb-4" />
             Sitespace!<span className="text-7xl">🚀</span>
           </h1>
 
-          {/* Subtext */}
           <p className="text-gray-300 text-xl max-w-8/12">
             Start managing your projects efficiently. Get organized, collaborate
             better, and deliver projects on time with our powerful scheduling
@@ -60,29 +61,24 @@ export default function Register() {
           </p>
         </div>
 
-        {/* Copyright */}
         <div className="text-white/70 text-sm">
           © 2025 Sitespace. All rights reserved.
         </div>
 
-        {/* Background Pattern - Subtle curved lines */}
+        {/* Background Pattern*/}
         <div className="absolute inset-0 opacity-10">
-          {/* This would be better with an actual SVG but using a div for simplicity */}
         </div>
       </div>
 
       {/* Right Side - White Section */}
       <div className="w-full md:w-1/2 bg-orange-50 flex items-center justify-center min-h-screen md:min-h-0 md:p-16">
         <div className="max-w-md w-full px-6 py-12 md:p-0">
-          {/* Logo */}
           <h2 className="text-4xl md:text-5xl font-bold mb-8">Sitespace</h2>
 
-          {/* Welcome Text */}
           <h3 className="text-2xl md:text-3xl font-bold mb-2">
             Create Account
           </h3>
 
-          {/* Already have account text */}
           <p className="text-gray-600 mb-8">
             Already have an account?{" "}
             <a href="/login" className="text-blue-600 font-medium">
@@ -91,14 +87,12 @@ export default function Register() {
             .
           </p>
 
-          {/* Error Message */}
           {error && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
               {error}
             </div>
           )}
 
-          {/* Registration Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <input

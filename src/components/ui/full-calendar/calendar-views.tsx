@@ -134,9 +134,9 @@ export const CalendarDayView = ({
         }
       }
     }
-    console.log("About to call onActionComplete");
+
     onActionComplete?.();
-    console.log("onActionComplete called");
+
   };
 
   // Create a map to check if an hour has events
@@ -183,8 +183,8 @@ export const CalendarDayView = ({
           onClose={() => setIsBookingFormOpen(false)}
           startTime={selectedTimeSlot.start}
           endTime={selectedTimeSlot.end}
-          defaultAsset={assetCalendar?.id} // Pass the asset ID to the booking form
-          defaultAssetName={assetCalendar?.name} // Pass the asset name to the booking form
+          defaultAsset={assetCalendar?.id}
+          defaultAssetName={assetCalendar?.name}
           onSave={handleSaveEvent}
         />
       )}
