@@ -39,7 +39,6 @@ export const CalendarDayView = ({
   assetCalendar?: AssetCalendar;
   onActionComplete?: () => void;
 }) => {
-  console.log("CalendarDayView received onActionComplete:", !!onActionComplete);
   const { view, events, date, setEvents, onEventClick } = useCalendar();
   const [isBookingFormOpen, setIsBookingFormOpen] = useState(false);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<{

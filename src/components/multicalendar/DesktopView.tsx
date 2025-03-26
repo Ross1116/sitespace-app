@@ -19,7 +19,6 @@ export function DesktopView({
   currentDate,
   onActionComplete,
 }: DesktopViewProps) {
-  console.log("DesktopView received onActionComplete:", !!onActionComplete);
   return (
     <div
       className={`grid ${

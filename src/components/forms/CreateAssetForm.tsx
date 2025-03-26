@@ -19,7 +19,7 @@ import { format } from "date-fns";
 interface AssetModalProps {
   isOpen: boolean;
   onClose: (open: boolean) => void;
-  onSave: (asset: Asset) => void;
+  onSave: () => void;
 }
 
 interface Asset {
@@ -64,11 +64,13 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
       const parsedId = parsedProjects.id;
       setProject(parsedId);
 
-      // Update the asset with the project as well
-      setAsset((prev) => ({
-        ...prev,
-        assetProject: parsedProjects,
-      }));
+      // Only update the assetProject if it's not already set
+      if (!asset.assetProject) {
+        setAsset((prev) => ({
+          ...prev,
+          assetProject: parsedId, // Only use the ID
+        }));
+      }
     } catch (error) {
       console.error("Error parsing project:", error);
     }
@@ -109,12 +111,14 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
           : "",
       };
 
-      const response = await api.post("/api/auth/Asset/saveAsset", {
-        obj: formattedAsset,
-      });
+      const response = await api.post(
+        "/api/auth/Asset/saveAsset",
+        formattedAsset
+      );
 
       const data = response.data;
-      onSave(data);
+      console.log(data)
+      onSave();
       onClose(false);
 
       // Reset form
@@ -126,7 +130,7 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
         assetPoc: "",
         assetStatus: "Operational",
         usageInstructions: "",
-        assetProject: project, // Keep the current project
+        assetProject: project,
       });
     } catch (error) {
       console.error("Error saving asset:", error);

@@ -47,9 +47,7 @@ const SubFormModal: React.FC<ContractorModalProps> = ({ isOpen, onClose, onSave 
     try {
       setIsSubmitting(true);
 
-      const response = await api.post("/api/auth/subContractor/subcontractorRegMail", {
-        obj: contractor,
-      });
+      const response = await api.post("/api/auth/subContractor/subcontractorRegMail", contractor);
 
       const data = response.data;
       onSave(data);

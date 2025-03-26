@@ -35,27 +35,27 @@ export default function MulticalendarPage() {
   // Function to fetch bookings
   const fetchBookings = async () => {
     if (!user) return;
-  
+
     setLoading(true);
-    
+
     const projectString = localStorage.getItem(projectStorageKey);
-    
+
     if (!projectString) {
       console.error("No project found in localStorage");
       setLoading(false);
       return;
     }
-    
+
     try {
       const project = JSON.parse(projectString);
-      
+
       const response = await api.get(
         "/api/auth/slotBooking/getslotBookingList",
         {
           params: { projectId: project.id, userId: userId },
         }
       );
-  
+
       const bookingsData = response.data?.bookingList || [];
       setBookings(bookingsData);
       localStorage.setItem(storageKey, JSON.stringify(bookingsData));
@@ -77,8 +77,8 @@ export default function MulticalendarPage() {
         const parsedBookings = JSON.parse(cachedBookings);
         if (Array.isArray(parsedBookings)) {
           setBookings(parsedBookings);
-          setLoading(false);
         }
+        setLoading(false);
       } catch (error) {
         console.error("Error parsing cached bookings:", error);
         localStorage.removeItem(storageKey);
@@ -117,16 +117,18 @@ export default function MulticalendarPage() {
 
   const assetBookings = groupBookingsByAsset(bookings);
   const assetCalendars: AssetCalendar[] = Object.values(assetBookings);
-
+  const [initialLoad, setInitialLoad] = useState(true);
   const [visibleAssets, setVisibleAssets] = useState(
     assetCalendars.map((_, index) => index)
   );
 
   useEffect(() => {
-    if (assetCalendars.length > 0 && visibleAssets.length === 0) {
+    // Only set all assets visible on initial load or when new assets are added
+    if (initialLoad && assetCalendars.length > 0) {
       setVisibleAssets(assetCalendars.map((_, index) => index));
+      setInitialLoad(false);
     }
-  }, [assetCalendars, visibleAssets.length]);
+  }, [assetCalendars, initialLoad]);
 
   // Get the selected calendar's events
   const selectedCalendar = assetCalendars[selectedAssetIndex] || {

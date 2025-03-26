@@ -39,9 +39,12 @@ export default function Page() {
         return;
       }
 
-      const response = await api.get("/api/auth/siteProject/getSubcontractorList", {
-        params: { currentUserId: userId },
-      });
+      const response = await api.get(
+        "/api/auth/siteProject/getSubcontractorList",
+        {
+          params: { currentUserId: userId },
+        }
+      );
 
       const subsData = response.data?.contractorList || [];
       setSubs(subsData);
@@ -151,13 +154,13 @@ export default function Page() {
         <div className="flex-grow overflow-x-auto rounded-lg">
           <div className="min-w-full w-full">
             {/* Header - Hidden on mobile */}
-            <div className="hidden sm:grid sticky top-0 text-gray-700 uppercase text-sm grid-cols-6 px-2 border-b last:border-b-0">
+            <div className="hidden sm:grid sticky top-0 text-gray-700 uppercase text-sm grid-cols-5 px-2 border-b last:border-b-0">
               <div className="px-6 py-4 text-left">Name</div>
               <div className="px-6 py-4 text-left">Company</div>
               <div className="px-6 py-4 text-left">Trade</div>
               <div className="px-6 py-4 text-left">Email</div>
               <div className="px-6 py-4 text-left">Phone</div>
-              <div className="px-6 py-4 text-center">Edit</div>
+              {/* <div className="px-6 py-4 text-center">Edit</div> */}
             </div>
 
             {/* Card Rows */}
@@ -176,20 +179,20 @@ export default function Page() {
                                 }`}
                   >
                     {/* Desktop view */}
-                    <div className="hidden sm:grid grid-cols-6 w-full py-6">
+                    <div className="hidden sm:grid grid-cols-5 w-full py-6">
                       <div className="px-6">{contractor.contractorName}</div>
                       <div className="px-6">{contractor.contractorCompany}</div>
                       <div className="px-6">{contractor.contractorTrade}</div>
                       <div className="px-6">{contractor.contractorEmail}</div>
                       <div className="px-6">{contractor.contractorPhone}</div>
-                      <div
+                      {/* <div
                         className="px-6 text-center"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <Button className="bg-transparent text-gray-700 hover:bg-amber-100 rounded-full shadow-md hover:cursor-pointer h-0">
                           ...
                         </Button>
-                      </div>
+                      </div> */}
                     </div>
 
                     {/* Mobile view */}
@@ -332,7 +335,7 @@ export default function Page() {
                 </div>
 
                 {/* Additional Details */}
-                <div>
+                {/* <div>
                   <h3 className="text-lg font-medium text-gray-700 mb-3">
                     Additional Details
                   </h3>
@@ -371,7 +374,7 @@ export default function Page() {
                       </div>
                     </div>
                   </Card>
-                </div>
+                </div> */}
 
                 {/* Notes
                 <div className="mb-4">
@@ -389,14 +392,13 @@ export default function Page() {
             </div>
 
             <div className="mt-6 flex space-x-3">
-              <Button
+              {/* <Button
                 className="flex-1 bg-orange-500 hover:bg-orange-600 text-white"
-                onClick={() => {
-                  /* Handle edit action */
-                }}
+                onClick={() => {}}
               >
                 Edit Details
-              </Button>
+              </Button> */}
+
               <Button
                 className="flex-1 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
                 onClick={closeSidebar}

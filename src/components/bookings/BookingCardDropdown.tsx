@@ -3,6 +3,7 @@
 import { Calendar, X, ChevronDown } from "lucide-react";
 import api from "@/lib/api";
 import { useState } from "react";
+import { format } from "date-fns";
 
 interface BookingCardDropdownProps {
   bookingKey: string;
@@ -24,12 +25,12 @@ export default function BookingCardDropdown({
   const getBookingDetails = async () => {
     try {
       const response = await api.get(
-        "/api/auth/slotBooking/editSlotBookingDetails",
+        "/api/auth/slotBooking/editSlotBookingdetails",
         {
           params: { bookingKey: bookingKey },
         }
       );
-      return response.data;
+      return response.data.bookingList;
     } catch (error) {
       console.error("Error fetching booking details:", error);
       throw error;
@@ -39,33 +40,17 @@ export default function BookingCardDropdown({
   const confirmBooking = async () => {
     setIsLoading(true);
     try {
-      // const bookingDetails = await getBookingDetails();
+      const bookingDetails = await getBookingDetails();
+      const bookingDate = new Date(bookingDetails.bookingTimeDt);
 
-      const bookingDetails = {
-        "bookingProject": "P001",
-        "bookingTitle": "Test booking",
-        "bookingFor": "U002",
-        "bookedAssets": [
-          "A003"
-        ],
-        "bookingStatus": "Confirmed",
-        "bookingTimeDt": "2025-03-26",
-        "bookingDurationMins": 60,
-        "bookingDescription": "Testing",
-        "bookingNotes": "",
-        "bookingCreatedBy": "U002",
-        "bookingKey": "B020"
-      }
-      
       const updatedBooking = {
         ...bookingDetails,
-        bookingStatus: "Confirmed"
+        bookingTimeDt: format(bookingDate, "yyyy-MM-dd'T'HH:mm:ss"),
+        bookingStatus: "Confirmed",
       };
-      
-      await api.post("/api/auth/slotBooking/updateSlotBooking", {
-        objAsset: updatedBooking
-      });
-      
+
+      await api.post("/api/auth/slotBooking/updateSlotBooking", updatedBooking);
+
       onActionComplete?.();
     } catch (error) {
       console.error("Error confirming booking:", error);
@@ -79,19 +64,19 @@ export default function BookingCardDropdown({
     setIsLoading(true);
     try {
       const bookingDetails = await getBookingDetails();
-      
+      const bookingDate = new Date(bookingDetails.bookingTimeDt);
+
       const updatedBooking = {
         ...bookingDetails,
-        bookingStatus: "Denied"
+        bookingTimeDt: format(bookingDate, "yyyy-MM-dd'T'HH:mm:ss"),
+        bookingStatus: "Denied",
       };
-      
-      await api.post("/api/auth/slotBooking/updateSlotBooking", {
-        objAsset: updatedBooking
-      });
-      
+
+      await api.post("/api/auth/slotBooking/updateSlotBooking", updatedBooking);
+
       onActionComplete?.();
     } catch (error) {
-      console.error("Error denying booking:", error);
+      console.error("Error confirming booking:", error);
     } finally {
       setIsLoading(false);
       onToggle();
@@ -102,11 +87,9 @@ export default function BookingCardDropdown({
     setIsLoading(true);
     try {
       const bookingDetails = await getBookingDetails();
-      
-      await api.post("/api/auth/slotBooking/deleteSlotBooking", {
-        delete: bookingDetails
-      });
-      
+
+      await api.post("/api/auth/slotBooking/deleteSlotBooking", bookingDetails);
+
       onActionComplete?.();
     } catch (error) {
       console.error("Error canceling booking:", error);
@@ -120,14 +103,14 @@ export default function BookingCardDropdown({
     setIsLoading(true);
     try {
       const bookingDetails = await getBookingDetails();
-      
+
       // Here you would typically navigate to a reschedule form
       // or open a modal with the booking details
       console.log("Booking details for reschedule:", bookingDetails);
-      
+
       // You might want to store these details in a state or context
       // and navigate to a reschedule page
-      
+
       onToggle();
     } catch (error) {
       console.error("Error fetching booking details for reschedule:", error);
@@ -152,9 +135,7 @@ export default function BookingCardDropdown({
         Edit
         <ChevronDown
           size={14}
-          className={`ml-1 transition-transform ${
-            isOpen ? "rotate-180" : ""
-          }`}
+          className={`ml-1 transition-transform ${isOpen ? "rotate-180" : ""}`}
         />
       </button>
 
@@ -163,7 +144,7 @@ export default function BookingCardDropdown({
           <div className="py-1">
             {bookingStatus === "Pending" && (
               <>
-                <button 
+                <button
                   onClick={confirmBooking}
                   disabled={isLoading}
                   className="flex items-center px-3 py-2 text-xs text-green-600 hover:bg-gray-100 w-full text-left"
@@ -171,7 +152,7 @@ export default function BookingCardDropdown({
                   <Calendar size={14} className="mr-2" />
                   Confirm booking
                 </button>
-                <button 
+                <button
                   onClick={denyBooking}
                   disabled={isLoading}
                   className="flex items-center px-3 py-2 text-xs text-red-600 hover:bg-gray-100 w-full text-left"
@@ -182,7 +163,7 @@ export default function BookingCardDropdown({
                 <div className="border-t my-1"></div>
               </>
             )}
-            <button 
+            <button
               onClick={rescheduleBooking}
               disabled={isLoading}
               className="flex items-center px-3 py-2 text-xs text-gray-700 hover:bg-gray-100 w-full text-left"
@@ -191,7 +172,7 @@ export default function BookingCardDropdown({
               Reschedule booking
             </button>
             {bookingStatus === "Confirmed" && (
-              <button 
+              <button
                 onClick={cancelBooking}
                 disabled={isLoading}
                 className="flex items-center px-3 py-2 text-xs text-red-600 hover:bg-gray-100 w-full text-left"

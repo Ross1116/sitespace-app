@@ -16,6 +16,11 @@ import api from "@/lib/api";
 import { useAuth } from "@/app/context/AuthContext";
 import { format } from "date-fns";
 
+interface Project {
+  id: string;
+  text: string;
+}
+
 interface AssetModalProps {
   isOpen: boolean;
   onClose: (open: boolean) => void;
@@ -32,7 +37,7 @@ interface Asset {
     assetStatus: string;
     usageInstructions: string;
     assetKey: string;
-    assetProject: string;
+    assetProject: string | Project;
   }
 
 const UpdateAssetModal: React.FC<AssetModalProps> = ({
@@ -72,17 +77,17 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
       console.error("No project found in localStorage");
       return;
     }
-
+  
     try {
       const parsedProjects = JSON.parse(projectString);
       const parsedId = parsedProjects.id;
       setProject(parsedId);
-
+  
       // Only update the assetProject if it's not already set
       if (!asset.assetProject) {
         setAsset((prev) => ({
           ...prev,
-          assetProject: parsedProjects,
+          assetProject: parsedId, // Only use the ID
         }));
       }
     } catch (error) {
@@ -113,12 +118,17 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+  
     try {
       setIsSubmitting(true);
-
+  
+      const projectId = typeof asset.assetProject === 'object' && asset.assetProject !== null
+        ? asset.assetProject.id
+        : asset.assetProject;
+  
       const formattedAsset = {
         ...asset,
+        assetProject: projectId, // Ensure we're using just the ID
         maintanenceStartdt: asset.maintanenceStartdt
           ? format(new Date(asset.maintanenceStartdt), "yyyy-MM-dd'T'HH:mm:ss")
           : "",
@@ -126,11 +136,8 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
           ? format(new Date(asset.maintanenceEnddt), "yyyy-MM-dd'T'HH:mm:ss")
           : "",
       };
-
-      const response = await api.post("/api/auth/Asset/updateAsset", {
-        obj: formattedAsset,
-      });
-
+      const response = await api.post("/api/auth/Asset/updateAsset", formattedAsset);
+  
       const data = response.data;
       onSave(data);
       onClose(false);

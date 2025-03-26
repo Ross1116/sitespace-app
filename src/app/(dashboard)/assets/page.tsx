@@ -19,7 +19,7 @@ interface Asset {
   assetStatus: string;
   usageInstructions: string;
   assetKey: string;
-  assetProject: string;
+  assetProject: string | Project;
 }
 
 interface Project {
@@ -289,7 +289,7 @@ export default function AssetsTable() {
                       className={`w-full p-0 cursor-pointer px-2 my-2 transition-colors duration-200 
                         ${
                           isSelected(asset.assetKey)
-                            ? "bg-orange-200 hover:bg-orange-300"
+                            ? "bg-orange-400 hover:bg-orange-100"
                             : "hover:bg-orange-100"
                         }`}
                     >
@@ -314,7 +314,10 @@ export default function AssetsTable() {
                         <div className="px-6">{asset.assetPoc}</div>
                         <div className="px-6">
                           <div className="px-6">
-                            {project && project.id === asset.assetProject
+                            {typeof asset.assetProject === "object" &&
+                            asset.assetProject !== null
+                              ? asset.assetProject.text
+                              : project && project.id === asset.assetProject
                               ? project.text
                               : asset.assetProject}
                           </div>
