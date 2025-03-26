@@ -31,7 +31,6 @@ import { getDaysInMonth, generateWeekdays } from "./calendar-helpers";
 import { TimeTable } from "./calendar-utils";
 import { BookingFromCalendar } from "../../forms/BookingFromCalendar";
 import { AssetCalendar } from "./calendar-context";
-import Link from "next/link";
 
 export const CalendarDayView = ({
   assetCalendar,

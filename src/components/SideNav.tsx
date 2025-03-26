@@ -32,12 +32,11 @@ interface MenuSection {
   items: MenuItem[];
 }
 
-// Define a type for the user
 interface UserData {
   userId: string | null;
   username: string;
   email: string;
-  roles: string | string[] | any; // Accept different possible formats
+  roles: string | string[] | any;
 }
 
 const SideNav = () => {
@@ -67,7 +66,7 @@ const SideNav = () => {
           icon: Calendar,
           label: "Live calendar view",
           href: "/multicalendar",
-          visible: ["admin", "manager"],
+          visible: ["admin", "manager", "contractor", "tv"],
         },
         {
           icon: HardHat,

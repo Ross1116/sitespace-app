@@ -4,6 +4,7 @@ import { Calendar, X, ChevronDown } from "lucide-react";
 import api from "@/lib/api";
 import { useState } from "react";
 import { format } from "date-fns";
+import { useAuth } from "@/app/context/AuthContext";
 
 interface BookingCardDropdownProps {
   bookingKey: string;
@@ -21,6 +22,8 @@ export default function BookingCardDropdown({
   onActionComplete,
 }: BookingCardDropdownProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const { user } = useAuth();
+  const hasManagerPrivileges = user?.roles?.includes("admin") || user?.roles?.includes("manager");
 
   const getBookingDetails = async () => {
     try {
@@ -30,12 +33,12 @@ export default function BookingCardDropdown({
           params: { bookingKey: bookingKey },
         }
       );
-      const data = response.data.bookingList[0]
+      const data = response.data.bookingList[0];
       const updatedData = {
         ...data,
-        bookingTimeDt: format(data.bookingTimeDt	,"yyyy-MM-dd'T'HH:mm:ss")
+        bookingTimeDt: format(data.bookingTimeDt, "yyyy-MM-dd'T'HH:mm:ss"),
       };
-      return updatedData
+      return updatedData;
     } catch (error) {
       console.error("Error fetching booking details:", error);
       throw error;
@@ -52,7 +55,7 @@ export default function BookingCardDropdown({
       };
 
       await api.post("/api/auth/slotBooking/updateSlotBooking", updatedBooking);
-      console.log(updatedBooking)
+      console.log(updatedBooking);
 
       onActionComplete?.();
     } catch (error) {
@@ -148,7 +151,7 @@ export default function BookingCardDropdown({
       {isOpen && (
         <div className="absolute bottom-full right-0 mb-1 w-48 bg-white rounded-md shadow-lg z-10 border">
           <div className="py-1">
-            {bookingStatus === "Pending" && (
+            {bookingStatus === "Pending" && hasManagerPrivileges && (
               <>
                 <button
                   onClick={confirmBooking}
@@ -169,6 +172,7 @@ export default function BookingCardDropdown({
                 <div className="border-t my-1"></div>
               </>
             )}
+
             <button
               onClick={rescheduleBooking}
               disabled={isLoading}
@@ -177,6 +181,7 @@ export default function BookingCardDropdown({
               <Calendar size={14} className="mr-2" />
               Reschedule booking
             </button>
+
             {bookingStatus === "Confirmed" && (
               <button
                 onClick={cancelBooking}
