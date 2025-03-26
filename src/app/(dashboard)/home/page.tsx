@@ -105,8 +105,6 @@ export default function HomePage() {
         });
 
         const assetData = response.data?.assetlist || [];
-        setProject(assetData);
-
         console.log(assetData);
 
         if (assetData.length > 0) {

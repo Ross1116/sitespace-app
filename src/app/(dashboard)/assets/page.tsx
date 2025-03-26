@@ -14,21 +14,21 @@ interface Asset {
   assetStatus: string;
   assetPoc: string;
   assetProject: string;
-  // Additional fields that might be in your API response
   assetDescription?: string;
   assetValue?: number;
   assetPurchaseDate?: string;
 }
 
 interface Project {
-  projectKey: string;
-  projectTitle: string;
+  id: string;
+  text: string;
 }
 
 export default function AssetsTable() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
+  const [project, setProject] = useState<Project>();
   // const [selectedProject, setSelectedProject] = useState("ALL");
   const selectedProject = "ALL";
   const [currentPage, setCurrentPage] = useState(1);
@@ -37,73 +37,69 @@ export default function AssetsTable() {
   const itemsPerPage = 10;
   const hasFetched = useRef(false);
   const { user } = useAuth();
+  const userId = user?.userId;
+
+  // Load project from localstore
+  useEffect(() => {
+    const projectString = localStorage.getItem(`project_${userId}`);
+    if (!projectString) {
+      console.error("No assets found in localStorage");
+      return;
+    }
+
+    try {
+      const parsedProjects = JSON.parse(projectString);
+      setProject(parsedProjects);
+    } catch (error) {
+      console.error("Error parsing assets:", error);
+    }
+  }, [userId]);
 
   // Fetch assets from API
   useEffect(() => {
-    if (!user || hasFetched.current) return;
-  
-    const userId = user.userId; // Ensure we use the logged-in user's ID
-    const storageKey = `assets_${userId}`; // Unique key per user
-  
-    // Load cached assets from localStorage
+    if (!user || hasFetched.current || !project) return;
+    const storageKey = `assets_${userId}`;
     const cachedAssets = localStorage.getItem(storageKey);
-  
+
     if (cachedAssets) {
       try {
         const parsedAssets = JSON.parse(cachedAssets);
         if (Array.isArray(parsedAssets)) {
           setAssets(parsedAssets);
-          setLoading(false); // Hide loading if cached data exists
+          setLoading(false);
         }
       } catch (error) {
         console.error("Error parsing cached assets:", error);
-        localStorage.removeItem(storageKey); // Remove corrupted data
+        localStorage.removeItem(storageKey);
       }
     }
-  
+
     const fetchAssets = async () => {
       try {
-        const assetProject = "P001";
-        const response = await api.get("api/auth/Asset/getAssetList", {
-          params: { assetProject, userId }, // Include user ID in API request if needed
+        if (!user || hasFetched.current) {
+          console.log("No user ID available, skipping project fetch");
+          return;
+        }
+
+        const response = await api.get("/api/auth/Asset/getAssetList", {
+          params: { assetProject: project.id },
         });
-  
-        const assetsData = response.data?.assetlist || [];
-        setAssets(assetsData);
-        localStorage.setItem(storageKey, JSON.stringify(assetsData));
+
+        const assetData = response.data?.assetlist || [];
+        setAssets(assetData);
+        if (assetData.length > 0) {
+          console.log(assetData);
+        }
+        localStorage.setItem(`assets_${userId}`, JSON.stringify(assetData));
       } catch (error) {
-        console.error("Error fetching assets:", error);
-        setError("Failed to load assets. Please try again later.");
-      } finally {
-        if (!cachedAssets) setLoading(false);
+        console.error("Error fetching projects:", error);
       }
+      hasFetched.current = true;
     };
-  
+
     fetchAssets();
     hasFetched.current = true;
-  
-  }, [user]);
-  
-
-  // Project data for the dropdown - extracted from asset data
-  const projectSet = new Set(assets.map((asset) => asset.assetProject));
-  const projects: Project[] = [
-    { projectKey: "ALL", projectTitle: "All Projects" },
-    ...Array.from(projectSet).map((projectKey) => {
-      // This would normally come from your projects data
-      const projectTitles: Record<string, string> = {
-        PRJ001: "High-Rise Office Building",
-        PRJ002: "Residential Complex",
-        PRJ003: "Shopping Mall",
-        PRJ004: "Hospital Wing",
-        PRJ005: "School Campus",
-      };
-      return {
-        projectKey,
-        projectTitle: projectTitles[projectKey as string] || projectKey,
-      };
-    }),
-  ];
+  }, [user, project]);
 
   // Filter assets by selected project
   const filteredAssets =
@@ -276,9 +272,11 @@ export default function AssetsTable() {
                         </div>
                         <div className="px-6">{asset.assetPoc}</div>
                         <div className="px-6">
-                          {projects.find(
-                            (p) => p.projectKey === asset.assetProject
-                          )?.projectTitle || asset.assetProject}
+                          <div className="px-6">
+                            {project && project.id === asset.assetProject
+                              ? project.text
+                              : asset.assetProject}
+                          </div>
                         </div>
                         <div
                           className="px-6 text-center"
@@ -444,9 +442,9 @@ export default function AssetsTable() {
                       <div>
                         <p className="text-sm text-gray-500">Project</p>
                         <p className="font-medium">
-                          {projects.find(
-                            (p) => p.projectKey === selectedAsset.assetProject
-                          )?.projectTitle || selectedAsset.assetProject}
+                          <p>
+                            {project?.text}
+                          </p>
                         </p>
                       </div>
                     </div>
