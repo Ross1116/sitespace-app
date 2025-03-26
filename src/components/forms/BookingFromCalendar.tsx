@@ -20,7 +20,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { differenceInMinutes, format, addMinutes } from "date-fns";
 import { CalendarEvent } from "@/components/ui/full-calendar";
-import { assets } from "@/lib/data";
+// import { assets } from "@/lib/data";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -49,7 +49,7 @@ type BookingFromCalendar = {
 export function BookingFromCalendar({
   isOpen,
   onClose,
-  startTime,
+  startTime = new Date(), // Provide default value
   onSave,
   defaultAsset,
   defaultAssetName,
@@ -68,11 +68,10 @@ export function BookingFromCalendar({
   const [duration, setDuration] = useState("60");
   const [activeTab, setActiveTab] = useState("time");
   const { user } = useAuth();
-
+  const userId = user?.userId || "SM001";
+  
   // Time state
-  const [customStartTime, setCustomStartTime] = useState<Date | null>(
-    startTime
-  );
+  const [customStartTime, setCustomStartTime] = useState<Date | null>(startTime);
   const [customEndTime, setCustomEndTime] = useState<Date | null>(null);
 
   // Split time state into hour and minute components
@@ -80,6 +79,29 @@ export function BookingFromCalendar({
   const [startMinute, setStartMinute] = useState<string>("");
   const [endHour, setEndHour] = useState<string>("");
   const [endMinute, setEndMinute] = useState<string>("");
+  
+  // Add state for assets
+  const [assets, setAssets] = useState<any[]>([]);
+  const [assetError, setAssetError] = useState<boolean>(false);
+
+  // Load assets from localStorage
+  useEffect(() => {
+    const assetString = localStorage.getItem(`assets_${userId}`);
+    if (!assetString) {
+      console.error("No assets found in localStorage");
+      setAssetError(true);
+      return;
+    }
+    
+    try {
+      const parsedAssets = JSON.parse(assetString);
+      setAssets(parsedAssets);
+    } catch (error) {
+      console.error("Error parsing assets:", error);
+      setAssetError(true);
+      console.log(assetError)
+    }
+  }, [userId]);
 
   // Update end time when duration changes
   useEffect(() => {
@@ -114,6 +136,28 @@ export function BookingFromCalendar({
       }
     }
   }, [startHour, startMinute, customStartTime]);
+
+  // Initialize times
+  useEffect(() => {
+    if (startTime) {
+      const hours = startTime.getHours().toString().padStart(2, "0");
+      // Round minutes to nearest 15
+      const roundedMinutes = Math.round(startTime.getMinutes() / 15) * 15;
+      const minutes = (roundedMinutes % 60).toString().padStart(2, "0");
+
+      setStartHour(hours);
+      setStartMinute(minutes);
+
+      // Calculate end time based on duration
+      const endTime = addMinutes(startTime, parseInt(duration));
+      setEndHour(endTime.getHours().toString().padStart(2, "0"));
+      setEndMinute(endTime.getMinutes().toString().padStart(2, "0"));
+
+      // Set the full date objects only during initialization
+      setCustomStartTime(startTime);
+      setCustomEndTime(endTime);
+    }
+  }, [startTime, isOpen, duration]);
 
   // Format hour for display (12-hour format with AM/PM)
   const formatHour = (hour: number): string => {
@@ -249,7 +293,7 @@ export function BookingFromCalendar({
     });
 
     // Also update the asset names for display
-    const asset = assets.find((a) => a.assetKey === assetId);
+    const asset = assets.find((a: { assetKey: string; }) => a.assetKey === assetId);
     if (asset) {
       setSelectedAssets((prev) => {
         if (prev.includes(asset.assetTitle)) {
@@ -265,7 +309,7 @@ export function BookingFromCalendar({
   const removeAsset = (assetId: string) => {
     setSelectedAssetIds((prev) => prev.filter((id) => id !== assetId));
 
-    const asset = assets.find((a) => a.assetKey === assetId);
+    const asset = assets.find((a: { assetKey: string; }) => a.assetKey === assetId);
     if (asset) {
       setSelectedAssets((prev) =>
         prev.filter((name) => name !== asset.assetTitle)
@@ -287,7 +331,12 @@ export function BookingFromCalendar({
       const bookingTimeDt = format(customStartTime, "yyyy-MM-dd'T'HH:mm:ss");
 
       // Get the current user info
-      const userId = user?.userId || "SM001";
+      const projectString = localStorage.getItem(`project_${userId}`);
+      if (!projectString) {
+        console.error("No project found in localStorage");
+        return;
+      }
+      const project = JSON.parse(projectString);
 
       // Create booking payload - use selectedAssetIds directly
       const bookingData = {
@@ -297,7 +346,7 @@ export function BookingFromCalendar({
         bookingDurationMins: durationMins,
         bookingFor: userId,
         bookingNotes: "",
-        bookingProject: "P001",
+        bookingProject: project.id || "P001",
         bookingStatus: "Pending",
         bookingTimeDt: bookingTimeDt,
         bookingTitle: title,
@@ -318,7 +367,7 @@ export function BookingFromCalendar({
 
       // When creating events, use asset titles for display but keep IDs for backend
       const events = selectedAssetIds.map((assetId) => {
-        const asset = assets.find((a) => a.assetKey === assetId);
+        const asset = assets.find((a: { assetKey: string; }) => a.assetKey === assetId);
         const assetTitle = asset?.assetTitle || assetId;
 
         return {
@@ -355,7 +404,7 @@ export function BookingFromCalendar({
     setSelectedAssetIds(selectedAssetId ? [selectedAssetId] : []);
     setSelectedAssets(
       selectedAssetId
-        ? [assets.find((a) => a.assetKey === selectedAssetId)?.assetTitle || ""]
+        ? [assets.find((a: { assetKey: string; }) => a.assetKey === selectedAssetId)?.assetTitle || ""]
         : []
     );
     setActiveTab("time");
@@ -648,7 +697,7 @@ export function BookingFromCalendar({
               {selectedAssets.length > 0 ? (
                 <div className="flex flex-wrap gap-1 mb-2">
                   {selectedAssets.map((assetKey) => {
-                    const asset = assets.find((a) => a.assetKey === assetKey);
+                    const asset = assets.find((a: { assetKey: string; }) => a.assetKey === assetKey);
                     return (
                       <Badge
                         key={assetKey}
@@ -677,7 +726,7 @@ export function BookingFromCalendar({
               <div className="border rounded-md">
                 <ScrollArea className="h-36 p-2">
                   <div className="space-y-2">
-                    {assets.map((asset) => {
+                    {assets.map((asset : any) => {
                       const isSelected = selectedAssets.includes(
                         asset.assetTitle
                       );
@@ -758,7 +807,7 @@ export function BookingFromCalendar({
                 {selectedAssets.length > 0 ? (
                   <div className="flex flex-wrap gap-1">
                     {selectedAssets.map((assetKey) => {
-                      const asset = assets.find((a) => a.assetKey === assetKey);
+                      const asset = assets.find((a: { assetKey: string; }) => a.assetKey === assetKey);
                       return (
                         <Badge key={assetKey} variant="secondary">
                           {asset?.assetTitle || assetKey}

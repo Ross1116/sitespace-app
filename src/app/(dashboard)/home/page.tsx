@@ -92,6 +92,36 @@ export default function HomePage() {
     return cards.slice(0, 4); // Limit to 4 cards
   };
 
+  const handleOnChange = () => {
+    const fetchAssets = async () => {
+      try {
+        if (!user || hasFetched.current) {
+          console.log("No user ID available, skipping project fetch");
+          return;
+        }
+
+        const response = await api.get("/api/auth/Asset/getAssetList", {
+          params: { currentUserId: userId },
+        });
+
+        const assetData = response.data?.assetlist || [];
+        setProject(assetData);
+
+        console.log(assetData);
+
+        if (assetData.length > 0) {
+          console.log(assetData);
+        }
+        localStorage.setItem(`assets_${userId}`, JSON.stringify(assetData));
+      } catch (error) {
+        console.error("Error fetching projects:", error);
+      }
+      hasFetched.current = true;
+    };
+
+    fetchAssets();
+  };
+
   // Dashboard for authenticated users
   return (
     <Card className="px-6 sm:my-8 mx-4 bg-amber-50">
@@ -140,7 +170,11 @@ export default function HomePage() {
             Select Project
           </h2>
           <Card className="p-0">
-            <ProjectSelector projects={project} userId={userId}/>
+            <ProjectSelector
+              projects={project}
+              userId={userId}
+              onChange={handleOnChange}
+            />
           </Card>
         </div>
 

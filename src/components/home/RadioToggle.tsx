@@ -26,8 +26,8 @@ function ProjectSelector({
   userId,
 }: ProjectSelectorProps) {
   const getInitialProject = () => {
-    const storageKey = `project_${userId}`;
-    const storedProject = localStorage.getItem(storageKey);
+    const projectKey = `project_${userId}`;
+    const storedProject = localStorage.getItem(projectKey);
     
     if (storedProject) {
       try {
@@ -38,7 +38,7 @@ function ProjectSelector({
         }
       } catch (error) {
         console.error("Error parsing stored project:", error);
-        localStorage.removeItem(storageKey);
+        localStorage.removeItem(projectKey);
       }
     }
     
