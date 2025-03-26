@@ -61,7 +61,7 @@ export default function HomePage() {
 
     const fetchBookings = async () => {
       if (!user) return;
-      const projectStorageKey = `selectedProject_${userId}`;
+      const projectStorageKey = `project_${userId}`;
       const projectString = localStorage.getItem(projectStorageKey);
 
       if (!projectString) {
