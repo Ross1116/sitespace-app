@@ -8,7 +8,7 @@ import BookingList from "./BookingList";
 import { Button } from "../ui/button";
 import { BookingFromCalendar } from "../forms/BookingFromCalendar";
 import { addHours, startOfHour } from "date-fns";
-import { Plus } from "lucide-react"; // Import Plus icon for mobile
+import { Plus } from "lucide-react"; 
 
 export default function BookingsPage() {
   const [activeTab, setActiveTab] = useState("Upcoming");
@@ -112,7 +112,7 @@ export default function BookingsPage() {
             <h1 className="text-xl sm:text-3xl font-bold text-gray-900">
               Bookings
             </h1>
-            <p className="text-xs sm:text-base text-gray-500 mt-1">
+            <p className="text- sm:text-base text-gray-500 mt-1">
               See your scheduled events from your calendar events links.
             </p>
           </div>
@@ -120,7 +120,7 @@ export default function BookingsPage() {
           {/* Desktop button */}
           <Button 
             onClick={handleOnClickButton} 
-            className="hidden sm:flex mt-4 sm:mt-0"
+            className="hidden sm:flex mt-4 sm:mt-0 cursor-pointer"
           >
             Create new booking
           </Button>

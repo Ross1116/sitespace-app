@@ -3,9 +3,10 @@
 import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
+import { X, Plus } from "lucide-react";
 import api from "@/lib/api";
 import { useAuth } from "@/app/context/AuthContext";
+import CreateAssetForm from "@/components/forms/CreateAssetForm";
 
 interface Asset {
   assetKey: string;
@@ -26,7 +27,6 @@ interface Project {
 
 export default function AssetsTable() {
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [project, setProject] = useState<Project>();
   // const [selectedProject, setSelectedProject] = useState("ALL");
@@ -34,6 +34,7 @@ export default function AssetsTable() {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isAssetFormOpen, setIsAssetFormOpen] = useState(false);
   const itemsPerPage = 10;
   const hasFetched = useRef(false);
   const { user } = useAuth();
@@ -43,7 +44,7 @@ export default function AssetsTable() {
   useEffect(() => {
     const projectString = localStorage.getItem(`project_${userId}`);
     if (!projectString) {
-      console.error("No assets found in localStorage");
+      console.log("No assets found in localStorage");
       return;
     }
 
@@ -51,9 +52,31 @@ export default function AssetsTable() {
       const parsedProjects = JSON.parse(projectString);
       setProject(parsedProjects);
     } catch (error) {
-      console.error("Error parsing assets:", error);
+      console.log("Error parsing assets:", error);
     }
   }, [userId]);
+
+  const fetchAssets = async () => {
+    try {
+      if (!user || hasFetched.current) {
+        return;
+      }
+
+      const response = await api.get("/api/auth/Asset/getAssetList", {
+        params: { assetProject: project?.id },
+      });
+
+      const assetData = response.data?.assetlist || [];
+      setAssets(assetData);
+      if (assetData.length > 0) {
+        console.log(assetData);
+      }
+      localStorage.setItem(`assets_${userId}`, JSON.stringify(assetData));
+    } catch (error) {
+      console.error("Error fetching projects:", error);
+    }
+    hasFetched.current = true;
+  };
 
   // Fetch assets from API
   useEffect(() => {
@@ -73,29 +96,6 @@ export default function AssetsTable() {
         localStorage.removeItem(storageKey);
       }
     }
-
-    const fetchAssets = async () => {
-      try {
-        if (!user || hasFetched.current) {
-          console.log("No user ID available, skipping project fetch");
-          return;
-        }
-
-        const response = await api.get("/api/auth/Asset/getAssetList", {
-          params: { assetProject: project.id },
-        });
-
-        const assetData = response.data?.assetlist || [];
-        setAssets(assetData);
-        if (assetData.length > 0) {
-          console.log(assetData);
-        }
-        localStorage.setItem(`assets_${userId}`, JSON.stringify(assetData));
-      } catch (error) {
-        console.error("Error fetching projects:", error);
-      }
-      hasFetched.current = true;
-    };
 
     fetchAssets();
     hasFetched.current = true;
@@ -135,31 +135,58 @@ export default function AssetsTable() {
     setSidebarOpen(false);
   };
 
+  const handleOnClickButton = () => {
+    setIsAssetFormOpen(true);
+  };
+
+  const handleSaveAssets = () => {
+    setIsAssetFormOpen(false);
+    fetchAssets();
+  };
+
   // Check if an asset is selected
   const isSelected = (assetKey: string) => {
     return sidebarOpen && selectedAsset?.assetKey === assetKey;
   };
 
-  if (error) {
-    return (
-      <div className="flex flex-col h-screen w-full p-4 pt-8 items-center justify-center">
-        <div
-          className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative"
-          role="alert"
-        >
-          <strong className="font-bold">Error! </strong>
-          <span className="block sm:inline">{error}</span>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <Card className="px-6 sm:my-8 mx-4 bg-stone-100">
       <div className="p-3 sm:p-6">
-        <h1 className="text-2xl sm:text-3xl font-semibold text-gray-800 mb-4">
-          Assets
-        </h1>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
+          <div>
+            <h1 className="text-xl sm:text-3xl font-bold text-gray-900">
+              Assets
+            </h1>
+            <p className="text- sm:text-base text-gray-500 mt-1">
+              Find all asset related information here
+            </p>
+          </div>
+
+          {/* Desktop button */}
+          <Button
+            onClick={handleOnClickButton}
+            className="hidden sm:flex mt-4 sm:mt-0"
+          >
+            Create new booking
+          </Button>
+
+          {/* Mobile button - icon only */}
+          <Button
+            onClick={handleOnClickButton}
+            className="sm:hidden fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-lg z-10"
+            size="icon"
+          >
+            <Plus size={24} />
+          </Button>
+        </div>
+
+        {setIsAssetFormOpen && (
+          <CreateAssetForm
+            isOpen={isAssetFormOpen}
+            onClose={() => setIsAssetFormOpen(false)}
+            onSave={handleSaveAssets}
+          />
+        )}
 
         {/* <div className="flex items-center mb-6">
           <label htmlFor="projectSelect" className="mr-2 text-gray-700">
@@ -442,9 +469,7 @@ export default function AssetsTable() {
                       <div>
                         <p className="text-sm text-gray-500">Project</p>
                         <p className="font-medium">
-                          <p>
-                            {project?.text}
-                          </p>
+                          <p>{project?.text}</p>
                         </p>
                       </div>
                     </div>

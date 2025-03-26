@@ -23,9 +23,8 @@ export default function BookingCardDropdown({
 
   const getBookingDetails = async () => {
     try {
-      const response = await api.post(
+      const response = await api.get(
         "/api/auth/slotBooking/editSlotBookingDetails",
-        {},
         {
           params: { bookingKey: bookingKey },
         }
@@ -40,7 +39,23 @@ export default function BookingCardDropdown({
   const confirmBooking = async () => {
     setIsLoading(true);
     try {
-      const bookingDetails = await getBookingDetails();
+      // const bookingDetails = await getBookingDetails();
+
+      const bookingDetails = {
+        "bookingProject": "P001",
+        "bookingTitle": "Test booking",
+        "bookingFor": "U002",
+        "bookedAssets": [
+          "A003"
+        ],
+        "bookingStatus": "Confirmed",
+        "bookingTimeDt": "2025-03-26",
+        "bookingDurationMins": 60,
+        "bookingDescription": "Testing",
+        "bookingNotes": "",
+        "bookingCreatedBy": "U002",
+        "bookingKey": "B020"
+      }
       
       const updatedBooking = {
         ...bookingDetails,
