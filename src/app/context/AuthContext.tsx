@@ -10,7 +10,7 @@ import {
 import { useRouter } from "next/navigation";
 
 type User = {
-  id: string | null;
+  userId: string | null;
   username: string;
   email: string;
   roles: string;
@@ -83,7 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
       // Store user and token
       const userData = {
-        id: data.id,
+        userId: data.userId,
         username: data.username,
         email: data.email,
         roles: data.roles,

@@ -33,7 +33,7 @@ export default function MulticalendarPage() {
   const fetchBookings = async () => {
     if (!user) return;
 
-    const userId = user.id;
+    const userId = user.userId;
     const storageKey = `bookings_${userId}`;
 
     setLoading(true);
@@ -60,7 +60,7 @@ export default function MulticalendarPage() {
   useEffect(() => {
     if (!user || hasFetched.current) return;
 
-    const userId = user.id;
+    const userId = user.userId;
     const storageKey = `bookings_${userId}`;
 
     const cachedBookings = localStorage.getItem(storageKey);
@@ -89,7 +89,7 @@ export default function MulticalendarPage() {
   const handleActionComplete = () => {
     console.log("Parent: handleActionComplete called");
     if (!user) return;
-    const userId = user.id;
+    const userId = user.userId;
     const storageKey = `bookings_${userId}`;
 
     const cachedBookings = localStorage.getItem(storageKey);

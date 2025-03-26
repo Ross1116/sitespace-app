@@ -8,25 +8,69 @@ import {
   Calendar,
   Construction,
   Users,
-  Clock,
+  Building,
   ChevronRight,
-  // LogIn,
+  ChevronDown,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import api from "@/lib/api";
+import ProjectSelector from "@/components/home/RadioToggle";
 
 export default function HomePage() {
-  const { user, isAuthenticated } = useAuth();
+  const { user } = useAuth();
   const [greeting, setGreeting] = useState("Good day");
+  const [project, setProject] = useState<any[]>([]);
+  const userId = user?.userId;
 
-  // Set appropriate greeting based on time of day
   useEffect(() => {
     const hour = new Date().getHours();
     if (hour < 12) setGreeting("Good morning");
     else if (hour < 18) setGreeting("Good afternoon");
     else setGreeting("Good evening");
-  }, []);
 
-  // Quick access cards based on user role
+    const storageKey = `projects_${userId}`;
+    const cachedProjects = localStorage.getItem(storageKey);
+
+    if (cachedProjects) {
+      try {
+        const parsedProjects = JSON.parse(cachedProjects);
+        if (Array.isArray(parsedProjects)) {
+          setProject(parsedProjects);
+        }
+      } catch (error) {
+        console.error("Error parsing cached assets:", error);
+        localStorage.removeItem(storageKey);
+      }
+    }
+
+    const fetchProjects = async () => {
+      try {
+        if (!userId) {
+          console.log("No user ID available, skipping project fetch");
+          return;
+        }
+
+        const response = await api.get("/api/auth/siteProject/getProjectList", {
+          params: { currentUserId: userId },
+        });
+
+        const projectData = response.data?.projectlist || [];
+        setProject(projectData);
+
+        console.log(projectData);
+
+        if (projectData.length > 0) {
+          localStorage.setItem(storageKey, JSON.stringify(projectData));
+          console.log(projectData);
+        }
+      } catch (error) {
+        console.error("Error fetching projects:", error);
+      }
+    };
+
+    fetchProjects();
+  }, [userId]);
+
   const getQuickAccessCards = () => {
     // Default cards for all users
     const cards = [
@@ -43,7 +87,7 @@ export default function HomePage() {
         description: "View and manage your scheduled bookings",
         link: "/bookings",
         color: "bg-blue-100",
-      }      
+      },
     ];
 
     // Add role-specific cards
@@ -55,12 +99,11 @@ export default function HomePage() {
           description: "View and manage your subcontractors",
           link: "/subcontractors",
           color: "bg-purple-100",
-        }
-        ,
+        },
         {
           title: "Assets",
           icon: Users,
-          description: "View and manage your subcontractors",
+          description: "View and manage your assets",
           link: "/assets",
           color: "bg-amber-100",
         }
@@ -70,30 +113,10 @@ export default function HomePage() {
     return cards.slice(0, 4); // Limit to 4 cards
   };
 
-  // Get recent activity (this would typically come from an API)
-  const recentActivity = [
-    {
-      title: "New booking created",
-      description: "Asset A booked for tomorrow",
-      time: "2 hours ago",
-    },
-    {
-      title: "Announcement posted",
-      description: "Site closure notification for May 15th",
-      time: "Yesterday",
-    },
-    {
-      title: "Asset maintenance completed",
-      description: "Excavator #103 is back in service",
-      time: "3 days ago",
-    },
-  ];
-
   // Dashboard for authenticated users
   return (
     <Card className="px-6 sm:my-8 mx-4 bg-amber-50">
       {/* Header with greeting */}
-      {isAuthenticated}
       <div className="p-3 sm:p-6">
         <h1 className="text-xl sm:text-3xl font-bold text-gray-900">
           {greeting}, {user?.username || "there"}!
@@ -135,31 +158,10 @@ export default function HomePage() {
       <div className="flex flex-col md:flex-row gap-6 p-3 sm:p-6">
         <div className="flex-1">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">
-            Recent Activity
+            Select Project
           </h2>
-          <Card className="p-0 overflow-hidden">
-            <div className="divide-y">
-              {recentActivity.map((activity, index) => (
-                <div key={`activity-${index}`} className="p-4 hover:bg-gray-50">
-                  <div className="flex justify-between">
-                    <h3 className="font-medium text-gray-800">
-                      {activity.title}
-                    </h3>
-                    <span className="text-xs text-gray-500 flex items-center">
-                      <Clock size={12} className="mr-1" /> {activity.time}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {activity.description}
-                  </p>
-                </div>
-              ))}
-            </div>
-            <div className="bg-gray-50 p-3 text-center">
-              <Button variant="ghost" className="text-sm text-gray-600">
-                View All Activity <ChevronRight size={16} className="ml-1" />
-              </Button>
-            </div>
+          <Card className="p-0">
+            <ProjectSelector projects={project} />
           </Card>
         </div>
 

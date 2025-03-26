@@ -17,7 +17,7 @@ export default function BookingsPage() {
   const fetchBookings = async () => {
     if (!user) return;
     
-    const userId = user.id;
+    const userId = user.userId;
     const storageKey = `bookings_${userId}`;
     
     setLoading(true);
@@ -43,7 +43,7 @@ export default function BookingsPage() {
   useEffect(() => {
     if (!user || hasFetched.current) return;
 
-    const userId = user.id;
+    const userId = user.userId;
     const storageKey = `bookings_${userId}`;
 
     // Load cached bookings from localStorage

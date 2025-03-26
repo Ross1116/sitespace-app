@@ -42,7 +42,7 @@ export default function AssetsTable() {
   useEffect(() => {
     if (!user || hasFetched.current) return;
   
-    const userId = user.id; // Ensure we use the logged-in user's ID
+    const userId = user.userId; // Ensure we use the logged-in user's ID
     const storageKey = `assets_${userId}`; // Unique key per user
   
     // Load cached assets from localStorage
