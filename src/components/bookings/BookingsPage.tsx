@@ -8,7 +8,7 @@ import BookingList from "./BookingList";
 import { Button } from "../ui/button";
 import { BookingFromCalendar } from "../forms/BookingFromCalendar";
 import { addHours, startOfHour } from "date-fns";
-import { Plus } from "lucide-react"; 
+import { Plus } from "lucide-react";
 
 export default function BookingsPage() {
   const [activeTab, setActiveTab] = useState("Upcoming");
@@ -20,16 +20,20 @@ export default function BookingsPage() {
   const userId = user?.userId;
   const storageKey = `bookings_${userId}`;
   const projectStorageKey = `selectedProject_${userId}`;
-  
+  const initialLoadComplete = useRef(false);
+
   // Calculate times for booking form
   const now = new Date();
   const nextHour = startOfHour(addHours(now, 1));
   const endHour = addHours(nextHour, 1);
 
   // Fetch bookings from API
-  const fetchBookings = async () => {
-    if (!user) return;
+  const fetchBookings = async (forceRefresh = false) => {
+    if (!user || (initialLoadComplete.current && !forceRefresh)) {
+      return;
+    }
 
+    // Set loading state
     setLoading(true);
 
     const projectString = localStorage.getItem(projectStorageKey);
@@ -41,6 +45,7 @@ export default function BookingsPage() {
     }
 
     try {
+      console.log("Fetching bookings...");
       const project = JSON.parse(projectString);
 
       const response = await api.get(
@@ -51,6 +56,7 @@ export default function BookingsPage() {
       );
 
       const bookingsData = response.data?.bookingList || [];
+      console.log("Bookings fetched:", bookingsData);
       setBookings(bookingsData);
       localStorage.setItem(storageKey, JSON.stringify(bookingsData));
     } catch (error) {
@@ -91,7 +97,7 @@ export default function BookingsPage() {
   }, [user]);
 
   const handleActionComplete = () => {
-    fetchBookings();
+    fetchBookings(true);
   };
 
   const handleOnClickButton = () => {
@@ -99,8 +105,9 @@ export default function BookingsPage() {
   };
 
   const handleSaveBooking = () => {
+    console.log("save booking works")
     setIsBookingFormOpen(false);
-    fetchBookings();
+    fetchBookings(true);
   };
 
   return (
@@ -116,18 +123,18 @@ export default function BookingsPage() {
               See your scheduled events from your calendar events links.
             </p>
           </div>
-          
+
           {/* Desktop button */}
-          <Button 
-            onClick={handleOnClickButton} 
+          <Button
+            onClick={handleOnClickButton}
             className="hidden sm:flex mt-4 sm:mt-0 cursor-pointer"
           >
             Create new booking
           </Button>
-          
+
           {/* Mobile button - icon only */}
-          <Button 
-            onClick={handleOnClickButton} 
+          <Button
+            onClick={handleOnClickButton}
             className="sm:hidden fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-lg z-10"
             size="icon"
           >

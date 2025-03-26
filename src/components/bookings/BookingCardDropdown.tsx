@@ -30,7 +30,12 @@ export default function BookingCardDropdown({
           params: { bookingKey: bookingKey },
         }
       );
-      return response.data.bookingList;
+      const data = response.data.bookingList[0]
+      const updatedData = {
+        ...data,
+        bookingTimeDt: format(data.bookingTimeDt	,"yyyy-MM-dd'T'HH:mm:ss")
+      };
+      return updatedData
     } catch (error) {
       console.error("Error fetching booking details:", error);
       throw error;
@@ -41,15 +46,13 @@ export default function BookingCardDropdown({
     setIsLoading(true);
     try {
       const bookingDetails = await getBookingDetails();
-      const bookingDate = new Date(bookingDetails.bookingTimeDt);
-
       const updatedBooking = {
         ...bookingDetails,
-        bookingTimeDt: format(bookingDate, "yyyy-MM-dd'T'HH:mm:ss"),
         bookingStatus: "Confirmed",
       };
 
       await api.post("/api/auth/slotBooking/updateSlotBooking", updatedBooking);
+      console.log(updatedBooking)
 
       onActionComplete?.();
     } catch (error) {
@@ -64,11 +67,9 @@ export default function BookingCardDropdown({
     setIsLoading(true);
     try {
       const bookingDetails = await getBookingDetails();
-      const bookingDate = new Date(bookingDetails.bookingTimeDt);
 
       const updatedBooking = {
         ...bookingDetails,
-        bookingTimeDt: format(bookingDate, "yyyy-MM-dd'T'HH:mm:ss"),
         bookingStatus: "Denied",
       };
 
@@ -88,7 +89,12 @@ export default function BookingCardDropdown({
     try {
       const bookingDetails = await getBookingDetails();
 
-      await api.post("/api/auth/slotBooking/deleteSlotBooking", bookingDetails);
+      const updatedBooking = {
+        ...bookingDetails,
+        bookingStatus: "Cancelled",
+      };
+
+      await api.post("/api/auth/slotBooking/updateSlotBooking", updatedBooking);
 
       onActionComplete?.();
     } catch (error) {

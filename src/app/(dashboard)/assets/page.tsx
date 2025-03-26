@@ -44,6 +44,7 @@ export default function AssetsTable() {
   const hasFetched = useRef(false);
   const { user } = useAuth();
   const userId = user?.userId;
+  const initialLoadComplete = useRef(false);
 
   // Load project from localstore
   useEffect(() => {
@@ -61,26 +62,30 @@ export default function AssetsTable() {
     }
   }, [userId]);
 
-  const fetchAssets = async () => {
+  const fetchAssets = async (forceRefresh = false) => {
     try {
-      if (!user || hasFetched.current) {
+      // Skip if no user or if this is not an initial load and not forced
+      if (!user || (initialLoadComplete.current && !forceRefresh)) {
         return;
       }
-
+  
+      console.log("Fetching assets...");
       const response = await api.get("/api/auth/Asset/getAssetList", {
         params: { assetProject: project?.id },
       });
-
+  
       const assetData = response.data?.assetlist || [];
       setAssets(assetData);
       if (assetData.length > 0) {
-        console.log(assetData);
+        console.log("Assets fetched:", assetData);
       }
       localStorage.setItem(`assets_${userId}`, JSON.stringify(assetData));
+      
+      // Mark initial load as complete
+      initialLoadComplete.current = true;
     } catch (error) {
-      console.error("Error fetching projects:", error);
+      console.error("Error fetching assets:", error);
     }
-    hasFetched.current = true;
   };
 
   // Fetch assets from API
@@ -131,6 +136,7 @@ export default function AssetsTable() {
         a.assetKey === updatedAsset.assetKey ? updatedAsset : a
       )
     );
+    fetchAssets(true);
   };
 
   // Handle page changes
@@ -155,7 +161,7 @@ export default function AssetsTable() {
 
   const handleSaveAssets = () => {
     setIsAssetFormOpen(false);
-    fetchAssets();
+    fetchAssets(true);
   };
 
   // Check if an asset is selected

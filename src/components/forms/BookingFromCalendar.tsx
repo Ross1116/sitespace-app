@@ -39,7 +39,7 @@ type BookingFromCalendar = {
   onClose: () => void;
   startTime: Date | null;
   endTime: Date | null;
-  onSave: (events: Partial<CalendarEvent> | Partial<CalendarEvent>[]) => void;
+  onSave: () => void;
   selectedAssetId?: string;
   bookedAssets?: string[];
   defaultAsset?: string;
@@ -381,7 +381,7 @@ export function BookingFromCalendar({
         } as Partial<CalendarEvent>;
       });
 
-      onSave(events);
+      onSave();
       resetForm();
       onClose();
     } catch (error) {

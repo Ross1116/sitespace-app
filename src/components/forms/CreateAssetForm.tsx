@@ -97,7 +97,7 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    console.log("submit works");
     try {
       setIsSubmitting(true);
 
@@ -111,6 +111,7 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
           : "",
       };
 
+      console.log("About to make API call");
       const response = await api.post(
         "/api/auth/Asset/saveAsset",
         formattedAsset
@@ -118,6 +119,7 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
 
       const data = response.data;
       console.log(data)
+      console.log("onsave called")
       onSave();
       onClose(false);
 
