@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { X, Plus, PencilIcon } from "lucide-react";
+import { X, Plus, PencilIcon, TrashIcon } from "lucide-react";
 import api from "@/lib/api";
 import { useAuth } from "@/app/context/AuthContext";
 import CreateAssetForm from "@/components/forms/CreateAssetForm";
@@ -68,19 +68,19 @@ export default function AssetsTable() {
       if (!user || (initialLoadComplete.current && !forceRefresh)) {
         return;
       }
-  
+
       console.log("Fetching assets...");
       const response = await api.get("/api/auth/Asset/getAssetList", {
         params: { assetProject: project?.id },
       });
-  
+
       const assetData = response.data?.assetlist || [];
       setAssets(assetData);
       if (assetData.length > 0) {
         console.log("Assets fetched:", assetData);
       }
       localStorage.setItem(`assets_${userId}`, JSON.stringify(assetData));
-      
+
       // Mark initial load as complete
       initialLoadComplete.current = true;
     } catch (error) {
@@ -164,6 +164,21 @@ export default function AssetsTable() {
     fetchAssets(true);
   };
 
+  const handleDeleteAsset = async (assetKey: string) => {
+    if (!confirm("Are you sure you want to delete this asset?")) {
+      return;
+    }
+
+    try {
+      await api.post("/api/auth/Asset/deleteAsset", {
+        assetKey: assetKey,
+      });
+      fetchAssets(true);
+    } catch (error) {
+      console.error("Error deleting asset:", error);
+    }
+  };
+
   // Check if an asset is selected
   const isSelected = (assetKey: string) => {
     return sidebarOpen && selectedAsset?.assetKey === assetKey;
@@ -240,7 +255,7 @@ export default function AssetsTable() {
               <div className="px-6 py-4 text-left">Status</div>
               <div className="px-6 py-4 text-left">Contact Person</div>
               <div className="px-6 py-4 text-left">Project</div>
-              <div className="px-6 py-4 text-center">Edit</div>
+              <div className="px-6 py-4 text-center">Edit/Delete</div>
             </div>
 
             {/* Card Rows */}
@@ -339,6 +354,15 @@ export default function AssetsTable() {
                           <Button className="bg-transparent text-gray-700 hover:bg-amber-100 rounded-full shadow-md hover:cursor-pointer h-8">
                             <PencilIcon className="h-4 w-4" />
                           </Button>
+                          <Button
+                            className="bg-transparent text-red-500 hover:bg-red-100 rounded-full shadow-md hover:cursor-pointer h-8"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteAsset(asset.assetKey);
+                            }}
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </Button>
                         </div>
                       </div>
 
@@ -356,6 +380,15 @@ export default function AssetsTable() {
                           >
                             <Button className="bg-transparent text-gray-700 hover:bg-amber-100 rounded-full shadow-md hover:cursor-pointer h-8">
                               <PencilIcon className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              className="bg-transparent text-red-500 hover:bg-red-100 rounded-full shadow-md hover:cursor-pointer h-8"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteAsset(asset.assetKey);
+                              }}
+                            >
+                              <TrashIcon className="h-4 w-4" />
                             </Button>
                           </div>
                         </div>
