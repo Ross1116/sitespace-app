@@ -39,7 +39,7 @@ type BookingFromCalendar = {
   onClose: () => void;
   startTime: Date | null;
   endTime: Date | null;
-  onSave: () => void;
+  onSave: (newEvent: Partial<CalendarEvent> | Partial<CalendarEvent>[]) => void;
   selectedAssetId?: string;
   bookedAssets?: string[];
   defaultAsset?: string;
@@ -69,9 +69,11 @@ export function BookingFromCalendar({
   const [activeTab, setActiveTab] = useState("time");
   const { user } = useAuth();
   const userId = user?.userId || "SM001";
-  
+
   // Time state
-  const [customStartTime, setCustomStartTime] = useState<Date | null>(startTime);
+  const [customStartTime, setCustomStartTime] = useState<Date | null>(
+    startTime
+  );
   const [customEndTime, setCustomEndTime] = useState<Date | null>(null);
 
   // Split time state into hour and minute components
@@ -79,7 +81,7 @@ export function BookingFromCalendar({
   const [startMinute, setStartMinute] = useState<string>("");
   const [endHour, setEndHour] = useState<string>("");
   const [endMinute, setEndMinute] = useState<string>("");
-  
+
   // Add state for assets
   const [assets, setAssets] = useState<any[]>([]);
   const [assetError, setAssetError] = useState<boolean>(false);
@@ -92,14 +94,14 @@ export function BookingFromCalendar({
       setAssetError(true);
       return;
     }
-    
+
     try {
       const parsedAssets = JSON.parse(assetString);
       setAssets(parsedAssets);
     } catch (error) {
       console.error("Error parsing assets:", error);
       setAssetError(true);
-      console.log(assetError)
+      console.log(assetError);
     }
   }, [userId]);
 
@@ -293,7 +295,9 @@ export function BookingFromCalendar({
     });
 
     // Also update the asset names for display
-    const asset = assets.find((a: { assetKey: string; }) => a.assetKey === assetId);
+    const asset = assets.find(
+      (a: { assetKey: string }) => a.assetKey === assetId
+    );
     if (asset) {
       setSelectedAssets((prev) => {
         if (prev.includes(asset.assetTitle)) {
@@ -309,7 +313,9 @@ export function BookingFromCalendar({
   const removeAsset = (assetId: string) => {
     setSelectedAssetIds((prev) => prev.filter((id) => id !== assetId));
 
-    const asset = assets.find((a: { assetKey: string; }) => a.assetKey === assetId);
+    const asset = assets.find(
+      (a: { assetKey: string }) => a.assetKey === assetId
+    );
     if (asset) {
       setSelectedAssets((prev) =>
         prev.filter((name) => name !== asset.assetTitle)
@@ -367,7 +373,9 @@ export function BookingFromCalendar({
 
       // When creating events, use asset titles for display but keep IDs for backend
       const events = selectedAssetIds.map((assetId) => {
-        const asset = assets.find((a: { assetKey: string; }) => a.assetKey === assetId);
+        const asset = assets.find(
+          (a: { assetKey: string }) => a.assetKey === assetId
+        );
         const assetTitle = asset?.assetTitle || assetId;
 
         return {
@@ -381,7 +389,7 @@ export function BookingFromCalendar({
         } as Partial<CalendarEvent>;
       });
 
-      onSave();
+      onSave(events); // Pass the events array to onSave
       resetForm();
       onClose();
     } catch (error) {
@@ -404,7 +412,11 @@ export function BookingFromCalendar({
     setSelectedAssetIds(selectedAssetId ? [selectedAssetId] : []);
     setSelectedAssets(
       selectedAssetId
-        ? [assets.find((a: { assetKey: string; }) => a.assetKey === selectedAssetId)?.assetTitle || ""]
+        ? [
+            assets.find(
+              (a: { assetKey: string }) => a.assetKey === selectedAssetId
+            )?.assetTitle || "",
+          ]
         : []
     );
     setActiveTab("time");
@@ -697,7 +709,9 @@ export function BookingFromCalendar({
               {selectedAssets.length > 0 ? (
                 <div className="flex flex-wrap gap-1 mb-2">
                   {selectedAssets.map((assetKey) => {
-                    const asset = assets.find((a: { assetKey: string; }) => a.assetKey === assetKey);
+                    const asset = assets.find(
+                      (a: { assetKey: string }) => a.assetKey === assetKey
+                    );
                     return (
                       <Badge
                         key={assetKey}
@@ -726,7 +740,7 @@ export function BookingFromCalendar({
               <div className="border rounded-md">
                 <ScrollArea className="h-36 p-2">
                   <div className="space-y-2">
-                    {assets.map((asset : any) => {
+                    {assets.map((asset: any) => {
                       const isSelected = selectedAssets.includes(
                         asset.assetTitle
                       );
@@ -807,7 +821,9 @@ export function BookingFromCalendar({
                 {selectedAssets.length > 0 ? (
                   <div className="flex flex-wrap gap-1">
                     {selectedAssets.map((assetKey) => {
-                      const asset = assets.find((a: { assetKey: string; }) => a.assetKey === assetKey);
+                      const asset = assets.find(
+                        (a: { assetKey: string }) => a.assetKey === assetKey
+                      );
                       return (
                         <Badge key={assetKey} variant="secondary">
                           {asset?.assetTitle || assetKey}

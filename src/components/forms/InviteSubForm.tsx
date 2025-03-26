@@ -23,9 +23,14 @@ interface Contractor {
   contractorName: string;
   contractorEmail: string;
   contractorPhone: string;
+  contractorProjectId: string;
 }
 
-const SubFormModal: React.FC<ContractorModalProps> = ({ isOpen, onClose, onSave }) => {
+const SubFormModal: React.FC<ContractorModalProps> = ({
+  isOpen,
+  onClose,
+  onSave,
+}) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuth();
   const userId = user?.userId;
@@ -34,7 +39,26 @@ const SubFormModal: React.FC<ContractorModalProps> = ({ isOpen, onClose, onSave 
     contractorName: "",
     contractorEmail: "",
     contractorPhone: "",
+    contractorProjectId: "",
   });
+
+  useEffect(() => {
+    const projectStorageKey = `selectedProject_${userId}`;
+    const projectString = localStorage.getItem(projectStorageKey);
+
+    if (projectString) {
+      try {
+        const project = JSON.parse(projectString);
+        // Update contractor state with project ID
+        setContractor((prev) => ({
+          ...prev,
+          contractorProjectId: project.id,
+        }));
+      } catch (error) {
+        console.error("Error parsing project:", error);
+      }
+    }
+  }, [userId]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -47,7 +71,28 @@ const SubFormModal: React.FC<ContractorModalProps> = ({ isOpen, onClose, onSave 
     try {
       setIsSubmitting(true);
 
-      const response = await api.post("/api/auth/subContractor/subcontractorRegMail", contractor);
+      // Double-check that we have the project ID
+      if (!contractor.contractorProjectId) {
+        const projectStorageKey = `selectedProject_${userId}`;
+        const projectString = localStorage.getItem(projectStorageKey);
+
+        if (!projectString) {
+          console.error("No project found in localStorage");
+          return;
+        }
+
+        const project = JSON.parse(projectString);
+        // Update contractor with project ID before submission
+        setContractor((prev) => ({
+          ...prev,
+          contractorProjectId: project.id,
+        }));
+      }
+
+      const response = await api.post(
+        "/api/auth/subContractor/subcontractorRegMail",
+        contractor
+      );
 
       const data = response.data;
       onSave(data);
@@ -58,6 +103,7 @@ const SubFormModal: React.FC<ContractorModalProps> = ({ isOpen, onClose, onSave 
         contractorName: "",
         contractorEmail: "",
         contractorPhone: "",
+        contractorProjectId: contractor.contractorProjectId, // Keep the project ID
       });
     } catch (error) {
       console.error("Error sending invite:", error);
@@ -74,7 +120,8 @@ const SubFormModal: React.FC<ContractorModalProps> = ({ isOpen, onClose, onSave 
             Invite Sub-Contractor
           </DialogTitle>
           <p className="text-sm text-gray-600 mt-1">
-            Please enter the details below to invite a contractor or vendor to your project.
+            Please enter the details below to invite a contractor or vendor to
+            your project.
           </p>
         </DialogHeader>
 
