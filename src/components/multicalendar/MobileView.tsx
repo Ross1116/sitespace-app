@@ -9,11 +9,11 @@ interface MobileViewProps {
   onActionComplete?: () => void;
 }
 
-export function MobileView({ 
-  loading, 
-  selectedCalendar, 
+export function MobileView({
+  loading,
+  selectedCalendar,
   currentDate,
-  onActionComplete 
+  onActionComplete,
 }: MobileViewProps) {
   return (
     <div className="flex-1 overflow-hidden">
@@ -32,12 +32,15 @@ export function MobileView({
             </div>
           ) : (
             <Calendar
-              key={`mobile-calendar`}
+              key={`mobile-calendar-${selectedCalendar.id}`}
               events={selectedCalendar.events}
               view="day"
               date={currentDate}
             >
-              <CalendarDayView assetCalendar={selectedCalendar} onActionComplete={onActionComplete}/>
+              <CalendarDayView
+                assetCalendar={selectedCalendar}
+                onActionComplete={onActionComplete}
+              />
             </Calendar>
           )}
         </div>
