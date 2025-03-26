@@ -4,14 +4,7 @@ import { useAuth } from "@/app/context/AuthContext";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import {
-  Calendar,
-  Construction,
-  Users,
-  Building,
-  ChevronRight,
-  ChevronDown,
-} from "lucide-react";
+import { Calendar, Construction, Users } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import api from "@/lib/api";
 import ProjectSelector from "@/components/home/RadioToggle";
@@ -20,6 +13,7 @@ export default function HomePage() {
   const { user } = useAuth();
   const [greeting, setGreeting] = useState("Good day");
   const [project, setProject] = useState<any[]>([]);
+  const hasFetched = useRef(false);
   const userId = user?.userId;
 
   useEffect(() => {
@@ -28,24 +22,9 @@ export default function HomePage() {
     else if (hour < 18) setGreeting("Good afternoon");
     else setGreeting("Good evening");
 
-    const storageKey = `projects_${userId}`;
-    const cachedProjects = localStorage.getItem(storageKey);
-
-    if (cachedProjects) {
-      try {
-        const parsedProjects = JSON.parse(cachedProjects);
-        if (Array.isArray(parsedProjects)) {
-          setProject(parsedProjects);
-        }
-      } catch (error) {
-        console.error("Error parsing cached assets:", error);
-        localStorage.removeItem(storageKey);
-      }
-    }
-
     const fetchProjects = async () => {
       try {
-        if (!userId) {
+        if (!user || hasFetched.current) {
           console.log("No user ID available, skipping project fetch");
           return;
         }
@@ -60,12 +39,12 @@ export default function HomePage() {
         console.log(projectData);
 
         if (projectData.length > 0) {
-          localStorage.setItem(storageKey, JSON.stringify(projectData));
           console.log(projectData);
         }
       } catch (error) {
         console.error("Error fetching projects:", error);
       }
+      hasFetched.current = true;
     };
 
     fetchProjects();
@@ -161,7 +140,7 @@ export default function HomePage() {
             Select Project
           </h2>
           <Card className="p-0">
-            <ProjectSelector projects={project} />
+            <ProjectSelector projects={project} userId={userId}/>
           </Card>
         </div>
 

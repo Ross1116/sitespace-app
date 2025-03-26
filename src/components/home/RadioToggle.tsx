@@ -15,17 +15,38 @@ interface ProjectSelectorProps {
   onChange?: (projectId: string) => void;
   showSearch?: boolean;
   maxHeight?: number | string;
+  userId?: any;
 }
 
 function ProjectSelector({ 
   projects, 
   onChange, 
   showSearch = true,
-  maxHeight = "400px"
+  maxHeight = "400px",
+  userId,
 }: ProjectSelectorProps) {
-  const [selectedProject, setSelectedProject] = useState<string | undefined>(
-    projects.length > 0 ? projects[0].id : undefined
-  );
+  const getInitialProject = () => {
+    const storageKey = `project_${userId}`;
+    const storedProject = localStorage.getItem(storageKey);
+    
+    if (storedProject) {
+      try {
+        const parsedProject = JSON.parse(storedProject);
+        const projectExists = projects.some(p => p.id === parsedProject.id);
+        if (projectExists) {
+          return parsedProject.id;
+        }
+      } catch (error) {
+        console.error("Error parsing stored project:", error);
+        localStorage.removeItem(storageKey);
+      }
+    }
+    
+    // Default to first project if no stored selection or stored selection not found
+    return projects.length > 0 ? projects[0].id : undefined;
+  };
+
+  const [selectedProject, setSelectedProject] = useState<string | undefined>(getInitialProject());
   const [searchQuery, setSearchQuery] = useState("");
   const [visibleProjects, setVisibleProjects] = useState<Project[]>(projects);
 
@@ -58,8 +79,32 @@ function ProjectSelector({
 
   const handleChange = (value: string) => {
     setSelectedProject(value);
+    
+    // Find the selected project object
+    const selectedProjectObj = projects.find(p => p.id === value);
+    
+    // Store the selected project in localStorage using the same key as in getInitialProject
+    if (selectedProjectObj && userId) {
+      const storageKey = `project_${userId}`;
+      localStorage.setItem(storageKey, JSON.stringify(selectedProjectObj));
+    }
+    
     if (onChange) onChange(value);
   };
+
+  // Set the initial project in localStorage if it doesn't exist yet
+  useEffect(() => {
+    if (projects.length > 0 && userId) {
+      const storageKey = `project_${userId}`;
+      const storedProject = localStorage.getItem(storageKey);
+      
+      if (!storedProject) {
+        // No project stored yet, store the first project
+        const firstProject = projects[0];
+        localStorage.setItem(storageKey, JSON.stringify(firstProject));
+      }
+    }
+  }, [projects, userId]);
 
   if (projects.length === 0) {
     return (

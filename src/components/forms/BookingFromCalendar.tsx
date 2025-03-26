@@ -287,7 +287,7 @@ export function BookingFromCalendar({
       const bookingTimeDt = format(customStartTime, "yyyy-MM-dd'T'HH:mm:ss");
 
       // Get the current user info
-      const userId = user?.id || "SM001";
+      const userId = user?.userId || "SM001";
 
       // Create booking payload - use selectedAssetIds directly
       const bookingData = {

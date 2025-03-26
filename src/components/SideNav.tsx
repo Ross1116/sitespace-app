@@ -34,7 +34,7 @@ interface MenuSection {
 
 // Define a type for the user
 interface UserData {
-  id: string | null;
+  userId: string | null;
   username: string;
   email: string;
   roles: string | string[] | any; // Accept different possible formats

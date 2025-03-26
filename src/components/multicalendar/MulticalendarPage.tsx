@@ -28,24 +28,34 @@ export default function MulticalendarPage() {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const hasFetched = useRef(false);
+  const userId = user?.userId;
+  const storageKey = `bookings_${userId}`;
+  const projectStorageKey = `project_${userId}`;
 
   // Function to fetch bookings
   const fetchBookings = async () => {
     if (!user) return;
-
-    const userId = user.userId;
-    const storageKey = `bookings_${userId}`;
-
+  
     setLoading(true);
-
+    
+    const projectString = localStorage.getItem(projectStorageKey);
+    
+    if (!projectString) {
+      console.error("No project found in localStorage");
+      setLoading(false);
+      return;
+    }
+    
     try {
+      const project = JSON.parse(projectString);
+      
       const response = await api.get(
         "/api/auth/slotBooking/getslotBookingList",
         {
-          params: { projectId: "P001", userId: "SM001" },
+          params: { projectId: project.id, userId: userId },
         }
       );
-
+  
       const bookingsData = response.data?.bookingList || [];
       setBookings(bookingsData);
       localStorage.setItem(storageKey, JSON.stringify(bookingsData));
@@ -59,9 +69,6 @@ export default function MulticalendarPage() {
   // Fetch bookings from the API
   useEffect(() => {
     if (!user || hasFetched.current) return;
-
-    const userId = user.userId;
-    const storageKey = `bookings_${userId}`;
 
     const cachedBookings = localStorage.getItem(storageKey);
 
