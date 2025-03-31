@@ -29,8 +29,8 @@ import {
 } from "./calendar-context";
 import { getDaysInMonth, generateWeekdays } from "./calendar-helpers";
 import { TimeTable } from "./calendar-utils";
-import { BookingFromCalendar } from "../../forms/BookingFromCalendar";
 import { AssetCalendar } from "./calendar-context";
+import { CreateBookingForm } from "@/components/forms/CreateBookingForm";
 
 export const CalendarDayView = ({
   assetCalendar,
@@ -175,7 +175,7 @@ export const CalendarDayView = ({
 
       {/* Booking form dialog */}
       {isBookingFormOpen && (
-        <BookingFromCalendar
+        <CreateBookingForm
           isOpen={isBookingFormOpen}
           onClose={() => setIsBookingFormOpen(false)}
           startTime={selectedTimeSlot.start}
@@ -381,7 +381,7 @@ export const CalendarWeekView = () => {
 
       {/* Booking form dialog */}
       {isBookingFormOpen && (
-        <BookingFromCalendar
+        <CreateBookingForm
           isOpen={isBookingFormOpen}
           onClose={() => setIsBookingFormOpen(false)}
           startTime={selectedTimeSlot.start}

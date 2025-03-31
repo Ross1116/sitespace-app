@@ -6,9 +6,9 @@ import api from "@/lib/api";
 import { useAuth } from "@/app/context/AuthContext";
 import BookingList from "./BookingList";
 import { Button } from "../ui/button";
-import { BookingFromCalendar } from "../forms/BookingFromCalendar";
 import { addHours, startOfHour } from "date-fns";
 import { Plus } from "lucide-react";
+import { CreateBookingForm } from "../forms/CreateBookingForm";
 
 export default function BookingsPage() {
   const [activeTab, setActiveTab] = useState("Upcoming");
@@ -149,7 +149,7 @@ export default function BookingsPage() {
 
         {/* Booking Form Modal */}
         {isBookingFormOpen && (
-          <BookingFromCalendar
+          <CreateBookingForm
             isOpen={isBookingFormOpen}
             onClose={() => setIsBookingFormOpen(false)}
             startTime={nextHour}

@@ -20,21 +20,19 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { differenceInMinutes, format, addMinutes } from "date-fns";
 import { CalendarEvent } from "@/components/ui/full-calendar";
-// import { assets } from "@/lib/data";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  X,
-  Clock,
-  Calendar as CalendarIcon,
-  AlignLeft,
-  Briefcase,
-} from "lucide-react";
+import { X, Calendar as CalendarIcon } from "lucide-react";
 import { useAuth } from "@/app/context/AuthContext";
 import api from "@/lib/api";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
-type BookingFromCalendar = {
+type CreateBookingForm = {
   isOpen: boolean;
   onClose: () => void;
   startTime: Date | null;
@@ -46,17 +44,16 @@ type BookingFromCalendar = {
   defaultAssetName?: string;
 };
 
-export function BookingFromCalendar({
+export function CreateBookingForm({
   isOpen,
   onClose,
-  startTime = new Date(), // Provide default value
+  startTime = new Date(),
   onSave,
   defaultAsset,
   defaultAssetName,
   selectedAssetId,
   bookedAssets = [],
-}: BookingFromCalendar) {
-  // Form state
+}: CreateBookingForm) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [selectedAssets, setSelectedAssets] = useState<string[]>(
@@ -66,9 +63,9 @@ export function BookingFromCalendar({
     defaultAsset ? [defaultAsset] : []
   );
   const [duration, setDuration] = useState("60");
-  const [activeTab, setActiveTab] = useState("time");
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const { user } = useAuth();
-  const userId = user?.userId || "SM001";
+  const userId = user?.userId;
 
   // Time state
   const [customStartTime, setCustomStartTime] = useState<Date | null>(
@@ -85,6 +82,30 @@ export function BookingFromCalendar({
   // Add state for assets
   const [assets, setAssets] = useState<any[]>([]);
   const [assetError, setAssetError] = useState<boolean>(false);
+
+  // Add this handler for duration changes
+  const handleDurationChange = (newDuration: any) => {
+    setDuration(newDuration);
+
+    // Parse the new duration to minutes
+    const durationMinutes = parseInt(newDuration, 10);
+
+    // Only if we have a valid start time, calculate a new end time
+    if (customStartTime) {
+      // Clone the start time date object
+      const newEndTime = new Date(customStartTime);
+
+      // Add the duration in minutes to the start time
+      newEndTime.setMinutes(newEndTime.getMinutes() + durationMinutes);
+
+      // Update the end time state
+      setCustomEndTime(newEndTime);
+
+      // Update the end hour and minute selectors to match
+      setEndHour(newEndTime.getHours().toString().padStart(2, "0"));
+      setEndMinute(newEndTime.getMinutes().toString().padStart(2, "0"));
+    }
+  };
 
   // Load assets from localStorage
   useEffect(() => {
@@ -253,65 +274,10 @@ export function BookingFromCalendar({
     }
   }, [startTime, isOpen, duration]);
 
-  // Format for display
-  const formattedDate = customStartTime
-    ? format(customStartTime, "EEE, MMM d, yyyy")
-    : "";
-
-  // Format duration in hours and minutes
-  const formatDuration = (minutes: number): string => {
-    if (minutes < 60) {
-      return `${minutes} min`;
-    } else {
-      const hours = Math.floor(minutes / 60);
-      const remainingMinutes = minutes % 60;
-
-      if (remainingMinutes === 0) {
-        return hours === 1 ? `1 hour` : `${hours} hours`;
-      } else {
-        return `${hours} ${
-          hours === 1 ? "hour" : "hours"
-        } ${remainingMinutes} min`;
-      }
-    }
-  };
-
-  // Format time for display (e.g., "09:15" to "9:15 AM")
-  const formatTimeDisplay = (time: string) => {
-    const [hours, minutes] = time.split(":").map(Number);
-    const period = hours >= 12 ? "PM" : "AM";
-    const displayHours = hours % 12 || 12; // Convert 0 to 12 for 12 AM
-    return `${displayHours}:${minutes.toString().padStart(2, "0")} ${period}`;
-  };
-
-  // Handle asset selection
-  const toggleAsset = (assetId: string) => {
-    setSelectedAssetIds((prev) => {
-      if (prev.includes(assetId)) {
-        return prev.filter((id) => id !== assetId);
-      } else {
-        return [...prev, assetId];
-      }
-    });
-
-    // Also update the asset names for display
-    const asset = assets.find(
-      (a: { assetKey: string }) => a.assetKey === assetId
-    );
-    if (asset) {
-      setSelectedAssets((prev) => {
-        if (prev.includes(asset.assetTitle)) {
-          return prev.filter((name) => name !== asset.assetTitle);
-        } else {
-          return [...prev, asset.assetTitle];
-        }
-      });
-    }
-  };
 
   // Remove an asset from selection
   const removeAsset = (assetId: string) => {
-    setSelectedAssetIds((prev) => prev.filter((id) => id !== assetId));
+    setSelectedAssets((prev) => prev.filter((key) => key !== assetId));
 
     const asset = assets.find(
       (a: { assetKey: string }) => a.assetKey === assetId
@@ -419,47 +385,84 @@ export function BookingFromCalendar({
           ]
         : []
     );
-    setActiveTab("time");
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md w-full p-0 overflow-hidden">
-        <DialogHeader className="p-4 pb-0">
-          <DialogTitle>Book Time Slot</DialogTitle>
+      <DialogContent className="max-w-md w-full p-3 sm:p-4 overflow-hidden mx-auto">
+        <DialogHeader className="pb-2 sm:pb-4">
+          <DialogTitle className="text-lg sm:text-xl">
+            Book Time Slot
+          </DialogTitle>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-4 w-full rounded-none border-b">
-            <TabsTrigger value="time" className="flex items-center gap-1">
-              <Clock className="h-4 w-4" />
-              <span className="hidden sm:inline">Time</span>
-            </TabsTrigger>
-            <TabsTrigger value="details" className="flex items-center gap-1">
-              <AlignLeft className="h-4 w-4" />
-              <span className="hidden sm:inline">Details</span>
-            </TabsTrigger>
-            <TabsTrigger value="assets" className="flex items-center gap-1">
-              <Briefcase className="h-4 w-4" />
-              <span className="hidden sm:inline">Assets</span>
-            </TabsTrigger>
-            <TabsTrigger value="review" className="flex items-center gap-1">
-              <CalendarIcon className="h-4 w-4" />
-              <span className="hidden sm:inline">Review</span>
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="time" className="p-4 space-y-4 m-0">
-            <div className="text-sm font-medium flex items-center gap-2 mb-3">
-              <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-              {formattedDate}
+        <div className="space-y-4 sm:space-y-6">
+          {/* Details Section */}
+          <div className="space-y-3 sm:space-y-4">
+            <div className="grid gap-1 sm:gap-2">
+              <label htmlFor="title" className="text-xs sm:text-sm font-medium">
+                Booking Title
+              </label>
+              <Input
+                id="title"
+                placeholder="Enter booking title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="h-8 sm:h-9"
+              />
             </div>
 
-            {/* Time selection with improved layout */}
-            <div className="space-y-4">
-              {/* Start Time - more compact layout */}
+            <div className="grid gap-1 sm:gap-2">
+              <label
+                htmlFor="description"
+                className="text-xs sm:text-sm font-medium"
+              >
+                Description
+              </label>
+              <Textarea
+                id="description"
+                placeholder="Add details about this booking"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={2}
+                className="sm:rows-3 text-sm"
+              />
+            </div>
+          </div>
+
+          {/* Date and Time Section */}
+          <div className="space-y-3 sm:space-y-4">
+            <div>
+              <label className="text-xs sm:text-sm font-medium mb-1 sm:mb-1.5 block">
+                Date
+              </label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start text-left font-normal h-8 sm:h-9 text-xs sm:text-sm"
+                  >
+                    <CalendarIcon className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                    {selectedDate ? format(selectedDate, "PPP") : "Select date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={(date) => date && setSelectedDate(date)}
+                    initialFocus
+                    className="scale-90 sm:scale-100"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Time Selectors - use grid for mobile layout */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Start Time */}
               <div>
-                <label className="text-sm font-medium mb-1.5 block">
+                <label className="text-xs sm:text-sm font-medium mb-1 sm:mb-1.5 block">
                   Start Time
                 </label>
                 <div className="flex items-center gap-1">
@@ -468,15 +471,15 @@ export function BookingFromCalendar({
                       value={startHour}
                       onValueChange={handleStartHourChange}
                     >
-                      <SelectTrigger className="h-9 w-full">
+                      <SelectTrigger className="h-8 sm:h-9 w-full text-xs sm:text-sm">
                         <SelectValue placeholder="Hour" />
                       </SelectTrigger>
                       <SelectContent
-                        className="max-h-60"
+                        className="max-h-52 sm:max-h-60"
                         position="popper"
                         sideOffset={4}
                       >
-                        <ScrollArea className="h-60">
+                        <ScrollArea className="h-52 sm:h-60">
                           <div className="p-1">
                             {Array.from({ length: 24 }).map((_, i) => {
                               const hourValue = i.toString().padStart(2, "0");
@@ -486,13 +489,11 @@ export function BookingFromCalendar({
                                 <SelectItem
                                   key={`end-hour-${i}`}
                                   value={hourValue}
-                                  className={`py-1.5 ${
+                                  className={`py-1 text-xs sm:text-sm ${
                                     isSelected ? "bg-accent" : ""
                                   }`}
-                                  // This ref will scroll the selected item into view
                                   ref={(node) => {
                                     if (isSelected && node) {
-                                      // Use requestAnimationFrame to ensure the scroll happens after render
                                       requestAnimationFrame(() => {
                                         node.scrollIntoView({
                                           block: "center",
@@ -512,27 +513,39 @@ export function BookingFromCalendar({
                     </Select>
                   </div>
 
-                  <p>:</p>
+                  <p className="text-xs sm:text-sm">:</p>
 
                   <div className="w-1/2">
                     <Select
                       value={startMinute}
                       onValueChange={handleStartMinuteChange}
                     >
-                      <SelectTrigger className="h-9 w-full">
+                      <SelectTrigger className="h-8 sm:h-9 w-full text-xs sm:text-sm">
                         <SelectValue placeholder="Min" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="00" className="py-1">
+                        <SelectItem
+                          value="00"
+                          className="py-1 text-xs sm:text-sm"
+                        >
                           00
                         </SelectItem>
-                        <SelectItem value="15" className="py-1">
+                        <SelectItem
+                          value="15"
+                          className="py-1 text-xs sm:text-sm"
+                        >
                           15
                         </SelectItem>
-                        <SelectItem value="30" className="py-1">
+                        <SelectItem
+                          value="30"
+                          className="py-1 text-xs sm:text-sm"
+                        >
                           30
                         </SelectItem>
-                        <SelectItem value="45" className="py-1">
+                        <SelectItem
+                          value="45"
+                          className="py-1 text-xs sm:text-sm"
+                        >
                           45
                         </SelectItem>
                       </SelectContent>
@@ -541,23 +554,23 @@ export function BookingFromCalendar({
                 </div>
               </div>
 
-              {/* End Time - more compact layout */}
+              {/* End Time */}
               <div>
-                <label className="text-sm font-medium mb-1.5 block">
+                <label className="text-xs sm:text-sm font-medium mb-1 sm:mb-1.5 block">
                   End Time
                 </label>
                 <div className="flex items-center gap-1">
                   <div className="w-1/2">
                     <Select value={endHour} onValueChange={handleEndHourChange}>
-                      <SelectTrigger className="h-9 w-full">
+                      <SelectTrigger className="h-8 sm:h-9 w-full text-xs sm:text-sm">
                         <SelectValue placeholder="Hour" />
                       </SelectTrigger>
                       <SelectContent
-                        className="max-h-60"
+                        className="max-h-52 sm:max-h-60"
                         position="popper"
                         sideOffset={4}
                       >
-                        <ScrollArea className="h-60">
+                        <ScrollArea className="h-52 sm:h-60">
                           <div className="p-1">
                             {Array.from({ length: 24 }).map((_, i) => {
                               const hourValue = i.toString().padStart(2, "0");
@@ -567,13 +580,11 @@ export function BookingFromCalendar({
                                 <SelectItem
                                   key={`end-hour-${i}`}
                                   value={hourValue}
-                                  className={`py-1.5 ${
+                                  className={`py-1 text-xs sm:text-sm ${
                                     isSelected ? "bg-accent" : ""
                                   }`}
-                                  // This ref will scroll the selected item into view
                                   ref={(node) => {
                                     if (isSelected && node) {
-                                      // Use requestAnimationFrame to ensure the scroll happens after render
                                       requestAnimationFrame(() => {
                                         node.scrollIntoView({
                                           block: "center",
@@ -593,27 +604,39 @@ export function BookingFromCalendar({
                     </Select>
                   </div>
 
-                  <p>:</p>
+                  <p className="text-xs sm:text-sm">:</p>
 
                   <div className="w-1/2">
                     <Select
                       value={endMinute}
                       onValueChange={handleEndMinuteChange}
                     >
-                      <SelectTrigger className="h-9 w-full">
+                      <SelectTrigger className="h-8 sm:h-9 w-full text-xs sm:text-sm">
                         <SelectValue placeholder="Min" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="00" className="py-1">
+                        <SelectItem
+                          value="00"
+                          className="py-1 text-xs sm:text-sm"
+                        >
                           00
                         </SelectItem>
-                        <SelectItem value="15" className="py-1">
+                        <SelectItem
+                          value="15"
+                          className="py-1 text-xs sm:text-sm"
+                        >
                           15
                         </SelectItem>
-                        <SelectItem value="30" className="py-1">
+                        <SelectItem
+                          value="30"
+                          className="py-1 text-xs sm:text-sm"
+                        >
                           30
                         </SelectItem>
-                        <SelectItem value="45" className="py-1">
+                        <SelectItem
+                          value="45"
+                          className="py-1 text-xs sm:text-sm"
+                        >
                           45
                         </SelectItem>
                       </SelectContent>
@@ -621,251 +644,160 @@ export function BookingFromCalendar({
                   </div>
                 </div>
               </div>
-
-              {/* Duration - simplified */}
-              <div>
-                <label className="text-sm font-medium mb-1.5 block">
-                  Duration
-                </label>
-                <Select
-                  value={duration}
-                  onValueChange={(value) => setDuration(value)}
-                >
-                  <SelectTrigger className="h-9">
-                    <SelectValue placeholder="Select duration" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="15" className="py-1">
-                      15 minutes
-                    </SelectItem>
-                    <SelectItem value="30" className="py-1">
-                      30 minutes
-                    </SelectItem>
-                    <SelectItem value="45" className="py-1">
-                      45 minutes
-                    </SelectItem>
-                    <SelectItem value="60" className="py-1">
-                      1 hour
-                    </SelectItem>
-                    <SelectItem value="90" className="py-1">
-                      1.5 hours
-                    </SelectItem>
-                    <SelectItem value="120" className="py-1">
-                      2 hours
-                    </SelectItem>
-                    <SelectItem value="180" className="py-1">
-                      3 hours
-                    </SelectItem>
-                    <SelectItem value="240" className="py-1">
-                      4 hours
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
 
-            <div className="flex justify-end pt-2">
-              <Button onClick={() => setActiveTab("details")}>Next</Button>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="details" className="p-4 space-y-4 m-0">
-            <div className="grid gap-2">
-              <label htmlFor="title" className="text-sm font-medium">
-                Booking Title
+            {/* Duration */}
+            <div>
+              <label className="text-xs sm:text-sm font-medium mb-1 sm:mb-1.5 block">
+                Duration
               </label>
-              <Input
-                id="title"
-                placeholder="Enter booking title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-              />
+              <Select
+                value={duration}
+                onValueChange={handleDurationChange}
+              >
+                <SelectTrigger className="h-8 sm:h-9 text-xs sm:text-sm">
+                  <SelectValue placeholder="Select duration" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="15" className="py-1 text-xs sm:text-sm">
+                    15 minutes
+                  </SelectItem>
+                  <SelectItem value="30" className="py-1 text-xs sm:text-sm">
+                    30 minutes
+                  </SelectItem>
+                  <SelectItem value="45" className="py-1 text-xs sm:text-sm">
+                    45 minutes
+                  </SelectItem>
+                  <SelectItem value="60" className="py-1 text-xs sm:text-sm">
+                    1 hour
+                  </SelectItem>
+                  <SelectItem value="90" className="py-1 text-xs sm:text-sm">
+                    1.5 hours
+                  </SelectItem>
+                  <SelectItem value="120" className="py-1 text-xs sm:text-sm">
+                    2 hours
+                  </SelectItem>
+                  <SelectItem value="180" className="py-1 text-xs sm:text-sm">
+                    3 hours
+                  </SelectItem>
+                  <SelectItem value="240" className="py-1 text-xs sm:text-sm">
+                    4 hours
+                  </SelectItem>
+                  <SelectItem value="300" className="py-1 text-xs sm:text-sm">
+                    5 hours
+                  </SelectItem>
+                  <SelectItem value="360" className="py-1 text-xs sm:text-sm">
+                    6 hours
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+          </div>
 
-            <div className="grid gap-2">
-              <label htmlFor="description" className="text-sm font-medium">
-                Description
-              </label>
-              <Textarea
-                id="description"
-                placeholder="Add details about this booking"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={3}
-              />
-            </div>
-
-            <div className="flex justify-between">
-              <Button variant="outline" onClick={() => setActiveTab("time")}>
-                Back
-              </Button>
-              <Button onClick={() => setActiveTab("assets")}>Next</Button>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="assets" className="p-4 space-y-4 m-0">
-            <div className="grid gap-2">
-              <label className="text-sm font-medium">Selected Assets</label>
-              {selectedAssets.length > 0 ? (
-                <div className="flex flex-wrap gap-1 mb-2">
-                  {selectedAssets.map((assetKey) => {
-                    const asset = assets.find(
-                      (a: { assetKey: string }) => a.assetKey === assetKey
-                    );
-                    return (
-                      <Badge
-                        key={assetKey}
-                        variant="secondary"
-                        className="flex items-center gap-1"
-                      >
+          {/* Assets Section */}
+          <div className="grid gap-1 sm:gap-2">
+            <label className="text-xs sm:text-sm font-medium">
+              Select Assets
+            </label>
+            {selectedAssets.length > 0 ? (
+              <div className="flex flex-wrap gap-1 mb-1 sm:mb-2">
+                {selectedAssets.map((assetKey) => {
+                  const asset = assets.find((a) => a.assetKey === assetKey);
+                  return (
+                    <Badge
+                      key={assetKey}
+                      variant="secondary"
+                      className="flex items-center gap-1 text-xs py-0.5 px-2"
+                    >
+                      <span className="truncate max-w-32 sm:max-w-full">
                         {asset?.assetTitle || assetKey}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-4 w-4 rounded-full"
-                          onClick={() => removeAsset(assetKey)}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-3 w-3 sm:h-4 sm:w-4 rounded-full cursor-pointer ml-1"
+                        onClick={() => removeAsset(assetKey)}
+                      >
+                        <X className="h-2 w-2 sm:h-3 sm:w-3" />
+                      </Button>
+                    </Badge>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-xs sm:text-sm text-muted-foreground mb-1 sm:mb-2">
+                No assets selected
+              </div>
+            )}
+            <div className="border rounded-md">
+              <ScrollArea className="h-24 sm:h-36 p-1 sm:p-2">
+                <div className="space-y-1 sm:space-y-2">
+                  {assets.map((asset) => {
+                    const isSelected = selectedAssets.includes(asset.assetKey);
+                    const isBooked = bookedAssets.includes(asset.assetKey);
+                    return (
+                      <div
+                        key={asset.assetKey}
+                        className="flex items-center space-x-2"
+                      >
+                        <Checkbox
+                          id={`asset-${asset.assetKey}`}
+                          checked={isSelected}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedAssets([
+                                ...selectedAssets,
+                                asset.assetKey,
+                              ]);
+                            } else {
+                              setSelectedAssets(
+                                selectedAssets.filter(
+                                  (key) => key !== asset.assetKey
+                                )
+                              );
+                            }
+                          }}
+                          disabled={isBooked && !isSelected}
+                          className="h-3 w-3 sm:h-4 sm:w-4"
+                        />
+                        <label
+                          htmlFor={`asset-${asset.assetKey}`}
+                          className={`text-xs sm:text-sm flex-1 truncate ${
+                            isBooked && !isSelected
+                              ? "text-muted-foreground line-through"
+                              : ""
+                          }`}
                         >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </Badge>
+                          {asset.assetTitle}
+                          {isBooked && !isSelected && (
+                            <span className="ml-1 sm:ml-2 text-xxs sm:text-xs text-red-500">
+                              (Booked)
+                            </span>
+                          )}
+                        </label>
+                      </div>
                     );
                   })}
                 </div>
-              ) : (
-                <div className="text-sm text-muted-foreground mb-2">
-                  No assets selected
-                </div>
-              )}
-
-              <div className="border rounded-md">
-                <ScrollArea className="h-36 p-2">
-                  <div className="space-y-2">
-                    {assets.map((asset: any) => {
-                      const isSelected = selectedAssets.includes(
-                        asset.assetTitle
-                      );
-                      const isBooked = bookedAssets.includes(asset.assetKey);
-
-                      return (
-                        <div
-                          key={asset.assetKey}
-                          className="flex items-center space-x-2"
-                        >
-                          <Checkbox
-                            id={`asset-${asset.assetKey}`}
-                            checked={isSelected}
-                            onCheckedChange={() => toggleAsset(asset.assetKey)}
-                            disabled={isBooked && !isSelected}
-                          />
-                          <label
-                            htmlFor={`asset-${asset.assetKey}`}
-                            className={`text-sm flex-1 ${
-                              isBooked && !isSelected
-                                ? "text-muted-foreground line-through"
-                                : ""
-                            }`}
-                          >
-                            {asset.assetTitle}
-                            {isBooked && !isSelected && (
-                              <span className="ml-2 text-xs text-red-500">
-                                (Booked)
-                              </span>
-                            )}
-                          </label>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </ScrollArea>
-              </div>
+              </ScrollArea>
             </div>
+          </div>
+        </div>
 
-            <div className="flex justify-between">
-              <Button variant="outline" onClick={() => setActiveTab("details")}>
-                Back
-              </Button>
-              <Button onClick={() => setActiveTab("review")}>Next</Button>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="review" className="p-4 space-y-4 m-0">
-            <div className="space-y-3">
-              <div>
-                <h3 className="text-sm font-medium">Date & Time</h3>
-                <p className="text-sm">{formattedDate}</p>
-                <p className="text-sm">
-                  {startHour && startMinute
-                    ? formatTimeDisplay(`${startHour}:${startMinute}`)
-                    : ""}{" "}
-                  -{" "}
-                  {endHour && endMinute
-                    ? formatTimeDisplay(`${endHour}:${endMinute}`)
-                    : ""}{" "}
-                  ({formatDuration(parseInt(duration))})
-                </p>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium">Title</h3>
-                <p className="text-sm">{title || "Not specified"}</p>
-              </div>
-
-              <div>
-                <h3 className="text-sm font-medium">Description</h3>
-                <p className="text-sm whitespace-pre-wrap">
-                  {description || "Not specified"}
-                </p>
-              </div>
-
-              <div>
-                <h3 className="text-sm font-medium">Assets</h3>
-                {selectedAssets.length > 0 ? (
-                  <div className="flex flex-wrap gap-1">
-                    {selectedAssets.map((assetKey) => {
-                      const asset = assets.find(
-                        (a: { assetKey: string }) => a.assetKey === assetKey
-                      );
-                      return (
-                        <Badge key={assetKey} variant="secondary">
-                          {asset?.assetTitle || assetKey}
-                        </Badge>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    No assets selected
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {selectedAssets.length > 1 && (
-              <div className="bg-yellow-50 p-2 rounded border border-yellow-200 text-xs text-yellow-800">
-                <p>
-                  Multiple assets selected. This will create{" "}
-                  {selectedAssets.length} separate booking events.
-                </p>
-              </div>
-            )}
-
-            <div className="flex justify-between">
-              <Button variant="outline" onClick={() => setActiveTab("assets")}>
-                Back
-              </Button>
-              <Button
-                onClick={handleSubmit}
-                disabled={
-                  !title ||
-                  !customStartTime ||
-                  !customEndTime ||
-                  selectedAssets.length === 0
-                }
-              >
-                Save Booking{selectedAssets.length > 1 ? "s" : ""}
-              </Button>
-            </div>
-          </TabsContent>
-        </Tabs>
+        <div className="mt-4 sm:mt-6 flex justify-end">
+          <Button
+            onClick={handleSubmit}
+            disabled={
+              !title ||
+              !customStartTime ||
+              !customEndTime ||
+              selectedAssets.length === 0
+            }
+            className="text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2 h-8 sm:h-10"
+          >
+            Save Booking{selectedAssets.length > 1 ? "s" : ""}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
