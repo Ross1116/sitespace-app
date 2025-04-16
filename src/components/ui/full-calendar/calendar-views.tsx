@@ -163,12 +163,12 @@ export const CalendarDayView = ({
 
         {/* Events area */}
         <div className="flex-1 relative">
-          {/* Current time indicator - now accounts for minutes */}
+          {/* Current time indicator */}
           {isCurrentDay && currentHour >= 6 && currentHour < 20 && (
             <div
               className="absolute w-full border-t-2 border-red-500 z-20"
               style={{
-                top: `${(currentHour - 6) * 48 + (new Date().getMinutes() / 60) * 48}px`,
+                top: `${(currentHour - 6) * 48}px`,
               }}
             >
               <div className="absolute -left-1.5 -top-1.5 w-3 h-3 rounded-full bg-red-500"></div>

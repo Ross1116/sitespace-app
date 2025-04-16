@@ -75,18 +75,17 @@ export function DesktopView({
             >
               <div className="px-4 py-2 border-b border-gray-200 bg-white sticky top-0 z-10 flex justify-between items-center">
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-800">
-                    {format(currentDate, "EEE, MMM d")}
-                  </h2>
                   {calendar.name && (
-                    <p className="text-xs text-gray-500">{calendar.name}</p>
+                    <h2 className="text-lg font-semibold text-gray-800">{calendar.name}</h2>
                   )}
+                  <p className="text-xs text-gray-500">
+                    {format(currentDate, "EEE, MMM d")}
+                  </p>
                 </div>
                 <div className="text-xs text-gray-500">
                   {format(currentDate, "yyyy")}
                 </div>
-              </div>
-              <div className="flex-1 overflow-hidden">
+              </div>              <div className="flex-1 overflow-hidden">
                 <Calendar
                   key={`desktop-calendar-${calendar.id || index}`}
                   events={calendar.events}
