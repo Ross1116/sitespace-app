@@ -31,6 +31,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Label } from "../ui/label"
+
 
 type CreateBookingForm = {
   isOpen: boolean;
@@ -379,424 +381,235 @@ export function CreateBookingForm({
     setSelectedAssets(
       selectedAssetId
         ? [
-            assets.find(
-              (a: { assetKey: string }) => a.assetKey === selectedAssetId
-            )?.assetTitle || "",
-          ]
+          assets.find(
+            (a: { assetKey: string }) => a.assetKey === selectedAssetId
+          )?.assetTitle || "",
+        ]
         : []
     );
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md w-full p-3 sm:p-4 overflow-hidden mx-auto">
-        <DialogHeader className="pb-2 sm:pb-4">
-          <DialogTitle className="text-lg sm:text-xl">
+      <DialogContent className="w-full max-w-md mx-auto rounded-xl p-3 sm:p-6 bg-white shadow-lg">
+        <DialogHeader className="mb-4">
+          <DialogTitle className="text-lg sm:text-xl font-semibold">
             Book Time Slot
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 sm:space-y-6">
-          {/* Details Section */}
-          <div className="space-y-3 sm:space-y-4">
-            <div className="grid gap-1 sm:gap-2">
-              <label htmlFor="title" className="text-xs sm:text-sm font-medium">
-                Booking Title
-              </label>
+        <div className="space-y-6">
+          {/* Title + Description */}
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="title">Booking Title</Label>
               <Input
                 id="title"
-                placeholder="Enter booking title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="h-8 sm:h-9"
+                placeholder="Enter title"
+                className="h-9"
               />
             </div>
 
-            <div className="grid gap-1 sm:gap-2">
-              <label
-                htmlFor="description"
-                className="text-xs sm:text-sm font-medium"
-              >
-                Description
-              </label>
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
-                placeholder="Add details about this booking"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                rows={2}
-                className="sm:rows-3 text-sm"
+                placeholder="Add more details..."
+                rows={3}
+                className="resize-none text-sm"
               />
             </div>
           </div>
 
-          {/* Date and Time Section */}
-          <div className="space-y-3 sm:space-y-4">
-            <div>
-              <label className="text-xs sm:text-sm font-medium mb-1 sm:mb-1.5 block">
-                Date
-              </label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start text-left font-normal h-8 sm:h-9 text-xs sm:text-sm"
-                  >
-                    <CalendarIcon className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                    {selectedDate ? format(selectedDate, "PPP") : "Select date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={(date) => date && setSelectedDate(date)}
-                    initialFocus
-                    className="scale-90 sm:scale-100"
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
+          {/* Date Picker */}
+          <div className="space-y-2">
+            <Label>Date</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full h-9 justify-start text-left text-sm font-normal"
+                >
+                  <CalendarIcon className="w-4 h-4 mr-2" />
+                  {selectedDate ? format(selectedDate, "PPP") : "Select date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="p-0">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(date) => date && setSelectedDate(date)}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
 
-            {/* Time Selectors - use grid for mobile layout */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* Start Time */}
-              <div>
-                <label className="text-xs sm:text-sm font-medium mb-1 sm:mb-1.5 block">
-                  Start Time
-                </label>
-                <div className="flex items-center gap-1">
-                  <div className="w-1/2">
-                    <Select
-                      value={startHour}
-                      onValueChange={handleStartHourChange}
-                    >
-                      <SelectTrigger className="h-8 sm:h-9 w-full text-xs sm:text-sm">
-                        <SelectValue placeholder="Hour" />
-                      </SelectTrigger>
-                      <SelectContent
-                        className="max-h-52 sm:max-h-60"
-                        position="popper"
-                        sideOffset={4}
-                      >
-                        <ScrollArea className="h-52 sm:h-60">
-                          <div className="p-1">
-                            {Array.from({ length: 24 }).map((_, i) => {
-                              const hourValue = i.toString().padStart(2, "0");
-                              const isSelected = hourValue === startHour;
-
-                              return (
-                                <SelectItem
-                                  key={`end-hour-${i}`}
-                                  value={hourValue}
-                                  className={`py-1 text-xs sm:text-sm ${
-                                    isSelected ? "bg-accent" : ""
-                                  }`}
-                                  ref={(node) => {
-                                    if (isSelected && node) {
-                                      requestAnimationFrame(() => {
-                                        node.scrollIntoView({
-                                          block: "center",
-                                          behavior: "auto",
-                                        });
-                                      });
-                                    }
-                                  }}
-                                >
-                                  {formatHour(i)}
-                                </SelectItem>
-                              );
-                            })}
-                          </div>
-                        </ScrollArea>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <p className="text-xs sm:text-sm">:</p>
-
-                  <div className="w-1/2">
-                    <Select
-                      value={startMinute}
-                      onValueChange={handleStartMinuteChange}
-                    >
-                      <SelectTrigger className="h-8 sm:h-9 w-full text-xs sm:text-sm">
-                        <SelectValue placeholder="Min" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem
-                          value="00"
-                          className="py-1 text-xs sm:text-sm"
-                        >
-                          00
+          {/* Time Select */}
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Start Time</Label>
+              <div className="flex items-center gap-2">
+                <Select value={startHour} onValueChange={handleStartHourChange}>
+                  <SelectTrigger className="h-9 w-full text-sm">
+                    <SelectValue placeholder="Hour" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 24 }).map((_, i) => {
+                      const val = i.toString().padStart(2, "0");
+                      return (
+                        <SelectItem key={val} value={val} className="text-sm">
+                          {formatHour(i)}
                         </SelectItem>
-                        <SelectItem
-                          value="15"
-                          className="py-1 text-xs sm:text-sm"
-                        >
-                          15
-                        </SelectItem>
-                        <SelectItem
-                          value="30"
-                          className="py-1 text-xs sm:text-sm"
-                        >
-                          30
-                        </SelectItem>
-                        <SelectItem
-                          value="45"
-                          className="py-1 text-xs sm:text-sm"
-                        >
-                          45
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
-
-              {/* End Time */}
-              <div>
-                <label className="text-xs sm:text-sm font-medium mb-1 sm:mb-1.5 block">
-                  End Time
-                </label>
-                <div className="flex items-center gap-1">
-                  <div className="w-1/2">
-                    <Select value={endHour} onValueChange={handleEndHourChange}>
-                      <SelectTrigger className="h-8 sm:h-9 w-full text-xs sm:text-sm">
-                        <SelectValue placeholder="Hour" />
-                      </SelectTrigger>
-                      <SelectContent
-                        className="max-h-52 sm:max-h-60"
-                        position="popper"
-                        sideOffset={4}
-                      >
-                        <ScrollArea className="h-52 sm:h-60">
-                          <div className="p-1">
-                            {Array.from({ length: 24 }).map((_, i) => {
-                              const hourValue = i.toString().padStart(2, "0");
-                              const isSelected = hourValue === endHour;
-
-                              return (
-                                <SelectItem
-                                  key={`end-hour-${i}`}
-                                  value={hourValue}
-                                  className={`py-1 text-xs sm:text-sm ${
-                                    isSelected ? "bg-accent" : ""
-                                  }`}
-                                  ref={(node) => {
-                                    if (isSelected && node) {
-                                      requestAnimationFrame(() => {
-                                        node.scrollIntoView({
-                                          block: "center",
-                                          behavior: "auto",
-                                        });
-                                      });
-                                    }
-                                  }}
-                                >
-                                  {formatHour(i)}
-                                </SelectItem>
-                              );
-                            })}
-                          </div>
-                        </ScrollArea>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <p className="text-xs sm:text-sm">:</p>
-
-                  <div className="w-1/2">
-                    <Select
-                      value={endMinute}
-                      onValueChange={handleEndMinuteChange}
-                    >
-                      <SelectTrigger className="h-8 sm:h-9 w-full text-xs sm:text-sm">
-                        <SelectValue placeholder="Min" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem
-                          value="00"
-                          className="py-1 text-xs sm:text-sm"
-                        >
-                          00
-                        </SelectItem>
-                        <SelectItem
-                          value="15"
-                          className="py-1 text-xs sm:text-sm"
-                        >
-                          15
-                        </SelectItem>
-                        <SelectItem
-                          value="30"
-                          className="py-1 text-xs sm:text-sm"
-                        >
-                          30
-                        </SelectItem>
-                        <SelectItem
-                          value="45"
-                          className="py-1 text-xs sm:text-sm"
-                        >
-                          45
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                <span>:</span>
+                <Select value={startMinute} onValueChange={handleStartMinuteChange}>
+                  <SelectTrigger className="h-9 w-full text-sm">
+                    <SelectValue placeholder="Min" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {["00", "15", "30", "45"].map((val) => (
+                      <SelectItem key={val} value={val} className="text-sm">
+                        {val}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
-            {/* Duration */}
-            <div>
-              <label className="text-xs sm:text-sm font-medium mb-1 sm:mb-1.5 block">
-                Duration
-              </label>
-              <Select
-                value={duration}
-                onValueChange={handleDurationChange}
-              >
-                <SelectTrigger className="h-8 sm:h-9 text-xs sm:text-sm">
-                  <SelectValue placeholder="Select duration" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="15" className="py-1 text-xs sm:text-sm">
-                    15 minutes
-                  </SelectItem>
-                  <SelectItem value="30" className="py-1 text-xs sm:text-sm">
-                    30 minutes
-                  </SelectItem>
-                  <SelectItem value="45" className="py-1 text-xs sm:text-sm">
-                    45 minutes
-                  </SelectItem>
-                  <SelectItem value="60" className="py-1 text-xs sm:text-sm">
-                    1 hour
-                  </SelectItem>
-                  <SelectItem value="90" className="py-1 text-xs sm:text-sm">
-                    1.5 hours
-                  </SelectItem>
-                  <SelectItem value="120" className="py-1 text-xs sm:text-sm">
-                    2 hours
-                  </SelectItem>
-                  <SelectItem value="180" className="py-1 text-xs sm:text-sm">
-                    3 hours
-                  </SelectItem>
-                  <SelectItem value="240" className="py-1 text-xs sm:text-sm">
-                    4 hours
-                  </SelectItem>
-                  <SelectItem value="300" className="py-1 text-xs sm:text-sm">
-                    5 hours
-                  </SelectItem>
-                  <SelectItem value="360" className="py-1 text-xs sm:text-sm">
-                    6 hours
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="space-y-2">
+              <Label>End Time</Label>
+              <div className="flex items-center gap-2">
+                <Select value={endHour} onValueChange={handleEndHourChange}>
+                  <SelectTrigger className="h-9 w-full text-sm">
+                    <SelectValue placeholder="Hour" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 24 }).map((_, i) => {
+                      const val = i.toString().padStart(2, "0");
+                      return (
+                        <SelectItem key={val} value={val} className="text-sm">
+                          {formatHour(i)}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                <span>:</span>
+                <Select value={endMinute} onValueChange={handleEndMinuteChange}>
+                  <SelectTrigger className="h-9 w-full text-sm">
+                    <SelectValue placeholder="Min" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {["00", "15", "30", "45"].map((val) => (
+                      <SelectItem key={val} value={val} className="text-sm">
+                        {val}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
-          {/* Assets Section */}
-          <div className="grid gap-1 sm:gap-2">
-            <label className="text-xs sm:text-sm font-medium">
-              Select Assets
-            </label>
-            {selectedAssets.length > 0 ? (
-              <div className="flex flex-wrap gap-1 mb-1 sm:mb-2">
-                {selectedAssets.map((assetKey) => {
-                  const asset = assets.find((a) => a.assetKey === assetKey);
+          {/* Duration */}
+          <div className="space-y-2">
+            <Label>Duration</Label>
+            <Select value={duration} onValueChange={handleDurationChange}>
+              <SelectTrigger className="h-9 w-full text-sm">
+                <SelectValue placeholder="Select duration" />
+              </SelectTrigger>
+              <SelectContent>
+                {[15, 30, 45, 60, 90, 120, 180, 240, 300, 360].map((val) => (
+                  <SelectItem key={val} value={val.toString()} className="text-sm">
+                    {val >= 60 ? `${val / 60} hour${val >= 120 ? "s" : ""}` : `${val} minutes`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Assets */}
+          <div className="space-y-2">
+            <Label>Select Assets</Label>
+            {selectedAssets.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {selectedAssets.map((key) => {
+                  const asset = assets.find((a) => a.assetKey === key);
                   return (
-                    <Badge
-                      key={assetKey}
-                      variant="secondary"
-                      className="flex items-center gap-1 text-xs py-0.5 px-2"
-                    >
-                      <span className="truncate max-w-32 sm:max-w-full">
-                        {asset?.assetTitle || assetKey}
-                      </span>
+                    <Badge key={key} className="text-xs flex items-center gap-1">
+                      {asset?.assetTitle || key}
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-3 w-3 sm:h-4 sm:w-4 rounded-full cursor-pointer ml-1"
-                        onClick={() => removeAsset(assetKey)}
+                        className="h-4 w-4"
+                        onClick={() => removeAsset(key)}
                       >
-                        <X className="h-2 w-2 sm:h-3 sm:w-3" />
+                        <X className="h-3 w-3" />
                       </Button>
                     </Badge>
                   );
                 })}
               </div>
-            ) : (
-              <div className="text-xs sm:text-sm text-muted-foreground mb-1 sm:mb-2">
-                No assets selected
-              </div>
             )}
-            <div className="border rounded-md">
-              <ScrollArea className="h-24 sm:h-36 p-1 sm:p-2">
-                <div className="space-y-1 sm:space-y-2">
-                  {assets.map((asset) => {
-                    const isSelected = selectedAssets.includes(asset.assetKey);
-                    const isBooked = bookedAssets.includes(asset.assetKey);
-                    return (
-                      <div
-                        key={asset.assetKey}
-                        className="flex items-center space-x-2"
-                      >
-                        <Checkbox
-                          id={`asset-${asset.assetKey}`}
-                          checked={isSelected}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setSelectedAssets([
-                                ...selectedAssets,
-                                asset.assetKey,
-                              ]);
-                            } else {
-                              setSelectedAssets(
-                                selectedAssets.filter(
-                                  (key) => key !== asset.assetKey
-                                )
-                              );
-                            }
-                          }}
-                          disabled={isBooked && !isSelected}
-                          className="h-3 w-3 sm:h-4 sm:w-4"
-                        />
-                        <label
-                          htmlFor={`asset-${asset.assetKey}`}
-                          className={`text-xs sm:text-sm flex-1 truncate ${
-                            isBooked && !isSelected
-                              ? "text-muted-foreground line-through"
-                              : ""
+            <ScrollArea className="h-24 border rounded-md p-2">
+              <div className="space-y-2">
+                {assets.map((asset) => {
+                  const isSelected = selectedAssets.includes(asset.assetKey);
+                  const isBooked = bookedAssets.includes(asset.assetKey);
+                  return (
+                    <div key={asset.assetKey} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`asset-${asset.assetKey}`}
+                        checked={isSelected}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedAssets([...selectedAssets, asset.assetKey]);
+                          } else {
+                            setSelectedAssets(
+                              selectedAssets.filter((k) => k !== asset.assetKey)
+                            );
+                          }
+                        }}
+                        disabled={isBooked && !isSelected}
+                      />
+                      <label
+                        htmlFor={`asset-${asset.assetKey}`}
+                        className={`text-sm flex-1 truncate ${isBooked && !isSelected ? "line-through text-muted-foreground" : ""
                           }`}
-                        >
-                          {asset.assetTitle}
-                          {isBooked && !isSelected && (
-                            <span className="ml-1 sm:ml-2 text-xxs sm:text-xs text-red-500">
-                              (Booked)
-                            </span>
-                          )}
-                        </label>
-                      </div>
-                    );
-                  })}
-                </div>
-              </ScrollArea>
-            </div>
+                      >
+                        {asset.assetTitle}
+                        {isBooked && !isSelected && (
+                          <span className="ml-2 text-xs text-red-500">(Booked)</span>
+                        )}
+                      </label>
+                    </div>
+                  );
+                })}
+              </div>
+            </ScrollArea>
           </div>
-        </div>
 
-        <div className="mt-4 sm:mt-6 flex justify-end">
-          <Button
-            onClick={handleSubmit}
-            disabled={
-              !title ||
-              !customStartTime ||
-              !customEndTime ||
-              selectedAssets.length === 0
-            }
-            className="text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2 h-8 sm:h-10"
-          >
-            Save Booking{selectedAssets.length > 1 ? "s" : ""}
-          </Button>
+          {/* Submit */}
+          <div className="pt-2 flex justify-end">
+            <Button
+              onClick={handleSubmit}
+              disabled={
+                !title || !customStartTime || !customEndTime || selectedAssets.length === 0
+              }
+              className="h-10 px-4 text-sm"
+            >
+              Save Booking{selectedAssets.length > 1 ? "s" : ""}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

@@ -149,36 +149,38 @@ export const CalendarDayView = ({
     <div className="flex flex-col h-full bg-white rounded-lg shadow-sm overflow-hidden">
       {/* Calendar grid - more compact */}
       <div className="flex flex-1 relative overflow-y-auto overflow-x-hidden">
-        <div className="w-14 flex-shrink-0 border-r border-gray-200 bg-gray-50">
+        {/* Time labels column */}
+        <div className="w-14 flex-shrink-0 border-r border-gray-200 bg-gray-50 flex flex-col">
           {hours.map((hour) => (
             <div
               key={hour.toString()}
-              className="h-12 flex items-start justify-end pr-2 pt-0.5 text-xs text-gray-500 font-medium border-t border-gray-200"
+              className="h-12 flex-none flex items-start justify-end pr-2 pt-0.5 text-xs text-gray-500 font-medium border-t border-gray-200"
             >
               {format(hour, "h a")}
             </div>
           ))}
         </div>
 
+        {/* Events area */}
         <div className="flex-1 relative">
-          {/* Current time indicator */}
+          {/* Current time indicator - now accounts for minutes */}
           {isCurrentDay && currentHour >= 6 && currentHour < 20 && (
             <div
               className="absolute w-full border-t-2 border-red-500 z-20"
               style={{
-                top: `${((currentHour - 6) * 100) / 14}%`,
+                top: `${(currentHour - 6) * 48 + (new Date().getMinutes() / 60) * 48}px`,
               }}
             >
               <div className="absolute -left-1.5 -top-1.5 w-3 h-3 rounded-full bg-red-500"></div>
             </div>
           )}
 
-          {/* Time slots - more compact */}
-          <div className="grid grid-rows-[repeat(14,minmax(3rem,1fr))] w-full h-full">
+          {/* Time slots - fixed height instead of fractional */}
+          <div className="flex flex-col w-full h-full">
             {hours.map((hour, index) => (
               <div
                 key={hour.toString()}
-                className={`relative border-t ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
+                className={`relative border-t h-12 flex-none ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
                   } ${isCurrentDay && hour.getHours() === currentHour ? 'bg-blue-50/50' : ''
                   }`}
               >
