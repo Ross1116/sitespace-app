@@ -56,14 +56,14 @@ export const CalendarDayView = ({
   // Create array with hours from 6am (6) to 8pm (20), ensuring minutes are set to 0
   const hours = [...Array(14)].map((_, i) => {
     const hourDate = new Date(date);
-    hourDate.setHours(i + 6, 0, 0, 0); // Set hours with minutes, seconds, ms all at 0
+    hourDate.setHours(i + 6, 0, 0, 0);
     return hourDate;
   });
 
   // Handler for clicking on a time slot
   const handleTimeSlotClick = (hour: Date) => {
-    const startTime = new Date(hour); // Clone the date to avoid mutations
-    const endTime = addHours(startTime, 1); // Default 1 hour duration
+    const startTime = new Date(hour);
+    const endTime = addHours(startTime, 1);
 
     setSelectedTimeSlot({
       start: startTime,
@@ -106,10 +106,8 @@ export const CalendarDayView = ({
           } as CalendarEvent;
         });
 
-      // Add all events to the calendar
       setEvents([...events, ...completeEvents]);
 
-      // If there's an event click handler, call it with the last event
       if (onEventClick && completeEvents.length > 0) {
         onEventClick(completeEvents[completeEvents.length - 1]);
       }
@@ -122,7 +120,7 @@ export const CalendarDayView = ({
           end: newEvent.end || addHours(newEvent.start, 1),
           title: newEvent.title,
           description: newEvent.description || "",
-          color: newEvent.color || "default",
+          color: newEvent.color || "yellow", // Changed from "default" to "yellow"
         };
 
         setEvents([...events, completeEvent]);
@@ -144,32 +142,68 @@ export const CalendarDayView = ({
     return acc;
   }, {} as Record<string, boolean>);
 
+  const currentHour = new Date().getHours();
+  const isCurrentDay = isSameDay(date, new Date());
+
   return (
-    <div className="flex relative py-7 overflow-y-auto overflow-x-hidden h-full mr-4">
-      <TimeTable />
-      <div className="flex-1 relative">
-        {/* Combined grid and events in a single layer */}
-        <div className="grid grid-rows-[repeat(14,1fr)] w-full h-full">
+    <div className="flex flex-col h-full bg-white rounded-lg shadow-sm overflow-hidden">
+      {/* Calendar grid - more compact */}
+      <div className="flex flex-1 relative overflow-y-auto overflow-x-hidden">
+        <div className="w-14 flex-shrink-0 border-r border-gray-200 bg-gray-50">
           {hours.map((hour) => (
             <div
               key={hour.toString()}
-              className="relative border-t last:border-b w-full"
+              className="h-12 flex items-start justify-end pr-2 pt-0.5 text-xs text-gray-500 font-medium border-t border-gray-200"
             >
-              {/* Clickable background with hover effect */}
-              <div
-                className="absolute inset-0 w-full h-full cursor-pointer hover:bg-orange-100/60 transition-colors"
-                onClick={() => handleTimeSlotClick(hour)}
-                style={{
-                  pointerEvents: hourHasEvents[hour.toString()]
-                    ? "none"
-                    : "auto",
-                }}
-              />
-
-              {/* Events for this hour - updated to handle side-by-side display */}
-              <EventGroupSideBySide hour={hour} events={events || []} />
+              {format(hour, "h a")}
             </div>
           ))}
+        </div>
+
+        <div className="flex-1 relative">
+          {/* Current time indicator */}
+          {isCurrentDay && currentHour >= 6 && currentHour < 20 && (
+            <div
+              className="absolute w-full border-t-2 border-red-500 z-20"
+              style={{
+                top: `${((currentHour - 6) * 100) / 14}%`,
+              }}
+            >
+              <div className="absolute -left-1.5 -top-1.5 w-3 h-3 rounded-full bg-red-500"></div>
+            </div>
+          )}
+
+          {/* Time slots - more compact */}
+          <div className="grid grid-rows-[repeat(14,minmax(3rem,1fr))] w-full h-full">
+            {hours.map((hour, index) => (
+              <div
+                key={hour.toString()}
+                className={`relative border-t ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
+                  } ${isCurrentDay && hour.getHours() === currentHour ? 'bg-blue-50/50' : ''
+                  }`}
+              >
+                {/* Clickable background with hover effect */}
+                <div
+                  className="absolute inset-0 w-full h-full cursor-pointer hover:bg-blue-100/40 transition-colors"
+                  onClick={() => handleTimeSlotClick(hour)}
+                  style={{
+                    pointerEvents: hourHasEvents[hour.toString()]
+                      ? "none"
+                      : "auto",
+                  }}
+                />
+
+                {/* Half-hour marker */}
+                <div className="absolute w-full border-t border-gray-200 border-dashed top-1/2"></div>
+
+                {/* Events for this hour */}
+                <EventGroupSideBySide
+                  hour={hour}
+                  events={events || []}
+                />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -317,7 +351,7 @@ export const CalendarWeekView = () => {
               className={cn(
                 "h-6 grid place-content-center",
                 isToday(date) &&
-                  "bg-primary text-primary-foreground rounded-full size-6"
+                "bg-primary text-primary-foreground rounded-full size-6"
               )}
             >
               {format(date, "d")}
@@ -444,8 +478,8 @@ export const CalendarMonthView = () => {
                   "size-6 grid place-items-center rounded-full mb-1 sticky top-0",
                   isToday(_date) && "bg-primary text-primary-foreground",
                   isSelectedDate &&
-                    !isToday(_date) &&
-                    "bg-orange-100 text-orange-800 font-medium" // Grey-orange circle for selected date
+                  !isToday(_date) &&
+                  "bg-orange-100 text-orange-800 font-medium" // Grey-orange circle for selected date
                 )}
               >
                 {format(_date, "d")}
@@ -525,8 +559,8 @@ export const CalendarYearView = () => {
                     className={cn(
                       "aspect-square grid place-content-center size-full tabular-nums",
                       isSameDay(today, _date) &&
-                        getMonth(_date) === i &&
-                        "bg-primary text-primary-foreground rounded-full"
+                      getMonth(_date) === i &&
+                      "bg-primary text-primary-foreground rounded-full"
                     )}
                   >
                     {format(_date, "d")}
@@ -617,7 +651,6 @@ const EventGroupSideBySide = ({ hour, events }: EventGroupSideBySideProps) => {
   if (eventsInHour.length === 0) return null;
 
   // Calculate width for each event based on count
-  // Ensure minimum width of 80px or 25% of container
   const eventCount = eventsInHour.length;
   const widthPercent = Math.max(25, 100 / eventCount);
 
@@ -626,17 +659,22 @@ const EventGroupSideBySide = ({ hour, events }: EventGroupSideBySideProps) => {
       {eventsInHour.map((event) => {
         // Calculate minutes from the start of the hour (0-59)
         const minutesOffset = event.start.getMinutes();
-        // Calculate duration in minutes, capped to this hour if it extends beyond
-        const endWithinHour = new Date(hour);
-        endWithinHour.setHours(hour.getHours() + 1, 0, 0, 0);
-        const durationMinutes = Math.min(
-          differenceInMinutes(event.end, event.start),
-          differenceInMinutes(endWithinHour, event.start)
-        );
+
+        // Calculate total duration in minutes
+        const durationMinutes = differenceInMinutes(event.end, event.start);
+
+        // Calculate how many hours this event spans
+        const hoursSpan = Math.ceil(durationMinutes / 60);
 
         // Convert to percentages for positioning
         const topPercent = (minutesOffset / 60) * 100;
-        const heightPercent = (durationMinutes / 60) * 100;
+
+        // For events that span multiple hours, we need to adjust the height
+        // Each hour row is 100% height, so multiply by the number of hours
+        const heightPercent = Math.min((durationMinutes / 60) * 100, 100);
+
+        // Calculate the z-index based on duration to ensure longer events appear on top
+        const zIndex = Math.floor(durationMinutes / 15); // Higher z-index for longer events
 
         return (
           <TooltipProvider key={event.id}>
@@ -649,9 +687,12 @@ const EventGroupSideBySide = ({ hour, events }: EventGroupSideBySideProps) => {
                   )}
                   style={{
                     top: `${topPercent}%`,
-                    height: `${Math.max(heightPercent, 10)}%`, // Minimum height 10%
+                    height: hoursSpan > 1
+                      ? `${(100 - topPercent) + ((hoursSpan - 1) * 100)}%`
+                      : `${Math.max(heightPercent, 10)}%`, // For multi-hour events, extend beyond current cell
                     width: `${widthPercent}%`,
                     left: `${eventsInHour.indexOf(event) * widthPercent}%`,
+                    zIndex: zIndex,
                   }}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -660,7 +701,7 @@ const EventGroupSideBySide = ({ hour, events }: EventGroupSideBySideProps) => {
                 >
                   <div className="font-medium truncate">{event.title}</div>
                   {durationMinutes >= 20 && ( // Only show time if enough space
-                    <div className="text-[10px] opacity-70">
+                    <div className="text-xs opacity-70">
                       {format(event.start, "h:mm a")} -{" "}
                       {format(event.end, "h:mm a")}
                     </div>

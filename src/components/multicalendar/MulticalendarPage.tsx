@@ -151,9 +151,8 @@ export default function MulticalendarPage() {
     <div className="h-full pt-0 px-6 sm:p-6 pl-1 grid grid-cols-12 grid-rows-12 gap-2">
       {/* month calendar date picker */}
       <Card
-        className={`${
-          isCollapsed ? "hidden" : "col-span-3 lg:flex"
-        } row-span-6 overflow-hidden hidden bg-amber-50 rounded-2xl h-full transition-all duration-600`}
+        className={`${isCollapsed ? "hidden" : "col-span-3 lg:flex"
+          } row-span-6 overflow-hidden hidden bg-amber-50 rounded-2xl h-full transition-all duration-600`}
       >
         <Calendar view="month" date={currentDate} onDateChange={setCurrentDate}>
           <div className="p-4 py-7 w-full flex flex-col">
@@ -182,9 +181,8 @@ export default function MulticalendarPage() {
 
       {/* full calendar day wise */}
       <Card
-        className={`p-6 ml-4 md:ml-0 h-fit mb-4 ${
-          isCollapsed ? "col-span-12" : "col-span-12 lg:col-span-9"
-        } row-span-12 flex flex-col bg-gradient-to-tr from-amber-50 to-orange-50 rounded-2xl transition-all duration-600`}
+        className={`p-6 ml-4 md:ml-0 h-fit mb-4 ${isCollapsed ? "col-span-12" : "col-span-12 lg:col-span-9"
+          } row-span-12 flex flex-col bg-gradient-to-tr from-amber-50 to-orange-50 rounded-2xl transition-all duration-600`}
       >
         <Calendar date={currentDate} onDateChange={setCurrentDate} view="day">
           <CalendarHeader
