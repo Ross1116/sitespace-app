@@ -41,7 +41,7 @@ export default function HomePage() {
           return;
         }
 
-        const response = await api.get("/api/auth/siteProject/getProjectList", {
+        const response = await api.get("/api/siteProject/getProjectList", {
           params: { currentUserId: userId },
         });
 
@@ -280,16 +280,14 @@ export default function HomePage() {
                       <div className="flex w-full">
                         <div className="w-16 flex-shrink-0 flex flex-col items-center justify-center py-2 border-r border-gray-200">
                           <div
-                            className={`text-xs font-medium uppercase ${
-                              today ? "text-orange-500" : "text-gray-500"
-                            }`}
+                            className={`text-xs font-medium uppercase ${today ? "text-orange-500" : "text-gray-500"
+                              }`}
                           >
                             {dayOfWeek}
                           </div>
                           <div
-                            className={`text-xl font-bold ${
-                              today ? "text-orange-600" : "text-gray-800"
-                            }`}
+                            className={`text-xl font-bold ${today ? "text-orange-600" : "text-gray-800"
+                              }`}
                           >
                             {" "}
                             {String(day).padStart(2, "0")}
@@ -310,15 +308,14 @@ export default function HomePage() {
 
                             <div
                               className={`ml-2 text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap
-                        ${
-                          booking.bookingStatus === "Confirmed"
-                            ? "bg-green-100 text-green-800"
-                            : booking.bookingStatus === "Pending"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : booking.bookingStatus === "Denied"
-                            ? "bg-red-100 text-red-800"
-                            : "bg-gray-100 text-gray-800"
-                        }`}
+                        ${booking.bookingStatus === "Confirmed"
+                                  ? "bg-green-100 text-green-800"
+                                  : booking.bookingStatus === "Pending"
+                                    ? "bg-yellow-100 text-yellow-800"
+                                    : booking.bookingStatus === "Denied"
+                                      ? "bg-red-100 text-red-800"
+                                      : "bg-gray-100 text-gray-800"
+                                }`}
                             >
                               {booking.bookingStatus}
                             </div>
