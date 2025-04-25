@@ -330,7 +330,7 @@ export function CreateBookingForm({
 
       try {
         const response = await api.post(
-          "/api/auth/slotBooking/saveSlotBooking",
+          "/api/slotBooking/saveSlotBooking",
           bookingData
         );
         console.log("Booking saved successfully:", response.data);

@@ -73,7 +73,7 @@ export default function HomePage() {
         const project = JSON.parse(projectString);
 
         const response = await api.get(
-          "/api/auth/slotBooking/getslotBookingList",
+          "/api/slotBooking/getslotBookingList",
           {
             params: { projectId: project.id, userId: userId },
           }
@@ -164,7 +164,7 @@ export default function HomePage() {
           return;
         }
 
-        const response = await api.get("/api/auth/Asset/getAssetList", {
+        const response = await api.get("/api/Asset/getAssetList", {
           params: { currentUserId: userId },
         });
 

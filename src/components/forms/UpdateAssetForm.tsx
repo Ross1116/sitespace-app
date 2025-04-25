@@ -29,16 +29,16 @@ interface AssetModalProps {
 }
 
 interface Asset {
-    assetTitle: string;
-    assetLocation: string;
-    maintanenceStartdt: string;
-    maintanenceEnddt: string;
-    assetPoc: string;
-    assetStatus: string;
-    usageInstructions: string;
-    assetKey: string;
-    assetProject: string | Project;
-  }
+  assetTitle: string;
+  assetLocation: string;
+  maintanenceStartdt: string;
+  maintanenceEnddt: string;
+  assetPoc: string;
+  assetStatus: string;
+  usageInstructions: string;
+  assetKey: string;
+  assetProject: string | Project;
+}
 
 const UpdateAssetModal: React.FC<AssetModalProps> = ({
   isOpen,
@@ -77,12 +77,12 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
       console.error("No project found in localStorage");
       return;
     }
-  
+
     try {
       const parsedProjects = JSON.parse(projectString);
       const parsedId = parsedProjects.id;
       setProject(parsedId);
-  
+
       // Only update the assetProject if it's not already set
       if (!asset.assetProject) {
         setAsset((prev) => ({
@@ -118,14 +118,14 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-  
+
     try {
       setIsSubmitting(true);
-  
+
       const projectId = typeof asset.assetProject === 'object' && asset.assetProject !== null
         ? asset.assetProject.id
         : asset.assetProject;
-  
+
       const formattedAsset = {
         ...asset,
         assetProject: projectId, // Ensure we're using just the ID
@@ -136,8 +136,8 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
           ? format(new Date(asset.maintanenceEnddt), "yyyy-MM-dd'T'HH:mm:ss")
           : "",
       };
-      const response = await api.post("/api/auth/Asset/updateAsset", formattedAsset);
-  
+      const response = await api.post("/api/Asset/updateAsset", formattedAsset);
+
       const data = response.data;
       onSave(data);
       onClose(false);

@@ -40,7 +40,7 @@ export default function Page() {
       }
 
       const response = await api.get(
-        "/api/auth/siteProject/getSubcontractorList",
+        "/api/siteProject/getSubcontractorList",
         {
           params: { currentUserId: userId },
         }
@@ -172,11 +172,10 @@ export default function Page() {
                 >
                   <Card
                     className={`w-full p-0 cursor-pointer px-2 my-2 transition-colors duration-200 
-                                ${
-                                  isSelected(contractor.contractorKey)
-                                    ? "bg-orange-400"
-                                    : "hover:bg-orange-100"
-                                }`}
+                                ${isSelected(contractor.contractorKey)
+                        ? "bg-orange-400"
+                        : "hover:bg-orange-100"
+                      }`}
                   >
                     {/* Desktop view */}
                     <div className="hidden sm:grid grid-cols-5 w-full py-6">
@@ -233,11 +232,10 @@ export default function Page() {
           <button
             onClick={() => handlePageChange(currentPage - 1)}
             disabled={currentPage === 1}
-            className={`px-2 sm:px-3 py-1 rounded text-sm ${
-              currentPage === 1
-                ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                : "bg-orange-200 text-gray-700 hover:bg-orange-300"
-            }`}
+            className={`px-2 sm:px-3 py-1 rounded text-sm ${currentPage === 1
+              ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+              : "bg-orange-200 text-gray-700 hover:bg-orange-300"
+              }`}
           >
             Prev
           </button>
@@ -246,11 +244,10 @@ export default function Page() {
             <button
               key={page}
               onClick={() => handlePageChange(page)}
-              className={`px-2 sm:px-3 py-1 rounded text-sm ${
-                currentPage === page
-                  ? "bg-orange-400 text-white"
-                  : "bg-orange-200 text-gray-700 hover:bg-orange-300"
-              }`}
+              className={`px-2 sm:px-3 py-1 rounded text-sm ${currentPage === page
+                ? "bg-orange-400 text-white"
+                : "bg-orange-200 text-gray-700 hover:bg-orange-300"
+                }`}
             >
               {page}
             </button>
@@ -259,11 +256,10 @@ export default function Page() {
           <button
             onClick={() => handlePageChange(currentPage + 1)}
             disabled={currentPage === totalPages}
-            className={`px-2 sm:px-3 py-1 rounded text-sm ${
-              currentPage === totalPages
-                ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                : "bg-orange-200 text-gray-700 hover:bg-orange-300"
-            }`}
+            className={`px-2 sm:px-3 py-1 rounded text-sm ${currentPage === totalPages
+              ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+              : "bg-orange-200 text-gray-700 hover:bg-orange-300"
+              }`}
           >
             Next
           </button>
@@ -272,9 +268,8 @@ export default function Page() {
 
       {/* Sidebar */}
       <div
-        className={`fixed inset-y-0 right-0 w-full sm:w-1/3 bg-white shadow-lg transform transition-transform duration-300 ease-in-out z-40 ${
-          sidebarOpen ? "translate-x-0" : "translate-x-full"
-        }`}
+        className={`fixed inset-y-0 right-0 w-full sm:w-1/3 bg-white shadow-lg transform transition-transform duration-300 ease-in-out z-40 ${sidebarOpen ? "translate-x-0" : "translate-x-full"
+          }`}
       >
         {selectedContractor && (
           <div className="h-full flex flex-col p-6 py-16 px-12">

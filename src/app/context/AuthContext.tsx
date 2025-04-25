@@ -21,11 +21,11 @@ type AuthContextType = {
   token: string | null;
   login: (username: string, password: string) => Promise<void>;
   register: (
-    fullName: string, 
-    companyName: string, 
-    tradeCategory: string, 
-    email: string, 
-    phoneNumber: string, 
+    fullName: string,
+    companyName: string,
+    tradeCategory: string,
+    email: string,
+    phoneNumber: string,
     password: string,
     project: string,
   ) => Promise<void>;
@@ -66,21 +66,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setIsLoading(true);
       clearError();
-  
-      const response = await fetch(`${API_URL}/api/auth/signin`, {
+
+      const response = await fetch(`${API_URL}/api/signin`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
       });
-  
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.message || `Login failed (${response.status})`);
       }
-  
+
       const data = await response.json();
       if (!data.accessToken) throw new Error("Invalid login response (no token)");
-  
+
       // Store user and token
       const userData = {
         userId: data.userId,
@@ -88,18 +88,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: data.email,
         roles: data.roles,
       };
-  
+
       setUser(userData);
       setToken(data.accessToken);
-  
+
       // Save to localStorage
       localStorage.setItem("accessToken", data.accessToken);
       localStorage.setItem("user", JSON.stringify(userData));
-  
+
       // Redirect to home AFTER storing everything
       await router.push("/home");
-  
-    } catch (error : any) {
+
+    } catch (error: any) {
       console.error("Login error:", error);
       setError(error instanceof Error ? error.message : "An unknown error occurred");
       alert(`Login failed: ${error.message}`);
@@ -109,11 +109,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const register = async (
-    fullName: string, 
-    companyName: string, 
-    tradeCategory: string, 
-    email: string, 
-    phoneNumber: string, 
+    fullName: string,
+    companyName: string,
+    tradeCategory: string,
+    email: string,
+    phoneNumber: string,
     password: string,
     project: string,
   ) => {
@@ -124,7 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Extract username from email or use first part of fullName
       const username = email.split('@')[0] || fullName.split(' ')[0].toLowerCase();
 
-      const response = await fetch(`${API_URL}/api/auth/signup`, {
+      const response = await fetch(`${API_URL}/api/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -150,15 +150,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // After successful registration, redirect to login
       router.push("/login?registered=true");
-      
+
     } catch (error) {
       console.error("Registration error:", error);
       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
       setError(errorMessage);
-      
+
       // Display alert for user feedback
       alert(`Registration failed: ${errorMessage}`);
-      
+
       throw error;
     } finally {
       setIsLoading(false);

@@ -28,7 +28,7 @@ export default function BookingCardDropdown({
   const getBookingDetails = async () => {
     try {
       const response = await api.get(
-        "/api/auth/slotBooking/editSlotBookingdetails",
+        "/api/slotBooking/editSlotBookingdetails",
         {
           params: { bookingKey: bookingKey },
         }
@@ -54,7 +54,7 @@ export default function BookingCardDropdown({
         bookingStatus: "Confirmed",
       };
 
-      await api.post("/api/auth/slotBooking/updateSlotBooking", updatedBooking);
+      await api.post("/api/slotBooking/updateSlotBooking", updatedBooking);
       console.log(updatedBooking);
 
       onActionComplete?.();
@@ -76,7 +76,7 @@ export default function BookingCardDropdown({
         bookingStatus: "Denied",
       };
 
-      await api.post("/api/auth/slotBooking/updateSlotBooking", updatedBooking);
+      await api.post("/api/slotBooking/updateSlotBooking", updatedBooking);
 
       onActionComplete?.();
     } catch (error) {
@@ -97,7 +97,7 @@ export default function BookingCardDropdown({
         bookingStatus: "Cancelled",
       };
 
-      await api.post("/api/auth/slotBooking/updateSlotBooking", updatedBooking);
+      await api.post("/api/slotBooking/updateSlotBooking", updatedBooking);
 
       onActionComplete?.();
     } catch (error) {
@@ -135,11 +135,10 @@ export default function BookingCardDropdown({
         disabled={isLoading}
         className={`px-3 py-1 text-xs rounded-md flex items-center
         ${isLoading ? "opacity-50 cursor-not-allowed" : ""}
-        ${
-          bookingStatus === "Pending"
+        ${bookingStatus === "Pending"
             ? "bg-gray-800 text-white hover:bg-gray-700"
             : "bg-gray-100 text-gray-800 hover:bg-gray-200"
-        }`}
+          }`}
       >
         Edit
         <ChevronDown

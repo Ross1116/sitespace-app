@@ -55,7 +55,7 @@ export default function MulticalendarPage() {
       const project = JSON.parse(projectString);
 
       const response = await api.get(
-        "/api/auth/slotBooking/getslotBookingList",
+        "/api/slotBooking/getslotBookingList",
         {
           params: { projectId: project.id, userId: userId },
         }

@@ -113,7 +113,7 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
 
       console.log("About to make API call");
       const response = await api.post(
-        "/api/auth/Asset/saveAsset",
+        "/api/Asset/saveAsset",
         formattedAsset
       );
 

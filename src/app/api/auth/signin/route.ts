@@ -6,7 +6,7 @@ export async function POST(request: Request) {
     const { username, password } = body;
 
     // Forward the request to your actual backend
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/signin`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/signin`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -27,8 +27,7 @@ export async function POST(request: Request) {
     const headers = new Headers();
     headers.append(
       "Set-Cookie",
-      `accessToken=${
-        data.accessToken
+      `accessToken=${data.accessToken
       }; Path=/; HttpOnly; SameSite=Strict; Max-Age=${60 * 60 * 24}` // 24 hours
     );
 

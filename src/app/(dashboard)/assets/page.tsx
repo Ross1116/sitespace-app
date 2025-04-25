@@ -70,7 +70,7 @@ export default function AssetsTable() {
       }
 
       console.log("Fetching assets...");
-      const response = await api.get("/api/auth/Asset/getAssetList", {
+      const response = await api.get("/api/Asset/getAssetList", {
         params: { assetProject: project?.id },
       });
 
@@ -170,7 +170,7 @@ export default function AssetsTable() {
     }
 
     try {
-      await api.post("/api/auth/Asset/deleteAsset", {
+      await api.post("/api/Asset/deleteAsset", {
         assetKey: assetKey,
       });
       fetchAssets(true);
@@ -308,10 +308,9 @@ export default function AssetsTable() {
                   >
                     <Card
                       className={`w-full p-0 cursor-pointer px-2 my-2 transition-colors duration-200 
-                        ${
-                          isSelected(asset.assetKey)
-                            ? "bg-orange-400 hover:bg-orange-100"
-                            : "hover:bg-orange-100"
+                        ${isSelected(asset.assetKey)
+                          ? "bg-orange-400 hover:bg-orange-100"
+                          : "hover:bg-orange-100"
                         }`}
                     >
                       {/* Desktop view */}
@@ -321,10 +320,9 @@ export default function AssetsTable() {
                         <div className="px-6">
                           <span
                             className={`px-2 py-1 rounded-full text-xs font-semibold 
-                              ${
-                                asset.assetStatus === "Operational"
-                                  ? "bg-green-100 text-green-800"
-                                  : asset.assetStatus === "OutOfService"
+                              ${asset.assetStatus === "Operational"
+                                ? "bg-green-100 text-green-800"
+                                : asset.assetStatus === "OutOfService"
                                   ? "bg-yellow-100 text-yellow-800"
                                   : "bg-red-100 text-red-800"
                               }`}
@@ -336,11 +334,11 @@ export default function AssetsTable() {
                         <div className="px-6">
                           <div className="px-6">
                             {typeof asset.assetProject === "object" &&
-                            asset.assetProject !== null
+                              asset.assetProject !== null
                               ? asset.assetProject.text
                               : project && project.id === asset.assetProject
-                              ? project.text
-                              : asset.assetProject}
+                                ? project.text
+                                : asset.assetProject}
                           </div>
                         </div>
                         <div
@@ -398,13 +396,12 @@ export default function AssetsTable() {
                         <div className="mt-1 mb-1">
                           <span
                             className={`px-2 py-1 rounded-full text-xs font-semibold 
-                  ${
-                    asset.assetStatus === "Operational"
-                      ? "bg-green-100 text-green-800"
-                      : asset.assetStatus === "OutOfService"
-                      ? "bg-yellow-100 text-yellow-800"
-                      : "bg-red-100 text-red-800"
-                  }`}
+                  ${asset.assetStatus === "Operational"
+                                ? "bg-green-100 text-green-800"
+                                : asset.assetStatus === "OutOfService"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : "bg-red-100 text-red-800"
+                              }`}
                           >
                             {asset.assetStatus}
                           </span>
@@ -431,11 +428,10 @@ export default function AssetsTable() {
             <button
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={currentPage === 1}
-              className={`px-2 sm:px-3 py-1 rounded text-sm ${
-                currentPage === 1
-                  ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                  : "bg-orange-200 text-gray-700 hover:bg-orange-300"
-              }`}
+              className={`px-2 sm:px-3 py-1 rounded text-sm ${currentPage === 1
+                ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                : "bg-orange-200 text-gray-700 hover:bg-orange-300"
+                }`}
             >
               Prev
             </button>
@@ -444,11 +440,10 @@ export default function AssetsTable() {
               <button
                 key={page}
                 onClick={() => handlePageChange(page)}
-                className={`px-2 sm:px-3 py-1 rounded text-sm ${
-                  currentPage === page
-                    ? "bg-orange-400 text-white"
-                    : "bg-orange-200 text-gray-700 hover:bg-orange-300"
-                }`}
+                className={`px-2 sm:px-3 py-1 rounded text-sm ${currentPage === page
+                  ? "bg-orange-400 text-white"
+                  : "bg-orange-200 text-gray-700 hover:bg-orange-300"
+                  }`}
               >
                 {page}
               </button>
@@ -457,11 +452,10 @@ export default function AssetsTable() {
             <button
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
-              className={`px-2 sm:px-3 py-1 rounded text-sm ${
-                currentPage === totalPages
-                  ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                  : "bg-orange-200 text-gray-700 hover:bg-orange-300"
-              }`}
+              className={`px-2 sm:px-3 py-1 rounded text-sm ${currentPage === totalPages
+                ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                : "bg-orange-200 text-gray-700 hover:bg-orange-300"
+                }`}
             >
               Next
             </button>
@@ -471,9 +465,8 @@ export default function AssetsTable() {
 
       {/* Sidebar */}
       <div
-        className={`fixed inset-y-0 right-0 w-full sm:w-1/3 bg-white shadow-lg transform transition-transform duration-300 ease-in-out z-40 ${
-          sidebarOpen ? "translate-x-0" : "translate-x-full"
-        }`}
+        className={`fixed inset-y-0 right-0 w-full sm:w-1/3 bg-white shadow-lg transform transition-transform duration-300 ease-in-out z-40 ${sidebarOpen ? "translate-x-0" : "translate-x-full"
+          }`}
       >
         {selectedAsset && (
           <div className="h-full flex flex-col p-6 py-16 px-12">
@@ -516,10 +509,9 @@ export default function AssetsTable() {
                         <div className="flex items-center">
                           <span
                             className={`px-2 py-1 rounded-full text-xs font-semibold 
-                              ${
-                                selectedAsset.assetStatus === "Active"
-                                  ? "bg-green-100 text-green-800"
-                                  : selectedAsset.assetStatus === "Maintenance"
+                              ${selectedAsset.assetStatus === "Active"
+                                ? "bg-green-100 text-green-800"
+                                : selectedAsset.assetStatus === "Maintenance"
                                   ? "bg-yellow-100 text-yellow-800"
                                   : "bg-red-100 text-red-800"
                               }`}

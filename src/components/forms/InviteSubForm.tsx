@@ -90,7 +90,7 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
       }
 
       const response = await api.post(
-        "/api/auth/subContractor/subcontractorRegMail",
+        "/api/subContractor/subcontractorRegMail",
         contractor
       );
 
