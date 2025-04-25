@@ -67,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       clearError();
 
-      const response = await fetch(`${API_URL}/api/signin`, {
+      const response = await fetch(`${API_URL}/api/auth/signin`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
@@ -124,7 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Extract username from email or use first part of fullName
       const username = email.split('@')[0] || fullName.split(' ')[0].toLowerCase();
 
-      const response = await fetch(`${API_URL}/api/signup`, {
+      const response = await fetch(`${API_URL}/api/auth/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -165,14 +165,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    setToken(null);
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("user");
-    localStorage.removeItem("assets");
-    localStorage.removeItem("bookings");
-    router.push("/login");
+  const logout = async () => {
+    try {
+      setIsLoading(true);
+      clearError();
+      const response = await fetch(`${API_URL}/api/auth/signout`, {
+        method: "POST",
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Login failed (${response.status})`);
+      }
+    } catch (error: any) {
+      console.error("Login error:", error);
+      setError(error instanceof Error ? error.message : "An unknown error occurred");
+      alert(`Login failed: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+      setUser(null);
+      setToken(null);
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("user");
+      localStorage.removeItem("assets");
+      localStorage.removeItem("bookings");
+      router.push("/");
+    }
   };
 
   return (
