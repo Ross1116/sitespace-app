@@ -56,7 +56,7 @@ export default function LogoCarousel({ logos, className }: LogoCarouselProps) {
   return (
     <div className={cn("relative overflow-hidden", className)}>
       {/* Gradient fade effect on left */}
-      <div className="absolute left-0 top-0 z-10 h-full w-16 bg-gradient-to-r from-slate-50 dark:from-slate-950 to-transparent"></div>
+      <div className="absolute left-0 top-0 z-10 h-full w-16 bg-gradient-to-r from-blue-50 dark:from-slate-950 to-transparent"></div>
 
       {/* Carousel container */}
       <div ref={carouselRef} className="overflow-hidden">
@@ -90,7 +90,7 @@ export default function LogoCarousel({ logos, className }: LogoCarouselProps) {
       </div>
 
       {/* Gradient fade effect on right */}
-      <div className="absolute right-0 top-0 z-10 h-full w-16 bg-gradient-to-l from-slate-50 dark:from-slate-950 to-transparent"></div>
+      <div className="absolute right-0 top-0 z-10 h-full w-16 bg-gradient-to-l from-blue-50 dark:from-slate-950 to-transparent"></div>
     </div>
   )
 }

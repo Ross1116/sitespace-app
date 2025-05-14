@@ -191,7 +191,7 @@ export default function ProductDemo() {
                   ))}
                 </TabsList>
 
-                <div className="mt-8 space-y-6 p-4 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800">
+                <div className="mt-8 space-y-6 p-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800">
                   <h3 className="text-xl font-semibold text-slate-900 dark:text-white">{activeFeature.title}</h3>
                   <p className="text-slate-600 dark:text-slate-300">{activeFeature.description}</p>
 
@@ -216,7 +216,7 @@ export default function ProductDemo() {
               <div className="w-full md:w-2/3 flex flex-col">
                 <div className="relative rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 shadow-lg flex-1 flex flex-col">
                   {/* Demo header */}
-                  <div className="bg-slate-100 dark:bg-slate-800 p-3 flex items-center border-b border-slate-200 dark:border-slate-700">
+                  <div className="bg-blue-100/70 dark:bg-slate-800 p-3 flex items-center border-b border-slate-200 dark:border-slate-700">
                     <div className="flex space-x-2">
                       <div className="w-3 h-3 rounded-full bg-red-500"></div>
                       <div className="w-3 h-3 rounded-full bg-amber-500"></div>
@@ -276,7 +276,7 @@ export default function ProductDemo() {
                   </div>
 
                   {/* Demo controls */}
-                  <div className="bg-slate-100 dark:bg-slate-800 p-4 flex justify-between items-center">
+                  <div className="bg-blue-100/70 dark:bg-slate-800 p-4 flex justify-between items-center">
                     <div className="text-sm text-slate-500 dark:text-slate-400">
                       Step {currentStepIndex + 1} of {activeFeature.demo.steps.length}
                     </div>
