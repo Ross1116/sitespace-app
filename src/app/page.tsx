@@ -12,10 +12,10 @@ import { TopNav } from "@/components/TopNav";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, ChevronRight } from "lucide-react";
-
+import Footer from "@/components/landing/Footer";
 
 export default function HomePage() {
-  const { valueProp, testimonials, pricing } = siteContent
+  const { valueProp, testimonials, pricing, finalCta } = siteContent
   return (
     <div>
       <TopNav />
@@ -97,7 +97,7 @@ export default function HomePage() {
       <section className="py-20 bg-slate-50 dark:bg-slate-900 transition-colors duration-300" id="pricing">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl mx-auto text-center mb-16">
-            <Badge className="mb-4 bg-navy-100 text-navy-800 dark:bg-navy-900 dark:text-navy-300 hover:bg-navy-100 dark:hover:bg-navy-900 border-none">
+            <Badge className="mb-4 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900 border-none">
               {pricing.badge}
             </Badge>
             <h2 className="text-3xl font-bold text-slate-900 dark:text-white sm:text-4xl mb-4">{pricing.heading}</h2>
@@ -127,6 +127,28 @@ export default function HomePage() {
       <div className="container pb-20 mx-auto">
         <Testimonials testimonials={testimonials} />
       </div> */}
+      <section className="py-20 bg-gradient-to-r from-blue-900 to-blue-950 dark:from-blue-900 dark:to-blue-950 relative overflow-hidden">
+        <div className="absolute inset-0 z-0 bg-[url('/grid-pattern.png')] bg-center opacity-10"></div>
+        <div className="absolute top-0 right-0 w-96 h-96 bg-orange-500 rounded-full filter blur-3xl opacity-20 -translate-y-1/2 translate-x-1/3"></div>
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-300 rounded-full filter blur-3xl opacity-20 translate-y-1/2 -translate-x-1/3"></div>
+
+        <div className="container relative z-10 mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-4xl mx-auto text-center">
+            <h2 className="text-3xl font-bold text-white sm:text-4xl mb-6">{finalCta.heading}</h2>
+            <p className="text-xl text-blue-100 mb-10">{finalCta.subheading}</p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button size="lg" className="bg-white text-blue-800 hover:bg-blue-200">
+                {finalCta.primaryCta} <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+              <Button size="lg" variant="outline" className="border-orange-200 text-black hover:bg-orange-100">
+                {finalCta.secondaryCta}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <Footer />
     </div>
   );
 }
