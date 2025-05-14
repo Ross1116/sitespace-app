@@ -1,3 +1,4 @@
+import FeatureGrid from "@/components/landing/FeatureGrid";
 import Hero from "@/components/landing/Hero";
 // import { Feature } from "@/components/ui/hero/feature";
 // import { Testimonials } from "@/components/ui/testimonials";
@@ -13,6 +14,9 @@ export default function HomePage() {
       </div>
       <div className="block min-h-screen bg-white dark:bg-slate-950 transition-colors duration-300">
         <Hero />
+      </div>
+      <div>
+        <FeatureGrid />
       </div>
       {/* <div className="container mx-auto">
         <Feature />

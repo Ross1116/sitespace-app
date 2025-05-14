@@ -41,7 +41,7 @@ export default function LogoCarousel({ logos, className }: LogoCarouselProps) {
             className="flex h-12 items-center justify-center grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all duration-300"
           >
             <Image
-              src={logo.logo || "https://placehold.co/48x120.svg"}
+              src={logo.logo || "https://placehold.co/120x48"}
               alt={logo.name}
               width={120}
               height={48}
@@ -78,7 +78,7 @@ export default function LogoCarousel({ logos, className }: LogoCarouselProps) {
               className="mx-8 flex h-12 w-[120px] flex-shrink-0 items-center justify-center grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all duration-300"
             >
               <Image
-                src={logo.logo || "https://placeholder.co/48x120"}
+                src={logo.logo || "https://placehold.co/120x48"}
                 alt={logo.name}
                 width={120}
                 height={48}

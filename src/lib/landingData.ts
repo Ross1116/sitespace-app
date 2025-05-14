@@ -18,14 +18,14 @@ export const siteContent = {
   trustedBy: {
     heading: "Trusted by innovative companies",
     companies: [
-      { name: "Company 1", logo: "/placeholder.co/48x120?text=Company+1" },
-      { name: "Company 2", logo: "/placeholder.co/48x120?text=Company+2" },
-      { name: "Company 3", logo: "/placeholder.co/48x120?text=Company+3" },
-      { name: "Company 4", logo: "/placeholder.co/48x120?text=Company+4" },
-      { name: "Company 5", logo: "/placeholder.co/48x120?text=Company+5" },
-      { name: "Company 6", logo: "/placeholder.co/48x120?text=Company+6" },
-      { name: "Company 7", logo: "/placeholder.co/48x120" },
-      { name: "Company 8", logo: "/placeholder.co/48x120" },
+      { name: "Company 1", logo: "/placehold.co/48x120?text=Company+1" },
+      { name: "Company 2", logo: "/placehold.co/48x120?text=Company+2" },
+      { name: "Company 3", logo: "/placehold.co/48x120?text=Company+3" },
+      { name: "Company 4", logo: "/placehold.co/48x120?text=Company+4" },
+      { name: "Company 5", logo: "/placehold.co/48x120?text=Company+5" },
+      { name: "Company 6", logo: "/placehold.co/48x120?text=Company+6" },
+      { name: "Company 7", logo: "/placehold.co/48x120" },
+      { name: "Company 8", logo: "/placehold.co/48x120" },
     ],
   },
 
