@@ -140,7 +140,7 @@ export default function ProductDemo() {
             See sitespace in action
           </h2>
           <p className="text-xl text-slate-600 dark:text-slate-300">
-            Explore our platform's key features and see how they can transform your delivery operations.
+            Explore our platform&apos;s key features and see how they can transform your delivery operations.
           </p>
         </div>
 

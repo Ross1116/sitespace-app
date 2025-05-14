@@ -46,7 +46,7 @@ export default function FeatureGrid({ className }: FeatureGridProps) {
             Platform Capabilities
           </Badge>
           <h2 className="text-3xl font-bold text-slate-900 dark:text-white sm:text-4xl mb-4">
-            Your details have the potential to be your firm's <span className="text-orange-500">superpower</span>
+            Your details have the potential to be your firm&apos;s <span className="text-orange-500">superpower</span>
           </h2>
           <p className="text-xl text-slate-600 dark:text-slate-300">
             sitespace transforms how you manage asset deliveries with powerful tools designed for modern businesses.

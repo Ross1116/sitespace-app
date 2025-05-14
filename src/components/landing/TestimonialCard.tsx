@@ -46,7 +46,7 @@ export default function TestimonialCard({ quote, author, role, company, rating }
             ))}
           </div>
 
-          <blockquote className="text-slate-700 dark:text-slate-300 mb-6 flex-grow">"{quote}"</blockquote>
+          <blockquote className="text-slate-700 dark:text-slate-300 mb-6 flex-grow">&quot;{quote}&quot;</blockquote>
 
           <div className="flex items-center mt-auto">
             <div className="h-10 w-10 rounded-full overflow-hidden mr-3 bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
