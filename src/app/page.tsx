@@ -1,4 +1,4 @@
-import { Hero } from "@/components/ui/hero/hero";
+import Hero from "@/components/landing/Hero";
 // import { Feature } from "@/components/ui/hero/feature";
 // import { Testimonials } from "@/components/ui/testimonials";
 // import { testimonials } from "@/lib/data";
@@ -11,7 +11,7 @@ export default function HomePage() {
       <div>
         <TopNav />
       </div>
-      <div className="block max-h-dvh">
+      <div className="block min-h-screen bg-white dark:bg-slate-950 transition-colors duration-300">
         <Hero />
       </div>
       {/* <div className="container mx-auto">
