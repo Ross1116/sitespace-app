@@ -3,6 +3,7 @@ import Hero from "@/components/landing/Hero";
 import ProductDemo from "@/components/landing/ProductDemo";
 import { ValuePropIllustration } from "@/components/landing/ValueSection";
 import { siteContent } from "@/lib/landingData";
+import TestimonialCard from "@/components/landing/TestimonialCard";
 // import { Feature } from "@/components/ui/hero/feature";
 // import { Testimonials } from "@/components/ui/testimonials";
 // import { testimonials } from "@/lib/data";
@@ -13,7 +14,7 @@ import { ArrowRight, ChevronRight } from "lucide-react";
 
 
 export default function HomePage() {
-  const { valueProp } = siteContent
+  const { valueProp, testimonials } = siteContent
   return (
     <div>
       <div>
@@ -68,6 +69,32 @@ export default function HomePage() {
                 </Button>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+      <section className="py-20 bg-white dark:bg-slate-950 transition-colors duration-300">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-3xl mx-auto text-center mb-16">
+            <Badge className="mb-4 bg-navy-100 text-navy-800 dark:bg-navy-900 dark:text-navy-300 hover:bg-navy-100 dark:hover:bg-navy-900 border-none">
+              {testimonials.badge}
+            </Badge>
+            <h2 className="text-3xl font-bold text-slate-900 dark:text-white sm:text-4xl mb-4">
+              {testimonials.heading}
+            </h2>
+            <p className="text-xl text-slate-600 dark:text-slate-300">{testimonials.subheading}</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {testimonials.items.map((testimonial, index) => (
+              <TestimonialCard
+                key={index}
+                quote={testimonial.quote}
+                author={testimonial.author}
+                role={testimonial.role}
+                company={testimonial.company}
+                rating={testimonial.rating}
+              />
+            ))}
           </div>
         </div>
       </section>
