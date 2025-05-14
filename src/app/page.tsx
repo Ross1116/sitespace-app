@@ -18,9 +18,7 @@ export default function HomePage() {
   const { valueProp, testimonials, pricing } = siteContent
   return (
     <div>
-      <div>
-        <TopNav />
-      </div>
+      <TopNav />
       {/* <div className="block min-h-screen bg-white dark:bg-slate-950 transition-colors duration-300"> */}
       <Hero />
       {/* </div> */}
