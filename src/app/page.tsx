@@ -21,15 +21,11 @@ export default function HomePage() {
       <div>
         <TopNav />
       </div>
-      <div className="block min-h-screen bg-white dark:bg-slate-950 transition-colors duration-300">
-        <Hero />
-      </div>
-      <div>
-        <FeatureGrid />
-      </div>
-      <div>
-        <ProductDemo />
-      </div>
+      {/* <div className="block min-h-screen bg-white dark:bg-slate-950 transition-colors duration-300"> */}
+      <Hero />
+      {/* </div> */}
+      <FeatureGrid />
+      <ProductDemo />
       <section
         className="py-20 bg-white dark:bg-slate-950 overflow-hidden transition-colors duration-300"
         id="solutions"
