@@ -85,6 +85,7 @@ export default function FeatureGrid({ className }: FeatureGridProps) {
                         className="absolute inset-0 bg-gradient-to-t from-orange-500/60 to-transparent flex items-end justify-center p-4"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
+                        transition={{ duration: .6, ease: "easeInOut" }}
                         exit={{ opacity: 0 }}
                       >
                         <Button className="text-white cursor-pointer shadow-none bg-white/0 hover:bg-orange-950/10 hover:backdrop-blur-3xl font-medium">Learn more</Button>

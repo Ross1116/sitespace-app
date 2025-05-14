@@ -135,7 +135,7 @@ export default function ProductDemo() {
   const activeFeature = demoFeatures.find((feature) => feature.id === activeTab) || demoFeatures[0]
 
   return (
-    <section className="py-20 bg-white dark:bg-slate-950 transition-colors duration-300" id="demo">
+    <section className="py-20 bg-slate-50 dark:bg-slate-900 transition-colors duration-300" id="demo">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
 
         <div className="max-w-6xl mx-auto">

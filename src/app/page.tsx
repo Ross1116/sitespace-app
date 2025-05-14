@@ -67,7 +67,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="py-20 bg-white dark:bg-slate-950 transition-colors duration-300">
+      <section className="py-20 bg-blue-50/70 dark:bg-slate-950 transition-colors duration-300">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl mx-auto text-center mb-16">
             <Badge className="mb-4 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900 border-none">

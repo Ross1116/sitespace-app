@@ -89,9 +89,9 @@ export default function Hero() {
         <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white dark:from-slate-950"></div>
       </section>
 
-      <section className="py-12 bg-white dark:bg-slate-950 transition-colors duration-300">
+      <section className="py-12 bg-gradient-to-b from-white from-0% to-blue-50/70 to-30%">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-center text-slate-600 dark:text-slate-400 text-lg mb-8">{trustedBy.heading}</h2>
+          <h2 className="text-center font-bold text-slate-600 dark:text-slate-400 text-lg mb-8">{trustedBy.heading}</h2>
           <LogoCarousel logos={trustedBy.companies} />
         </div>
       </section>
