@@ -25,7 +25,6 @@ export default function Hero() {
              before:bg-no-repeat
              before:[mask-image:linear-gradient(to_right,rgba(0,0,0,0.15)_0%,rgba(0,0,0,0.0)_55%)]
         ">
-        <div className="absolute inset-0 z-0 bg-[url('/grid-pattern.png')] bg-center opacity-5"></div>
         <div className="container relative z-10 mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:gap-8 items-center">
             <div className="max-w-2xl">
