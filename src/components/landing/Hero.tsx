@@ -10,21 +10,35 @@ export default function Hero() {
   const { hero, trustedBy } = siteContent
   return (
     <div>
-      <section className="relative bg-gradient-to-b from-white to-slate-50 dark:from-slate-950 dark:to-slate-900 pt-24 md:pt-32 lg:pt-40">
+      <section
+        className="pb-12 relative 
+             bg-gradient-to-r from-white to-slate-50 
+             dark:from-slate-950 dark:to-slate-900 
+             pt-24 md:pt-32 lg:pt-40
+             
+             before:content-[''] 
+             before:absolute 
+             before:inset-0 
+             before:bg-[url('/static/images/floor-plan.png')] 
+             before:bg-[50%_auto]
+             before:bg-left-center
+             before:bg-no-repeat
+             before:[mask-image:linear-gradient(to_right,rgba(0,0,0,0.15)_0%,rgba(0,0,0,0.0)_55%)]
+        ">
         <div className="absolute inset-0 z-0 bg-[url('/grid-pattern.png')] bg-center opacity-5"></div>
         <div className="container relative z-10 mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:gap-8 items-center">
             <div className="max-w-2xl">
-              <Badge className="mb-4 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 hover:bg-blue-900 border-none">
+              <Badge className="mb-4 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 border-none">
                 {hero.badge}
               </Badge>
               <h1 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-5xl md:text-6xl mb-6">
-                {hero.heading.split("sitespace").map((part, i, arr) => (
+                {hero.heading.split("Sitespace").map((part, i, arr) => (
                   <span key={i}>
                     {part}
                     {i < arr.length - 1 && (
                       <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-orange-500">
-                        sitespace
+                        Sitespace
                       </span>
                     )}
                   </span>
@@ -51,7 +65,7 @@ export default function Hero() {
                       className="inline-block h-8 w-8 rounded-full ring-2 ring-white dark:ring-slate-900 overflow-hidden"
                     >
                       <Image
-                        src={`/placeholder.svg?height=32&width=32&text=${i}`}
+                        src={`https://placehold.co/32x32.png?text=${i}`}
                         alt="User avatar"
                         width={32}
                         height={32}

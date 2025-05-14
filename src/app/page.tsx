@@ -19,11 +19,10 @@ export default function HomePage() {
   return (
     <div>
       <TopNav />
-      {/* <div className="block min-h-screen bg-white dark:bg-slate-950 transition-colors duration-300"> */}
       <Hero />
-      {/* </div> */}
       <FeatureGrid />
       <ProductDemo />
+
       <section
         className="py-20 bg-white dark:bg-slate-950 overflow-hidden transition-colors duration-300"
         id="solutions"
@@ -59,7 +58,7 @@ export default function HomePage() {
               </div>
 
               <div className="mt-10">
-                <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white">
+                <Button size="lg" className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white">
                   {valueProp.cta} <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </div>
@@ -67,6 +66,7 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
       <section className="py-20 bg-white dark:bg-slate-950 transition-colors duration-300">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl mx-auto text-center mb-16">
@@ -128,7 +128,7 @@ export default function HomePage() {
         <Testimonials testimonials={testimonials} />
       </div> */}
       <section className="py-20 bg-gradient-to-r from-blue-900 to-blue-950 dark:from-blue-900 dark:to-blue-950 relative overflow-hidden">
-        <div className="absolute inset-0 z-0 bg-[url('/grid-pattern.png')] bg-center opacity-10"></div>
+        <div className="absolute inset-0 z-0 bg-[url('/static/images/grid-pattern.png')] bg-center opacity-10"></div>
         <div className="absolute top-0 right-0 w-96 h-96 bg-orange-500 rounded-full filter blur-3xl opacity-20 -translate-y-1/2 translate-x-1/3"></div>
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-300 rounded-full filter blur-3xl opacity-20 translate-y-1/2 -translate-x-1/3"></div>
 
@@ -137,10 +137,14 @@ export default function HomePage() {
             <h2 className="text-3xl font-bold text-white sm:text-4xl mb-6">{finalCta.heading}</h2>
             <p className="text-xl text-blue-100 mb-10">{finalCta.subheading}</p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="lg" className="bg-white text-blue-800 hover:bg-blue-200">
+              <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white">
                 {finalCta.primaryCta} <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
-              <Button size="lg" variant="outline" className="border-orange-200 text-black hover:bg-orange-100">
+              <Button
+                size="lg"
+                variant="outline"
+                className="border-slate-300 text-slate-700 dark:border-slate-700 dark:text-slate-300"
+              >
                 {finalCta.secondaryCta}
               </Button>
             </div>

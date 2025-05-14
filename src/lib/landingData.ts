@@ -1,13 +1,13 @@
 export const siteContent = {
   meta: {
-    title: "sitespace - Streamline Your Asset Deliveries",
+    title: "Sitespace - Streamline Your Asset Deliveries",
     description:
       "The intelligent scheduling platform that optimizes your delivery operations, reduces costs, and improves customer satisfaction.",
   },
 
   hero: {
     badge: "Now accepting early access signups",
-    heading: "Streamline Your Asset Deliveries with sitespace",
+    heading: "Streamline Your Asset Deliveries with Sitespace",
     subheading:
       "The intelligent scheduling platform that optimizes your delivery operations, reduces costs, and improves customer satisfaction—all in one intuitive workspace.",
     primaryCta: "Get Early Access",
@@ -18,14 +18,14 @@ export const siteContent = {
   trustedBy: {
     heading: "Trusted by innovative companies",
     companies: [
-      { name: "Company 1", logo: "/placehold.co/48x120?text=Company+1" },
-      { name: "Company 2", logo: "/placehold.co/48x120?text=Company+2" },
-      { name: "Company 3", logo: "/placehold.co/48x120?text=Company+3" },
-      { name: "Company 4", logo: "/placehold.co/48x120?text=Company+4" },
-      { name: "Company 5", logo: "/placehold.co/48x120?text=Company+5" },
-      { name: "Company 6", logo: "/placehold.co/48x120?text=Company+6" },
-      { name: "Company 7", logo: "/placehold.co/48x120" },
-      { name: "Company 8", logo: "/placehold.co/48x120" },
+      { name: "Company 1", logo: "https://placehold.co/120x48.png?text=Company+1" },
+      { name: "Company 2", logo: "https://placehold.co/120x48.png?text=Company+2" },
+      { name: "Company 3", logo: "https://placehold.co/120x48.png?text=Company+3" },
+      { name: "Company 4", logo: "https://placehold.co/120x48.png?text=Company+4" },
+      { name: "Company 5", logo: "https://placehold.co/120x48.png?text=Company+5" },
+      { name: "Company 6", logo: "https://placehold.co/120x48.png?text=Company+6" },
+      { name: "Company 7", logo: "https://placehold.co/120x48.png?text=Company+7" },
+      { name: "Company 8", logo: "https://placehold.co/120x48.png?text=Company+8" },
     ],
   },
 
@@ -273,7 +273,7 @@ export const siteContent = {
       { text: "Compliance", href: "#compliance" },
     ],
     contactInfo: {
-      address: "123 Innovation Street, Tech City, TC 12345",
+      address: "123 Civil Street, Adelaide, SA 12345",
       phone: "(123) 456-7890",
       email: "info@sitespace.com",
     },

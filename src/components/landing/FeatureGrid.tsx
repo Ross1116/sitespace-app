@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 import Image from "next/image"
+import { Button } from "../ui/button"
 
 interface FeatureGridProps {
   className?: string
@@ -20,21 +21,21 @@ export default function FeatureGrid({ className }: FeatureGridProps) {
       title: "Efficiency",
       description:
         "Our advanced booking engine allows you to manage all your assets in one place, reducing scheduling conflicts and maximizing utilization.",
-      image: "https://placehold.co/300x300?text=Efficiency+Screenshot",
+      image: "https://placehold.co/300x300.png?text=Efficiency+Screenshot",
     },
     {
       id: "knowledge",
       title: "Knowledge",
       description:
         "Keep all your asset information organized and accessible. Find exactly what you need when you need it with our powerful search capabilities.",
-      image: "https://placehold.co/300x300?text=Knowledge+Screenshot",
+      image: "https://placehold.co/300x300.png?text=Knowledge+Screenshot",
     },
     {
       id: "management",
       title: "Management",
       description:
         "From resource tracking to user access control, our comprehensive management tools give you complete visibility and control.",
-      image: "https://placehold.co/300x300?text=Management+Screenshot",
+      image: "https://placehold.co/300x300.png?text=Management+Screenshot",
     },
   ]
 
@@ -46,10 +47,10 @@ export default function FeatureGrid({ className }: FeatureGridProps) {
             Platform Capabilities
           </Badge>
           <h2 className="text-3xl font-bold text-slate-900 dark:text-white sm:text-4xl mb-4">
-            Your details have the potential to be your firm&apos;s <span className="text-orange-500">superpower</span>
+            Unlock your full potential and be your firm&apos;s <span className="text-orange-500">superpower</span>
           </h2>
           <p className="text-xl text-slate-600 dark:text-slate-300">
-            sitespace transforms how you manage asset deliveries with powerful tools designed for modern businesses.
+            Sitespace transforms how you manage asset deliveries with powerful tools designed for modern businesses.
           </p>
         </div>
 
@@ -81,12 +82,12 @@ export default function FeatureGrid({ className }: FeatureGridProps) {
 
                     {activeFeature === feature.id && (
                       <motion.div
-                        className="absolute inset-0 bg-gradient-to-t from-orange-500/80 to-transparent flex items-end justify-center p-4"
+                        className="absolute inset-0 bg-gradient-to-t from-orange-500/60 to-transparent flex items-end justify-center p-4"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                       >
-                        <span className="text-white font-medium">Learn more</span>
+                        <Button className="text-white cursor-pointer shadow-none bg-white/0 hover:bg-orange-950/10 hover:backdrop-blur-3xl font-medium">Learn more</Button>
                       </motion.div>
                     )}
                   </div>

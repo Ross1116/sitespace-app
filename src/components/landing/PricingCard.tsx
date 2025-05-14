@@ -97,7 +97,7 @@ export default function PricingCard({
           <div className="mt-auto">
             <Button
               className={cn(
-                "w-full transition-all duration-300",
+                "cursor-pointer w-full transition-all duration-300",
                 popular || isHovered
                   ? "bg-blue-600 hover:bg-blue-700 text-white"
                   : "bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-600",

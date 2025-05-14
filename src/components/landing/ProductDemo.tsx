@@ -18,7 +18,7 @@ const demoFeatures = [
     description:
       "Our AI-powered scheduling system automatically optimizes delivery times based on asset availability, location, and priority.",
     benefits: ["Reduce scheduling time by 85%", "Eliminate double-bookings", "Optimize resource allocation"],
-    image: "/placeholder.svg?height=600&width=800&text=Scheduling+Interface",
+    image: "https://placehold.co/800x600.png?text=Scheduling+Interface",
     alt: "Scheduling Interface",
     color: "from-blue-500 to-indigo-600",
     demo: {
@@ -37,7 +37,7 @@ const demoFeatures = [
     description:
       "Track your assets in real-time with accurate GPS location, status updates, and estimated arrival times.",
     benefits: ["Live location updates", "Accurate ETAs", "Status notifications"],
-    image: "/placeholder.svg?height=600&width=800&text=Tracking+Interface",
+    image: "https://placehold.co/800x600.png?text=Tracking+Interface",
     alt: "Tracking Interface",
     color: "from-emerald-500 to-green-600",
     demo: {
@@ -56,7 +56,7 @@ const demoFeatures = [
     description:
       "Gain valuable insights with comprehensive analytics that help you monitor performance and optimize operations.",
     benefits: ["Performance metrics", "Cost analysis", "Efficiency reports"],
-    image: "/placeholder.svg?height=600&width=800&text=Analytics+Dashboard",
+    image: "https://placehold.co/800x600.png?text=Analytics+Dashboard",
     alt: "Analytics Dashboard",
     color: "from-purple-500 to-violet-600",
     demo: {
@@ -75,7 +75,7 @@ const demoFeatures = [
     description:
       "Optimize delivery routes to minimize travel time, reduce fuel consumption, and increase delivery capacity.",
     benefits: ["Reduce fuel costs by 30%", "Increase delivery capacity", "Minimize travel time"],
-    image: "/placeholder.svg?height=600&width=800&text=Route+Optimization",
+    image: "https://placehold.co/800x600.png?placeholder.svg?height=600&width=800&text=Route+Optimization",
     alt: "Route Optimization Interface",
     color: "from-amber-500 to-orange-600",
     demo: {
@@ -223,7 +223,7 @@ export default function ProductDemo() {
                       <div className="w-3 h-3 rounded-full bg-green-500"></div>
                     </div>
                     <div className="mx-auto font-medium text-slate-700 dark:text-slate-300">
-                      sitespace - {activeFeature.title}
+                      Sitespace - {activeFeature.title}
                     </div>
                     <div className="w-16"></div> {/* Spacer for alignment */}
                   </div>
@@ -231,7 +231,7 @@ export default function ProductDemo() {
                   {/* Demo content */}
                   <div className="relative bg-white dark:bg-slate-900 aspect-video flex-1 flex flex-col">
                     <Image
-                      src={activeFeature.image || "/placeholder.svg"}
+                      src={activeFeature.image || "https://placehold.co/800x600.png"}
                       alt={activeFeature.alt}
                       width={800}
                       height={600}

@@ -27,9 +27,9 @@ export function HeroIllustration() {
         transition={{ duration: 0.8, delay: 0.2 }}
         className="relative z-10"
       >
-        <div className="relative shadow-xl rounded-2xl overflow-hidden border border-slate-200">
+        <div className="relative shadow-xl rounded-2xl border border-slate-200">
           <Image
-            src="https://placehold.co/500x600"
+            src="https://placehold.co/500x600.png?text=Placeholder+Image"
             alt="Dashboard Preview"
             width={500}
             height={600}
