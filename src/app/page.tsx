@@ -4,6 +4,7 @@ import ProductDemo from "@/components/landing/ProductDemo";
 import { ValuePropIllustration } from "@/components/landing/ValueSection";
 import { siteContent } from "@/lib/landingData";
 import TestimonialCard from "@/components/landing/TestimonialCard";
+import PricingCard from "@/components/landing/PricingCard";
 // import { Feature } from "@/components/ui/hero/feature";
 // import { Testimonials } from "@/components/ui/testimonials";
 // import { testimonials } from "@/lib/data";
@@ -14,7 +15,7 @@ import { ArrowRight, ChevronRight } from "lucide-react";
 
 
 export default function HomePage() {
-  const { valueProp, testimonials } = siteContent
+  const { valueProp, testimonials, pricing } = siteContent
   return (
     <div>
       <div>
@@ -75,7 +76,7 @@ export default function HomePage() {
       <section className="py-20 bg-white dark:bg-slate-950 transition-colors duration-300">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl mx-auto text-center mb-16">
-            <Badge className="mb-4 bg-navy-100 text-navy-800 dark:bg-navy-900 dark:text-navy-300 hover:bg-navy-100 dark:hover:bg-navy-900 border-none">
+            <Badge className="mb-4 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900 border-none">
               {testimonials.badge}
             </Badge>
             <h2 className="text-3xl font-bold text-slate-900 dark:text-white sm:text-4xl mb-4">
@@ -93,6 +94,33 @@ export default function HomePage() {
                 role={testimonial.role}
                 company={testimonial.company}
                 rating={testimonial.rating}
+              />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="py-20 bg-slate-50 dark:bg-slate-900 transition-colors duration-300" id="pricing">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-3xl mx-auto text-center mb-16">
+            <Badge className="mb-4 bg-navy-100 text-navy-800 dark:bg-navy-900 dark:text-navy-300 hover:bg-navy-100 dark:hover:bg-navy-900 border-none">
+              {pricing.badge}
+            </Badge>
+            <h2 className="text-3xl font-bold text-slate-900 dark:text-white sm:text-4xl mb-4">{pricing.heading}</h2>
+            <p className="text-xl text-slate-600 dark:text-slate-300">{pricing.subheading}</p>
+          </div>
+
+          {/* Pricing section */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            {pricing.plans.map((plan, index) => (
+              <PricingCard
+                key={index}
+                title={plan.title}
+                price={plan.price}
+                description={plan.description}
+                features={plan.features}
+                buttonText={plan.buttonText}
+                popular={plan.popular}
               />
             ))}
           </div>
