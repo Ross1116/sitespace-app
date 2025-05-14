@@ -1,5 +1,6 @@
 import type React from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { Facebook, Twitter, Instagram, Linkedin, Mail, Phone, MapPin } from "lucide-react"
 import { siteContent } from "@/lib/landingData"
 
@@ -13,10 +14,11 @@ export default function Footer() {
           {/* Company Info */}
           <div>
             <div className="flex items-center mb-4">
-              <div className="h-8 w-8 rounded-md bg-gradient-to-r from-blue-600 to-orange-500 flex items-center justify-center mr-2">
-                <span className="text-white font-bold">S</span>
-              </div>
-              <span className="text-xl font-bold text-white">sitespace</span>
+              <Link href="/" passHref legacyBehavior>
+                <a>
+                  <Image src="/full-logo-dark.svg" alt="Sitespace" width={120} height={48} className="cursor-pointer hover:scale-105 transition-all" />
+                </a>
+              </Link>
             </div>
             <p className="mb-4">{footer.description}</p>
             <div className="flex space-x-4">
