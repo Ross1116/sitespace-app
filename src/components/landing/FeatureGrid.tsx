@@ -42,7 +42,7 @@ export default function FeatureGrid({ className }: FeatureGridProps) {
     <section className={cn("py-20 bg-white dark:bg-slate-950", className)}>
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl mx-auto text-center mb-12">
-          <Badge className="mb-4 bg-blue-100 text-navy-800 dark:bg-navy-900 dark:text-navy-300 hover:bg-navy-100 dark:hover:bg-navy-900 border-none">
+          <Badge className="mb-4 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900 border-none">
             Platform Capabilities
           </Badge>
           <h2 className="text-3xl font-bold text-slate-900 dark:text-white sm:text-4xl mb-4">
