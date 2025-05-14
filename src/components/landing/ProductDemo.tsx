@@ -168,7 +168,7 @@ export default function ProductDemo() {
                       key={feature.id}
                       value={feature.id}
                       className={cn(
-                        "flex items-center justify-start px-4 py-3 w-full text-left rounded-lg border transition-all",
+                        "flex items-center cursor-pointer justify-start px-4 py-3 w-full text-left rounded-lg border transition-all",
                         activeTab === feature.id
                           ? "border-orange-500 dark:border-orange-400 bg-orange-50 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300"
                           : "border-slate-200 dark:border-slate-700 hover:border-orange-300 dark:hover:border-orange-700 text-slate-700 dark:text-slate-300",

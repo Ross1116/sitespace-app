@@ -27,14 +27,19 @@ export function HeroIllustration() {
         transition={{ duration: 0.8, delay: 0.2 }}
         className="relative z-10"
       >
-        <div className="relative shadow-xl rounded-2xl border border-slate-200">
+        <div className="relative shadow-xl rounded-2xl">
           <Image
-            src="https://placehold.co/500x600.png?text=Placeholder+Image"
+            // src="https://placehold.co/600x500.png?text=Dashboard+Preview"
+            src="/static/images/truck-2.jpg"
             alt="Dashboard Preview"
             width={500}
             height={600}
-            className="w-full h-auto bg-white"
+            className="h-[600px] w-full rounded-2xl opacity-80"
           />
+          <div
+            className="absolute inset-0 bg-slate-50/40 rounded-2xl"
+            aria-hidden="true"
+          ></div>
         </div>
       </motion.div>
 
