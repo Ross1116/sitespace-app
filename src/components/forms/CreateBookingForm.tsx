@@ -65,41 +65,31 @@ export function CreateBookingForm({
   const { user } = useAuth();
   const userId = user?.userId;
 
-  // Time state
   const [customStartTime, setCustomStartTime] = useState<Date | null>(
     startTime
   );
   const [customEndTime, setCustomEndTime] = useState<Date | null>(null);
 
-  // Split time state into hour and minute components
   const [startHour, setStartHour] = useState<string>("");
   const [startMinute, setStartMinute] = useState<string>("");
   const [endHour, setEndHour] = useState<string>("");
   const [endMinute, setEndMinute] = useState<string>("");
 
-  // Add state for assets
   const [assets, setAssets] = useState<any[]>([]);
   const [assetError, setAssetError] = useState<boolean>(false);
 
-  // Add this handler for duration changes
   const handleDurationChange = (newDuration: any) => {
     setDuration(newDuration);
 
-    // Parse the new duration to minutes
     const durationMinutes = parseInt(newDuration, 10);
 
-    // Only if we have a valid start time, calculate a new end time
     if (customStartTime) {
-      // Clone the start time date object
       const newEndTime = new Date(customStartTime);
 
-      // Add the duration in minutes to the start time
       newEndTime.setMinutes(newEndTime.getMinutes() + durationMinutes);
 
-      // Update the end time state
       setCustomEndTime(newEndTime);
 
-      // Update the end hour and minute selectors to match
       setEndHour(newEndTime.getHours().toString().padStart(2, "0"));
       setEndMinute(newEndTime.getMinutes().toString().padStart(2, "0"));
     }
@@ -107,19 +97,16 @@ export function CreateBookingForm({
 
   useEffect(() => {
     if (defaultAssetName && assets.length > 0 && selectedAssets.length === 0) {
-      // Extract the asset name without the prefix (e.g., "A004-Excavator" -> "Excavator")
       const assetNameWithoutPrefix = defaultAssetName.replace(/^[A-Z]\d{3}-/, '');
 
-      // Find the asset that matches either the full name or the name without prefix
       const matchingAsset = assets.find((asset) => {
         const assetTitle = asset.assetTitle || '';
         return assetTitle.toLowerCase() === assetNameWithoutPrefix.toLowerCase() ||
           assetTitle.toLowerCase() === defaultAssetName.toLowerCase() ||
-          asset.assetKey === defaultAsset; // Also check by ID if provided
+          asset.assetKey === defaultAsset;
       });
 
       if (matchingAsset) {
-        // Use assetKey for selectedAssets to match your checkbox logic
         setSelectedAssets([matchingAsset.assetKey]);
         setSelectedAssetIds([matchingAsset.assetKey]);
       }
@@ -144,7 +131,6 @@ export function CreateBookingForm({
     }
   }, [userId]);
 
-  // Update end time when duration changes
   useEffect(() => {
     if (startHour && startMinute && customStartTime) {
       const newStartTime = new Date(customStartTime);
@@ -160,7 +146,6 @@ export function CreateBookingForm({
 
   useEffect(() => {
     if (customStartTime && startHour && startMinute) {
-      // Only update customStartTime when time inputs change directly
       const currentHours = customStartTime.getHours();
       const currentMinutes = customStartTime.getMinutes();
 
@@ -175,55 +160,46 @@ export function CreateBookingForm({
     }
   }, [startHour, startMinute, customStartTime]);
 
-  // Initialize times
   useEffect(() => {
     if (startTime) {
       const hours = startTime.getHours().toString().padStart(2, "0");
-      // Round minutes to nearest 15
       const roundedMinutes = Math.round(startTime.getMinutes() / 15) * 15;
       const minutes = (roundedMinutes % 60).toString().padStart(2, "0");
 
       setStartHour(hours);
       setStartMinute(minutes);
 
-      // Calculate end time based on duration
       const endTime = addMinutes(startTime, parseInt(duration));
       setEndHour(endTime.getHours().toString().padStart(2, "0"));
       setEndMinute(endTime.getMinutes().toString().padStart(2, "0"));
 
-      // Set the full date objects only during initialization
       setCustomStartTime(startTime);
       setCustomEndTime(endTime);
     }
   }, [startTime, isOpen, duration]);
 
-  // Format hour for display (12-hour format with AM/PM)
   const formatHour = (hour: number): string => {
     const period = hour >= 12 ? "PM" : "AM";
-    const displayHour = hour % 12 || 12; // Convert 0 to 12 for 12 AM
+    const displayHour = hour % 12 || 12;
     return `${displayHour} ${period}`;
   };
 
-  // Handle start hour change
   const handleStartHourChange = (value: string): void => {
     setStartHour(value);
     updateStartTime(value, startMinute);
   };
 
-  // Handle start minute change
   const handleStartMinuteChange = (value: string): void => {
     setStartMinute(value);
     updateStartTime(startHour, value);
   };
 
-  // Update start time and recalculate end time
   const updateStartTime = (hour: string, minute: string): void => {
     if (hour && minute && customStartTime) {
       const newStartTime = new Date(customStartTime);
       newStartTime.setHours(parseInt(hour), parseInt(minute));
       setCustomStartTime(newStartTime);
 
-      // Update end time based on new start time and current duration
       const calculatedEndTime = addMinutes(newStartTime, parseInt(duration));
       setCustomEndTime(calculatedEndTime);
       setEndHour(calculatedEndTime.getHours().toString().padStart(2, "0"));
@@ -231,30 +207,25 @@ export function CreateBookingForm({
     }
   };
 
-  // Handle end hour change
   const handleEndHourChange = (value: string): void => {
     setEndHour(value);
     updateEndTime(value, endMinute);
   };
 
-  // Handle end minute change
   const handleEndMinuteChange = (value: string): void => {
     setEndMinute(value);
     updateEndTime(endHour, value);
   };
 
-  // Update end time and recalculate duration
   const updateEndTime = (hour: string, minute: string): void => {
     if (hour && minute && customStartTime) {
       const newEndTime = new Date(customStartTime);
       newEndTime.setHours(parseInt(hour), parseInt(minute));
       setCustomEndTime(newEndTime);
 
-      // Calculate new duration based on start and end times
       const durationInMinutes =
         (newEndTime.getTime() - customStartTime.getTime()) / (1000 * 60);
 
-      // Round to nearest standard option if possible
       if (durationInMinutes === 15) setDuration("15");
       else if (durationInMinutes === 30) setDuration("30");
       else if (durationInMinutes === 45) setDuration("45");
@@ -267,30 +238,25 @@ export function CreateBookingForm({
     }
   };
 
-  // Initialize times
   useEffect(() => {
     if (startTime) {
       const hours = startTime.getHours().toString().padStart(2, "0");
-      // Round minutes to nearest 15
       const roundedMinutes = Math.round(startTime.getMinutes() / 15) * 15;
       const minutes = (roundedMinutes % 60).toString().padStart(2, "0");
 
       setStartHour(hours);
       setStartMinute(minutes);
 
-      // Calculate end time based on duration
       const endTime = addMinutes(startTime, parseInt(duration));
       setEndHour(endTime.getHours().toString().padStart(2, "0"));
       setEndMinute(endTime.getMinutes().toString().padStart(2, "0"));
 
-      // Set the full date objects only during initialization
       setCustomStartTime(startTime);
       setCustomEndTime(endTime);
     }
   }, [startTime, isOpen, duration]);
 
 
-  // Remove an asset from selection
   const removeAsset = (assetId: string) => {
     setSelectedAssets((prev) => prev.filter((key) => key !== assetId));
     setSelectedAssetIds((prev) => prev.filter((id) => id !== assetId))
@@ -305,8 +271,6 @@ export function CreateBookingForm({
     }
   };
 
-  // Handle form submission
-  // Modified handleSubmit function to make API call
   const handleSubmit = async () => {
     if (!customStartTime || !customEndTime || selectedAssetIds.length === 0) {
       console.log("Validation failed:", {
@@ -318,13 +282,10 @@ export function CreateBookingForm({
     }
 
     try {
-      // Calculate duration in minutes
       const durationMins = differenceInMinutes(customEndTime, customStartTime);
 
-      // Format date for API
       const bookingTimeDt = format(customStartTime, "yyyy-MM-dd'T'HH:mm:ss");
 
-      // Get the current user info
       const projectString = localStorage.getItem(`project_${userId}`);
       if (!projectString) {
         console.error("No project found in localStorage");
@@ -332,7 +293,6 @@ export function CreateBookingForm({
       }
       const project = JSON.parse(projectString);
 
-      // Create booking payload - use selectedAssetIds directly
       const bookingData = {
         bookedAssets: selectedAssetIds,
         bookingCreatedBy: userId,
@@ -359,8 +319,6 @@ export function CreateBookingForm({
         console.error("Error posting bookings:", error);
       }
 
-      // When creating events, use asset titles for display but keep IDs for backend
-      // In handleSubmit, when creating events
       const events = selectedAssetIds.map((assetId, index) => {
         const asset = assets.find(
           (a: { assetKey: string }) => a.assetKey === assetId
@@ -374,7 +332,6 @@ export function CreateBookingForm({
             : `Assets: ${assetTitle}`,
           start: customStartTime,
           end: customEndTime,
-          // Make sure each event has a unique ID by including the asset ID and index
           id: responseData?.ID
             ? `${responseData.ID}-${assetId}-${index}`
             : `local-${assetId}-${Date.now()}-${index}`,
@@ -382,16 +339,14 @@ export function CreateBookingForm({
       });
 
 
-      onSave(events); // Pass the events array to onSave
+      onSave(events);
       resetForm();
       onClose();
     } catch (error) {
       console.error("Error saving booking:", error);
-      // Fallback error handling remains similar
     }
   };
 
-  // Reset form fields
   const resetForm = () => {
     setTitle("");
     setDescription("");
@@ -424,7 +379,7 @@ export function CreateBookingForm({
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Title + Description */}
+          {}
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="title">Booking Title</Label>
@@ -450,7 +405,7 @@ export function CreateBookingForm({
             </div>
           </div>
 
-          {/* Date Picker */}
+          {}
           <div className="space-y-2">
             <Label>Date</Label>
             <Popover>
@@ -474,7 +429,7 @@ export function CreateBookingForm({
             </Popover>
           </div>
 
-          {/* Time Select */}
+          {}
           <div className="grid sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Start Time</Label>
@@ -545,7 +500,7 @@ export function CreateBookingForm({
             </div>
           </div>
 
-          {/* Duration */}
+          {}
           <div className="space-y-2">
             <Label>Duration</Label>
             <Select value={duration} onValueChange={handleDurationChange}>
@@ -562,7 +517,7 @@ export function CreateBookingForm({
             </Select>
           </div>
 
-          {/* Assets */}
+          {}
           <div className="space-y-2">
             <Label>Select Assets</Label>
             {selectedAssets.length > 0 && (
@@ -623,7 +578,7 @@ export function CreateBookingForm({
             </ScrollArea>
           </div>
 
-          {/* Submit */}
+          {}
           <div className="pt-2 flex justify-end">
             <Button
               onClick={handleSubmit}

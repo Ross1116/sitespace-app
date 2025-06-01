@@ -53,14 +53,12 @@ export const CalendarDayView = ({
 
   if (view !== "day") return null;
 
-  // Create array with hours from 6am (6) to 8pm (20), ensuring minutes are set to 0
   const hours = [...Array(14)].map((_, i) => {
     const hourDate = new Date(date);
     hourDate.setHours(i + 6, 0, 0, 0);
     return hourDate;
   });
 
-  // Handler for clicking on a time slot
   const handleTimeSlotClick = (hour: Date) => {
     const startTime = new Date(hour);
     const endTime = addHours(startTime, 1);
@@ -73,7 +71,6 @@ export const CalendarDayView = ({
     setIsBookingFormOpen(true);
   }
 
-  // Handler for saving a new event
   const handleSaveEvent = (
     newEvent: Partial<CalendarEvent> | Partial<CalendarEvent>[]
   ) => {
@@ -81,14 +78,12 @@ export const CalendarDayView = ({
     if (!setEvents || !events) return;
 
     if (Array.isArray(newEvent)) {
-      // Handle array of events
       const completeEvents = newEvent
         .filter((event) => event.start && event.title)
         .map((event, index) => {
           const start = event.start as Date;
 
           return {
-            // Ensure unique ID by adding timestamp and index
             id: event.id || `${Math.random().toString(36).substring(2, 11)}-${Date.now()}-${index}`,
             start,
             end: event.end || addHours(start, 1),
@@ -104,7 +99,6 @@ export const CalendarDayView = ({
         onEventClick(completeEvents[completeEvents.length - 1]);
       }
     } else {
-      // Handle single event
       if (newEvent.start && newEvent.title) {
         const completeEvent: CalendarEvent = {
           id: newEvent.id || `${Math.random().toString(36).substring(2, 11)}-${Date.now()}`,
@@ -126,7 +120,6 @@ export const CalendarDayView = ({
     onActionComplete?.();
   };
 
-  // Create a map to check if an hour has events
   const hourHasEvents = hours.reduce((acc, hour) => {
     acc[hour.toString()] = (events || []).some((event) =>
       isSameHour(event.start, hour)
@@ -139,9 +132,9 @@ export const CalendarDayView = ({
 
   return (
     <div className="flex flex-col h-full bg-white rounded-lg shadow-sm overflow-hidden">
-      {/* Calendar grid - more compact */}
+      {}
       <div className="flex flex-1 relative overflow-y-auto overflow-x-hidden">
-        {/* Time labels column */}
+        {}
         <div className="w-14 flex-shrink-0 border-r border-gray-200 bg-gray-50 flex flex-col">
           {hours.map((hour) => (
             <div
@@ -153,9 +146,9 @@ export const CalendarDayView = ({
           ))}
         </div>
 
-        {/* Events area */}
+        {}
         <div className="flex-1 relative">
-          {/* Current time indicator */}
+          {}
           {isCurrentDay && currentHour >= 6 && currentHour < 20 && (
             <div
               className="absolute w-full border-t-2 border-red-500 z-20"
@@ -167,7 +160,7 @@ export const CalendarDayView = ({
             </div>
           )}
 
-          {/* Time slots - fixed height instead of fractional */}
+          {}
           <div className="flex flex-col w-full h-full">
             {hours.map((hour, index) => (
               <div
@@ -176,7 +169,7 @@ export const CalendarDayView = ({
                   } ${isCurrentDay && hour.getHours() === currentHour ? 'bg-blue-50/50' : ''
                   }`}
               >
-                {/* Clickable background with hover effect */}
+                {}
                 <div
                   className="absolute inset-0 w-full h-full cursor-pointer hover:bg-blue-100/40 transition-colors"
                   onClick={() => handleTimeSlotClick(hour)}
@@ -187,10 +180,10 @@ export const CalendarDayView = ({
                   }}
                 />
 
-                {/* Half-hour marker */}
+                {}
                 <div className="absolute w-full border-t border-gray-200 border-dashed top-1/2"></div>
 
-                {/* Events for this hour */}
+                {}
                 <EventGroupSideBySide
                   hour={hour}
                   events={events || []}
@@ -201,7 +194,7 @@ export const CalendarDayView = ({
         </div>
       </div>
 
-      {/* Booking form dialog */}
+      {}
       {isBookingFormOpen && (
         <CreateBookingForm
           isOpen={isBookingFormOpen}
@@ -235,10 +228,9 @@ export const CalendarWeekView = () => {
 
     for (let i = 0; i < 7; i++) {
       const day = addDays(start, i);
-      // Create hours with precise time (minutes = 0)
       const hours = [...Array(16)].map((_, hourIndex) => {
         const hourDate = new Date(day);
-        hourDate.setHours(hourIndex + 5, 0, 0, 0); // Ensure minutes are 0
+        hourDate.setHours(hourIndex + 5, 0, 0, 0);
         return hourDate;
       });
       weekDates.push(hours);
@@ -256,10 +248,9 @@ export const CalendarWeekView = () => {
     return daysOfWeek;
   }, [date]);
 
-  // Handler for clicking on a time slot
   const handleTimeSlotClick = (hour: Date) => {
-    const startTime = new Date(hour); // Clone to avoid mutations
-    const endTime = addHours(startTime, 1); // Default 1 hour duration
+    const startTime = new Date(hour);
+    const endTime = addHours(startTime, 1);
 
     setSelectedTimeSlot({
       start: startTime,
@@ -281,12 +272,10 @@ export const CalendarWeekView = () => {
     if (!setEvents || !events) return;
 
     if (Array.isArray(newEvent)) {
-      // Handle array of events
       const completeEvents = newEvent
-        .filter((event) => event.start && event.title) // Only include events with required properties
+        .filter((event) => event.start && event.title)
         .map((event) => {
-          // At this point we know event.start exists due to the filter above
-          const start = event.start as Date; // Type assertion since we filtered for this
+          const start = event.start as Date;
 
           return {
             id: event.id || Math.random().toString(36).substring(2, 11),
@@ -298,15 +287,12 @@ export const CalendarWeekView = () => {
           } as CalendarEvent;
         });
 
-      // Add all events to the calendar
       setEvents([...events, ...completeEvents]);
 
-      // If there's an event click handler, call it with the last event
       if (onEventClick && completeEvents.length > 0) {
         onEventClick(completeEvents[completeEvents.length - 1]);
       }
     } else {
-      // Handle single event
       if (newEvent.start && newEvent.title) {
         const completeEvent: CalendarEvent = {
           id: newEvent.id || Math.random().toString(36).substring(2, 11),
@@ -359,8 +345,8 @@ export const CalendarWeekView = () => {
         </div>
         <div className="grid grid-cols-7 flex-1 relative pr-4">
           {" "}
-          {/* Added right padding */}
-          {/* Existing events layer */}
+          {}
+          {}
           <div className="absolute inset-0 grid grid-cols-7 pointer-events-none">
             {weekDates.map((hours, i) => {
               return (
@@ -382,7 +368,7 @@ export const CalendarWeekView = () => {
               );
             })}
           </div>
-          {/* Clickable grid layer */}
+          {}
           <div className="absolute inset-0 grid grid-cols-7">
             {weekDates.map((hours, dayIndex) => (
               <div
@@ -398,7 +384,7 @@ export const CalendarWeekView = () => {
                     className="border-t last:border-b w-full h-full cursor-pointer hover:bg-orange-200 transition-colors"
                     onClick={() => handleTimeSlotClick(hour)}
                   >
-                    {/* Time slot is empty - just clickable */}
+                    {}
                   </div>
                 ))}
               </div>
@@ -407,7 +393,7 @@ export const CalendarWeekView = () => {
         </div>
       </div>
 
-      {/* Booking form dialog */}
+      {}
       {isBookingFormOpen && (
         <CreateBookingForm
           isOpen={isBookingFormOpen}
@@ -429,7 +415,6 @@ export const CalendarMonthView = () => {
 
   if (view !== "month") return null;
 
-  // Handler for clicking on a date
   const handleDateClick = (selectedDate: Date) => {
     setDate(selectedDate);
   };
@@ -455,7 +440,6 @@ export const CalendarMonthView = () => {
             isSameDay(event.start, _date)
           );
 
-          // Check if this date is the currently selected date
           const isSelectedDate = isSameDay(_date, date);
 
           return (
@@ -473,7 +457,7 @@ export const CalendarMonthView = () => {
                   isToday(_date) && "bg-primary text-primary-foreground",
                   isSelectedDate &&
                   !isToday(_date) &&
-                  "bg-orange-100 text-orange-800 font-medium" // Grey-orange circle for selected date
+                  "bg-orange-100 text-orange-800 font-medium"
                 )}
               >
                 {format(_date, "d")}
@@ -581,7 +565,7 @@ export const EventGroup = ({
   );
 
   if (filteredEvents.length === 0) {
-    return null; // Don't render anything if no events
+    return null;
   }
 
   return (
@@ -591,7 +575,6 @@ export const EventGroup = ({
           differenceInMinutes(event.end, event.start) / 60;
         const startPosition = event.start.getMinutes() / 60;
 
-        // Format times for the tooltip
         const startTime = format(event.start, "h:mm a");
         const endTime = format(event.end, "h:mm a");
 
@@ -639,36 +622,27 @@ type EventGroupSideBySideProps = {
 
 const EventGroupSideBySide = ({ hour, events }: EventGroupSideBySideProps) => {
   const { onEventClick } = useCalendar();
-  // Filter events that start in this hour
   const eventsInHour = events.filter((event) => isSameHour(event.start, hour));
 
   if (eventsInHour.length === 0) return null;
 
-  // Calculate width for each event based on count
   const eventCount = eventsInHour.length;
   const widthPercent = Math.max(25, 100 / eventCount);
 
   return (
     <div className="absolute inset-0 flex w-full h-full">
       {eventsInHour.map((event) => {
-        // Calculate minutes from the start of the hour (0-59)
         const minutesOffset = event.start.getMinutes();
 
-        // Calculate total duration in minutes
         const durationMinutes = differenceInMinutes(event.end, event.start);
 
-        // Calculate how many hours this event spans
         const hoursSpan = Math.ceil(durationMinutes / 60);
 
-        // Convert to percentages for positioning
         const topPercent = (minutesOffset / 60) * 100;
 
-        // For events that span multiple hours, we need to adjust the height
-        // Each hour row is 100% height, so multiply by the number of hours
         const heightPercent = Math.min((durationMinutes / 60) * 100, 100);
 
-        // Calculate the z-index based on duration to ensure longer events appear on top
-        const zIndex = Math.floor(durationMinutes / 15); // Higher z-index for longer events
+        const zIndex = Math.floor(durationMinutes / 15);
 
         return (
           <TooltipProvider key={event.id}>
@@ -683,7 +657,7 @@ const EventGroupSideBySide = ({ hour, events }: EventGroupSideBySideProps) => {
                     top: `${topPercent}%`,
                     height: hoursSpan > 1
                       ? `${(100 - topPercent) + ((hoursSpan - 1) * 100)}%`
-                      : `${Math.max(heightPercent, 10)}%`, // For multi-hour events, extend beyond current cell
+                      : `${Math.max(heightPercent, 10)}%`,
                     width: `${widthPercent}%`,
                     left: `${eventsInHour.indexOf(event) * widthPercent}%`,
                     zIndex: zIndex,
@@ -694,7 +668,7 @@ const EventGroupSideBySide = ({ hour, events }: EventGroupSideBySideProps) => {
                   }}
                 >
                   <div className="font-medium truncate">{event.title}</div>
-                  {durationMinutes >= 20 && ( // Only show time if enough space
+                  {durationMinutes >= 20 && (
                     <div className="text-xs opacity-70">
                       {format(event.start, "h:mm a")} -{" "}
                       {format(event.end, "h:mm a")}
