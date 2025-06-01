@@ -280,7 +280,6 @@ export function CreateBookingForm({
   // Remove an asset from selection
   const removeAsset = (assetId: string) => {
     setSelectedAssets((prev) => prev.filter((key) => key !== assetId));
-    setSelectedAssetIds((prev) => prev.filter((id) => id !== assetId))
 
     const asset = assets.find(
       (a: { assetKey: string }) => a.assetKey === assetId
@@ -295,14 +294,8 @@ export function CreateBookingForm({
   // Handle form submission
   // Modified handleSubmit function to make API call
   const handleSubmit = async () => {
-    if (!customStartTime || !customEndTime || selectedAssetIds.length === 0) {
-      console.log("Validation failed:", {
-        customStartTime,
-        customEndTime,
-        selectedAssetIds: selectedAssetIds.length
-      });
+    if (!customStartTime || !customEndTime || selectedAssetIds.length === 0)
       return;
-    }
 
     try {
       // Calculate duration in minutes
@@ -549,16 +542,16 @@ export function CreateBookingForm({
             <Label>Select Assets</Label>
             {selectedAssets.length > 0 && (
               <div className="flex flex-wrap gap-1">
-                {selectedAssets.map((assetKey) => {
-                  const asset = assets.find((a) => a.assetKey === assetKey);
+                {selectedAssets.map((key) => {
+                  const asset = assets.find((a) => a.assetKey === key);
                   return (
-                    <Badge key={assetKey} className="text-xs flex items-center gap-1">
-                      {asset?.assetTitle || assetKey}
+                    <Badge key={key} className="text-xs flex items-center gap-1">
+                      {asset?.assetTitle || key}
                       <Button
                         variant="ghost"
                         size="icon"
                         className="h-4 w-4"
-                        onClick={() => removeAsset(assetKey)}
+                        onClick={() => removeAsset(key)}
                       >
                         <X className="h-3 w-3" />
                       </Button>
