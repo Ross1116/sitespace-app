@@ -58,12 +58,8 @@ export function CreateBookingForm({
 }: CreateBookingForm) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [selectedAssets, setSelectedAssets] = useState<string[]>(
-    defaultAssetName ? [defaultAssetName] : []
-  );
-  const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>(
-    defaultAsset ? [defaultAsset] : []
-  );
+  const [selectedAssets, setSelectedAssets] = useState<string[]>([]);
+  const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([]);
   const [duration, setDuration] = useState("60");
   const [selectedDate, setSelectedDate] = useState(new Date());
   const { user } = useAuth();
@@ -109,7 +105,27 @@ export function CreateBookingForm({
     }
   };
 
-  // Load assets from localStorage
+  useEffect(() => {
+    if (defaultAssetName && assets.length > 0 && selectedAssets.length === 0) {
+      // Extract the asset name without the prefix (e.g., "A004-Excavator" -> "Excavator")
+      const assetNameWithoutPrefix = defaultAssetName.replace(/^[A-Z]\d{3}-/, '');
+
+      // Find the asset that matches either the full name or the name without prefix
+      const matchingAsset = assets.find((asset) => {
+        const assetTitle = asset.assetTitle || '';
+        return assetTitle.toLowerCase() === assetNameWithoutPrefix.toLowerCase() ||
+          assetTitle.toLowerCase() === defaultAssetName.toLowerCase() ||
+          asset.assetKey === defaultAsset; // Also check by ID if provided
+      });
+
+      if (matchingAsset) {
+        // Use assetKey for selectedAssets to match your checkbox logic
+        setSelectedAssets([matchingAsset.assetKey]);
+        setSelectedAssetIds([matchingAsset.assetKey]);
+      }
+    }
+  }, [defaultAssetName, defaultAsset, assets]);
+
   useEffect(() => {
     const assetString = localStorage.getItem(`assets_${userId}`);
     if (!assetString) {
@@ -131,16 +147,13 @@ export function CreateBookingForm({
   // Update end time when duration changes
   useEffect(() => {
     if (startHour && startMinute && customStartTime) {
-      // Create a new date object without updating customStartTime
       const newStartTime = new Date(customStartTime);
       newStartTime.setHours(parseInt(startHour), parseInt(startMinute));
 
-      // Calculate end time without updating customStartTime
       const calculatedEndTime = addMinutes(newStartTime, parseInt(duration));
       setEndHour(calculatedEndTime.getHours().toString().padStart(2, "0"));
       setEndMinute(calculatedEndTime.getMinutes().toString().padStart(2, "0"));
 
-      // Only update the end time, not the start time
       setCustomEndTime(calculatedEndTime);
     }
   }, [duration, startHour, startMinute, customStartTime]);
@@ -347,7 +360,8 @@ export function CreateBookingForm({
       }
 
       // When creating events, use asset titles for display but keep IDs for backend
-      const events = selectedAssetIds.map((assetId) => {
+      // In handleSubmit, when creating events
+      const events = selectedAssetIds.map((assetId, index) => {
         const asset = assets.find(
           (a: { assetKey: string }) => a.assetKey === assetId
         );
@@ -360,9 +374,13 @@ export function CreateBookingForm({
             : `Assets: ${assetTitle}`,
           start: customStartTime,
           end: customEndTime,
-          id: responseData.ID || `local-${assetId}-${Date.now()}`,
+          // Make sure each event has a unique ID by including the asset ID and index
+          id: responseData?.ID
+            ? `${responseData.ID}-${assetId}-${index}`
+            : `local-${assetId}-${Date.now()}-${index}`,
         } as Partial<CalendarEvent>;
       });
+
 
       onSave(events); // Pass the events array to onSave
       resetForm();

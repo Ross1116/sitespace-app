@@ -71,16 +71,7 @@ export const CalendarDayView = ({
       assetName: assetCalendar?.name,
     });
     setIsBookingFormOpen(true);
-
-    console.log(
-      "Create event at:",
-      format(startTime, "h:mm a"),
-      "to",
-      format(endTime, "h:mm a"),
-      "for asset:",
-      assetCalendar?.name || "Unknown"
-    );
-  };
+  }
 
   // Handler for saving a new event
   const handleSaveEvent = (
@@ -93,11 +84,12 @@ export const CalendarDayView = ({
       // Handle array of events
       const completeEvents = newEvent
         .filter((event) => event.start && event.title)
-        .map((event) => {
+        .map((event, index) => {
           const start = event.start as Date;
 
           return {
-            id: event.id || Math.random().toString(36).substring(2, 11),
+            // Ensure unique ID by adding timestamp and index
+            id: event.id || `${Math.random().toString(36).substring(2, 11)}-${Date.now()}-${index}`,
             start,
             end: event.end || addHours(start, 1),
             title: event.title as string,
@@ -115,12 +107,12 @@ export const CalendarDayView = ({
       // Handle single event
       if (newEvent.start && newEvent.title) {
         const completeEvent: CalendarEvent = {
-          id: newEvent.id || Math.random().toString(36).substring(2, 11),
+          id: newEvent.id || `${Math.random().toString(36).substring(2, 11)}-${Date.now()}`,
           start: newEvent.start,
           end: newEvent.end || addHours(newEvent.start, 1),
           title: newEvent.title,
           description: newEvent.description || "",
-          color: newEvent.color || "yellow", // Changed from "default" to "yellow"
+          color: newEvent.color || "yellow",
         };
 
         setEvents([...events, completeEvent]);
@@ -594,7 +586,7 @@ export const EventGroup = ({
 
   return (
     <div className="absolute inset-0 w-11/12 z-10">
-      {filteredEvents.map((event) => {
+      {filteredEvents.map((event, index) => {
         const hoursDifference =
           differenceInMinutes(event.end, event.start) / 60;
         const startPosition = event.start.getMinutes() / 60;
@@ -604,7 +596,7 @@ export const EventGroup = ({
         const endTime = format(event.end, "h:mm a");
 
         return (
-          <TooltipProvider key={event.id}>
+          <TooltipProvider key={`${event.id}-${index}`}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <div
