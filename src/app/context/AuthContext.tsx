@@ -101,8 +101,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     } catch (error: any) {
       console.error("Login error:", error);
-      setError(error instanceof Error ? error.message : "An unknown error occurred");
-      alert(`Login failed: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+      setError(errorMessage);
+      throw error; // Re-throw to let the component handle it
     } finally {
       setIsLoading(false);
     }
@@ -139,7 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }),
       }).catch(err => {
         // Network error (server down, no connection, etc.)
-        throw new Error("Cannot connect to server. Please check your connection or try again later.", err);
+        throw new Error("Cannot connect to server. Please check your connection or try again later.");
       });
 
       if (!response.ok) {
@@ -155,11 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error("Registration error:", error);
       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
       setError(errorMessage);
-
-      // Display alert for user feedback
-      alert(`Registration failed: ${errorMessage}`);
-
-      throw error;
+      throw error; // Re-throw to let the component handle it
     } finally {
       setIsLoading(false);
     }
@@ -169,18 +166,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setIsLoading(true);
       clearError();
-      const response = await fetch(`${API_URL}/api/auth/signout`, {
-        method: "POST",
-      });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Login failed (${response.status})`);
+
+      // Only try to call signout if we have a token
+      if (token) {
+        const response = await fetch(`${API_URL}/api/auth/signout`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) {
+          console.error("Signout API error:", response.status);
+        }
       }
     } catch (error: any) {
-      console.error("Login error:", error);
-      setError(error instanceof Error ? error.message : "An unknown error occurred");
-      alert(`Login failed: ${error.message}`);
+      // Log error but continue with logout
+      console.error("Signout error:", error);
     } finally {
+      // Always clear local state
       setIsLoading(false);
       setUser(null);
       setToken(null);
