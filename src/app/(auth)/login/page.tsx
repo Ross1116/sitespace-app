@@ -23,13 +23,26 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    if (!username.trim() || !password.trim()) {
+      setError("Please enter both username and password");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
       await login(username, password);
-    } catch (err) {
-      console.error("Login error:", err);
-      setError("Login failed. Please check your credentials.");
+    } catch (err: any) {
+      if (err.response?.status === 401) {
+        setError("Invalid username or password");
+      } else if (err.response?.status === 429) {
+        setError("Too many attempts. Please try again later");
+      } else {
+        setError("Something went wrong. Please try again");
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -127,6 +140,7 @@ export default function Login() {
               <input
                 id="username"
                 name="username"
+                autoComplete="username"
                 type="text"
                 required
                 value={username}
@@ -142,6 +156,7 @@ export default function Login() {
                 id="password"
                 name="password"
                 type="password"
+                autoComplete="current-password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -154,9 +169,8 @@ export default function Login() {
             <div className="pt-6">
               <button
                 type="submit"
-                className={`w-full py-3 px-4 bg-black text-white font-medium rounded relative ${
-                  isLoading ? "opacity-70 cursor-not-allowed" : ""
-                }`}
+                className={`w-full py-3 px-4 bg-black text-white font-medium rounded relative ${isLoading ? "opacity-70 cursor-not-allowed" : ""
+                  }`}
                 disabled={isLoading}
               >
                 {isLoading ? (

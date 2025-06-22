@@ -320,7 +320,7 @@ export default function AssetsTable() {
                         <div className="px-6">
                           <span
                             className={`px-2 py-1 rounded-full text-xs font-semibold 
-                              ${asset.assetStatus === "Operational"
+                              ${asset.assetStatus === "Operational" || asset.assetStatus === "operational"
                                 ? "bg-green-100 text-green-800"
                                 : asset.assetStatus === "OutOfService"
                                   ? "bg-yellow-100 text-yellow-800"
@@ -365,7 +365,7 @@ export default function AssetsTable() {
                       </div>
 
                       {/* Mobile view */}
-                      <div className="sm:hidden p-4">
+                      < div className="sm:hidden p-4" >
                         <div className="flex justify-between items-center mb-2">
                           <div className="font-medium">{asset.assetTitle}</div>
                           <div
@@ -396,7 +396,7 @@ export default function AssetsTable() {
                         <div className="mt-1 mb-1">
                           <span
                             className={`px-2 py-1 rounded-full text-xs font-semibold 
-                  ${asset.assetStatus === "Operational"
+                              ${asset.assetStatus === "Operational" || asset.assetStatus === "operational"
                                 ? "bg-green-100 text-green-800"
                                 : asset.assetStatus === "OutOfService"
                                   ? "bg-yellow-100 text-yellow-800"
@@ -420,53 +420,56 @@ export default function AssetsTable() {
               )}
             </div>
           </div>
-        </div>
+        </div >
 
         {/* Pagination - only show if there are assets */}
-        {filteredAssets.length > 0 && (
-          <div className="flex justify-center items-center mt-4 space-x-1 sm:space-x-2">
-            <button
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className={`px-2 sm:px-3 py-1 rounded text-sm ${currentPage === 1
-                ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                : "bg-orange-200 text-gray-700 hover:bg-orange-300"
-                }`}
-            >
-              Prev
-            </button>
-
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+        {
+          filteredAssets.length > 0 && (
+            <div className="flex justify-center items-center mt-4 space-x-1 sm:space-x-2">
               <button
-                key={page}
-                onClick={() => handlePageChange(page)}
-                className={`px-2 sm:px-3 py-1 rounded text-sm ${currentPage === page
-                  ? "bg-orange-400 text-white"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className={`px-2 sm:px-3 py-1 rounded text-sm ${currentPage === 1
+                  ? "bg-gray-200 text-gray-500 cursor-not-allowed"
                   : "bg-orange-200 text-gray-700 hover:bg-orange-300"
                   }`}
               >
-                {page}
+                Prev
               </button>
-            ))}
 
-            <button
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className={`px-2 sm:px-3 py-1 rounded text-sm ${currentPage === totalPages
-                ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                : "bg-orange-200 text-gray-700 hover:bg-orange-300"
-                }`}
-            >
-              Next
-            </button>
-          </div>
-        )}
-      </div>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => handlePageChange(page)}
+                  className={`px-2 sm:px-3 py-1 rounded text-sm ${currentPage === page
+                    ? "bg-orange-400 text-white"
+                    : "bg-orange-200 text-gray-700 hover:bg-orange-300"
+                    }`}
+                >
+                  {page}
+                </button>
+              ))}
+
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className={`px-2 sm:px-3 py-1 rounded text-sm ${currentPage === totalPages
+                  ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                  : "bg-orange-200 text-gray-700 hover:bg-orange-300"
+                  }`}
+              >
+                Next
+              </button>
+            </div>
+          )
+        }
+      </div >
 
       {/* Sidebar */}
-      <div
+      < div
         className={`fixed inset-y-0 right-0 w-full sm:w-1/3 bg-white shadow-lg transform transition-transform duration-300 ease-in-out z-40 ${sidebarOpen ? "translate-x-0" : "translate-x-full"
-          }`}
+          }`
+        }
       >
         {selectedAsset && (
           <div className="h-full flex flex-col p-6 py-16 px-12">
@@ -597,24 +600,28 @@ export default function AssetsTable() {
             </div>
           </div>
         )}
-      </div>
+      </div >
 
       {/* Overlay when sidebar is open */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/30 z-30 sm:block hidden"
-          onClick={closeSidebar}
-        ></div>
-      )}
+      {
+        sidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black/30 z-30 sm:block hidden"
+            onClick={closeSidebar}
+          ></div>
+        )
+      }
 
-      {selectedAssetForUpdate && (
-        <UpdateAssetModal
-          isOpen={isUpdateModalOpen}
-          onClose={() => setIsUpdateModalOpen(false)}
-          onSave={handleUpdateAsset}
-          assetData={selectedAssetForUpdate}
-        />
-      )}
-    </Card>
+      {
+        selectedAssetForUpdate && (
+          <UpdateAssetModal
+            isOpen={isUpdateModalOpen}
+            onClose={() => setIsUpdateModalOpen(false)}
+            onSave={handleUpdateAsset}
+            assetData={selectedAssetForUpdate}
+          />
+        )
+      }
+    </Card >
   );
 }
