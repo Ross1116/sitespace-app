@@ -140,7 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }),
       }).catch(err => {
         // Network error (server down, no connection, etc.)
-        throw new Error("Cannot connect to server. Please check your connection or try again later.");
+        throw new Error("Cannot connect to server. Please check your connection or try again later.", err);
       });
 
       if (!response.ok) {
