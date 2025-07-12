@@ -5,7 +5,6 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { username, password } = body;
 
-    // Forward the request to your actual backend
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/signin`, {
       method: "POST",
       headers: {

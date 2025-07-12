@@ -78,6 +78,14 @@ export function CreateBookingForm({
   const [assets, setAssets] = useState<any[]>([]);
   const [assetError, setAssetError] = useState<boolean>(false);
 
+  const userRoles = typeof user?.roles === "string"
+    ? user.roles.split(",").map(r => r.trim().toLowerCase())
+    : [];
+
+  const bookingStatus = userRoles.includes("manager")
+    ? "Confirmed"
+    : "Pending";
+
   const handleDurationChange = (newDuration: any) => {
     setDuration(newDuration);
 
@@ -301,7 +309,7 @@ export function CreateBookingForm({
         bookingFor: userId,
         bookingNotes: "",
         bookingProject: project.id || "P001",
-        bookingStatus: "Pending",
+        bookingStatus: bookingStatus,
         bookingTimeDt: bookingTimeDt,
         bookingTitle: title,
       };

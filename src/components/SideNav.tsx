@@ -186,9 +186,8 @@ const SideNav = () => {
 
       {/* Mobile Menu Container - Fixed Full Screen */}
       <div
-        className={`fixed inset-0 z-40 flex md:hidden transition-transform duration-300 ${
-          isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`fixed inset-0 z-40 flex md:hidden transition-transform duration-300 ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
       >
         {/* Dark Overlay */}
         <div
@@ -274,10 +273,9 @@ const SideNav = () => {
                     </div>
                     <span
                       className={`ml-3 whitespace-nowrap overflow-hidden transition-all duration-300 
-                        ${
-                          isExpanded
-                            ? "max-w-[150px] opacity-100"
-                            : "max-w-0 opacity-0"
+                        ${isExpanded
+                          ? "max-w-[150px] opacity-100"
+                          : "max-w-0 opacity-0"
                         }`}
                     >
                       {item.label}
