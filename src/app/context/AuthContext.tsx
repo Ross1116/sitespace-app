@@ -46,7 +46,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
   useEffect(() => {
-    // Check for token in localStorage on initial load
     const storedToken = localStorage.getItem("accessToken");
     const storedUser = localStorage.getItem("user");
 
@@ -58,9 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false);
   }, []);
 
-  const clearError = () => {
-    setError(null);
-  };
+  const clearError = () => setError(null);
 
   const login = async (username: string, password: string) => {
     try {
@@ -79,31 +76,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const data = await response.json();
-      if (!data.accessToken) throw new Error("Invalid login response (no token)");
 
-      // Store user and token
-      const userData = {
-        userId: data.userId,
+      // Normalize keys from backend
+      const accessToken = data.access_token || data.accessToken;
+      if (!accessToken) throw new Error("Invalid login response (no token)");
+
+      const userData: User = {
+        userId: data.user_id || data.userId || null,
         username: data.username,
         email: data.email,
-        roles: data.roles,
+        roles: data.role || data.roles,
       };
 
       setUser(userData);
-      setToken(data.accessToken);
+      setToken(accessToken);
 
-      // Save to localStorage
-      localStorage.setItem("accessToken", data.accessToken);
+      localStorage.setItem("accessToken", accessToken);
       localStorage.setItem("user", JSON.stringify(userData));
 
-      // Redirect to home AFTER storing everything
       await router.push("/home");
-
-    } catch (error: any) {
-      console.error("Login error:", error);
-      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+    } catch (err: any) {
+      console.error("Login error:", err);
+      const errorMessage = err instanceof Error ? err.message : "An unknown error occurred";
       setError(errorMessage);
-      throw error; // Re-throw to let the component handle it
+      throw err;
     } finally {
       setIsLoading(false);
     }
@@ -122,8 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       clearError();
 
-      // Extract username from email or use first part of fullName
-      const username = email.split('@')[0] || fullName.split(' ')[0].toLowerCase();
+      const username = email.split("@")[0] || fullName.split(" ")[0].toLowerCase();
 
       const response = await fetch(`${API_URL}/api/auth/signup`, {
         method: "POST",
@@ -138,25 +133,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           password,
           project,
         }),
-      }).catch(err => {
-        // Network error (server down, no connection, etc.)
-        throw new Error("Cannot connect to server. Please check your connection or try again later.", err);
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        const errorMessage = errorData.message || `Registration failed (${response.status})`;
-        throw new Error(errorMessage);
+        throw new Error(errorData.message || `Registration failed (${response.status})`);
       }
 
-      // After successful registration, redirect to login
       router.push("/login?registered=true");
-
-    } catch (error) {
-      console.error("Registration error:", error);
-      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+    } catch (err) {
+      console.error("Registration error:", err);
+      const errorMessage = err instanceof Error ? err.message : "An unknown error occurred";
       setError(errorMessage);
-      throw error; // Re-throw to let the component handle it
+      throw err;
     } finally {
       setIsLoading(false);
     }
@@ -167,25 +156,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       clearError();
 
-      // Only try to call signout if we have a token
       if (token) {
         const response = await fetch(`${API_URL}/api/auth/signout`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-          }
+            Authorization: `Bearer ${token}`,
+          },
         });
 
         if (!response.ok) {
           console.error("Signout API error:", response.status);
         }
       }
-    } catch (error: any) {
-      // Log error but continue with logout
-      console.error("Signout error:", error);
+    } catch (err) {
+      console.error("Signout error:", err);
     } finally {
-      // Always clear local state
       setIsLoading(false);
       setUser(null);
       setToken(null);
