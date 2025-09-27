@@ -25,8 +25,8 @@ interface AssetModalProps {
 interface Asset {
   assetTitle: string;
   assetLocation: string;
-  maintanenceStartdt: string;
-  maintanenceEnddt: string;
+  maintenanceStartdt: string;
+  maintenanceEnddt: string;
   assetPoc: string;
   assetStatus: string;
   usageInstructions: string;
@@ -43,8 +43,8 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
   const [asset, setAsset] = useState<Asset>({
     assetTitle: "",
     assetLocation: "",
-    maintanenceStartdt: "",
-    maintanenceEnddt: "",
+    maintenanceStartdt: "",
+    maintenanceEnddt: "",
     assetPoc: "",
     assetStatus: "Operational",
     usageInstructions: "",
@@ -92,7 +92,7 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
   };
 
   const handleStatusChange = (status: "Operational" | "Out of Service") => {
-    setAsset((prev) => ({ ...prev, assetStatus: status })); // Fixed: should update assetStatus, not status
+    setAsset((prev) => ({ ...prev, assetStatus: status }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -101,20 +101,29 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
     try {
       setIsSubmitting(true);
 
-      const formattedAsset = {
-        ...asset,
-        maintanenceStartdt: asset.maintanenceStartdt
-          ? format(new Date(asset.maintanenceStartdt), "yyyy-MM-dd'T'HH:mm:ss")
+      // Map camelCase state keys to snake_case payload keys required by the API
+      const snakeCasePayload = {
+        asset_project: asset.assetProject,
+        asset_title: asset.assetTitle,
+        asset_location: asset.assetLocation,
+        // Convert status to snake_case string (e.g., "Operational" -> "operational", "Out of Service" -> "out_of_service")
+        asset_status: asset.assetStatus.toLowerCase().replace(/\s/g, "_"),
+        asset_poc: asset.assetPoc,
+        // Apply date formatting and key conversion
+        maintenance_start_dt: asset.maintenanceStartdt
+          ? format(new Date(asset.maintenanceStartdt), "yyyy-MM-dd'T'HH:mm:ss")
           : "",
-        maintanenceEnddt: asset.maintanenceEnddt
-          ? format(new Date(asset.maintanenceEnddt), "yyyy-MM-dd'T'HH:mm:ss")
+        maintenance_end_dt: asset.maintenanceEnddt
+          ? format(new Date(asset.maintenanceEnddt), "yyyy-MM-dd'T'HH:mm:ss")
           : "",
+        usage_instructions: asset.usageInstructions,
+        asset_key: asset.assetKey || undefined,
       };
 
       console.log("About to make API call");
       const response = await api.post(
         "/api/Asset/saveAsset",
-        formattedAsset
+        snakeCasePayload
       );
 
       const data = response.data;
@@ -127,8 +136,8 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
       setAsset({
         assetTitle: "",
         assetLocation: "",
-        maintanenceStartdt: "",
-        maintanenceEnddt: "",
+        maintenanceStartdt: "",
+        maintenanceEnddt: "",
         assetPoc: "",
         assetStatus: "Operational",
         usageInstructions: "",
@@ -191,14 +200,14 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
               <div className="flex space-x-2">
                 <Input
                   type="date"
-                  name="maintanenceStartdt"
-                  value={asset.maintanenceStartdt}
+                  name="maintenanceStartdt"
+                  value={asset.maintenanceStartdt}
                   onChange={handleMaintenanceChange}
                 />
                 <Input
                   type="date"
-                  name="maintanenceEnddt"
-                  value={asset.maintanenceEnddt}
+                  name="maintenanceEnddt"
+                  value={asset.maintenanceEnddt}
                   onChange={handleMaintenanceChange}
                 />
               </div>
