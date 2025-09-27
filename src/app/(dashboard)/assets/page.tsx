@@ -10,6 +10,28 @@ import CreateAssetForm from "@/components/forms/CreateAssetForm";
 import UpdateAssetModal from "@/components/forms/UpdateAssetForm";
 import { format } from "date-fns";
 
+type RawAsset = {
+  assetTitle: string;
+  asset_title: string;
+  assetLocation: string;
+  asset_location: string;
+  maintanenceStartdt: string;
+  maintanence_start_dt: string;
+  maintanenceEnddt: string;
+  maintanence_end_dt: string;
+  assetPoc: string;
+  asset_poc: string;
+  assetStatus: string;
+  asset_status: string;
+  usageInstructions: string;
+  usage_instructions: string;
+  assetKey: string;
+  asset_key: string;
+  assetProject: string | Project;
+  asset_project: string | Project;
+  [key: string]: any; 
+};
+
 interface Asset {
   assetTitle: string;
   assetLocation: string;
@@ -26,6 +48,20 @@ interface Project {
   id: string;
   text: string;
 }
+
+const normalizeAssetKeys = (rawAsset: RawAsset): Asset => {
+  return {
+    assetTitle: rawAsset.assetTitle || rawAsset.asset_title,
+    assetLocation: rawAsset.assetLocation || rawAsset.asset_location,
+    maintanenceStartdt: rawAsset.maintanenceStartdt || rawAsset.maintanence_start_dt,
+    maintanenceEnddt: rawAsset.maintanenceEnddt || rawAsset.maintanence_end_dt,
+    assetPoc: rawAsset.assetPoc || rawAsset.asset_poc,
+    assetStatus: rawAsset.assetStatus || rawAsset.asset_status,
+    usageInstructions: rawAsset.usageInstructions || rawAsset.usage_instructions,
+    assetKey: rawAsset.assetKey || rawAsset.asset_key,
+    assetProject: rawAsset.assetProject || rawAsset.asset_project,
+  };
+};
 
 export default function AssetsTable() {
   const [loading, setLoading] = useState(true);
@@ -74,17 +110,22 @@ export default function AssetsTable() {
         params: { assetProject: project?.id },
       });
 
-      const assetData = response.data?.assetlist || [];
-      setAssets(assetData);
-      if (assetData.length > 0) {
-        console.log("Assets fetched:", assetData);
+      const rawAssetData = response.data?.assetlist || response.data?.asset_list || [];
+      const normalizedAssets: Asset[] = rawAssetData.map((rawAsset: RawAsset) =>
+        normalizeAssetKeys(rawAsset)
+      );
+      setAssets(normalizedAssets);
+      if (normalizedAssets.length > 0) {
+        console.log("Assets fetched:", normalizedAssets);
       }
-      localStorage.setItem(`assets_${userId}`, JSON.stringify(assetData));
+      localStorage.setItem(`assets_${userId}`, JSON.stringify(normalizedAssets));
 
       // Mark initial load as complete
       initialLoadComplete.current = true;
     } catch (error) {
       console.error("Error fetching assets:", error);
+    } finally {
+      setLoading(false)
     }
   };
 
