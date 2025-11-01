@@ -437,7 +437,7 @@ const EmptyBookingsState = () => (
         No Upcoming Bookings
       </h3>
       <p className="text-sm text-gray-500 mb-4 max-w-sm">
-        You don't have any upcoming bookings scheduled. Create a new booking to
+        You don&apos;t have any upcoming bookings scheduled. Create a new booking to
         get started!
       </p>
       <Link href="/bookings">

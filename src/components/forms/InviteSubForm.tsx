@@ -360,7 +360,7 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
           </DialogTitle>
           <p className="text-sm text-gray-600 mt-1">
             Enter the email to invite a subcontractor. If they already have an
-            account, we'll just add them to your project.
+            account, we&apos;ll just add them to your project.
           </p>
         </DialogHeader>
 
@@ -398,7 +398,7 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
                 disabled={isSubmitting}
               />
               <p className="text-xs text-gray-500">
-                We'll check if this email exists in our system
+                We&apos;ll check if this email exists in our system
               </p>
             </div>
 
@@ -539,9 +539,9 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
             <p className="text-xs text-blue-700">
               <strong>How it works:</strong>
               <br />
-              • If the email exists, we'll add them to your project
+              • If the email exists, we&apos;ll add them to your project
               <br />
-              • If it's new, we'll create an account and send a password setup
+              • If it&apos;s new, we&apos;ll create an account and send a password setup
               email
               <br />• Name and other details are only needed for new accounts
             </p>

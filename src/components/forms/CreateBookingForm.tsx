@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { differenceInMinutes, format, addMinutes } from "date-fns";
+import { format, addMinutes } from "date-fns";
 import { CalendarEvent } from "@/components/ui/full-calendar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
@@ -78,7 +78,6 @@ export function CreateBookingForm({
   onSave,
   defaultAsset,
   defaultAssetName,
-  selectedAssetId,
   bookedAssets = [],
 }: CreateBookingForm) {
   const [title, setTitle] = useState("");
@@ -92,7 +91,9 @@ export function CreateBookingForm({
   const { user } = useAuth();
   const userId = user?.id;
 
-  const [customStartTime, setCustomStartTime] = useState<Date | null>(startTime);
+  const [customStartTime, setCustomStartTime] = useState<Date | null>(
+    startTime
+  );
   const [customEndTime, setCustomEndTime] = useState<Date | null>(null);
 
   const [startHour, setStartHour] = useState<string>("");
@@ -136,22 +137,28 @@ export function CreateBookingForm({
     if (!assetString) {
       console.error("No assets found in localStorage");
       setAssetError(true);
+      setAssets([]);
       return;
     }
 
     try {
       const parsedAssets = JSON.parse(assetString);
       setAssets(parsedAssets);
+      setAssetError(false);
     } catch (error) {
       console.error("Error parsing assets:", error);
       setAssetError(true);
+      setAssets([]);
     }
   }, [userId]);
 
   // Set default asset if provided
   useEffect(() => {
     if (defaultAssetName && assets.length > 0 && selectedAssets.length === 0) {
-      const assetNameWithoutPrefix = defaultAssetName.replace(/^[A-Z]\d{3}-/, "");
+      const assetNameWithoutPrefix = defaultAssetName.replace(
+        /^[A-Z]\d{3}-/,
+        ""
+      );
 
       const matchingAsset = assets.find((asset) => {
         const assetTitle = asset.assetTitle || "";
@@ -302,7 +309,10 @@ export function CreateBookingForm({
 
         console.log("Creating booking:", bookingData);
 
-        const response = await api.post<BookingDetail>("/bookings/", bookingData);
+        const response = await api.post<BookingDetail>(
+          "/bookings/",
+          bookingData
+        );
         return response.data;
       });
 
@@ -318,7 +328,9 @@ export function CreateBookingForm({
         const startDateTime = new Date(
           `${booking.booking_date}T${booking.start_time}`
         );
-        const endDateTime = new Date(`${booking.booking_date}T${booking.end_time}`);
+        const endDateTime = new Date(
+          `${booking.booking_date}T${booking.end_time}`
+        );
 
         return {
           id: booking.id,
@@ -376,6 +388,19 @@ export function CreateBookingForm({
           </div>
         )}
 
+        {assetError && (
+          <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-3 py-2 rounded text-sm mb-4 flex items-start gap-2">
+            <span className="text-yellow-600 mt-0.5">⚠️</span>
+            <div>
+              <strong className="font-semibold">Asset Loading Error:</strong>
+              <p className="text-xs mt-1">
+                Unable to load assets. Please refresh the page or contact
+                support.
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-6">
           {/* Basic Info */}
           <div className="space-y-4">
@@ -429,7 +454,9 @@ export function CreateBookingForm({
                   selected={selectedDate}
                   onSelect={(date) => date && setSelectedDate(date)}
                   initialFocus
-                  disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                  disabled={(date) =>
+                    date < new Date(new Date().setHours(0, 0, 0, 0))
+                  }
                 />
               </PopoverContent>
             </Popover>
@@ -539,7 +566,11 @@ export function CreateBookingForm({
               </SelectTrigger>
               <SelectContent>
                 {[15, 30, 45, 60, 90, 120, 180, 240, 300, 360].map((val) => (
-                  <SelectItem key={val} value={val.toString()} className="text-sm">
+                  <SelectItem
+                    key={val}
+                    value={val.toString()}
+                    className="text-sm"
+                  >
                     {val >= 60
                       ? `${val / 60} hour${val >= 120 ? "s" : ""}`
                       : `${val} minutes`}
@@ -608,7 +639,9 @@ export function CreateBookingForm({
                               ]);
                             } else {
                               setSelectedAssets(
-                                selectedAssets.filter((k) => k !== asset.assetKey)
+                                selectedAssets.filter(
+                                  (k) => k !== asset.assetKey
+                                )
                               );
                               setSelectedAssetIds(
                                 selectedAssetIds.filter(

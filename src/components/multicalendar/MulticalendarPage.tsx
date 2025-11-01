@@ -261,44 +261,44 @@ export default function MulticalendarPage() {
     }
   };
   // Alternative: Use regular bookings endpoint (FALLBACK)
-  const fetchBookingsRegular = async (forceRefresh = false) => {
-    if (!user) return;
-    if (hasFetched.current && !forceRefresh) return;
+  // const fetchBookingsRegular = async (forceRefresh = false) => {
+  //   if (!user) return;
+  //   if (hasFetched.current && !forceRefresh) return;
 
-    setLoading(true);
-    setError(null);
+  //   setLoading(true);
+  //   setError(null);
 
-    const project = getStoredProject();
-    if (!project) {
-      setError("No project selected");
-      setLoading(false);
-      return;
-    }
+  //   const project = getStoredProject();
+  //   if (!project) {
+  //     setError("No project selected");
+  //     setLoading(false);
+  //     return;
+  //   }
 
-    try {
-      console.log("Fetching bookings (regular)...");
+  //   try {
+  //     console.log("Fetching bookings (regular)...");
 
-      const response = await bookingsApi.getBookings({
-        project_id: project.id,
-        limit: 1000,
-        skip: 0,
-      });
+  //     const response = await bookingsApi.getBookings({
+  //       project_id: project.id,
+  //       limit: 1000,
+  //       skip: 0,
+  //     });
 
-      const transformedBookings = response.bookings.map(
-        transformBookingToEvent
-      );
-      console.log("Bookings fetched:", transformedBookings.length);
+  //     const transformedBookings = response.bookings.map(
+  //       transformBookingToEvent
+  //     );
+  //     console.log("Bookings fetched:", transformedBookings.length);
 
-      setBookings(transformedBookings);
-      localStorage.setItem(storageKey, JSON.stringify(transformedBookings));
-      hasFetched.current = true;
-    } catch (err: any) {
-      console.error("Error fetching bookings:", err);
-      setError(err.response?.data?.detail || "Failed to fetch bookings");
-    } finally {
-      setLoading(false);
-    }
-  };
+  //     setBookings(transformedBookings);
+  //     localStorage.setItem(storageKey, JSON.stringify(transformedBookings));
+  //     hasFetched.current = true;
+  //   } catch (err: any) {
+  //     console.error("Error fetching bookings:", err);
+  //     setError(err.response?.data?.detail || "Failed to fetch bookings");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   // Load cached data on mount, then fetch fresh
   useEffect(() => {

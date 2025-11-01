@@ -13,22 +13,26 @@ export default function Register() {
   const [error, setError] = useState("");
   const { register } = useAuth();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setError("");
 
-    if (password !== confirmPassword) {
-      setError("Passwords do not match");
-      return;
-    }
+  if (password !== confirmPassword) {
+    setError("Passwords do not match");
+    return;
+  }
 
-    try {
-      await register(firstName, lastName, email, phone, password);
-    } catch (err) {
-      setError("Registration failed. Please try again.");
-    }
-  };
-
+  try {
+    await register(firstName, lastName, email, phone, password);
+  } catch (error) {
+    const errorMessage = error instanceof Error 
+      ? error.message 
+      : "Registration failed. Please try again.";
+    
+    console.error("Registration error:", error);
+    setError(errorMessage);
+  }
+};
   return (
     <div className="flex flex-col md:flex-row min-h-screen w-full">
       {/* Left Side */}
