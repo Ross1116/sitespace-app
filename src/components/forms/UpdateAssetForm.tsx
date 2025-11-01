@@ -11,11 +11,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { useAuth } from "@/app/context/AuthContext";
-import { format } from "date-fns";
 
+// ===== TYPE DEFINITIONS (Matching AssetsTable.tsx exactly) =====
 interface Project {
   id: string;
   text: string;
@@ -28,17 +35,65 @@ interface AssetModalProps {
   assetData: Asset;
 }
 
+// ✅ MUST match exactly with AssetsTable.tsx Asset interface
 interface Asset {
+  assetKey: string;
   assetTitle: string;
   assetLocation: string;
+  assetType: string;
+  assetStatus: string;
+  assetPoc: string;
+  assetProject: string; // ✅ Just string, not string | Project
   maintanenceStartdt: string;
   maintanenceEnddt: string;
-  assetPoc: string;
-  assetStatus: string;
   usageInstructions: string;
-  assetKey: string;
-  assetProject: string | Project;
+  assetCode: string;
+  _originalData?: any;
 }
+
+interface AssetUpdateRequest {
+  name?: string;
+  asset_type?: string;
+  description?: string;
+  status?: "available" | "in_use" | "maintenance" | "retired";
+  project_id?: string;
+  location?: string;
+  poc?: string;
+  usage_instructions?: string;
+  maintenance_start_date?: string;
+  maintenance_end_date?: string;
+}
+
+// ===== HELPER FUNCTIONS =====
+const mapFrontendStatusToBackend = (
+  status: string
+): "available" | "in_use" | "maintenance" | "retired" => {
+  const statusMap: Record<
+    string,
+    "available" | "in_use" | "maintenance" | "retired"
+  > = {
+    Operational: "available",
+    "In Use": "in_use",
+    Maintenance: "maintenance",
+    "Out of Service": "retired",
+    Retired: "retired",
+    available: "available",
+    in_use: "in_use",
+    maintenance: "maintenance",
+    retired: "retired",
+  };
+  return statusMap[status] || "available";
+};
+
+const mapBackendStatusToFrontend = (status: string): string => {
+  const statusMap: Record<string, string> = {
+    available: "Operational",
+    in_use: "In Use",
+    maintenance: "Maintenance",
+    retired: "Out of Service",
+  };
+  return statusMap[status] || status;
+};
 
 const UpdateAssetModal: React.FC<AssetModalProps> = ({
   isOpen,
@@ -46,31 +101,51 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
   onSave,
   assetData,
 }) => {
-  const [project, setProject] = useState<string>("");
+  const [project, setProject] = useState<Project | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
-  const userId = user?.userId;
+  const userId = user?.id;
 
+  // ✅ Initialize with all required fields (assetProject is a string)
   const [asset, setAsset] = useState<Asset>({
+    assetKey: "",
     assetTitle: "",
     assetLocation: "",
+    assetType: "",
     maintanenceStartdt: "",
     maintanenceEnddt: "",
     assetPoc: "",
     assetStatus: "Operational",
     usageInstructions: "",
-    assetProject: project,
-    assetKey: "",
+    assetProject: "", // ✅ Just a string
+    assetCode: "",
   });
+
+  // Asset types
+  const assetTypes = [
+    "Equipment",
+    "Vehicle",
+    "Tool",
+    "Machinery",
+    "Loading Zone",
+    "Storage Area",
+    "Crane",
+    "Excavator",
+    "Generator",
+    "Scaffolding",
+    "Other",
+  ];
 
   // Load asset data when modal opens or assetData changes
   useEffect(() => {
     if (assetData) {
+      console.log("Loading asset data:", assetData);
       setAsset(assetData);
     }
   }, [assetData]);
 
-  // Load project from localStorage when component mounts or userId changes
+  // Load project from localStorage
   useEffect(() => {
     const projectString = localStorage.getItem(`project_${userId}`);
     if (!projectString) {
@@ -79,15 +154,14 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
     }
 
     try {
-      const parsedProjects = JSON.parse(projectString);
-      const parsedId = parsedProjects.id;
-      setProject(parsedId);
+      const parsedProject = JSON.parse(projectString);
+      setProject(parsedProject);
 
-      // Only update the assetProject if it's not already set
-      if (!asset.assetProject) {
+      // Update assetProject if not already set
+      if (!asset.assetProject && parsedProject) {
         setAsset((prev) => ({
           ...prev,
-          assetProject: parsedId, // Only use the ID
+          assetProject: parsedProject.id, // ✅ Just the ID string
         }));
       }
     } catch (error) {
@@ -110,39 +184,88 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
     }));
   };
 
-  const handleStatusChange = (
-    status: "Operational" | "Out of Service"
-  ) => {
+  const handleStatusChange = (status: string) => {
     setAsset((prev) => ({ ...prev, assetStatus: status }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+
+    if (!asset.assetKey) {
+      setError("Asset ID is missing");
+      return;
+    }
 
     try {
       setIsSubmitting(true);
 
-      const projectId = typeof asset.assetProject === 'object' && asset.assetProject !== null
-        ? asset.assetProject.id
-        : asset.assetProject;
+      // ✅ assetProject is already a string, no need to check type
+      const projectId = asset.assetProject;
 
-      const formattedAsset = {
-        ...asset,
-        assetProject: projectId, // Ensure we're using just the ID
-        maintanenceStartdt: asset.maintanenceStartdt
-          ? format(new Date(asset.maintanenceStartdt), "yyyy-MM-dd'T'HH:mm:ss")
-          : "",
-        maintanenceEnddt: asset.maintanenceEnddt
-          ? format(new Date(asset.maintanenceEnddt), "yyyy-MM-dd'T'HH:mm:ss")
-          : "",
+      // Build update request
+      const updateRequest: AssetUpdateRequest = {
+        name: asset.assetTitle,
+        asset_type: asset.assetType,
+        description: asset.usageInstructions,
+        status: mapFrontendStatusToBackend(asset.assetStatus),
+        project_id: projectId,
+        location: asset.assetLocation,
+        poc: asset.assetPoc,
+        usage_instructions: asset.usageInstructions,
       };
-      const response = await api.post("/api/Asset/updateAsset", formattedAsset);
 
-      const data = response.data;
-      onSave(data);
+      // Add maintenance dates if they exist
+      if (asset.maintanenceStartdt) {
+        updateRequest.maintenance_start_date =
+          asset.maintanenceStartdt.split("T")[0];
+      }
+      if (asset.maintanenceEnddt) {
+        updateRequest.maintenance_end_date =
+          asset.maintanenceEnddt.split("T")[0];
+      }
+
+      console.log("Updating asset:", asset.assetKey, updateRequest);
+
+      // Use new backend endpoint
+      const response = await api.put(
+        `/assets/${asset.assetKey}`,
+        updateRequest
+      );
+
+      console.log("Asset updated successfully:", response.data);
+
+      // ✅ Transform response - assetProject is always a string
+      const updatedAsset: Asset = {
+        assetKey: response.data.id,
+        assetTitle: response.data.name,
+        assetLocation: response.data.location || "",
+        assetType: response.data.asset_type,
+        maintanenceStartdt: response.data.maintenance_start_date || "",
+        maintanenceEnddt: response.data.maintenance_end_date || "",
+        assetPoc: response.data.poc || "",
+        assetStatus: mapBackendStatusToFrontend(response.data.status),
+        usageInstructions:
+          response.data.usage_instructions ||
+          response.data.description ||
+          "",
+        assetProject: response.data.project_id || projectId, // ✅ Always a string
+        assetCode: response.data.asset_code,
+        _originalData: response.data,
+      };
+
+      // Call onSave with properly formatted data
+      onSave(updatedAsset);
+
+      // Close modal
       onClose(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating asset:", error);
+      const errorMessage =
+        error.response?.data?.detail ||
+        error.message ||
+        "Failed to update asset";
+      setError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -167,10 +290,19 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
           </p>
         </DialogHeader>
 
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative">
+            <span className="block sm:inline">{error}</span>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="mt-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Asset Name */}
             <div className="space-y-2">
-              <Label htmlFor="assetTitle">Asset Name</Label>
+              <Label htmlFor="assetTitle">
+                Asset Name <span className="text-red-500">*</span>
+              </Label>
               <Input
                 id="assetTitle"
                 name="assetTitle"
@@ -181,6 +313,46 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
               />
             </div>
 
+            {/* Asset Code (Read-only) */}
+            <div className="space-y-2">
+              <Label htmlFor="assetCode">Asset Code</Label>
+              <Input
+                id="assetCode"
+                name="assetCode"
+                value={asset.assetCode}
+                disabled
+                className="bg-gray-100 cursor-not-allowed"
+              />
+              <span className="text-xs text-gray-500">
+                Asset code cannot be changed
+              </span>
+            </div>
+
+            {/* Asset Type */}
+            <div className="space-y-2">
+              <Label htmlFor="assetType">
+                Asset Type <span className="text-red-500">*</span>
+              </Label>
+              <Select
+                value={asset.assetType}
+                onValueChange={(value) =>
+                  setAsset((prev) => ({ ...prev, assetType: value }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select asset type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {assetTypes.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {type}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Asset Location */}
             <div className="space-y-2">
               <Label htmlFor="assetLocation">Asset Location</Label>
               <Input
@@ -189,49 +361,58 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
                 value={asset.assetLocation}
                 onChange={handleChange}
                 placeholder="eg. Zone 1, Loading Zone 2"
-                required
               />
             </div>
 
+            {/* Maintenance Dates */}
             <div className="space-y-2">
               <Label>Maintenance Dates</Label>
               <div className="flex space-x-2">
-                <Input
-                  type="date"
-                  name="maintanenceStartdt"
-                  value={
-                    asset.maintanenceStartdt
-                      ? asset.maintanenceStartdt.split("T")[0]
-                      : ""
-                  }
-                  onChange={handleMaintenanceChange}
-                />
-                <Input
-                  type="date"
-                  name="maintanenceEnddt"
-                  value={
-                    asset.maintanenceEnddt
-                      ? asset.maintanenceEnddt.split("T")[0]
-                      : ""
-                  }
-                  onChange={handleMaintenanceChange}
-                />
+                <div className="flex-1">
+                  <Input
+                    type="date"
+                    name="maintanenceStartdt"
+                    value={
+                      asset.maintanenceStartdt
+                        ? asset.maintanenceStartdt.split("T")[0]
+                        : ""
+                    }
+                    onChange={handleMaintenanceChange}
+                    placeholder="Start date"
+                  />
+                </div>
+                <div className="flex-1">
+                  <Input
+                    type="date"
+                    name="maintanenceEnddt"
+                    value={
+                      asset.maintanenceEnddt
+                        ? asset.maintanenceEnddt.split("T")[0]
+                        : ""
+                    }
+                    onChange={handleMaintenanceChange}
+                    placeholder="End date"
+                  />
+                </div>
               </div>
               <span className="text-xs text-gray-500">
                 Select scheduled maintenance start and end date
               </span>
             </div>
 
+            {/* Asset Status */}
             <div className="space-y-2">
-              <Label>Asset Status</Label>
-              <div className="flex space-x-2">
+              <Label>
+                Asset Status <span className="text-red-500">*</span>
+              </Label>
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   className={cn(
-                    "px-4 py-2 rounded-md flex-1 transition",
+                    "px-4 py-2 rounded-md transition text-sm",
                     asset.assetStatus === "Operational"
-                      ? "bg-green-100 text-green-800 font-medium"
-                      : "bg-gray-100 hover:bg-gray-200"
+                      ? "bg-green-100 text-green-800 font-medium border-2 border-green-500"
+                      : "bg-gray-100 hover:bg-gray-200 border-2 border-transparent"
                   )}
                   onClick={() => handleStatusChange("Operational")}
                 >
@@ -240,10 +421,35 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
                 <button
                   type="button"
                   className={cn(
-                    "px-4 py-2 rounded-md flex-1 transition",
-                    asset.assetStatus === "Out of Service"
-                      ? "bg-red-100 text-red-800 font-medium"
-                      : "bg-gray-100 hover:bg-gray-200"
+                    "px-4 py-2 rounded-md transition text-sm",
+                    asset.assetStatus === "In Use"
+                      ? "bg-blue-100 text-blue-800 font-medium border-2 border-blue-500"
+                      : "bg-gray-100 hover:bg-gray-200 border-2 border-transparent"
+                  )}
+                  onClick={() => handleStatusChange("In Use")}
+                >
+                  In Use
+                </button>
+                <button
+                  type="button"
+                  className={cn(
+                    "px-4 py-2 rounded-md transition text-sm",
+                    asset.assetStatus === "Maintenance"
+                      ? "bg-yellow-100 text-yellow-800 font-medium border-2 border-yellow-500"
+                      : "bg-gray-100 hover:bg-gray-200 border-2 border-transparent"
+                  )}
+                  onClick={() => handleStatusChange("Maintenance")}
+                >
+                  Maintenance
+                </button>
+                <button
+                  type="button"
+                  className={cn(
+                    "px-4 py-2 rounded-md transition text-sm",
+                    asset.assetStatus === "Out of Service" ||
+                      asset.assetStatus === "Retired"
+                      ? "bg-red-100 text-red-800 font-medium border-2 border-red-500"
+                      : "bg-gray-100 hover:bg-gray-200 border-2 border-transparent"
                   )}
                   onClick={() => handleStatusChange("Out of Service")}
                 >
@@ -252,18 +458,34 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
               </div>
             </div>
 
+            {/* Operator Information */}
             <div className="space-y-2">
-              <Label htmlFor="assetPoc">Operator Information</Label>
+              <Label htmlFor="assetPoc">Operator/Contact Person</Label>
               <Input
                 id="assetPoc"
                 name="assetPoc"
                 value={asset.assetPoc}
                 onChange={handleChange}
-                placeholder="Enter operator information"
+                placeholder="Enter operator or contact person"
               />
             </div>
 
+            {/* Project (Read-only) */}
             <div className="space-y-2">
+              <Label htmlFor="projectName">Project</Label>
+              <Input
+                id="projectName"
+                value={project?.text || "Loading..."}
+                disabled
+                className="bg-gray-100 cursor-not-allowed"
+              />
+              <span className="text-xs text-gray-500">
+                Project cannot be changed from here
+              </span>
+            </div>
+
+            {/* Usage Instructions */}
+            <div className="space-y-2 md:col-span-2">
               <Label htmlFor="usageInstructions">
                 Asset Description & Instructions
               </Label>
@@ -272,7 +494,7 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
                 name="usageInstructions"
                 value={asset.usageInstructions || ""}
                 onChange={handleChange}
-                placeholder="Enter asset description and instructions"
+                placeholder="Enter asset description, usage instructions, safety notes, etc."
                 className="min-h-[100px]"
               />
             </div>
@@ -283,6 +505,7 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
               type="button"
               className="bg-gray-200 text-gray-800 hover:bg-gray-300"
               onClick={() => onClose(false)}
+              disabled={isSubmitting}
             >
               Cancel
             </Button>
@@ -291,7 +514,33 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
               className="bg-black text-white hover:bg-gray-800"
               disabled={isSubmitting}
             >
-              {isSubmitting ? "Saving..." : "Update Asset"}
+              {isSubmitting ? (
+                <span className="flex items-center">
+                  <svg
+                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  Saving...
+                </span>
+              ) : (
+                "Update Asset"
+              )}
             </Button>
           </div>
         </form>

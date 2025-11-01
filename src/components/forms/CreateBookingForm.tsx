@@ -31,9 +31,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Label } from "../ui/label"
+import { Label } from "../ui/label";
 
-
+// ===== TYPE DEFINITIONS =====
 type CreateBookingForm = {
   isOpen: boolean;
   onClose: () => void;
@@ -45,6 +45,31 @@ type CreateBookingForm = {
   defaultAsset?: string;
   defaultAssetName?: string;
 };
+
+interface BookingCreateRequest {
+  project_id?: string;
+  subcontractor_id?: string;
+  asset_id: string;
+  booking_date: string; // YYYY-MM-DD
+  start_time: string; // HH:MM:SS
+  end_time: string; // HH:MM:SS
+  notes?: string;
+}
+
+interface BookingDetail {
+  id: string;
+  project_id?: string;
+  manager_id: string;
+  subcontractor_id?: string;
+  asset_id: string;
+  booking_date: string;
+  start_time: string;
+  end_time: string;
+  status: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
 
 export function CreateBookingForm({
   isOpen,
@@ -62,12 +87,12 @@ export function CreateBookingForm({
   const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([]);
   const [duration, setDuration] = useState("60");
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
-  const userId = user?.userId;
+  const userId = user?.id;
 
-  const [customStartTime, setCustomStartTime] = useState<Date | null>(
-    startTime
-  );
+  const [customStartTime, setCustomStartTime] = useState<Date | null>(startTime);
   const [customEndTime, setCustomEndTime] = useState<Date | null>(null);
 
   const [startHour, setStartHour] = useState<string>("");
@@ -77,50 +102,35 @@ export function CreateBookingForm({
 
   const [assets, setAssets] = useState<any[]>([]);
   const [assetError, setAssetError] = useState<boolean>(false);
+  const [project, setProject] = useState<any>(null);
 
-  const userRoles = typeof user?.roles === "string"
-    ? user.roles.split(",").map(r => r.trim().toLowerCase())
-    : [];
-
-  const bookingStatus = userRoles.includes("manager")
-    ? "Confirmed"
-    : "Pending";
-
-  const handleDurationChange = (newDuration: any) => {
+  const handleDurationChange = (newDuration: string) => {
     setDuration(newDuration);
-
     const durationMinutes = parseInt(newDuration, 10);
 
     if (customStartTime) {
       const newEndTime = new Date(customStartTime);
-
       newEndTime.setMinutes(newEndTime.getMinutes() + durationMinutes);
-
       setCustomEndTime(newEndTime);
-
       setEndHour(newEndTime.getHours().toString().padStart(2, "0"));
       setEndMinute(newEndTime.getMinutes().toString().padStart(2, "0"));
     }
   };
 
+  // Load project from localStorage
   useEffect(() => {
-    if (defaultAssetName && assets.length > 0 && selectedAssets.length === 0) {
-      const assetNameWithoutPrefix = defaultAssetName.replace(/^[A-Z]\d{3}-/, '');
-
-      const matchingAsset = assets.find((asset) => {
-        const assetTitle = asset.assetTitle || '';
-        return assetTitle.toLowerCase() === assetNameWithoutPrefix.toLowerCase() ||
-          assetTitle.toLowerCase() === defaultAssetName.toLowerCase() ||
-          asset.assetKey === defaultAsset;
-      });
-
-      if (matchingAsset) {
-        setSelectedAssets([matchingAsset.assetKey]);
-        setSelectedAssetIds([matchingAsset.assetKey]);
+    const projectString = localStorage.getItem(`project_${userId}`);
+    if (projectString) {
+      try {
+        const parsedProject = JSON.parse(projectString);
+        setProject(parsedProject);
+      } catch (error) {
+        console.error("Error parsing project:", error);
       }
     }
-  }, [defaultAssetName, defaultAsset, assets]);
+  }, [userId]);
 
+  // Load assets from localStorage
   useEffect(() => {
     const assetString = localStorage.getItem(`assets_${userId}`);
     if (!assetString) {
@@ -135,10 +145,31 @@ export function CreateBookingForm({
     } catch (error) {
       console.error("Error parsing assets:", error);
       setAssetError(true);
-      console.log(assetError);
     }
   }, [userId]);
 
+  // Set default asset if provided
+  useEffect(() => {
+    if (defaultAssetName && assets.length > 0 && selectedAssets.length === 0) {
+      const assetNameWithoutPrefix = defaultAssetName.replace(/^[A-Z]\d{3}-/, "");
+
+      const matchingAsset = assets.find((asset) => {
+        const assetTitle = asset.assetTitle || "";
+        return (
+          assetTitle.toLowerCase() === assetNameWithoutPrefix.toLowerCase() ||
+          assetTitle.toLowerCase() === defaultAssetName.toLowerCase() ||
+          asset.assetKey === defaultAsset
+        );
+      });
+
+      if (matchingAsset) {
+        setSelectedAssets([matchingAsset.assetKey]);
+        setSelectedAssetIds([matchingAsset.assetKey]);
+      }
+    }
+  }, [defaultAssetName, defaultAsset, assets]);
+
+  // Update end time when duration or start time changes
   useEffect(() => {
     if (startHour && startMinute && customStartTime) {
       const newStartTime = new Date(customStartTime);
@@ -152,22 +183,7 @@ export function CreateBookingForm({
     }
   }, [duration, startHour, startMinute, customStartTime]);
 
-  useEffect(() => {
-    if (customStartTime && startHour && startMinute) {
-      const currentHours = customStartTime.getHours();
-      const currentMinutes = customStartTime.getMinutes();
-
-      if (
-        currentHours !== parseInt(startHour) ||
-        currentMinutes !== parseInt(startMinute)
-      ) {
-        const updatedStartTime = new Date(customStartTime);
-        updatedStartTime.setHours(parseInt(startHour), parseInt(startMinute));
-        setCustomStartTime(updatedStartTime);
-      }
-    }
-  }, [startHour, startMinute, customStartTime]);
-
+  // Initialize times when modal opens
   useEffect(() => {
     if (startTime) {
       const hours = startTime.getHours().toString().padStart(2, "0");
@@ -234,124 +250,99 @@ export function CreateBookingForm({
       const durationInMinutes =
         (newEndTime.getTime() - customStartTime.getTime()) / (1000 * 60);
 
-      if (durationInMinutes === 15) setDuration("15");
-      else if (durationInMinutes === 30) setDuration("30");
-      else if (durationInMinutes === 45) setDuration("45");
-      else if (durationInMinutes === 60) setDuration("60");
-      else if (durationInMinutes === 90) setDuration("90");
-      else if (durationInMinutes === 120) setDuration("120");
-      else if (durationInMinutes === 180) setDuration("180");
-      else if (durationInMinutes === 240) setDuration("240");
-      else setDuration(durationInMinutes.toString());
+      if (durationInMinutes > 0) {
+        setDuration(durationInMinutes.toString());
+      }
     }
   };
-
-  useEffect(() => {
-    if (startTime) {
-      const hours = startTime.getHours().toString().padStart(2, "0");
-      const roundedMinutes = Math.round(startTime.getMinutes() / 15) * 15;
-      const minutes = (roundedMinutes % 60).toString().padStart(2, "0");
-
-      setStartHour(hours);
-      setStartMinute(minutes);
-
-      const endTime = addMinutes(startTime, parseInt(duration));
-      setEndHour(endTime.getHours().toString().padStart(2, "0"));
-      setEndMinute(endTime.getMinutes().toString().padStart(2, "0"));
-
-      setCustomStartTime(startTime);
-      setCustomEndTime(endTime);
-    }
-  }, [startTime, isOpen, duration]);
-
 
   const removeAsset = (assetId: string) => {
     setSelectedAssets((prev) => prev.filter((key) => key !== assetId));
-    setSelectedAssetIds((prev) => prev.filter((id) => id !== assetId))
-
-    const asset = assets.find(
-      (a: { assetKey: string }) => a.assetKey === assetId
-    );
-    if (asset) {
-      setSelectedAssets((prev) =>
-        prev.filter((name) => name !== asset.assetTitle)
-      );
-    }
+    setSelectedAssetIds((prev) => prev.filter((id) => id !== assetId));
   };
 
   const handleSubmit = async () => {
+    setError(null);
+
     if (!customStartTime || !customEndTime || selectedAssetIds.length === 0) {
-      console.log("Validation failed:", {
-        customStartTime,
-        customEndTime,
-        selectedAssetIds: selectedAssetIds.length
-      });
+      setError("Please fill in all required fields");
+      return;
+    }
+
+    if (!title.trim()) {
+      setError("Please enter a booking title");
+      return;
+    }
+
+    if (!project) {
+      setError("No project selected");
       return;
     }
 
     try {
-      const durationMins = differenceInMinutes(customEndTime, customStartTime);
+      setIsSubmitting(true);
 
-      const bookingTimeDt = format(customStartTime, "yyyy-MM-dd'T'HH:mm:ss");
+      // Format date and times for backend
+      const bookingDate = format(selectedDate, "yyyy-MM-dd");
+      const startTimeFormatted = format(customStartTime, "HH:mm:ss");
+      const endTimeFormatted = format(customEndTime, "HH:mm:ss");
 
-      const projectString = localStorage.getItem(`project_${userId}`);
-      if (!projectString) {
-        console.error("No project found in localStorage");
-        return;
-      }
-      const project = JSON.parse(projectString);
+      console.log("Creating bookings for assets:", selectedAssetIds);
 
-      const bookingData = {
-        bookedAssets: selectedAssetIds,
-        bookingCreatedBy: userId,
-        bookingDescription: description || "No description provided",
-        bookingDurationMins: durationMins,
-        bookingFor: userId,
-        bookingNotes: "",
-        bookingProject: project.id || "P001",
-        bookingStatus: bookingStatus,
-        bookingTimeDt: bookingTimeDt,
-        bookingTitle: title,
-      };
+      // Create one booking per asset
+      const bookingPromises = selectedAssetIds.map(async (assetId) => {
+        const bookingData: BookingCreateRequest = {
+          project_id: project.id,
+          asset_id: assetId,
+          booking_date: bookingDate,
+          start_time: startTimeFormatted,
+          end_time: endTimeFormatted,
+          notes: description || title,
+        };
 
-      let responseData: { ID: any };
+        console.log("Creating booking:", bookingData);
 
-      try {
-        const response = await api.post(
-          "/api/slotBooking/saveSlotBooking",
-          bookingData
-        );
-        console.log("Booking saved successfully:", response.data);
-        responseData = response.data;
-      } catch (error) {
-        console.error("Error posting bookings:", error);
-      }
-
-      const events = selectedAssetIds.map((assetId, index) => {
-        const asset = assets.find(
-          (a: { assetKey: string }) => a.assetKey === assetId
-        );
-        const assetTitle = asset?.assetTitle || assetId;
-
-        return {
-          title: `${title} - ${assetTitle}`,
-          description: description
-            ? `${description}\n\nAssets: ${assetTitle}`
-            : `Assets: ${assetTitle}`,
-          start: customStartTime,
-          end: customEndTime,
-          id: responseData?.ID
-            ? `${responseData.ID}-${assetId}-${index}`
-            : `local-${assetId}-${Date.now()}-${index}`,
-        } as Partial<CalendarEvent>;
+        const response = await api.post<BookingDetail>("/bookings/", bookingData);
+        return response.data;
       });
 
+      const createdBookings = await Promise.all(bookingPromises);
+      console.log("Bookings created successfully:", createdBookings);
+
+      // Transform to calendar events
+      const events = createdBookings.map((booking) => {
+        const asset = assets.find((a) => a.assetKey === booking.asset_id);
+        const assetTitle = asset?.assetTitle || booking.asset_id;
+
+        // Combine booking date and times to create full Date objects
+        const startDateTime = new Date(
+          `${booking.booking_date}T${booking.start_time}`
+        );
+        const endDateTime = new Date(`${booking.booking_date}T${booking.end_time}`);
+
+        return {
+          id: booking.id,
+          title: `${title} - ${assetTitle}`,
+          description: description || title,
+          start: startDateTime,
+          end: endDateTime,
+          status: booking.status,
+          bookingData: booking,
+        } as Partial<CalendarEvent>;
+      });
 
       onSave(events);
       resetForm();
       onClose();
-    } catch (error) {
-      console.error("Error saving booking:", error);
+    } catch (error: any) {
+      console.error("Error creating bookings:", error);
+      const errorMessage =
+        error.response?.data?.detail ||
+        error.message ||
+        "Failed to create booking";
+      setError(errorMessage);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -365,16 +356,9 @@ export function CreateBookingForm({
     setStartMinute("");
     setEndHour("");
     setEndMinute("");
-    setSelectedAssetIds(selectedAssetId ? [selectedAssetId] : []);
-    setSelectedAssets(
-      selectedAssetId
-        ? [
-          assets.find(
-            (a: { assetKey: string }) => a.assetKey === selectedAssetId
-          )?.assetTitle || "",
-        ]
-        : []
-    );
+    setSelectedAssetIds([]);
+    setSelectedAssets([]);
+    setError(null);
   };
 
   return (
@@ -386,17 +370,26 @@ export function CreateBookingForm({
           </DialogTitle>
         </DialogHeader>
 
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded text-sm mb-4">
+            {error}
+          </div>
+        )}
+
         <div className="space-y-6">
-          {}
+          {/* Basic Info */}
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="title">Booking Title</Label>
+              <Label htmlFor="title">
+                Booking Title <span className="text-red-500">*</span>
+              </Label>
               <Input
                 id="title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Enter title"
                 className="h-9"
+                disabled={isSubmitting}
               />
             </div>
 
@@ -409,18 +402,22 @@ export function CreateBookingForm({
                 placeholder="Add more details..."
                 rows={3}
                 className="resize-none text-sm"
+                disabled={isSubmitting}
               />
             </div>
           </div>
 
-          {}
+          {/* Date Picker */}
           <div className="space-y-2">
-            <Label>Date</Label>
+            <Label>
+              Date <span className="text-red-500">*</span>
+            </Label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   className="w-full h-9 justify-start text-left text-sm font-normal"
+                  disabled={isSubmitting}
                 >
                   <CalendarIcon className="w-4 h-4 mr-2" />
                   {selectedDate ? format(selectedDate, "PPP") : "Select date"}
@@ -432,17 +429,24 @@ export function CreateBookingForm({
                   selected={selectedDate}
                   onSelect={(date) => date && setSelectedDate(date)}
                   initialFocus
+                  disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                 />
               </PopoverContent>
             </Popover>
           </div>
 
-          {}
+          {/* Time Selectors */}
           <div className="grid sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Start Time</Label>
+              <Label>
+                Start Time <span className="text-red-500">*</span>
+              </Label>
               <div className="flex items-center gap-2">
-                <Select value={startHour} onValueChange={handleStartHourChange}>
+                <Select
+                  value={startHour}
+                  onValueChange={handleStartHourChange}
+                  disabled={isSubmitting}
+                >
                   <SelectTrigger className="h-9 w-full text-sm">
                     <SelectValue placeholder="Hour" />
                   </SelectTrigger>
@@ -458,7 +462,11 @@ export function CreateBookingForm({
                   </SelectContent>
                 </Select>
                 <span>:</span>
-                <Select value={startMinute} onValueChange={handleStartMinuteChange}>
+                <Select
+                  value={startMinute}
+                  onValueChange={handleStartMinuteChange}
+                  disabled={isSubmitting}
+                >
                   <SelectTrigger className="h-9 w-full text-sm">
                     <SelectValue placeholder="Min" />
                   </SelectTrigger>
@@ -474,9 +482,15 @@ export function CreateBookingForm({
             </div>
 
             <div className="space-y-2">
-              <Label>End Time</Label>
+              <Label>
+                End Time <span className="text-red-500">*</span>
+              </Label>
               <div className="flex items-center gap-2">
-                <Select value={endHour} onValueChange={handleEndHourChange}>
+                <Select
+                  value={endHour}
+                  onValueChange={handleEndHourChange}
+                  disabled={isSubmitting}
+                >
                   <SelectTrigger className="h-9 w-full text-sm">
                     <SelectValue placeholder="Hour" />
                   </SelectTrigger>
@@ -492,7 +506,11 @@ export function CreateBookingForm({
                   </SelectContent>
                 </Select>
                 <span>:</span>
-                <Select value={endMinute} onValueChange={handleEndMinuteChange}>
+                <Select
+                  value={endMinute}
+                  onValueChange={handleEndMinuteChange}
+                  disabled={isSubmitting}
+                >
                   <SelectTrigger className="h-9 w-full text-sm">
                     <SelectValue placeholder="Min" />
                   </SelectTrigger>
@@ -508,38 +526,50 @@ export function CreateBookingForm({
             </div>
           </div>
 
-          {}
+          {/* Duration */}
           <div className="space-y-2">
-            <Label>Duration</Label>
-            <Select value={duration} onValueChange={handleDurationChange}>
+            <Label>Duration (Quick Select)</Label>
+            <Select
+              value={duration}
+              onValueChange={handleDurationChange}
+              disabled={isSubmitting}
+            >
               <SelectTrigger className="h-9 w-full text-sm">
                 <SelectValue placeholder="Select duration" />
               </SelectTrigger>
               <SelectContent>
                 {[15, 30, 45, 60, 90, 120, 180, 240, 300, 360].map((val) => (
                   <SelectItem key={val} value={val.toString()} className="text-sm">
-                    {val >= 60 ? `${val / 60} hour${val >= 120 ? "s" : ""}` : `${val} minutes`}
+                    {val >= 60
+                      ? `${val / 60} hour${val >= 120 ? "s" : ""}`
+                      : `${val} minutes`}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
-          {}
+          {/* Asset Selection */}
           <div className="space-y-2">
-            <Label>Select Assets</Label>
+            <Label>
+              Select Assets <span className="text-red-500">*</span>
+            </Label>
             {selectedAssets.length > 0 && (
               <div className="flex flex-wrap gap-1">
                 {selectedAssets.map((assetKey) => {
                   const asset = assets.find((a) => a.assetKey === assetKey);
                   return (
-                    <Badge key={assetKey} className="text-xs flex items-center gap-1">
+                    <Badge
+                      key={assetKey}
+                      className="text-xs flex items-center gap-1"
+                    >
                       {asset?.assetTitle || assetKey}
                       <Button
                         variant="ghost"
                         size="icon"
                         className="h-4 w-4"
                         onClick={() => removeAsset(assetKey)}
+                        disabled={isSubmitting}
                       >
                         <X className="h-3 w-3" />
                       </Button>
@@ -550,52 +580,116 @@ export function CreateBookingForm({
             )}
             <ScrollArea className="h-24 border rounded-md p-2">
               <div className="space-y-2">
-                {assets.map((asset) => {
-                  const isSelected = selectedAssets.includes(asset.assetKey);
-                  const isBooked = bookedAssets.includes(asset.assetKey);
-                  return (
-                    <div key={asset.assetKey} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`asset-${asset.assetKey}`}
-                        checked={isSelected}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            setSelectedAssets([...selectedAssets, asset.assetKey]);
-                            setSelectedAssetIds([...selectedAssetIds, asset.assetKey]);
-                          } else {
-                            setSelectedAssets(selectedAssets.filter((k) => k !== asset.assetKey));
-                            setSelectedAssetIds(selectedAssetIds.filter((id) => id !== asset.assetKey));
-                          }
-                        }}
-                        disabled={isBooked && !isSelected}
-                      />
-                      <label
-                        htmlFor={`asset-${asset.assetKey}`}
-                        className={`text-sm flex-1 truncate ${isBooked && !isSelected ? "line-through text-muted-foreground" : ""
-                          }`}
+                {assets.length === 0 ? (
+                  <p className="text-sm text-gray-500 text-center py-4">
+                    No assets available
+                  </p>
+                ) : (
+                  assets.map((asset) => {
+                    const isSelected = selectedAssets.includes(asset.assetKey);
+                    const isBooked = bookedAssets.includes(asset.assetKey);
+                    return (
+                      <div
+                        key={asset.assetKey}
+                        className="flex items-center space-x-2"
                       >
-                        {asset.assetTitle}
-                        {isBooked && !isSelected && (
-                          <span className="ml-2 text-xs text-red-500">(Booked)</span>
-                        )}
-                      </label>
-                    </div>
-                  );
-                })}
+                        <Checkbox
+                          id={`asset-${asset.assetKey}`}
+                          checked={isSelected}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedAssets([
+                                ...selectedAssets,
+                                asset.assetKey,
+                              ]);
+                              setSelectedAssetIds([
+                                ...selectedAssetIds,
+                                asset.assetKey,
+                              ]);
+                            } else {
+                              setSelectedAssets(
+                                selectedAssets.filter((k) => k !== asset.assetKey)
+                              );
+                              setSelectedAssetIds(
+                                selectedAssetIds.filter(
+                                  (id) => id !== asset.assetKey
+                                )
+                              );
+                            }
+                          }}
+                          disabled={isSubmitting || (isBooked && !isSelected)}
+                        />
+                        <label
+                          htmlFor={`asset-${asset.assetKey}`}
+                          className={`text-sm flex-1 truncate ${
+                            isBooked && !isSelected
+                              ? "line-through text-muted-foreground"
+                              : ""
+                          }`}
+                        >
+                          {asset.assetTitle}
+                          {isBooked && !isSelected && (
+                            <span className="ml-2 text-xs text-red-500">
+                              (Booked)
+                            </span>
+                          )}
+                        </label>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </ScrollArea>
           </div>
 
-          {}
-          <div className="pt-2 flex justify-end">
+          {/* Submit Button */}
+          <div className="pt-2 flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="h-10 px-4 text-sm"
+            >
+              Cancel
+            </Button>
             <Button
               onClick={handleSubmit}
               disabled={
-                !title || !customStartTime || !customEndTime || selectedAssets.length === 0
+                !title ||
+                !customStartTime ||
+                !customEndTime ||
+                selectedAssets.length === 0 ||
+                isSubmitting
               }
               className="h-10 px-4 text-sm"
             >
-              Save Booking{selectedAssets.length > 1 ? "s" : ""}
+              {isSubmitting ? (
+                <span className="flex items-center">
+                  <svg
+                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  Saving...
+                </span>
+              ) : (
+                `Save Booking${selectedAssets.length > 1 ? "s" : ""}`
+              )}
             </Button>
           </div>
         </div>

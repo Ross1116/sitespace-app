@@ -3,7 +3,6 @@
 import { Calendar, X, ChevronDown } from "lucide-react";
 import api from "@/lib/api";
 import { useState } from "react";
-import { format } from "date-fns";
 import { useAuth } from "@/app/context/AuthContext";
 
 interface BookingCardDropdownProps {
@@ -23,110 +22,64 @@ export default function BookingCardDropdown({
 }: BookingCardDropdownProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
-  const hasManagerPrivileges = user?.roles?.includes("admin") || user?.roles?.includes("manager");
+  const hasManagerPrivileges =
+    user?.role === "admin" || user?.role === "manager";
 
-  const getBookingDetails = async () => {
-    try {
-      const response = await api.get(
-        "/api/slotBooking/editSlotBookingdetails",
-        {
-          params: { bookingKey: bookingKey },
-        }
-      );
-      const data = response.data.bookingList[0];
-      const updatedData = {
-        ...data,
-        bookingTimeDt: format(data.bookingTimeDt, "yyyy-MM-dd'T'HH:mm:ss"),
-      };
-      return updatedData;
-    } catch (error) {
-      console.error("Error fetching booking details:", error);
-      throw error;
-    }
-  };
-
-  const confirmBooking = async () => {
+  // Update booking status using new backend
+  const updateBookingStatus = async (
+    newStatus: "pending" | "confirmed" | "completed" | "cancelled"
+  ) => {
     setIsLoading(true);
     try {
-      const bookingDetails = await getBookingDetails();
-      const updatedBooking = {
-        ...bookingDetails,
-        bookingStatus: "Confirmed",
-      };
+      // Use new backend endpoint for status update
+      await api.patch(`/bookings/${bookingKey}/status`, null, {
+        params: { new_status: newStatus },
+      });
 
-      await api.post("/api/slotBooking/updateSlotBooking", updatedBooking);
-      console.log(updatedBooking);
-
+      console.log(`Booking ${bookingKey} status updated to ${newStatus}`);
       onActionComplete?.();
-    } catch (error) {
-      console.error("Error confirming booking:", error);
+    } catch (error: any) {
+      console.error("Error updating booking status:", error);
+      const errorMessage =
+        error.response?.data?.detail || "Failed to update booking";
+      alert(errorMessage);
     } finally {
       setIsLoading(false);
       onToggle();
     }
   };
 
-  const denyBooking = async () => {
-    setIsLoading(true);
-    try {
-      const bookingDetails = await getBookingDetails();
-
-      const updatedBooking = {
-        ...bookingDetails,
-        bookingStatus: "Denied",
-      };
-
-      await api.post("/api/slotBooking/updateSlotBooking", updatedBooking);
-
-      onActionComplete?.();
-    } catch (error) {
-      console.error("Error confirming booking:", error);
-    } finally {
-      setIsLoading(false);
-      onToggle();
-    }
-  };
-
-  const cancelBooking = async () => {
-    setIsLoading(true);
-    try {
-      const bookingDetails = await getBookingDetails();
-
-      const updatedBooking = {
-        ...bookingDetails,
-        bookingStatus: "Cancelled",
-      };
-
-      await api.post("/api/slotBooking/updateSlotBooking", updatedBooking);
-
-      onActionComplete?.();
-    } catch (error) {
-      console.error("Error canceling booking:", error);
-    } finally {
-      setIsLoading(false);
-      onToggle();
-    }
-  };
+  const confirmBooking = () => updateBookingStatus("confirmed");
+  const denyBooking = () => updateBookingStatus("cancelled");
+  const cancelBooking = () => updateBookingStatus("cancelled");
+  const completeBooking = () => updateBookingStatus("completed");
 
   const rescheduleBooking = async () => {
     setIsLoading(true);
     try {
-      const bookingDetails = await getBookingDetails();
+      // Fetch booking details
+      const response = await api.get(`/bookings/${bookingKey}`);
+      const bookingDetails = response.data;
 
-      // Here you would typically navigate to a reschedule form
-      // or open a modal with the booking details
       console.log("Booking details for reschedule:", bookingDetails);
 
-      // You might want to store these details in a state or context
-      // and navigate to a reschedule page
+      // Here you would typically open a reschedule modal/form
+      // For now, just log the details
+      alert(
+        "Reschedule functionality - implement modal with booking details"
+      );
 
       onToggle();
     } catch (error) {
       console.error("Error fetching booking details for reschedule:", error);
+      alert("Failed to fetch booking details");
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Normalize status for comparison (backend uses lowercase)
+  const normalizedStatus = bookingStatus.toLowerCase();
 
   return (
     <div className="relative">
@@ -135,27 +88,31 @@ export default function BookingCardDropdown({
         disabled={isLoading}
         className={`px-3 py-1 text-xs rounded-md flex items-center
         ${isLoading ? "opacity-50 cursor-not-allowed" : ""}
-        ${bookingStatus === "Pending"
+        ${
+          normalizedStatus === "pending"
             ? "bg-gray-800 text-white hover:bg-gray-700"
             : "bg-gray-100 text-gray-800 hover:bg-gray-200"
-          }`}
+        }`}
       >
-        Edit
+        {isLoading ? "Loading..." : "Edit"}
         <ChevronDown
           size={14}
-          className={`ml-1 transition-transform ${isOpen ? "rotate-180" : ""}`}
+          className={`ml-1 transition-transform ${
+            isOpen ? "rotate-180" : ""
+          }`}
         />
       </button>
 
       {isOpen && (
         <div className="absolute bottom-full right-0 mb-1 w-48 bg-white rounded-md shadow-lg z-10 border">
           <div className="py-1">
-            {bookingStatus === "Pending" && hasManagerPrivileges && (
+            {/* Pending status actions (Manager/Admin only) */}
+            {normalizedStatus === "pending" && hasManagerPrivileges && (
               <>
                 <button
                   onClick={confirmBooking}
                   disabled={isLoading}
-                  className="flex items-center px-3 py-2 text-xs text-green-600 hover:bg-gray-100 w-full text-left"
+                  className="flex items-center px-3 py-2 text-xs text-green-600 hover:bg-gray-100 w-full text-left disabled:opacity-50"
                 >
                   <Calendar size={14} className="mr-2" />
                   Confirm booking
@@ -163,7 +120,7 @@ export default function BookingCardDropdown({
                 <button
                   onClick={denyBooking}
                   disabled={isLoading}
-                  className="flex items-center px-3 py-2 text-xs text-red-600 hover:bg-gray-100 w-full text-left"
+                  className="flex items-center px-3 py-2 text-xs text-red-600 hover:bg-gray-100 w-full text-left disabled:opacity-50"
                 >
                   <X size={14} className="mr-2" />
                   Deny booking
@@ -172,24 +129,48 @@ export default function BookingCardDropdown({
               </>
             )}
 
-            <button
-              onClick={rescheduleBooking}
-              disabled={isLoading}
-              className="flex items-center px-3 py-2 text-xs text-gray-700 hover:bg-gray-100 w-full text-left"
-            >
-              <Calendar size={14} className="mr-2" />
-              Reschedule booking
-            </button>
+            {/* Confirmed status actions */}
+            {normalizedStatus === "confirmed" && (
+              <>
+                <button
+                  onClick={completeBooking}
+                  disabled={isLoading}
+                  className="flex items-center px-3 py-2 text-xs text-blue-600 hover:bg-gray-100 w-full text-left disabled:opacity-50"
+                >
+                  <Calendar size={14} className="mr-2" />
+                  Mark as completed
+                </button>
+                <button
+                  onClick={cancelBooking}
+                  disabled={isLoading}
+                  className="flex items-center px-3 py-2 text-xs text-red-600 hover:bg-gray-100 w-full text-left disabled:opacity-50"
+                >
+                  <X size={14} className="mr-2" />
+                  Cancel booking
+                </button>
+                <div className="border-t my-1"></div>
+              </>
+            )}
 
-            {bookingStatus === "Confirmed" && (
+            {/* Reschedule option (available for pending and confirmed) */}
+            {(normalizedStatus === "pending" ||
+              normalizedStatus === "confirmed") && (
               <button
-                onClick={cancelBooking}
+                onClick={rescheduleBooking}
                 disabled={isLoading}
-                className="flex items-center px-3 py-2 text-xs text-red-600 hover:bg-gray-100 w-full text-left"
+                className="flex items-center px-3 py-2 text-xs text-gray-700 hover:bg-gray-100 w-full text-left disabled:opacity-50"
               >
-                <X size={14} className="mr-2" />
-                Cancel booking
+                <Calendar size={14} className="mr-2" />
+                Reschedule booking
               </button>
+            )}
+
+            {/* No actions for completed or cancelled bookings */}
+            {(normalizedStatus === "completed" ||
+              normalizedStatus === "cancelled") && (
+              <div className="px-3 py-2 text-xs text-gray-500 text-center">
+                No actions available
+              </div>
             )}
           </div>
         </div>

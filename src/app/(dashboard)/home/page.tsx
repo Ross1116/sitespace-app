@@ -4,7 +4,7 @@ import { useAuth } from "@/app/context/AuthContext";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
-import { Calendar, Construction, Users, Clock } from "lucide-react";
+import { Calendar, Construction, Users, Clock, CalendarX } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import api from "@/lib/api";
 import ProjectSelector from "@/components/home/RadioToggle";
@@ -47,6 +47,7 @@ export default function HomePage() {
   const [greeting, setGreeting] = useState("Good day");
   const [project, setProject] = useState<any[]>([]);
   const [upcomingBookings, setUpcomingBookings] = useState<Booking[]>([]);
+  const [loadingBookings, setLoadingBookings] = useState(true);
   const hasFetched = useRef(false);
   const userId = user?.id;
 
@@ -65,10 +66,10 @@ export default function HomePage() {
 
         // Updated to use new backend endpoint with filters
         const response = await api.get("/projects/", {
-          params: { 
+          params: {
             my_projects: true,
             limit: 100,
-            skip: 0
+            skip: 0,
           },
         });
 
@@ -91,10 +92,11 @@ export default function HomePage() {
       if (!user) return;
 
       try {
+        setLoadingBookings(true);
         // Use the new /bookings/my/upcoming endpoint
         const response = await api.get("/bookings/my/upcoming", {
-          params: { 
-            limit: 3
+          params: {
+            limit: 3,
           },
         });
 
@@ -105,6 +107,8 @@ export default function HomePage() {
         setUpcomingBookings(bookingsData);
       } catch (error) {
         console.error("Error fetching bookings:", error);
+      } finally {
+        setLoadingBookings(false);
       }
     };
 
@@ -166,7 +170,8 @@ export default function HomePage() {
           params: { asset_project: userId },
         });
 
-        const assetData = response.data?.asset_list || response.data?.assetlist || [];
+        const assetData =
+          response.data?.asset_list || response.data?.assetlist || [];
         console.log(assetData);
 
         if (assetData.length > 0) {
@@ -186,17 +191,20 @@ export default function HomePage() {
   const formatTime = (timeStr: string): string => {
     try {
       // Handle ISO format time strings
-      if (timeStr.includes('T') || timeStr.includes('Z')) {
+      if (timeStr.includes("T") || timeStr.includes("Z")) {
         const date = new Date(timeStr);
-        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return date.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
       }
-      
+
       // Handle HH:MM:SS or HH:MM format
-      const parts = timeStr.split(':');
+      const parts = timeStr.split(":");
       if (parts.length >= 2) {
         return `${parts[0]}:${parts[1]}`;
       }
-      
+
       return timeStr;
     } catch {
       return timeStr;
@@ -288,33 +296,38 @@ export default function HomePage() {
           <h2 className="text-xl font-semibold text-gray-800 mb-4">
             Upcoming Bookings
           </h2>
-          <Link href={"/bookings"}>
-            <Card className="bg-stone-100 px-2 py-2">
-              {upcomingBookings.length > 0 ? (
-                upcomingBookings.map((booking) => {
-                  const bookingDate = new Date(booking.booking_date);
-                  const day = bookingDate.getDate();
-                  const dayOfWeek = bookingDate.toLocaleDateString("en-US", {
-                    weekday: "short",
-                  });
-                  
-                  // Format time range
-                  const startTime = formatTime(booking.start_time);
-                  const endTime = formatTime(booking.end_time);
-                  const timeRange = `${startTime} - ${endTime}`;
+          <Card className="bg-stone-100 px-2 py-2">
+            {loadingBookings ? (
+              // Show skeleton loaders while loading
+              <>
+                <SkeletonBookingCard />
+                <SkeletonBookingCard />
+                <SkeletonBookingCard />
+              </>
+            ) : upcomingBookings.length > 0 ? (
+              // Show bookings when available
+              upcomingBookings.map((booking) => {
+                const bookingDate = new Date(booking.booking_date);
+                const day = bookingDate.getDate();
+                const dayOfWeek = bookingDate.toLocaleDateString("en-US", {
+                  weekday: "short",
+                });
 
-                  // Determine if booking is today
-                  const today =
-                    new Date().toDateString() === bookingDate.toDateString();
+                // Format time range
+                const startTime = formatTime(booking.start_time);
+                const endTime = formatTime(booking.end_time);
+                const timeRange = `${startTime} - ${endTime}`;
 
-                  // Get asset name
-                  const assetName = booking.asset?.name || "Asset";
+                // Determine if booking is today
+                const today =
+                  new Date().toDateString() === bookingDate.toDateString();
 
-                  return (
-                    <Card
-                      key={booking.id}
-                      className="overflow-hidden border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200"
-                    >
+                // Get asset name
+                const assetName = booking.asset?.name || "Asset";
+
+                return (
+                  <Link href="/bookings" key={booking.id}>
+                    <Card className="overflow-hidden border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200 mb-2 cursor-pointer">
                       <div className="flex w-full">
                         <div className="w-16 flex-shrink-0 flex flex-col items-center justify-center py-2 border-r border-gray-200">
                           <div
@@ -369,30 +382,28 @@ export default function HomePage() {
                         </div>
                       </div>
                     </Card>
-                  );
-                })
-              ) : (
-                <>
-                  <SkeletonBookingCard />
-                  <SkeletonBookingCard />
-                  <SkeletonBookingCard />
-                </>
-              )}
-            </Card>
-          </Link>
+                  </Link>
+                );
+              })
+            ) : (
+              // Show empty state when no bookings
+              <EmptyBookingsState />
+            )}
+          </Card>
         </div>
       </div>
 
       {/* Footer info */}
-      <div className="mt-8 text-center text-gray-500 text-sm">
+      <div className="mt-8 text-center text-gray-500 text-sm pb-6">
         <p>© 2025 Sitespace. All rights reserved.</p>
       </div>
     </Card>
   );
 }
 
+// Skeleton loader component
 const SkeletonBookingCard = () => (
-  <Card className="overflow-hidden border border-gray-200 shadow-sm mb-0">
+  <Card className="overflow-hidden border border-gray-200 shadow-sm mb-2">
     <div className="flex w-full">
       <div className="w-16 flex-shrink-0 flex flex-col items-center justify-center py-2 border-r border-gray-200">
         <Skeleton className="h-3 w-8 mb-1" />
@@ -411,6 +422,29 @@ const SkeletonBookingCard = () => (
           <Skeleton className="h-4 w-12 rounded-full" />
         </div>
       </div>
+    </div>
+  </Card>
+);
+
+// Empty state component for no bookings
+const EmptyBookingsState = () => (
+  <Card className="overflow-hidden border border-gray-200 bg-white">
+    <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+      <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+        <CalendarX size={32} className="text-gray-400" />
+      </div>
+      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+        No Upcoming Bookings
+      </h3>
+      <p className="text-sm text-gray-500 mb-4 max-w-sm">
+        You don't have any upcoming bookings scheduled. Create a new booking to
+        get started!
+      </p>
+      <Link href="/bookings">
+        <button className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors text-sm font-medium">
+          Create Booking
+        </button>
+      </Link>
     </div>
   </Card>
 );

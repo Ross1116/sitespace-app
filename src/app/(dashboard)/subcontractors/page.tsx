@@ -8,6 +8,28 @@ import SubFormModal from "@/components/forms/InviteSubForm";
 import { useAuth } from "@/app/context/AuthContext";
 import api from "@/lib/api";
 
+// ===== TYPE DEFINITIONS =====
+interface SubcontractorFromBackend {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  company_name?: string;
+  trade_specialty?: string;
+  phone?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+interface SubcontractorListResponse {
+  subcontractors: SubcontractorFromBackend[];
+  total: number;
+  skip: number;
+  limit: number;
+  has_more: boolean;
+}
+
 interface Contractor {
   contractorKey: string;
   contractorName: string;
@@ -15,71 +37,137 @@ interface Contractor {
   contractorTrade: string;
   contractorEmail: string;
   contractorPhone: string;
-  licenseNumber?: string;
-  insuranceStatus?: boolean;
-  lastProject?: string;
-  notes?: string;
+  isActive: boolean;
+  _originalData?: SubcontractorFromBackend;
 }
+
+// ===== HELPER FUNCTIONS =====
+const transformBackendSubcontractor = (
+  backendSub: SubcontractorFromBackend
+): Contractor => {
+  return {
+    contractorKey: backendSub.id,
+    contractorName: `${backendSub.first_name} ${backendSub.last_name}`.trim(),
+    contractorCompany: backendSub.company_name || "N/A",
+    contractorTrade: backendSub.trade_specialty || "General",
+    contractorEmail: backendSub.email,
+    contractorPhone: backendSub.phone || "N/A",
+    isActive: backendSub.is_active,
+    _originalData: backendSub,
+  };
+};
 
 export default function Page() {
   const [currentPage, setCurrentPage] = useState(1);
   const [subcontractors, setSubs] = useState<Contractor[]>([]);
-  const [selectedContractor, setSelectedContractor] =
-    useState<Contractor | null>(null);
+  const [selectedContractor, setSelectedContractor] = useState<Contractor | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isSubFormOpen, setIsSubFormOpen] = useState(false);
-  const itemsPerPage = 9;
+  const [loading, setLoading] = useState(true);
+  const [totalSubs, setTotalSubs] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const itemsPerPage = 10;
   const { user } = useAuth();
   const userId = user?.id;
   const hasFetched = useRef(false);
 
-  const fetchSubs = async () => {
+  // Fetch subcontractors from new backend
+  const fetchSubs = async (forceRefresh = false) => {
     try {
-      if (!user || hasFetched.current) {
+      if (!user || (hasFetched.current && !forceRefresh)) {
         return;
       }
 
-      const response = await api.get(
-        "/api/siteProject/getSubcontractorList",
-        {
-          params: { currentUserId: userId },
-        }
+      console.log("Fetching subcontractors from new backend...");
+      setLoading(true);
+      setError(null);
+
+      // Determine which endpoint to use based on user role
+      const isAdmin = user?.role === "admin";
+      const endpoint = isAdmin ? "/subcontractors/" : "/subcontractors/my-subcontractors";
+
+      // Use pagination
+      const response = await api.get<SubcontractorListResponse>(endpoint, {
+        params: {
+          skip: (currentPage - 1) * itemsPerPage,
+          limit: itemsPerPage,
+          is_active: true, // Only show active subcontractors
+        },
+      });
+
+      const subsData = response.data?.subcontractors || [];
+      const total = response.data?.total || 0;
+
+      console.log("Subcontractors fetched:", subsData.length);
+
+      // Transform to frontend format
+      const transformedSubs = subsData.map(transformBackendSubcontractor);
+      
+      setSubs(transformedSubs);
+      setTotalSubs(total);
+
+      // Cache the data
+      localStorage.setItem(
+        `subcontractors_${userId}`,
+        JSON.stringify(transformedSubs)
       );
 
-      const subsData = response.data?.contractorList || [];
-      setSubs(subsData);
-      if (subsData.length > 0) {
-        console.log(subsData);
+      hasFetched.current = true;
+    } catch (error: any) {
+      console.error("Error fetching subcontractors:", error);
+      const errorMessage =
+        error.response?.data?.detail || "Failed to fetch subcontractors";
+      setError(errorMessage);
+
+      // Try to use cached data on error
+      const cachedSubs = localStorage.getItem(`subcontractors_${userId}`);
+      if (cachedSubs) {
+        try {
+          const parsedSubs = JSON.parse(cachedSubs);
+          setSubs(parsedSubs);
+        } catch (e) {
+          console.error("Error parsing cached subcontractors:", e);
+        }
       }
-    } catch (error) {
-      console.error("Error fetching contractors:", error);
+    } finally {
+      setLoading(false);
     }
-    hasFetched.current = true;
   };
 
+  // Initial load and cache check
   useEffect(() => {
     if (!user || hasFetched.current) return;
+
+    // Load cached data first for instant display
+    const cachedSubs = localStorage.getItem(`subcontractors_${userId}`);
+    if (cachedSubs) {
+      try {
+        const parsedSubs = JSON.parse(cachedSubs);
+        setSubs(parsedSubs);
+        setLoading(false);
+      } catch (error) {
+        console.error("Error parsing cached subcontractors:", error);
+      }
+    }
+
+    // Fetch fresh data
     fetchSubs();
   }, [user]);
 
-  // Calculate pagination
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentSubcontractors = subcontractors.slice(
-    indexOfFirstItem,
-    indexOfLastItem
-  );
-  const totalPages = Math.ceil(subcontractors.length / itemsPerPage);
+  // Refetch when page changes
+  useEffect(() => {
+    if (hasFetched.current) {
+      fetchSubs(true);
+    }
+  }, [currentPage]);
 
-  // const handleSaveContractor = (newContractor: Contractor) => {
-  //   setSubs((prev) => [...prev, newContractor]);
-  //   hasFetched.current = false;
-  //   fetchSubs();
-  // };
+  // Calculate pagination
+  const totalPages = Math.ceil(totalSubs / itemsPerPage);
 
   // Handle page changes
   const handlePageChange = (pageNumber: SetStateAction<number>) => {
     setCurrentPage(pageNumber);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   // Handle card click
@@ -104,8 +192,34 @@ export default function Page() {
 
   const handleSaveSubs = () => {
     setIsSubFormOpen(false);
-    fetchSubs();
+    hasFetched.current = false;
+    setCurrentPage(1);
+    fetchSubs(true);
   };
+
+  // Error state UI
+  if (error && !loading && subcontractors.length === 0) {
+    return (
+      <Card className="px-6 sm:my-8 mx-4 bg-stone-100">
+        <div className="p-6">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">
+            Subcontractors
+          </h1>
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+            <p className="font-medium">Error loading subcontractors</p>
+            <p className="text-sm mt-1">{error}</p>
+            <Button
+              onClick={() => fetchSubs(true)}
+              className="mt-3"
+              variant="outline"
+            >
+              Retry
+            </Button>
+          </div>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <Card className="px-6 sm:my-8 mx-4 bg-stone-100">
@@ -115,8 +229,9 @@ export default function Page() {
             <h1 className="text-xl sm:text-3xl font-bold text-gray-900">
               Subcontractors
             </h1>
-            <p className="text- sm:text-base text-gray-500 mt-1">
+            <p className="text-sm sm:text-base text-gray-500 mt-1">
               Manage your subcontractors here
+              {totalSubs > 0 && ` (${totalSubs} total)`}
             </p>
           </div>
 
@@ -146,7 +261,7 @@ export default function Page() {
           />
         )}
 
-        {/* Mobile-only column headers */}
+        {/* Mobile-only hint */}
         <div className="sm:hidden text-xs text-gray-500 font-medium mb-2">
           Tap on a contractor to view details
         </div>
@@ -160,116 +275,191 @@ export default function Page() {
               <div className="px-6 py-4 text-left">Trade</div>
               <div className="px-6 py-4 text-left">Email</div>
               <div className="px-6 py-4 text-left">Phone</div>
-              {/* <div className="px-6 py-4 text-center">Edit</div> */}
             </div>
 
             {/* Card Rows */}
             <div>
-              {currentSubcontractors.map((contractor) => (
-                <div
-                  key={contractor.contractorKey}
-                  onClick={() => handleCardClick(contractor)}
-                >
-                  <Card
-                    className={`w-full p-0 cursor-pointer px-2 my-2 transition-colors duration-200 
-                                ${isSelected(contractor.contractorKey)
-                        ? "bg-orange-400"
-                        : "hover:bg-orange-100"
-                      }`}
-                  >
-                    {/* Desktop view */}
-                    <div className="hidden sm:grid grid-cols-5 w-full py-6">
-                      <div className="px-6">{contractor.contractorName}</div>
-                      <div className="px-6">{contractor.contractorCompany}</div>
-                      <div className="px-6">{contractor.contractorTrade}</div>
-                      <div className="px-6">{contractor.contractorEmail}</div>
-                      <div className="px-6">{contractor.contractorPhone}</div>
-                      {/* <div
-                        className="px-6 text-center"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Button className="bg-transparent text-gray-700 hover:bg-amber-100 rounded-full shadow-md hover:cursor-pointer h-0">
-                          ...
-                        </Button>
-                      </div> */}
+              {loading ? (
+                // Skeleton loaders
+                Array.from({ length: 5 }).map((_, index) => (
+                  <Card key={index} className="w-full p-0 px-2 my-2 bg-stone-50">
+                    {/* Desktop skeleton */}
+                    <div className="hidden sm:grid grid-cols-5 w-full py-6 animate-pulse">
+                      <div className="px-6">
+                        <div className="h-5 bg-gray-200 rounded w-3/4"></div>
+                      </div>
+                      <div className="px-6">
+                        <div className="h-5 bg-gray-200 rounded w-1/2"></div>
+                      </div>
+                      <div className="px-6">
+                        <div className="h-5 bg-gray-200 rounded w-2/3"></div>
+                      </div>
+                      <div className="px-6">
+                        <div className="h-5 bg-gray-200 rounded w-full"></div>
+                      </div>
+                      <div className="px-6">
+                        <div className="h-5 bg-gray-200 rounded w-3/4"></div>
+                      </div>
                     </div>
 
-                    {/* Mobile view */}
-                    <div className="sm:hidden p-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <div className="font-medium">
-                          {contractor.contractorName}
-                        </div>
-                        {/* <Button
-                          className="bg-transparent text-gray-700 hover:bg-amber-100 rounded-full shadow-md hover:cursor-pointer h-6 w-6 p-0"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          ...
-                        </Button> */}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {contractor.contractorCompany}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {contractor.contractorTrade}
-                      </div>
-                      <div className="mt-2 text-xs text-gray-600">
-                        {contractor.contractorEmail}
-                      </div>
-                      <div className="text-xs text-gray-600">
-                        {contractor.contractorPhone}
-                      </div>
+                    {/* Mobile skeleton */}
+                    <div className="sm:hidden p-4 animate-pulse">
+                      <div className="h-5 bg-gray-200 rounded w-1/2 mb-2"></div>
+                      <div className="h-4 bg-gray-200 rounded w-3/4 mt-2"></div>
+                      <div className="h-4 bg-gray-200 rounded w-2/3 mt-2"></div>
+                      <div className="h-3 bg-gray-200 rounded w-full mt-2"></div>
                     </div>
                   </Card>
+                ))
+              ) : subcontractors.length > 0 ? (
+                subcontractors.map((contractor) => (
+                  <div
+                    key={contractor.contractorKey}
+                    onClick={() => handleCardClick(contractor)}
+                  >
+                    <Card
+                      className={`w-full p-0 cursor-pointer px-2 my-2 transition-colors duration-200 
+                        ${
+                          isSelected(contractor.contractorKey)
+                            ? "bg-orange-400 hover:bg-orange-100"
+                            : "bg-stone-50 hover:bg-orange-100"
+                        }`}
+                    >
+                      {/* Desktop view */}
+                      <div className="hidden sm:grid grid-cols-5 w-full py-6">
+                        <div className="px-6 font-medium">
+                          {contractor.contractorName}
+                          {!contractor.isActive && (
+                            <span className="ml-2 text-xs text-red-500">
+                              (Inactive)
+                            </span>
+                          )}
+                        </div>
+                        <div className="px-6">{contractor.contractorCompany}</div>
+                        <div className="px-6">
+                          <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
+                            {contractor.contractorTrade}
+                          </span>
+                        </div>
+                        <div className="px-6 text-sm text-gray-600">
+                          {contractor.contractorEmail}
+                        </div>
+                        <div className="px-6">{contractor.contractorPhone}</div>
+                      </div>
+
+                      {/* Mobile view */}
+                      <div className="sm:hidden p-4">
+                        <div className="flex justify-between items-center mb-2">
+                          <div className="font-medium">
+                            {contractor.contractorName}
+                            {!contractor.isActive && (
+                              <span className="ml-2 text-xs text-red-500">
+                                (Inactive)
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-sm text-gray-600 mb-1">
+                          {contractor.contractorCompany}
+                        </div>
+                        <div className="mb-2">
+                          <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
+                            {contractor.contractorTrade}
+                          </span>
+                        </div>
+                        <div className="mt-2 text-xs text-gray-600">
+                          {contractor.contractorEmail}
+                        </div>
+                        <div className="text-xs text-gray-600">
+                          {contractor.contractorPhone}
+                        </div>
+                      </div>
+                    </Card>
+                  </div>
+                ))
+              ) : (
+                <div className="p-8 text-center text-gray-500">
+                  <p className="text-lg mb-2">No subcontractors found</p>
+                  <p className="text-sm">
+                    Invite your first subcontractor to get started
+                  </p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>
 
-        {/* Pagination */}
-        <div className="flex justify-center items-center mt-4 space-x-1 sm:space-x-2">
-          <button
-            onClick={() => handlePageChange(currentPage - 1)}
-            disabled={currentPage === 1}
-            className={`px-2 sm:px-3 py-1 rounded text-sm ${currentPage === 1
-              ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-              : "bg-orange-200 text-gray-700 hover:bg-orange-300"
-              }`}
-          >
-            Prev
-          </button>
-
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+        {/* Pagination - only show if there are multiple pages */}
+        {totalSubs > 0 && totalPages > 1 && (
+          <div className="flex justify-center items-center mt-4 space-x-1 sm:space-x-2">
             <button
-              key={page}
-              onClick={() => handlePageChange(page)}
-              className={`px-2 sm:px-3 py-1 rounded text-sm ${currentPage === page
-                ? "bg-orange-400 text-white"
-                : "bg-orange-200 text-gray-700 hover:bg-orange-300"
-                }`}
-            >
-              {page}
-            </button>
-          ))}
-
-          <button
-            onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            className={`px-2 sm:px-3 py-1 rounded text-sm ${currentPage === totalPages
-              ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-              : "bg-orange-200 text-gray-700 hover:bg-orange-300"
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              className={`px-2 sm:px-3 py-1 rounded text-sm ${
+                currentPage === 1
+                  ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                  : "bg-orange-200 text-gray-700 hover:bg-orange-300"
               }`}
-          >
-            Next
-          </button>
-        </div>
+            >
+              Prev
+            </button>
+
+            {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+              let pageNumber;
+              if (totalPages <= 7) {
+                pageNumber = i + 1;
+              } else if (currentPage <= 4) {
+                pageNumber = i + 1;
+              } else if (currentPage >= totalPages - 3) {
+                pageNumber = totalPages - 6 + i;
+              } else {
+                pageNumber = currentPage - 3 + i;
+              }
+
+              return (
+                <button
+                  key={pageNumber}
+                  onClick={() => handlePageChange(pageNumber)}
+                  className={`px-2 sm:px-3 py-1 rounded text-sm ${
+                    currentPage === pageNumber
+                      ? "bg-orange-400 text-white"
+                      : "bg-orange-200 text-gray-700 hover:bg-orange-300"
+                  }`}
+                >
+                  {pageNumber}
+                </button>
+              );
+            })}
+
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className={`px-2 sm:px-3 py-1 rounded text-sm ${
+                currentPage === totalPages
+                  ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                  : "bg-orange-200 text-gray-700 hover:bg-orange-300"
+              }`}
+            >
+              Next
+            </button>
+          </div>
+        )}
+
+        {/* Page info */}
+        {totalSubs > 0 && (
+          <div className="text-center mt-2 text-sm text-gray-600">
+            Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
+            {Math.min(currentPage * itemsPerPage, totalSubs)} of {totalSubs}{" "}
+            subcontractors
+          </div>
+        )}
       </div>
 
       {/* Sidebar */}
       <div
-        className={`fixed inset-y-0 right-0 w-full sm:w-1/3 bg-white shadow-lg transform transition-transform duration-300 ease-in-out z-40 ${sidebarOpen ? "translate-x-0" : "translate-x-full"
-          }`}
+        className={`fixed inset-y-0 right-0 w-full sm:w-1/3 bg-white shadow-lg transform transition-transform duration-300 ease-in-out z-40 ${
+          sidebarOpen ? "translate-x-0" : "translate-x-full"
+        }`}
       >
         {selectedContractor && (
           <div className="h-full flex flex-col p-6 py-16 px-12">
@@ -288,6 +478,15 @@ export default function Page() {
 
             <div className="flex-grow overflow-y-auto">
               <div className="space-y-6">
+                {/* Status Badge */}
+                {!selectedContractor.isActive && (
+                  <div className="bg-red-50 border border-red-200 rounded p-3">
+                    <p className="text-sm text-red-700 font-medium">
+                      This subcontractor is currently inactive
+                    </p>
+                  </div>
+                )}
+
                 {/* Contact Information */}
                 <div>
                   <h3 className="text-lg font-medium text-gray-700 mb-3">
@@ -308,92 +507,36 @@ export default function Page() {
                         </p>
                       </div>
                       <div>
-                        <p className="text-sm text-gray-500">Trade</p>
-                        <p className="font-medium">
+                        <p className="text-sm text-gray-500">Trade Specialty</p>
+                        <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium mt-1">
                           {selectedContractor.contractorTrade}
-                        </p>
+                        </span>
                       </div>
                       <div>
                         <p className="text-sm text-gray-500">Email</p>
-                        <p className="font-medium text-orange-600">
+                        <a
+                          href={`mailto:${selectedContractor.contractorEmail}`}
+                          className="font-medium text-orange-600 hover:text-orange-700"
+                        >
                           {selectedContractor.contractorEmail}
-                        </p>
+                        </a>
                       </div>
                       <div>
                         <p className="text-sm text-gray-500">Phone</p>
-                        <p className="font-medium">
+                        <a
+                          href={`tel:${selectedContractor.contractorPhone}`}
+                          className="font-medium text-orange-600 hover:text-orange-700"
+                        >
                           {selectedContractor.contractorPhone}
-                        </p>
+                        </a>
                       </div>
                     </div>
                   </Card>
                 </div>
-
-                {/* Additional Details */}
-                {/* <div>
-                  <h3 className="text-lg font-medium text-gray-700 mb-3">
-                    Additional Details
-                  </h3>
-                  <Card className="p-4">
-                    <div className="space-y-3">
-                      <div>
-                        <p className="text-sm text-gray-500">License Number</p>
-                        <p className="font-medium">
-                          {selectedContractor.licenseNumber || "N/A"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">
-                          Insurance Status
-                        </p>
-                        <div className="flex items-center">
-                          <div
-                            className={`w-3 h-3 rounded-full mr-2 ${
-                              selectedContractor.insuranceStatus
-                                ? "bg-green-500"
-                                : "bg-red-500"
-                            }`}
-                          ></div>
-                          <p className="font-medium">
-                            {selectedContractor.insuranceStatus
-                              ? "Valid"
-                              : "Expired"}
-                          </p>
-                        </div>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Last Project</p>
-                        <p className="font-medium">
-                          {selectedContractor.lastProject || "None"}
-                        </p>
-                      </div>
-                    </div>
-                  </Card>
-                </div> */}
-
-                {/* Notes
-                <div className="mb-4">
-                  <h3 className="text-lg font-medium text-gray-700 mb-3">
-                    Notes
-                  </h3>
-                  <Card className="p-4">
-                    <p className="text-gray-600">
-                      {selectedContractor.notes ||
-                        "No notes available for this subcontractor."}
-                    </p>
-                  </Card>
-                </div> */}
               </div>
             </div>
 
             <div className="mt-6 flex space-x-3">
-              {/* <Button
-                className="flex-1 bg-orange-500 hover:bg-orange-600 text-white"
-                onClick={() => {}}
-              >
-                Edit Details
-              </Button> */}
-
               <Button
                 className="flex-1 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
                 onClick={closeSidebar}

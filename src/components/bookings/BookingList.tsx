@@ -32,10 +32,15 @@ export default function BookingList({
         const bookingDate = new Date(booking.bookingTimeDt);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        return bookingDate >= today;
+        return bookingDate >= today && booking.bookingStatus !== "Cancelled";
       }
       if (activeTab === "All") return true;
-      return booking.bookingStatus === activeTab;
+      
+      // Normalize status comparison (handle both capitalized and lowercase)
+      const normalizedBookingStatus = booking.bookingStatus.toLowerCase();
+      const normalizedActiveTab = activeTab.toLowerCase();
+      
+      return normalizedBookingStatus === normalizedActiveTab;
     });
   };
 
@@ -109,10 +114,16 @@ export default function BookingList({
             {monthBookings.map((booking: any) => (
               <Fragment key={booking.bookingKey}>
                 <div className="block md:hidden">
-                  <BookingCardMobile booking={booking} onActionComplete={onActionComplete} />
+                  <BookingCardMobile
+                    booking={booking}
+                    onActionComplete={onActionComplete}
+                  />
                 </div>
                 <div className="hidden md:block">
-                  <BookingCardDesktop booking={booking} onActionComplete={onActionComplete}/>
+                  <BookingCardDesktop
+                    booking={booking}
+                    onActionComplete={onActionComplete}
+                  />
                 </div>
               </Fragment>
             ))}

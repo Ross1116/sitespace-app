@@ -10,6 +10,72 @@ import { addHours, startOfHour } from "date-fns";
 import { Plus } from "lucide-react";
 import { CreateBookingForm } from "../forms/CreateBookingForm";
 
+// ===== TYPE DEFINITIONS =====
+interface BookingDetail {
+  id: string;
+  project_id?: string;
+  manager_id: string;
+  subcontractor_id?: string;
+  asset_id: string;
+  booking_date: string;
+  start_time: string;
+  end_time: string;
+  status: "pending" | "confirmed" | "completed" | "cancelled";
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+  project?: { id: string; name: string; location?: string };
+  manager?: { id: string; first_name: string; last_name: string };
+  subcontractor?: { id: string; company_name?: string; first_name: string; last_name: string };
+  asset?: { id: string; name: string; asset_type: string };
+}
+
+interface BookingListResponse {
+  bookings: BookingDetail[];
+  total: number;
+  skip: number;
+  limit: number;
+  has_more: boolean;
+}
+
+// ===== HELPER FUNCTIONS =====
+const parseTimeToMinutes = (timeStr: string): number => {
+  const [hours, minutes] = timeStr.split(":").map(Number);
+  return hours * 60 + minutes;
+};
+
+const calculateDuration = (startTime: string, endTime: string): number => {
+  const start = parseTimeToMinutes(startTime);
+  const end = parseTimeToMinutes(endTime);
+  return end - start;
+};
+
+const transformBookingToLegacyFormat = (booking: BookingDetail) => {
+  const duration = calculateDuration(booking.start_time, booking.end_time);
+  
+  return {
+    bookingKey: booking.id,
+    bookingTitle: booking.project?.name || "Booking",
+    bookingDescription: booking.notes || "",
+    bookingNotes: booking.notes || "",
+    bookingTimeDt: booking.booking_date,
+    bookingStartTime: booking.start_time,
+    bookingEndTime: booking.end_time,
+    bookingDurationMins: duration,
+    bookingStatus: booking.status.charAt(0).toUpperCase() + booking.status.slice(1), // Capitalize
+    bookingFor: booking.manager
+      ? `${booking.manager.first_name} ${booking.manager.last_name}`
+      : booking.subcontractor?.company_name || "Unknown",
+    bookedAssets: booking.asset ? [booking.asset.name] : [],
+    assetId: booking.asset_id,
+    assetName: booking.asset?.name,
+    subcontractorId: booking.subcontractor_id,
+    subcontractorName: booking.subcontractor?.company_name,
+    // Keep original data for reference
+    _originalData: booking,
+  };
+};
+
 export default function BookingsPage() {
   const [activeTab, setActiveTab] = useState("Upcoming");
   const [bookings, setBookings] = useState<any[]>([]);
@@ -17,9 +83,9 @@ export default function BookingsPage() {
   const [isBookingFormOpen, setIsBookingFormOpen] = useState(false);
   const { user } = useAuth();
   const hasFetched = useRef(false);
-  const userId = user?.userId;
+  const userId = user?.id;
   const storageKey = `bookings_${userId}`;
-  const projectStorageKey = `selectedProject_${userId}`;
+  const projectStorageKey = `project_${userId}`;
   const initialLoadComplete = useRef(false);
 
   // Calculate times for booking form
@@ -27,13 +93,12 @@ export default function BookingsPage() {
   const nextHour = startOfHour(addHours(now, 1));
   const endHour = addHours(nextHour, 1);
 
-  // Fetch bookings from API
+  // Fetch bookings from API using new backend
   const fetchBookings = async (forceRefresh = false) => {
     if (!user || (initialLoadComplete.current && !forceRefresh)) {
       return;
     }
 
-    // Set loading state
     setLoading(true);
 
     const projectString = localStorage.getItem(projectStorageKey);
@@ -45,34 +110,47 @@ export default function BookingsPage() {
     }
 
     try {
-      console.log("Fetching bookings...");
+      console.log("Fetching bookings from new backend...");
       const project = JSON.parse(projectString);
 
-      const response = await api.get(
-        "/api/slotBooking/getslotBookingList",
-        {
-          params: { projectId: project.id, userId: userId },
-        }
-      );
+      // Use new backend endpoint
+      const response = await api.get<BookingListResponse>("/bookings/", {
+        params: {
+          project_id: project.id,
+          limit: 1000,
+          skip: 0,
+        },
+      });
 
-      const bookingsData = response.data?.bookingList || [];
-      console.log("Bookings fetched:", bookingsData);
-      setBookings(bookingsData);
-      localStorage.setItem(storageKey, JSON.stringify(bookingsData));
-    } catch (error) {
+      const bookingsData = response.data?.bookings || [];
+      console.log("Bookings fetched:", bookingsData.length);
+
+      // Transform to legacy format for backward compatibility
+      const transformedBookings = bookingsData.map(transformBookingToLegacyFormat);
+      
+      setBookings(transformedBookings);
+      localStorage.setItem(storageKey, JSON.stringify(transformedBookings));
+    } catch (error: any) {
       console.error("Error fetching bookings:", error);
+      
+      // Try to use cached data on error
+      const cachedBookings = localStorage.getItem(storageKey);
+      if (cachedBookings) {
+        try {
+          const parsedBookings = JSON.parse(cachedBookings);
+          setBookings(parsedBookings);
+        } catch (e) {
+          console.error("Error parsing cached bookings:", e);
+        }
+      }
     } finally {
       setLoading(false);
+      initialLoadComplete.current = true;
     }
-
-    initialLoadComplete.current = true;
   };
 
   useEffect(() => {
     if (!user) return;
-
-    const userId = user.userId;
-    const storageKey = `bookings_${userId}`;
 
     // First attempt to load from localStorage
     const cachedBookings = localStorage.getItem(storageKey);
@@ -81,7 +159,7 @@ export default function BookingsPage() {
         const parsedBookings = JSON.parse(cachedBookings);
         if (Array.isArray(parsedBookings)) {
           setBookings(parsedBookings);
-          setLoading(false); // Important: Stop loading if we have cached data
+          setLoading(false);
           initialLoadComplete.current = true;
         }
       } catch (error) {
@@ -90,18 +168,19 @@ export default function BookingsPage() {
       }
     }
 
-    // Then fetch fresh data if we haven't already fetched or if forcing refresh
+    // Then fetch fresh data if we haven't already fetched
     if (!hasFetched.current) {
       fetchBookings();
       hasFetched.current = true;
-      initialLoadComplete.current = true;
 
+      // Set up periodic refresh (5 minutes)
       const interval = setInterval(() => fetchBookings(true), 300000);
       return () => clearInterval(interval);
     }
   }, [user]);
 
   const handleActionComplete = () => {
+    console.log("Action completed, refreshing bookings...");
     fetchBookings(true);
   };
 
@@ -110,7 +189,7 @@ export default function BookingsPage() {
   };
 
   const handleSaveBooking = () => {
-    console.log("save booking works");
+    console.log("Booking saved successfully");
     setIsBookingFormOpen(false);
     fetchBookings(true);
   };
@@ -124,7 +203,7 @@ export default function BookingsPage() {
             <h1 className="text-xl sm:text-3xl font-bold text-gray-900">
               Bookings
             </h1>
-            <p className="text- sm:text-base text-gray-500 mt-1">
+            <p className="text-sm sm:text-base text-gray-500 mt-1">
               See your scheduled events from your calendar events links.
             </p>
           </div>
@@ -165,16 +244,17 @@ export default function BookingsPage() {
               "Upcoming",
               "Pending",
               "Confirmed",
-              "Denied",
+              "Completed",
               "Cancelled",
               "All",
             ].map((tab) => (
               <button
                 key={tab}
-                className={`px-3 sm:px-4 py-2 text-sm sm:text-base font-medium whitespace-nowrap ${activeTab === tab
+                className={`px-3 sm:px-4 py-2 text-sm sm:text-base font-medium whitespace-nowrap ${
+                  activeTab === tab
                     ? "text-blue-600 border-b-2 border-blue-600"
                     : "text-gray-500 hover:text-gray-700"
-                  }`}
+                }`}
                 onClick={() => setActiveTab(tab)}
               >
                 {tab}

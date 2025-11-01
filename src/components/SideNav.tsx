@@ -135,6 +135,17 @@ const SideNav = () => {
     return item.visible.some((role) => role.toLowerCase() === userRole);
   };
 
+  // Get user initials for avatar
+  const getUserInitials = (): string => {
+    if (user?.first_name && user?.last_name) {
+      return `${user.first_name[0]}${user.last_name[0]}`.toUpperCase();
+    }
+    if (user?.email) {
+      return user.email.substring(0, 2).toUpperCase();
+    }
+    return "U";
+  };
+
   // Close mobile menu when screen size changes to desktop
   useEffect(() => {
     const handleResize = () => {
@@ -252,72 +263,92 @@ const SideNav = () => {
         onMouseEnter={() => setIsExpanded(true)}
         onMouseLeave={() => setIsExpanded(false)}
       >
-        <div className="pt-6 overflow-hidden">
-          {/* User Info Section (Desktop - Expanded) */}
-          {user && isExpanded && (
-            <div className="px-4 py-3 mb-4 border-b border-amber-200">
-              <p className="text-xs font-medium text-gray-700 truncate">
-                {user.first_name && user.last_name
-                  ? `${user.first_name} ${user.last_name}`
-                  : user.email}
-              </p>
-              <p className="text-xs text-gray-500 capitalize">
-                {user.role || user.user_type || "User"}
-              </p>
+        <div className="pt-4 overflow-hidden h-full flex flex-col">
+          {/* Profile Section - Always Visible */}
+          {user && (
+            <div className="px-4 py-3 mb-2 border-b border-amber-200">
+              <div className="flex items-center">
+                {/* Avatar Circle - aligned with menu icons */}
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-gray-600 to-gray-800 flex items-center justify-center text-white font-semibold text-xs shadow-sm">
+                  {getUserInitials()}
+                </div>
+                
+                {/* User Info - Only visible when expanded */}
+                <div
+                  className={`ml-3 overflow-hidden transition-all duration-300 ${
+                    isExpanded ? "max-w-[120px] opacity-100" : "max-w-0 opacity-0"
+                  }`}
+                >
+                  <p className="text-xs font-medium text-gray-700 truncate leading-tight">
+                    {user.first_name && user.last_name
+                      ? `${user.first_name} ${user.last_name}`
+                      : user.email}
+                  </p>
+                  <p className="text-xs text-gray-500 capitalize truncate mt-0.5">
+                    {user.role || user.user_type || "User"}
+                  </p>
+                </div>
+              </div>
             </div>
           )}
 
-          {menuItems.map((section, sectionIndex) => {
-            // Filter items based on user permissions
-            const visibleItems = section.items.filter((item) =>
-              hasPermission(item)
-            );
+          {/* Menu Items */}
+          <div className="flex-1 overflow-y-auto">
+            {menuItems.map((section, sectionIndex) => {
+              // Filter items based on user permissions
+              const visibleItems = section.items.filter((item) =>
+                hasPermission(item)
+              );
 
-            // Only render section if it has visible items
-            if (visibleItems.length === 0) return null;
+              // Only render section if it has visible items
+              if (visibleItems.length === 0) return null;
 
-            return (
-              <div
-                className="flex flex-col gap-2 mb-4"
-                key={`section-${sectionIndex}`}
-              >
-                {visibleItems.map((item, itemIndex) => (
-                  <Link
-                    href={item.href}
-                    key={`item-${sectionIndex}-${itemIndex}-${item.label}`}
-                    className="flex items-center px-4 py-3 text-gray-700 rounded-md hover:bg-amber-100 transition-colors group relative"
-                    onClick={(e) => item.onClick && item.onClick(e)}
-                  >
-                    <div className="flex items-center justify-center min-w-8">
-                      {item.icon && <item.icon size={20} />}
-                    </div>
-                    <span
-                      className={`ml-3 whitespace-nowrap overflow-hidden transition-all duration-300 
-                        ${
+              return (
+                <div
+                  className="flex flex-col gap-1 mb-4"
+                  key={`section-${sectionIndex}`}
+                >
+                  {visibleItems.map((item, itemIndex) => (
+                    <Link
+                      href={item.href}
+                      key={`item-${sectionIndex}-${itemIndex}-${item.label}`}
+                      className="flex items-center px-4 py-3 text-gray-700 rounded-md hover:bg-amber-100 transition-colors group relative"
+                      onClick={(e) => item.onClick && item.onClick(e)}
+                    >
+                      <div className="flex items-center justify-center w-8 h-8 flex-shrink-0">
+                        {item.icon && <item.icon size={20} />}
+                      </div>
+                      <span
+                        className={`ml-3 whitespace-nowrap overflow-hidden transition-all duration-300 ${
                           isExpanded
                             ? "max-w-[150px] opacity-100"
                             : "max-w-0 opacity-0"
                         }`}
-                    >
-                      {item.label}
-                    </span>
-
-                    {/* Tooltip for collapsed state */}
-                    {!isExpanded && (
-                      <div className="absolute left-16 bg-gray-800 text-white px-2 py-1 rounded shadow-lg text-xs whitespace-nowrap z-10 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity">
+                      >
                         {item.label}
-                      </div>
-                    )}
-                  </Link>
-                ))}
+                      </span>
 
-                {/* Add divider between sections (except last) */}
-                {sectionIndex < menuItems.length - 1 && isExpanded && (
-                  <div className="h-px bg-amber-200 mx-4 my-2" />
-                )}
-              </div>
-            );
-          })}
+                      {/* Tooltip for collapsed state */}
+                      {!isExpanded && (
+                        <div className="absolute left-16 bg-gray-800 text-white px-2 py-1 rounded shadow-lg text-xs whitespace-nowrap z-10 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity">
+                          {item.label}
+                        </div>
+                      )}
+                    </Link>
+                  ))}
+
+                  {/* Add divider between sections (except last) */}
+                  {sectionIndex < menuItems.length - 1 && (
+                    <div
+                      className={`h-px bg-amber-200 my-2 transition-all duration-300 ${
+                        isExpanded ? "mx-4" : "mx-2"
+                      }`}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </Card>
     </>
