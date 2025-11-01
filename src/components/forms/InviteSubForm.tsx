@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { CheckCircle, AlertCircle } from "lucide-react";
+import { CheckCircle, AlertCircle, UserCheck, UserPlus } from "lucide-react";
 import api from "@/lib/api";
 import { useAuth } from "@/app/context/AuthContext";
 
@@ -32,6 +32,7 @@ interface ContractorModalProps {
 interface SubcontractorCreateRequest {
   email: string;
   password: string;
+  confirm_password: string; // ✅ Added this
   first_name: string;
   last_name: string;
   company_name?: string;
@@ -77,6 +78,10 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
   onSave,
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
+  const [emailChecked, setEmailChecked] = useState(false);
+  const [existingSubcontractor, setExistingSubcontractor] =
+    useState<SubcontractorResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const { user } = useAuth();
@@ -130,9 +135,35 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
     }
   }, [userId]);
 
+  // Reset states when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setEmailChecked(false);
+      setExistingSubcontractor(null);
+      setError(null);
+      setSuccess(null);
+      setContractor({
+        firstName: "",
+        lastName: "",
+        contractorEmail: "",
+        contractorPhone: "",
+        companyName: "",
+        tradeSpecialty: "",
+        contractorProjectId: contractor.contractorProjectId,
+      });
+    }
+  }, [isOpen]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setContractor((prev) => ({ ...prev, [name]: value }));
+
+    // Reset email check if email changes
+    if (name === "contractorEmail") {
+      setEmailChecked(false);
+      setExistingSubcontractor(null);
+      setError(null);
+    }
   };
 
   // Check if subcontractor exists by email
@@ -164,10 +195,55 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
       }
 
       return null;
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error checking subcontractor:", error);
-      // If search fails, return null (will try to create)
-      return null;
+      throw error;
+    }
+  };
+
+  // Handle email check
+  const handleCheckEmail = async () => {
+    if (!contractor.contractorEmail.trim()) {
+      setError("Please enter an email address");
+      return;
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(contractor.contractorEmail.trim())) {
+      setError("Please enter a valid email address");
+      return;
+    }
+
+    setIsCheckingEmail(true);
+    setError(null);
+
+    try {
+      const existing = await checkSubcontractorExists(
+        contractor.contractorEmail.trim()
+      );
+
+      setExistingSubcontractor(existing);
+      setEmailChecked(true);
+
+      if (existing) {
+        // Check if already assigned to this project
+        const alreadyAssigned = await checkAlreadyAssigned(
+          contractor.contractorProjectId,
+          existing.id
+        );
+
+        if (alreadyAssigned) {
+          setError("This subcontractor is already assigned to this project");
+          setEmailChecked(false);
+        }
+      }
+    } catch (error) {
+      // ✅ Now we're using the error
+      console.error("Error checking email:", error);
+      setError("Failed to check email. Please try again.");
+    } finally {
+      setIsCheckingEmail(false);
     }
   };
 
@@ -177,11 +253,9 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
     subcontractorId: string
   ): Promise<boolean> => {
     try {
-      // Get project details to check assigned subcontractors
       const response = await api.get(`/projects/${projectId}`);
       const project = response.data;
 
-      // Check if subcontractor is in the assigned list
       const isAssigned = project.subcontractors?.some(
         (sub: any) => sub.id === subcontractorId
       );
@@ -198,12 +272,6 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
     setError(null);
     setSuccess(null);
 
-    // Validation
-    if (!contractor.contractorEmail.trim()) {
-      setError("Email is required");
-      return;
-    }
-
     if (!contractor.contractorProjectId) {
       setError("No project selected");
       return;
@@ -212,42 +280,21 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
     try {
       setIsSubmitting(true);
 
-      // Step 1: Check if subcontractor already exists
-      const existingSubcontractor = await checkSubcontractorExists(
-        contractor.contractorEmail.trim()
-      );
-
       let subcontractorId: string;
       let isNewAccount = false;
 
       if (existingSubcontractor) {
-        // Subcontractor exists - use their ID
-        console.log("Subcontractor already exists, will add to project");
+        // Use existing subcontractor
         subcontractorId = existingSubcontractor.id;
-
-        // Check if already assigned to this project
-        const alreadyAssigned = await checkAlreadyAssigned(
-          contractor.contractorProjectId,
-          subcontractorId
-        );
-
-        if (alreadyAssigned) {
-          setError(
-            "This subcontractor is already assigned to this project"
-          );
-          setIsSubmitting(false);
-          return;
-        }
-
-        // Update success message to indicate existing account
-        setSuccess("Found existing subcontractor account");
+        setSuccess("Adding existing subcontractor to your project...");
       } else {
-        // Subcontractor doesn't exist - create new account
+        // Create new subcontractor
         console.log("Creating new subcontractor account...");
 
         // Validation for new accounts
         if (!contractor.firstName.trim() || !contractor.lastName.trim()) {
           setError("First name and last name are required for new accounts");
+          setIsSubmitting(false);
           return;
         }
 
@@ -256,6 +303,7 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
         const subcontractorData: SubcontractorCreateRequest = {
           email: contractor.contractorEmail.trim(),
           password: tempPassword,
+          confirm_password: tempPassword,
           first_name: contractor.firstName.trim(),
           last_name: contractor.lastName.trim(),
           company_name: contractor.companyName.trim() || undefined,
@@ -274,7 +322,7 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
         isNewAccount = true;
       }
 
-      // Step 2: Assign subcontractor to the project
+      // Assign subcontractor to the project
       try {
         console.log("Assigning to project:", contractor.contractorProjectId);
 
@@ -282,34 +330,33 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
           `/projects/${contractor.contractorProjectId}/subcontractors`,
           {
             subcontractor_id: subcontractorId,
-            hourly_rate: null, // Optional: can be added to form later
+            hourly_rate: null,
           }
         );
 
         console.log("Subcontractor assigned to project successfully");
       } catch (assignError: any) {
         console.error("Error assigning to project:", assignError);
-        
-        // Check if it's a "already assigned" error
+
         if (assignError.response?.status === 400) {
           setError("This subcontractor is already assigned to this project");
           setIsSubmitting(false);
           return;
         }
-        
+
         throw assignError;
       }
 
-      // Step 3: Send password reset email (only for new accounts)
+      // ✅ CHANGED: Send welcome email (only for new accounts)
       if (isNewAccount) {
         try {
-          console.log("Sending password reset email to new account...");
-          await api.post("/auth/forgot-password", {
-            email: contractor.contractorEmail.trim(),
-          });
-          console.log("Password reset email sent");
+          console.log("Sending welcome email to new account...");
+          await api.post(
+            `/subcontractors/${subcontractorId}/send-welcome-email`
+          );
+          console.log("Welcome email sent");
         } catch (emailError) {
-          console.error("Error sending reset email:", emailError);
+          console.error("Error sending welcome email:", emailError);
           // Don't fail if email sending fails
         }
       }
@@ -327,17 +374,6 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
       // Close modal after 2 seconds
       setTimeout(() => {
         onClose(false);
-        // Reset form
-        setContractor({
-          firstName: "",
-          lastName: "",
-          contractorEmail: "",
-          contractorPhone: "",
-          companyName: "",
-          tradeSpecialty: "",
-          contractorProjectId: contractor.contractorProjectId,
-        });
-        setSuccess(null);
       }, 2000);
     } catch (error: any) {
       console.error("Error processing subcontractor:", error);
@@ -359,8 +395,7 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
             Invite Subcontractor
           </DialogTitle>
           <p className="text-sm text-gray-600 mt-1">
-            Enter the email to invite a subcontractor. If they already have an
-            account, we&apos;ll just add them to your project.
+            Enter the email to invite a subcontractor to your project.
           </p>
         </DialogHeader>
 
@@ -385,110 +420,205 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
             {/* Email - Always Required */}
             <div className="space-y-2">
               <Label htmlFor="contractorEmail">
-                Email <span className="text-red-500">*</span>
+                Email Address <span className="text-red-500">*</span>
               </Label>
-              <Input
-                id="contractorEmail"
-                name="contractorEmail"
-                type="email"
-                value={contractor.contractorEmail}
-                onChange={handleChange}
-                placeholder="Enter email address"
-                required
-                disabled={isSubmitting}
-              />
-              <p className="text-xs text-gray-500">
-                We&apos;ll check if this email exists in our system
-              </p>
-            </div>
-
-            {/* Divider */}
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
+              <div className="flex gap-2">
+                <Input
+                  id="contractorEmail"
+                  name="contractorEmail"
+                  type="email"
+                  value={contractor.contractorEmail}
+                  onChange={handleChange}
+                  placeholder="Enter email address"
+                  required
+                  disabled={isSubmitting || emailChecked}
+                  className="flex-1"
+                />
+                {!emailChecked && (
+                  <Button
+                    type="button"
+                    onClick={handleCheckEmail}
+                    disabled={
+                      isCheckingEmail || !contractor.contractorEmail.trim()
+                    }
+                    variant="outline"
+                  >
+                    {isCheckingEmail ? (
+                      <svg
+                        className="animate-spin h-4 w-4"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
+                      </svg>
+                    ) : (
+                      "Check"
+                    )}
+                  </Button>
+                )}
+                {emailChecked && (
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setEmailChecked(false);
+                      setExistingSubcontractor(null);
+                      setContractor((prev) => ({
+                        ...prev,
+                        contractorEmail: "",
+                      }));
+                    }}
+                    variant="outline"
+                    size="sm"
+                  >
+                    Change
+                  </Button>
+                )}
               </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white px-2 text-muted-foreground">
-                  For new accounts only
-                </span>
-              </div>
             </div>
 
-            {/* First Name - Required for new accounts */}
-            <div className="space-y-2">
-              <Label htmlFor="firstName">First Name</Label>
-              <Input
-                id="firstName"
-                name="firstName"
-                value={contractor.firstName}
-                onChange={handleChange}
-                placeholder="Required for new accounts"
-                disabled={isSubmitting}
-              />
-            </div>
+            {/* Show status after email check */}
+            {emailChecked && existingSubcontractor && (
+              <Alert className="bg-blue-50 border-blue-200">
+                <UserCheck className="h-4 w-4 text-blue-600" />
+                <AlertDescription className="text-blue-700">
+                  <strong>Existing Account Found:</strong>
+                  <br />
+                  {existingSubcontractor.first_name}{" "}
+                  {existingSubcontractor.last_name}
+                  {existingSubcontractor.company_name &&
+                    ` - ${existingSubcontractor.company_name}`}
+                  <br />
+                  <span className="text-xs">
+                    Click &quot;Add to Project&quot; to assign them.
+                  </span>
+                </AlertDescription>
+              </Alert>
+            )}
 
-            {/* Last Name - Required for new accounts */}
-            <div className="space-y-2">
-              <Label htmlFor="lastName">Last Name</Label>
-              <Input
-                id="lastName"
-                name="lastName"
-                value={contractor.lastName}
-                onChange={handleChange}
-                placeholder="Required for new accounts"
-                disabled={isSubmitting}
-              />
-            </div>
+            {emailChecked && !existingSubcontractor && (
+              <Alert className="bg-amber-50 border-amber-200">
+                <UserPlus className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-700">
+                  <strong>New Account:</strong> Please fill in the details below
+                  to create a new subcontractor account.
+                </AlertDescription>
+              </Alert>
+            )}
 
-            {/* Phone */}
-            <div className="space-y-2">
-              <Label htmlFor="contractorPhone">Phone Number</Label>
-              <Input
-                id="contractorPhone"
-                name="contractorPhone"
-                type="tel"
-                value={contractor.contractorPhone}
-                onChange={handleChange}
-                placeholder="Optional"
-                disabled={isSubmitting}
-              />
-            </div>
+            {/* Show additional fields only for new accounts */}
+            {emailChecked && !existingSubcontractor && (
+              <>
+                {/* Divider */}
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-white px-2 text-muted-foreground">
+                      New Account Details
+                    </span>
+                  </div>
+                </div>
 
-            {/* Company Name */}
-            <div className="space-y-2">
-              <Label htmlFor="companyName">Company Name</Label>
-              <Input
-                id="companyName"
-                name="companyName"
-                value={contractor.companyName}
-                onChange={handleChange}
-                placeholder="Optional"
-                disabled={isSubmitting}
-              />
-            </div>
+                {/* First Name - Required for new accounts */}
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">
+                    First Name <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="firstName"
+                    name="firstName"
+                    value={contractor.firstName}
+                    onChange={handleChange}
+                    placeholder="Enter first name"
+                    required
+                    disabled={isSubmitting}
+                  />
+                </div>
 
-            {/* Trade Specialty */}
-            <div className="space-y-2">
-              <Label htmlFor="tradeSpecialty">Trade Specialty</Label>
-              <Select
-                value={contractor.tradeSpecialty}
-                onValueChange={(value) =>
-                  setContractor((prev) => ({ ...prev, tradeSpecialty: value }))
-                }
-                disabled={isSubmitting}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select trade specialty" />
-                </SelectTrigger>
-                <SelectContent>
-                  {tradeSpecialties.map((trade) => (
-                    <SelectItem key={trade} value={trade}>
-                      {trade}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                {/* Last Name - Required for new accounts */}
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">
+                    Last Name <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="lastName"
+                    name="lastName"
+                    value={contractor.lastName}
+                    onChange={handleChange}
+                    placeholder="Enter last name"
+                    required
+                    disabled={isSubmitting}
+                  />
+                </div>
+
+                {/* Phone */}
+                <div className="space-y-2">
+                  <Label htmlFor="contractorPhone">Phone Number</Label>
+                  <Input
+                    id="contractorPhone"
+                    name="contractorPhone"
+                    type="tel"
+                    value={contractor.contractorPhone}
+                    onChange={handleChange}
+                    placeholder="Optional"
+                    disabled={isSubmitting}
+                  />
+                </div>
+
+                {/* Company Name */}
+                <div className="space-y-2">
+                  <Label htmlFor="companyName">Company Name</Label>
+                  <Input
+                    id="companyName"
+                    name="companyName"
+                    value={contractor.companyName}
+                    onChange={handleChange}
+                    placeholder="Optional"
+                    disabled={isSubmitting}
+                  />
+                </div>
+
+                {/* Trade Specialty */}
+                <div className="space-y-2">
+                  <Label htmlFor="tradeSpecialty">Trade Specialty</Label>
+                  <Select
+                    value={contractor.tradeSpecialty}
+                    onValueChange={(value) =>
+                      setContractor((prev) => ({
+                        ...prev,
+                        tradeSpecialty: value,
+                      }))
+                    }
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select trade specialty" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {tradeSpecialties.map((trade) => (
+                        <SelectItem key={trade} value={trade}>
+                          {trade}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
           </div>
 
           <div className="mt-8 flex justify-center gap-3">
@@ -503,7 +633,7 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
             <Button
               type="submit"
               className="bg-black text-white hover:bg-gray-800"
-              disabled={isSubmitting}
+              disabled={isSubmitting || !emailChecked}
             >
               {isSubmitting ? (
                 <span className="flex items-center">
@@ -529,23 +659,29 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
                   </svg>
                   Processing...
                 </span>
-              ) : (
+              ) : existingSubcontractor ? (
                 "Add to Project"
+              ) : (
+                "Create & Add to Project"
               )}
             </Button>
           </div>
 
-          <div className="mt-4 bg-blue-50 border border-blue-200 rounded p-3">
-            <p className="text-xs text-blue-700">
-              <strong>How it works:</strong>
-              <br />
-              • If the email exists, we&apos;ll add them to your project
-              <br />
-              • If it&apos;s new, we&apos;ll create an account and send a password setup
-              email
-              <br />• Name and other details are only needed for new accounts
-            </p>
-          </div>
+          {!emailChecked && (
+            <div className="mt-4 bg-blue-50 border border-blue-200 rounded p-3">
+              <p className="text-xs text-blue-700">
+                <strong>How it works:</strong>
+                <br />
+                1. Enter the email address and click &quot;Check&quot;
+                <br />
+                2. If they exist, we&apos;ll show their details
+                <br />
+                3. If they&apos;re new, you&apos;ll fill in their information
+                <br />
+                4. They&apos;ll be added to your project instantly
+              </p>
+            </div>
+          )}
         </form>
       </DialogContent>
     </Dialog>
