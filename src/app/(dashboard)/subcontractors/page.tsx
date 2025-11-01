@@ -30,7 +30,7 @@ export default function Page() {
   const [isSubFormOpen, setIsSubFormOpen] = useState(false);
   const itemsPerPage = 9;
   const { user } = useAuth();
-  const userId = user?.userId;
+  const userId = user?.id;
   const hasFetched = useRef(false);
 
   const fetchSubs = async () => {

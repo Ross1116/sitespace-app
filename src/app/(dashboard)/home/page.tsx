@@ -10,14 +10,36 @@ import api from "@/lib/api";
 import ProjectSelector from "@/components/home/RadioToggle";
 
 interface Booking {
-  bookingKey: string;
-  bookingTitle: string;
-  bookingDescription?: string;
-  bookingNotes?: string;
-  bookingTimeDt: string;
-  bookingStatus: "Confirmed" | "Pending" | "Denied" | string;
-  bookingFor: string;
-  bookedAssets: string[];
+  id: string;
+  project_id?: string;
+  manager_id: string;
+  subcontractor_id?: string;
+  asset_id: string;
+  booking_date: string;
+  start_time: string;
+  end_time: string;
+  status: "pending" | "confirmed" | "cancelled" | "completed" | string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+  // Nested details from BookingDetailResponse
+  project?: {
+    id: string;
+    name: string;
+  };
+  manager?: {
+    id: string;
+    full_name: string;
+  };
+  subcontractor?: {
+    id: string;
+    company_name: string;
+  };
+  asset?: {
+    id: string;
+    name: string;
+    asset_type: string;
+  };
 }
 
 export default function HomePage() {
@@ -26,7 +48,7 @@ export default function HomePage() {
   const [project, setProject] = useState<any[]>([]);
   const [upcomingBookings, setUpcomingBookings] = useState<Booking[]>([]);
   const hasFetched = useRef(false);
-  const userId = user?.userId;
+  const userId = user?.id;
 
   useEffect(() => {
     const hour = new Date().getHours();
@@ -41,11 +63,17 @@ export default function HomePage() {
           return;
         }
 
-        const response = await api.get("/api/siteProject/getProjectList", {
-          params: { currentUserId: userId },
+        // Updated to use new backend endpoint with filters
+        const response = await api.get("/projects/", {
+          params: { 
+            my_projects: true,
+            limit: 100,
+            skip: 0
+          },
         });
 
-        const projectData = response.data?.projectlist || [];
+        // Updated to match new response structure
+        const projectData = response.data?.projects || [];
         setProject(projectData);
 
         console.log(projectData);
@@ -61,50 +89,20 @@ export default function HomePage() {
 
     const fetchBookings = async () => {
       if (!user) return;
-      const projectStorageKey = `project_${userId}`;
-      const projectString = localStorage.getItem(projectStorageKey);
-
-      if (!projectString) {
-        console.error("No project found in localStorage");
-        return;
-      }
 
       try {
-        const project = JSON.parse(projectString);
+        // Use the new /bookings/my/upcoming endpoint
+        const response = await api.get("/bookings/my/upcoming", {
+          params: { 
+            limit: 3
+          },
+        });
 
-        const response = await api.get(
-          "/api/slotBooking/getslotBookingList",
-          {
-            params: { projectId: project.id, userId: userId },
-          }
-        );
+        // Updated to match new response structure
+        const bookingsData = response.data || [];
 
-        const bookingsData = response.data?.bookingList || [];
-
-        // Filter upcoming bookings
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        const filtered = bookingsData
-          .filter((booking: { bookingTimeDt: string | number | Date }) => {
-            const bookingDate = new Date(booking.bookingTimeDt);
-            return bookingDate >= today;
-          })
-          .sort(
-            (
-              a: { bookingTimeDt: string | number | Date },
-              b: { bookingTimeDt: string | number | Date }
-            ) => {
-              // Sort by date (ascending)
-              return (
-                new Date(a.bookingTimeDt).getTime() -
-                new Date(b.bookingTimeDt).getTime()
-              );
-            }
-          )
-          .slice(0, 3); // Get only the first 3
-
-        setUpcomingBookings(filtered);
+        // The backend already returns upcoming bookings sorted, so we can use directly
+        setUpcomingBookings(bookingsData);
       } catch (error) {
         console.error("Error fetching bookings:", error);
       }
@@ -112,7 +110,7 @@ export default function HomePage() {
 
     fetchProjects();
     fetchBookings();
-  }, [userId]);
+  }, [userId, user]);
 
   const getQuickAccessCards = () => {
     // Default cards for all users
@@ -134,7 +132,7 @@ export default function HomePage() {
     ];
 
     // Add role-specific cards
-    if (user?.roles?.includes("admin") || user?.roles?.includes("manager")) {
+    if (user?.role?.includes("admin") || user?.role?.includes("manager")) {
       cards.push(
         {
           title: "Subcontractors",
@@ -165,10 +163,10 @@ export default function HomePage() {
         }
 
         const response = await api.get("/api/Asset/getAssetList", {
-          params: { currentUserId: userId },
+          params: { asset_project: userId },
         });
 
-        const assetData = response.data?.assetlist || [];
+        const assetData = response.data?.asset_list || response.data?.assetlist || [];
         console.log(assetData);
 
         if (assetData.length > 0) {
@@ -184,13 +182,50 @@ export default function HomePage() {
     fetchAssets();
   };
 
+  // Helper function to format time
+  const formatTime = (timeStr: string): string => {
+    try {
+      // Handle ISO format time strings
+      if (timeStr.includes('T') || timeStr.includes('Z')) {
+        const date = new Date(timeStr);
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+      
+      // Handle HH:MM:SS or HH:MM format
+      const parts = timeStr.split(':');
+      if (parts.length >= 2) {
+        return `${parts[0]}:${parts[1]}`;
+      }
+      
+      return timeStr;
+    } catch {
+      return timeStr;
+    }
+  };
+
+  // Helper function to get status color
+  const getStatusColor = (status: string): string => {
+    switch (status.toLowerCase()) {
+      case "confirmed":
+        return "bg-green-100 text-green-800";
+      case "pending":
+        return "bg-yellow-100 text-yellow-800";
+      case "cancelled":
+        return "bg-red-100 text-red-800";
+      case "completed":
+        return "bg-blue-100 text-blue-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
+
   // Dashboard for authenticated users
   return (
     <Card className="px-6 sm:my-8 mx-4 bg-amber-50">
       {/* Header with greeting */}
       <div className="p-3 sm:p-6">
         <h1 className="text-xl sm:text-3xl font-bold text-gray-900">
-          {greeting}, {user?.username || "there"}!
+          {greeting}, {user?.first_name || "there"}!
         </h1>
         <p className="text-sm sm:text-base text-gray-500 mt-1">
           Welcome to your site management dashboard
@@ -257,39 +292,43 @@ export default function HomePage() {
             <Card className="bg-stone-100 px-2 py-2">
               {upcomingBookings.length > 0 ? (
                 upcomingBookings.map((booking) => {
-                  const bookingDate = new Date(booking.bookingTimeDt);
+                  const bookingDate = new Date(booking.booking_date);
                   const day = bookingDate.getDate();
                   const dayOfWeek = bookingDate.toLocaleDateString("en-US", {
                     weekday: "short",
                   });
-                  const timeRange = bookingDate.toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  });
+                  
+                  // Format time range
+                  const startTime = formatTime(booking.start_time);
+                  const endTime = formatTime(booking.end_time);
+                  const timeRange = `${startTime} - ${endTime}`;
 
                   // Determine if booking is today
                   const today =
                     new Date().toDateString() === bookingDate.toDateString();
 
+                  // Get asset name
+                  const assetName = booking.asset?.name || "Asset";
+
                   return (
                     <Card
-                      key={booking.bookingKey}
+                      key={booking.id}
                       className="overflow-hidden border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200"
                     >
-                      {/* Card content (unchanged) */}
                       <div className="flex w-full">
                         <div className="w-16 flex-shrink-0 flex flex-col items-center justify-center py-2 border-r border-gray-200">
                           <div
-                            className={`text-xs font-medium uppercase ${today ? "text-orange-500" : "text-gray-500"
-                              }`}
+                            className={`text-xs font-medium uppercase ${
+                              today ? "text-orange-500" : "text-gray-500"
+                            }`}
                           >
                             {dayOfWeek}
                           </div>
                           <div
-                            className={`text-xl font-bold ${today ? "text-orange-600" : "text-gray-800"
-                              }`}
+                            className={`text-xl font-bold ${
+                              today ? "text-orange-600" : "text-gray-800"
+                            }`}
                           >
-                            {" "}
                             {String(day).padStart(2, "0")}
                           </div>
                         </div>
@@ -297,7 +336,7 @@ export default function HomePage() {
                           <div className="flex justify-between items-center">
                             <div className="flex-1 pr-2">
                               <h4 className="font-semibold text-gray-900 line-clamp-1 text-sm">
-                                {booking.bookingTitle}
+                                {booking.project?.name || "Booking"}
                               </h4>
 
                               <div className="flex items-center text-gray-500 text-xs mt-0.5">
@@ -307,40 +346,26 @@ export default function HomePage() {
                             </div>
 
                             <div
-                              className={`ml-2 text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap
-                        ${booking.bookingStatus === "Confirmed"
-                                  ? "bg-green-100 text-green-800"
-                                  : booking.bookingStatus === "Pending"
-                                    ? "bg-yellow-100 text-yellow-800"
-                                    : booking.bookingStatus === "Denied"
-                                      ? "bg-red-100 text-red-800"
-                                      : "bg-gray-100 text-gray-800"
-                                }`}
+                              className={`ml-2 text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap capitalize ${getStatusColor(
+                                booking.status
+                              )}`}
                             >
-                              {booking.bookingStatus}
+                              {booking.status}
                             </div>
                           </div>
 
-                          {booking.bookedAssets &&
-                            booking.bookedAssets.length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-1 overflow-hidden max-h-5">
-                                {booking.bookedAssets
-                                  .slice(0, 2)
-                                  .map((asset: string) => (
-                                    <span
-                                      key={asset}
-                                      className="px-1.5 py-0 text-xs bg-blue-50 text-blue-700 rounded-full border border-blue-100"
-                                    >
-                                      {asset}
-                                    </span>
-                                  ))}
-                                {booking.bookedAssets.length > 2 && (
-                                  <span className="px-1.5 py-0 text-xs bg-gray-50 text-gray-600 rounded-full border border-gray-100">
-                                    +{booking.bookedAssets.length - 2}
-                                  </span>
-                                )}
-                              </div>
-                            )}
+                          {booking.asset && (
+                            <div className="flex flex-wrap gap-1 mt-1 overflow-hidden max-h-5">
+                              <span className="px-1.5 py-0 text-xs bg-blue-50 text-blue-700 rounded-full border border-blue-100">
+                                {assetName}
+                              </span>
+                              {booking.asset.asset_type && (
+                                <span className="px-1.5 py-0 text-xs bg-gray-50 text-gray-600 rounded-full border border-gray-100">
+                                  {booking.asset.asset_type}
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </Card>

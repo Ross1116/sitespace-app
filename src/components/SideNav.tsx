@@ -24,19 +24,12 @@ interface MenuItem {
   icon: React.ElementType;
   label: string;
   href: string;
-  visible: string[];
+  visible: string[]; // Empty array = available to all
   onClick?: (e: React.MouseEvent) => void;
 }
 
 interface MenuSection {
   items: MenuItem[];
-}
-
-interface UserData {
-  userId: string | null;
-  username: string;
-  email: string;
-  roles: string | string[] | any;
 }
 
 const SideNav = () => {
@@ -60,37 +53,37 @@ const SideNav = () => {
           icon: Home,
           label: "Home",
           href: "/home",
-          visible: ["admin", "manager", "contractor"],
+          visible: [], // ✅ Available to everyone
         },
         {
           icon: Calendar,
           label: "Live calendar view",
           href: "/multicalendar",
-          visible: ["admin", "manager", "contractor", "tv"],
+          visible: [], // ✅ Available to everyone
         },
         {
           icon: HardHat,
           label: "Subcontractors",
           href: "/subcontractors",
-          visible: ["admin", "manager"],
+          visible: ["admin", "manager"], // 🔒 Restricted
         },
         {
           icon: Construction,
           label: "Assets",
           href: "/assets",
-          visible: ["admin", "manager"],
+          visible: ["admin", "manager"], // 🔒 Restricted
         },
         {
           icon: CalendarRangeIcon,
           label: "Bookings",
           href: "/bookings",
-          visible: ["admin", "manager", "contractor"],
+          visible: [], // ✅ Available to everyone
         },
         {
           icon: Speaker,
           label: "Announcements",
           href: "#",
-          visible: ["admin", "manager", "contractor"],
+          visible: [], // ✅ Available to everyone
         },
       ],
     },
@@ -100,53 +93,46 @@ const SideNav = () => {
           icon: User,
           label: "Profile",
           href: "#",
-          visible: ["admin", "manager", "contractor"],
+          visible: [], // ✅ Available to everyone
         },
         {
           icon: Settings,
           label: "Settings",
           href: "#",
-          visible: ["admin", "manager", "contractor"],
+          visible: [], // ✅ Available to everyone
         },
         {
           icon: LogOut,
           label: "Logout",
           href: "#",
-          visible: ["admin", "manager", "contractor"],
+          visible: [], // ✅ Available to everyone
           onClick: handleLogout,
         },
       ],
     },
   ];
 
-  // Function to extract roles as a string array regardless of original format
-  const getUserRoles = (user: UserData | null): string[] => {
-    if (!user || !user.roles) return [];
-
-    if (typeof user.roles === "string") {
-      return user.roles.split(",").map((role) => role.trim().toLowerCase());
-    }
-
-    if (Array.isArray(user.roles)) {
-      return user.roles.map((role) =>
-        typeof role === "string"
-          ? role.toLowerCase()
-          : String(role).toLowerCase()
-      );
-    }
-
-    // Fallback for any other format
-    return [String(user.roles).toLowerCase()];
+  // Function to get user role (single role from AuthContext)
+  const getUserRole = (): string | null => {
+    if (!user?.role) return null;
+    return user.role.toLowerCase().trim();
   };
 
   // Function to check if the current user has permission to see a menu item
   const hasPermission = (item: MenuItem): boolean => {
+    // If not authenticated, hide all items
     if (!user || !isAuthenticated) return false;
 
-    const userRoles = getUserRoles(user as UserData);
+    // ✅ Empty visible array = available to all authenticated users
+    if (!item.visible || item.visible.length === 0) {
+      return true;
+    }
 
-    // Check if any of the user's roles are in the item's visible array
-    return item.visible.some((role) => userRoles.includes(role.toLowerCase()));
+    const userRole = getUserRole();
+    if (!userRole) return false;
+
+    // Check if user's role is in the item's visible array
+    return item.visible.some((role) => role.toLowerCase() === userRole);
   };
 
   // Close mobile menu when screen size changes to desktop
@@ -186,18 +172,33 @@ const SideNav = () => {
 
       {/* Mobile Menu Container - Fixed Full Screen */}
       <div
-        className={`fixed inset-0 z-40 flex md:hidden transition-transform duration-300 ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
-          }`}
+        className={`fixed inset-0 z-40 flex md:hidden transition-transform duration-300 ${
+          isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
       >
         {/* Dark Overlay */}
         <div
-          className="absolute inset-0"
+          className="absolute inset-0 bg-black/50"
           onClick={() => setIsMobileMenuOpen(false)}
         />
 
         {/* Mobile Menu Content */}
         <Card className="relative w-64 h-full bg-amber-50 rounded-none">
           <div className="pt-16 overflow-y-auto h-full">
+            {/* User Info Section */}
+            {user && (
+              <div className="px-4 py-3 mb-4 border-b border-amber-200">
+                <p className="text-sm font-medium text-gray-700">
+                  {user.first_name && user.last_name
+                    ? `${user.first_name} ${user.last_name}`
+                    : user.email}
+                </p>
+                <p className="text-xs text-gray-500 capitalize">
+                  {user.role || user.user_type || "User"}
+                </p>
+              </div>
+            )}
+
             {menuItems.map((section, sectionIndex) => {
               // Filter items based on user permissions
               const visibleItems = section.items.filter((item) =>
@@ -209,14 +210,14 @@ const SideNav = () => {
 
               return (
                 <div
-                  className="flex flex-col gap-2"
+                  className="flex flex-col gap-2 px-2 mb-4"
                   key={`section-${sectionIndex}`}
                 >
                   {visibleItems.map((item, itemIndex) => (
                     <Link
                       href={item.href}
                       key={`item-${sectionIndex}-${itemIndex}-${item.label}`}
-                      className="flex items-center px-4 py-3 text-gray-500 rounded-md hover:bg-amber-100 group"
+                      className="flex items-center px-4 py-3 text-gray-700 rounded-md hover:bg-amber-100 transition-colors group"
                       onClick={(e) => {
                         if (item.onClick) {
                           item.onClick(e);
@@ -231,6 +232,11 @@ const SideNav = () => {
                       <span className="ml-3">{item.label}</span>
                     </Link>
                   ))}
+
+                  {/* Add divider between sections */}
+                  {sectionIndex < menuItems.length - 1 && (
+                    <div className="h-px bg-amber-200 my-2" />
+                  )}
                 </div>
               );
             })}
@@ -247,6 +253,20 @@ const SideNav = () => {
         onMouseLeave={() => setIsExpanded(false)}
       >
         <div className="pt-6 overflow-hidden">
+          {/* User Info Section (Desktop - Expanded) */}
+          {user && isExpanded && (
+            <div className="px-4 py-3 mb-4 border-b border-amber-200">
+              <p className="text-xs font-medium text-gray-700 truncate">
+                {user.first_name && user.last_name
+                  ? `${user.first_name} ${user.last_name}`
+                  : user.email}
+              </p>
+              <p className="text-xs text-gray-500 capitalize">
+                {user.role || user.user_type || "User"}
+              </p>
+            </div>
+          )}
+
           {menuItems.map((section, sectionIndex) => {
             // Filter items based on user permissions
             const visibleItems = section.items.filter((item) =>
@@ -258,14 +278,14 @@ const SideNav = () => {
 
             return (
               <div
-                className="flex flex-col gap-2"
+                className="flex flex-col gap-2 mb-4"
                 key={`section-${sectionIndex}`}
               >
                 {visibleItems.map((item, itemIndex) => (
                   <Link
                     href={item.href}
                     key={`item-${sectionIndex}-${itemIndex}-${item.label}`}
-                    className="flex items-center px-4 py-3 text-gray-500 rounded-md hover:bg-amber-100 group relative"
+                    className="flex items-center px-4 py-3 text-gray-700 rounded-md hover:bg-amber-100 transition-colors group relative"
                     onClick={(e) => item.onClick && item.onClick(e)}
                   >
                     <div className="flex items-center justify-center min-w-8">
@@ -273,9 +293,10 @@ const SideNav = () => {
                     </div>
                     <span
                       className={`ml-3 whitespace-nowrap overflow-hidden transition-all duration-300 
-                        ${isExpanded
-                          ? "max-w-[150px] opacity-100"
-                          : "max-w-0 opacity-0"
+                        ${
+                          isExpanded
+                            ? "max-w-[150px] opacity-100"
+                            : "max-w-0 opacity-0"
                         }`}
                     >
                       {item.label}
@@ -283,12 +304,17 @@ const SideNav = () => {
 
                     {/* Tooltip for collapsed state */}
                     {!isExpanded && (
-                      <div className="absolute left-16 bg-white px-2 py-1 rounded shadow-md text-xs whitespace-nowrap z-10 opacity-0 group-hover:opacity-100 pointer-events-none">
+                      <div className="absolute left-16 bg-gray-800 text-white px-2 py-1 rounded shadow-lg text-xs whitespace-nowrap z-10 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity">
                         {item.label}
                       </div>
                     )}
                   </Link>
                 ))}
+
+                {/* Add divider between sections (except last) */}
+                {sectionIndex < menuItems.length - 1 && isExpanded && (
+                  <div className="h-px bg-amber-200 mx-4 my-2" />
+                )}
               </div>
             );
           })}

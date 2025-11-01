@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 
 interface Project {
   id: string;
-  text: string;
+  name: string;
 }
 
 interface ProjectSelectorProps {
@@ -70,7 +70,7 @@ function ProjectSelector({
     }
     
     const filtered = projects.filter(project => 
-      project.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       project.id.toLowerCase().includes(searchQuery.toLowerCase())
     );
     
@@ -142,7 +142,7 @@ function ProjectSelector({
           className="flex flex-col w-full"
         >
           {visibleProjects.map((project) => {
-            const projectName = project.text;
+            const projectName = project.name;
             const isSelected = project.id === selectedProject;
             
             return (
@@ -166,8 +166,8 @@ function ProjectSelector({
                     
                     <div className="flex-grow">
                       <div className="flex flex-col">
-                        <span className={`font-medium ${isSelected ? 'text-amber-900' : 'text-gray-700'}`}>
-                          {project.id} - {projectName}
+                        <span className={`font-bold ${isSelected ? 'text-amber-900' : 'text-gray-700'}`}>
+                          {projectName}
                         </span>
                       </div>
                       

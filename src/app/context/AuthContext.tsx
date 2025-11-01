@@ -10,26 +10,27 @@ import {
 import { useRouter } from "next/navigation";
 
 type User = {
-  userId: string | null;
-  username: string;
+  id: string;
   email: string;
-  roles: string;
+  first_name?: string;
+  last_name?: string;
+  role?: string;
+  user_type?: string;
 };
 
 type AuthContextType = {
   user: User | null;
-  token: string | null;
-  login: (username: string, password: string) => Promise<void>;
+  accessToken: string | null;
+  refreshToken: string | null;
+  login: (email: string, password: string) => Promise<void>;
   register: (
-    fullName: string,
-    companyName: string,
-    tradeCategory: string,
+    firstName: string,
+    lastName: string,
     email: string,
-    phoneNumber: string,
-    password: string,
-    project: string,
+    phone: string,
+    password: string
   ) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   isAuthenticated: boolean;
   error: string | null;
   clearError: () => void;
@@ -39,18 +40,22 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [refreshToken, setRefreshToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
+  // Load user/token from localStorage
   useEffect(() => {
-    const storedToken = localStorage.getItem("accessToken");
+    const storedAccess = localStorage.getItem("accessToken");
+    const storedRefresh = localStorage.getItem("refreshToken");
     const storedUser = localStorage.getItem("user");
 
-    if (storedToken && storedUser) {
-      setToken(storedToken);
+    if (storedAccess && storedUser) {
+      setAccessToken(storedAccess);
+      setRefreshToken(storedRefresh);
       setUser(JSON.parse(storedUser));
     }
 
@@ -59,126 +64,108 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const clearError = () => setError(null);
 
-  const login = async (username: string, password: string) => {
+  // LOGIN
+  const login = async (email: string, password: string) => {
     try {
       setIsLoading(true);
       clearError();
 
-      const response = await fetch(`${API_URL}/api/auth/signin`, {
+      const res = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ email, password }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Login failed (${response.status})`);
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || "Login failed");
       }
 
-      const data = await response.json();
+      const data = await res.json();
 
-      // Normalize keys from backend
-      const accessToken = data.access_token || data.accessToken;
-      if (!accessToken) throw new Error("Invalid login response (no token)");
-
-      const userData: User = {
-        userId: data.user_id || data.userId || null,
-        username: data.username,
-        email: data.email,
-        roles: data.role || data.roles,
+      const newUser: User = {
+        id: data.user_id,
+        email: data.email || email,
+        role: data.role,
+        user_type: data.user_type,
       };
 
-      setUser(userData);
-      setToken(accessToken);
+      setUser(newUser);
+      setAccessToken(data.access_token);
+      setRefreshToken(data.refresh_token);
 
-      localStorage.setItem("accessToken", accessToken);
-      localStorage.setItem("user", JSON.stringify(userData));
+      localStorage.setItem("accessToken", data.access_token);
+      localStorage.setItem("refreshToken", data.refresh_token);
+      localStorage.setItem("user", JSON.stringify(newUser));
 
-      await router.push("/home");
+      router.push("/home");
     } catch (err: any) {
       console.error("Login error:", err);
-      const errorMessage = err instanceof Error ? err.message : "An unknown error occurred";
-      setError(errorMessage);
+      setError(err.message || "Login failed");
       throw err;
     } finally {
       setIsLoading(false);
     }
   };
 
+  // REGISTER
   const register = async (
-    fullName: string,
-    companyName: string,
-    tradeCategory: string,
+    firstName: string,
+    lastName: string,
     email: string,
-    phoneNumber: string,
-    password: string,
-    project: string,
+    phone: string,
+    password: string
   ) => {
     try {
       setIsLoading(true);
       clearError();
 
-      const username = email.split("@")[0] || fullName.split(" ")[0].toLowerCase();
-
-      const response = await fetch(`${API_URL}/api/auth/signup`, {
+      const res = await fetch(`${API_URL}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          username,
-          fullName,
-          companyName,
-          tradeCategory,
+          first_name: firstName,
+          last_name: lastName,
           email,
-          phoneNumber,
+          phone,
           password,
-          project,
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Registration failed (${response.status})`);
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || "Registration failed");
       }
 
       router.push("/login?registered=true");
-    } catch (err) {
-      console.error("Registration error:", err);
-      const errorMessage = err instanceof Error ? err.message : "An unknown error occurred";
-      setError(errorMessage);
+    } catch (err: any) {
+      console.error("Register error:", err);
+      setError(err.message || "Registration failed");
       throw err;
     } finally {
       setIsLoading(false);
     }
   };
 
+  // LOGOUT
   const logout = async () => {
     try {
-      setIsLoading(true);
-      clearError();
-
-      if (token) {
-        const response = await fetch(`${API_URL}/api/auth/signout`, {
+      if (accessToken) {
+        await fetch(`${API_URL}/auth/logout`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${accessToken}`,
           },
         });
-
-        if (!response.ok) {
-          console.error("Signout API error:", response.status);
-        }
       }
     } catch (err) {
-      console.error("Signout error:", err);
+      console.error("Logout error:", err);
     } finally {
-      setIsLoading(false);
       setUser(null);
-      setToken(null);
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("user");
-      localStorage.removeItem("assets");
-      localStorage.removeItem("bookings");
+      setAccessToken(null);
+      setRefreshToken(null);
+      localStorage.clear();
       router.push("/");
     }
   };
@@ -187,11 +174,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         user,
-        token,
+        accessToken,
+        refreshToken,
         login,
         register,
         logout,
-        isAuthenticated: !!token,
+        isAuthenticated: !!accessToken,
         error,
         clearError,
       }}
@@ -202,9 +190,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  return ctx;
 }

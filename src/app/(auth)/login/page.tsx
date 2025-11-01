@@ -6,43 +6,40 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function Login() {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [localError, setLocalError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [touched, setTouched] = useState({ username: false, password: false });
+  const [touched, setTouched] = useState({ email: false, password: false });
+
   const { login, isAuthenticated, error: authError, clearError } = useAuth();
   const router = useRouter();
 
-  // Redirect only when authentication is fully confirmed
+  // Redirect if already authenticated
   useEffect(() => {
-    if (isAuthenticated) {
-      router.replace("/home");
-    }
+    if (isAuthenticated) router.replace("/home");
   }, [isAuthenticated, router]);
 
-  // Check for remembered username on mount
+  // Load remembered email
   useEffect(() => {
-    const savedUsername = localStorage.getItem("rememberedUsername");
-    if (savedUsername) {
-      setUsername(savedUsername);
+    const savedEmail = localStorage.getItem("rememberedEmail");
+    if (savedEmail) {
+      setEmail(savedEmail);
       setRememberMe(true);
     }
   }, []);
 
-  // Sync auth errors with local error state
+  // Sync auth errors with local error
   useEffect(() => {
-    if (authError) {
-      setLocalError(authError);
-    }
+    if (authError) setLocalError(authError);
   }, [authError]);
 
   const validateField = (field: string, value: string) => {
-    if (field === 'username' && touched.username && !value.trim()) {
-      return "Username is required";
+    if (field === "email" && touched.email && !value.trim()) {
+      return "Email is required";
     }
-    if (field === 'password' && touched.password && value.length < 6) {
+    if (field === "password" && touched.password && value.length < 6) {
       return "Password must be at least 6 characters";
     }
     return "";
@@ -53,37 +50,39 @@ export default function Login() {
     setLocalError("");
     clearError();
 
-    if (!username.trim() || !password.trim()) {
-      setLocalError("Please enter both username and password");
-      setTouched({ username: true, password: true });
+    if (!email.trim() || !password.trim()) {
+      setLocalError("Please enter both email and password");
+      setTouched({ email: true, password: true });
       return;
     }
 
     setIsLoading(true);
 
     try {
-      await login(username, password);
+      await login(email, password);
 
-      // Handle remember me - only runs if login succeeds
       if (rememberMe) {
-        localStorage.setItem("rememberedUsername", username);
+        localStorage.setItem("rememberedEmail", email);
       } else {
-        localStorage.removeItem("rememberedUsername");
+        localStorage.removeItem("rememberedEmail");
       }
     } catch (err: any) {
       console.error("Login error:", err);
+      const errorMessage =
+        err?.message || authError || "Something went wrong. Please try again";
 
-      // The error message is either from the auth context or a generic one
-      const errorMessage = err?.message || authError || "Something went wrong. Please try again";
-
-      // Parse specific error types from the message
-      if (errorMessage.includes("401") || errorMessage.toLowerCase().includes("invalid") ||
-        errorMessage.toLowerCase().includes("failed")) {
-        setLocalError("Invalid username or password");
+      if (
+        errorMessage.includes("401") ||
+        errorMessage.toLowerCase().includes("invalid") ||
+        errorMessage.toLowerCase().includes("failed")
+      ) {
+        setLocalError("Invalid email or password");
       } else if (errorMessage.includes("429")) {
         setLocalError("Too many attempts. Please try again later");
-      } else if (errorMessage.toLowerCase().includes("network") ||
-        errorMessage.toLowerCase().includes("connect")) {
+      } else if (
+        errorMessage.toLowerCase().includes("network") ||
+        errorMessage.toLowerCase().includes("connect")
+      ) {
         setLocalError("Connection error. Please check your internet and try again");
       } else {
         setLocalError(errorMessage);
@@ -95,11 +94,12 @@ export default function Login() {
 
   const Logo = () => (
     <svg viewBox="0 0 100 100" className="w-24 h-24 text-white">
-      <text x="50" y="75" fontSize="80" textAnchor="middle" fill="currentColor">*</text>
+      <text x="50" y="75" fontSize="80" textAnchor="middle" fill="currentColor">
+        *
+      </text>
     </svg>
   );
 
-  // Use either local error or auth error
   const displayError = localError || authError;
 
   return (
@@ -107,31 +107,26 @@ export default function Login() {
       {/* Left Side */}
       <div className="hidden md:flex md:w-1/2 bg-amber-700 px-32 py-16 flex-col justify-between relative">
         <div className="z-10 mx-auto">
-          {/* Asterisk/Star Logo */}
           <div className="my-12">
             <Logo />
           </div>
 
-          {/* Main Text */}
           <h1 className="text-7xl font-bold text-white mb-12">
             Hello
             <br className="mb-4" />
             Sitespacer!<span className="text-7xl">👋</span>
           </h1>
 
-          {/* Subtext */}
           <p className="text-gray-300 text-xl max-w-8/12">
             Skip repetitive and manual scheduling. Get highly productive through
             automation and save tons of time!
           </p>
         </div>
 
-        {/* Copyright */}
         <div className="text-white/70 text-sm">
           © 2025 Sitespace. All rights reserved.
         </div>
 
-        {/* Background Pattern */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <svg className="absolute inset-0 w-full h-full opacity-10" preserveAspectRatio="none">
             <pattern id="curves" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
@@ -144,18 +139,13 @@ export default function Login() {
         </div>
       </div>
 
-      {/* Right Side - White Section */}
+      {/* Right Side */}
       <div className="w-full md:w-1/2 bg-orange-50 flex items-center justify-center min-h-screen md:min-h-0 md:p-16">
         <div className="max-w-md w-full px-6 py-12 md:p-0">
-          {/* Logo */}
-          <h2 className="text-4xl md:text-5xl font-bold mb-8 md:mb-16">
-            Sitespace
-          </h2>
+          <h2 className="text-4xl md:text-5xl font-bold mb-8 md:mb-16">Sitespace</h2>
 
-          {/* Welcome Text */}
           <h3 className="text-2xl md:text-3xl font-bold mb-2">Welcome Back!</h3>
 
-          {/* Create Account Text */}
           <p className="text-gray-600 mb-8">
             Don&apos;t have an account?{" "}
             <Link href="/register" className="text-blue-600 font-medium hover:underline">
@@ -164,7 +154,6 @@ export default function Login() {
             .
           </p>
 
-          {/* Error Message */}
           {displayError && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 text-sm animate-shake">
               <strong className="font-bold">Error: </strong>
@@ -172,28 +161,27 @@ export default function Login() {
             </div>
           )}
 
-          {/* Login Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <input
-                id="username"
-                name="username"
-                autoComplete="username"
-                type="text"
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
                 required
-                value={username}
+                value={email}
                 onChange={(e) => {
-                  setUsername(e.target.value);
+                  setEmail(e.target.value);
                   setLocalError("");
                   clearError();
                 }}
-                onBlur={() => setTouched(prev => ({ ...prev, username: true }))}
-                placeholder="Username"
+                onBlur={() => setTouched((prev) => ({ ...prev, email: true }))}
+                placeholder="Email"
                 className="w-full p-3 border-b border-gray-300 focus:border-blue-500 focus:outline-none bg-gray-100 rounded-lg transition-colors"
                 disabled={isLoading}
               />
-              {touched.username && validateField('username', username) && (
-                <p className="text-red-500 text-xs mt-1">{validateField('username', username)}</p>
+              {touched.email && validateField("email", email) && (
+                <p className="text-red-500 text-xs mt-1">{validateField("email", email)}</p>
               )}
             </div>
 
@@ -210,13 +198,13 @@ export default function Login() {
                   setLocalError("");
                   clearError();
                 }}
-                onBlur={() => setTouched(prev => ({ ...prev, password: true }))}
+                onBlur={() => setTouched((prev) => ({ ...prev, password: true }))}
                 placeholder="Password"
                 className="w-full p-3 border-b border-gray-300 focus:border-blue-500 focus:outline-none bg-gray-100 rounded-lg transition-colors"
                 disabled={isLoading}
               />
-              {touched.password && validateField('password', password) && (
-                <p className="text-red-500 text-xs mt-1">{validateField('password', password)}</p>
+              {touched.password && validateField("password", password) && (
+                <p className="text-red-500 text-xs mt-1">{validateField("password", password)}</p>
               )}
             </div>
 
@@ -238,8 +226,9 @@ export default function Login() {
             <div className="pt-4">
               <button
                 type="submit"
-                className={`w-full py-3 px-4 bg-black text-white font-medium rounded relative transition-opacity ${isLoading ? "opacity-70 cursor-not-allowed" : "hover:opacity-90"
-                  }`}
+                className={`w-full py-3 px-4 bg-black text-white font-medium rounded relative transition-opacity ${
+                  isLoading ? "opacity-70 cursor-not-allowed" : "hover:opacity-90"
+                }`}
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -275,7 +264,6 @@ export default function Login() {
             </div>
           </form>
 
-          {/* Mobile-only footer */}
           <div className="md:hidden text-center text-gray-500 text-xs mt-8">
             © 2025 Sitespace. All rights reserved.
           </div>

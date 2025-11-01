@@ -1,18 +1,11 @@
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
 
 export async function POST() {
-  // Clear the cookie
   const headers = new Headers();
-  headers.append(
-    'Set-Cookie',
-    'accessToken=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0'
-  );
-  
-  return NextResponse.json(
-    { message: 'Logged out successfully' },
-    { 
-      status: 200,
-      headers
-    }
-  );
+
+  // Clear both tokens
+  headers.append("Set-Cookie", "accessToken=; Path=/; HttpOnly; Max-Age=0; SameSite=Strict;");
+  headers.append("Set-Cookie", "refreshToken=; Path=/; HttpOnly; Max-Age=0; SameSite=Strict;");
+
+  return NextResponse.json({ message: "Logged out successfully" }, { status: 200, headers });
 }
