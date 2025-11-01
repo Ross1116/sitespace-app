@@ -11,8 +11,12 @@ import {
 import { Card } from "@/components/ui/card";
 import { useAuth } from "@/app/context/AuthContext";
 import api from "@/lib/api";
-import { groupBookingsByAsset } from "@/lib/multicalendarHelpers";
-import { AssetCalendar } from "@/components/ui/full-calendar/index";
+import {
+  CalendarEvent,
+  groupBookingsByAsset,
+  AssetCalendar,
+  convertBookingToCalendarEvent  // ✅ Import the conversion function
+} from "@/lib/multicalendarHelpers";
 import { CalendarHeader } from "./CalendarHeader";
 import { MobileView } from "./MobileView";
 import { DesktopView } from "./DesktopView";
@@ -29,7 +33,8 @@ interface BookingDetail {
   booking_date: string;
   start_time: string;
   end_time: string;
-  status: "pending" | "confirmed" | "completed" | "cancelled";
+  status: "pending" | "confirmed" | "completed" | "cancelled" | "in_progress";
+  purpose?: string;
   notes?: string;
   created_at: string;
   updated_at: string;
@@ -37,24 +42,30 @@ interface BookingDetail {
     id: string;
     name: string;
     location?: string;
+    status?: string;
   };
   manager?: {
     id: string;
     first_name: string;
     last_name: string;
     email: string;
+    role?: string;
   };
   subcontractor?: {
     id: string;
-    company_name?: string;
     first_name: string;
     last_name: string;
+    email?: string;
+    company_name?: string;
+    trade_specialty?: string;
   };
   asset?: {
     id: string;
     name: string;
-    asset_type: string;
     asset_code: string;
+    asset_type?: string;
+    type?: string;
+    status?: string;
   };
 }
 
@@ -69,7 +80,7 @@ interface BookingListResponse {
 interface CalendarDayView {
   date: string;
   bookings: BookingDetail[];
-  booking_count: number;
+  booking_count?: number;  // ✅ Made optional
 }
 
 // ===== API FUNCTIONS =====
@@ -105,54 +116,25 @@ const bookingsApi = {
   },
 };
 
+// ❌ REMOVE THESE LINES - They're in the wrong place (lines 175-176)
+// const assetBookings = groupBookingsByAsset(bookings);
+// const assetCalendars: AssetCalendar[] = Object.values(assetBookings);
+
 // ===== HELPER FUNCTIONS =====
 const formatDate = (date: Date): string => {
   return date.toISOString().split("T")[0];
 };
 
-const parseTimeToDate = (dateStr: string, timeStr: string): Date => {
-  const date = new Date(dateStr);
-  const [hours, minutes, seconds] = timeStr.split(":").map(Number);
-  date.setHours(hours, minutes, seconds || 0, 0);
-  return date;
-};
-
-const transformBookingToEvent = (booking: BookingDetail) => ({
-  bookingKey: booking.id,
-  bookingTitle:
-    booking.project?.name || booking.subcontractor?.company_name || "Booking",
-  bookingDescription: booking.notes,
-  bookingNotes: booking.notes,
-  bookingTimeDt: booking.booking_date,
-  bookingStartTime: booking.start_time,
-  bookingEndTime: booking.end_time,
-  bookingStatus: booking.status,
-  bookingFor: booking.manager
-    ? `${booking.manager.first_name} ${booking.manager.last_name}`
-    : "Unknown",
-  bookedAssets: booking.asset ? [booking.asset.name] : [],
-  assetId: booking.asset_id,
-  assetName: booking.asset?.name,
-  assetType: booking.asset?.asset_type,
-  subcontractorId: booking.subcontractor_id,
-  subcontractorName: booking.subcontractor?.company_name,
-  // Keep original data
-  id: booking.id,
-  start: parseTimeToDate(booking.booking_date, booking.start_time),
-  end: parseTimeToDate(booking.booking_date, booking.end_time),
-  title:
-    booking.project?.name || booking.subcontractor?.company_name || "Booking",
-  description: booking.notes,
-  status: booking.status,
-  bookingData: booking,
-});
+// ❌ REMOVE this function - use the one from multicalendarHelpers instead
+// const parseTimeToDate = (dateStr: string, timeStr: string): Date => { ... }
+// const transformBookingToEvent = (booking: BookingDetail) => { ... }
 
 // ===== MAIN COMPONENT =====
 export default function MulticalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedAssetIndex, setSelectedAssetIndex] = useState(0);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [bookings, setBookings] = useState<any[]>([]);
+  const [bookings, setBookings] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
@@ -199,7 +181,7 @@ export default function MulticalendarPage() {
     }
 
     try {
-      console.log("Fetching bookings for project:", project.id);
+      console.log("📅 Fetching bookings for project:", project.id);
 
       // Calculate date range: 45 days before and 45 days after current date (90 days total)
       const today = new Date();
@@ -210,7 +192,7 @@ export default function MulticalendarPage() {
       dateTo.setDate(today.getDate() + 45);
 
       console.log(
-        "Date range:",
+        "📅 Date range:",
         formatDate(dateFrom),
         "to",
         formatDate(dateTo)
@@ -223,22 +205,28 @@ export default function MulticalendarPage() {
         project.id
       );
 
-      console.log("Calendar data fetched:", calendarData.length, "days");
+      console.log("📅 Calendar data fetched:", calendarData.length, "days");
 
-      // Flatten and transform bookings
-      const allBookings = calendarData.flatMap(
+      // Flatten bookings from all days
+      const allBookings: BookingDetail[] = calendarData.flatMap(
         (dayData) => dayData.bookings || []
       );
-      const transformedBookings = allBookings.map(transformBookingToEvent);
 
-      console.log("Total bookings:", transformedBookings.length);
+      console.log("📦 Total raw bookings:", allBookings.length);
+
+      // ✅ Use the imported conversion function
+      const transformedBookings: CalendarEvent[] = allBookings.map(
+        convertBookingToCalendarEvent
+      );
+
+      console.log("✅ Total transformed bookings:", transformedBookings.length);
       setBookings(transformedBookings);
 
       // Cache the data
       localStorage.setItem(storageKey, JSON.stringify(transformedBookings));
       hasFetched.current = true;
     } catch (err: any) {
-      console.error("Error fetching bookings:", err);
+      console.error("❌ Error fetching bookings:", err);
       const errorMessage =
         err.response?.data?.detail ||
         err.response?.data?.message ||
@@ -251,6 +239,7 @@ export default function MulticalendarPage() {
       if (cachedBookings) {
         try {
           const parsedBookings = JSON.parse(cachedBookings);
+          console.log("📦 Using cached bookings:", parsedBookings.length);
           setBookings(parsedBookings);
         } catch (e) {
           console.error("Error parsing cached bookings:", e);
@@ -260,45 +249,6 @@ export default function MulticalendarPage() {
       setLoading(false);
     }
   };
-  // Alternative: Use regular bookings endpoint (FALLBACK)
-  // const fetchBookingsRegular = async (forceRefresh = false) => {
-  //   if (!user) return;
-  //   if (hasFetched.current && !forceRefresh) return;
-
-  //   setLoading(true);
-  //   setError(null);
-
-  //   const project = getStoredProject();
-  //   if (!project) {
-  //     setError("No project selected");
-  //     setLoading(false);
-  //     return;
-  //   }
-
-  //   try {
-  //     console.log("Fetching bookings (regular)...");
-
-  //     const response = await bookingsApi.getBookings({
-  //       project_id: project.id,
-  //       limit: 1000,
-  //       skip: 0,
-  //     });
-
-  //     const transformedBookings = response.bookings.map(
-  //       transformBookingToEvent
-  //     );
-  //     console.log("Bookings fetched:", transformedBookings.length);
-
-  //     setBookings(transformedBookings);
-  //     localStorage.setItem(storageKey, JSON.stringify(transformedBookings));
-  //     hasFetched.current = true;
-  //   } catch (err: any) {
-  //     console.error("Error fetching bookings:", err);
-  //     setError(err.response?.data?.detail || "Failed to fetch bookings");
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
 
   // Load cached data on mount, then fetch fresh
   useEffect(() => {
@@ -310,6 +260,7 @@ export default function MulticalendarPage() {
       try {
         const parsedBookings = JSON.parse(cachedBookings);
         if (Array.isArray(parsedBookings)) {
+          console.log("📦 Loaded cached bookings:", parsedBookings.length);
           setBookings(parsedBookings);
           setLoading(false);
         }
@@ -324,6 +275,7 @@ export default function MulticalendarPage() {
 
     // Set up periodic refresh (every 5 minutes)
     const interval = setInterval(() => {
+      console.log("🔄 Auto-refreshing bookings...");
       fetchBookings(true);
     }, 300000);
 
@@ -333,36 +285,49 @@ export default function MulticalendarPage() {
   // Refetch when month changes
   useEffect(() => {
     if (hasFetched.current) {
+      console.log("📅 Month/Year changed, refetching...");
       fetchBookings(true);
     }
   }, [currentDate.getMonth(), currentDate.getFullYear()]);
 
   // Handle booking actions (create/update/delete)
   const handleActionComplete = () => {
-    console.log("Action completed, refreshing bookings...");
-    const cachedBookings = localStorage.getItem(storageKey);
-    if (cachedBookings) {
-      try {
-        const parsedBookings = JSON.parse(cachedBookings);
-        if (Array.isArray(parsedBookings)) {
-          setBookings(parsedBookings);
-        }
-      } catch (error) {
-        console.error("Error parsing cached bookings:", error);
-      }
-    }
+    console.log("✅ Action completed, refreshing bookings...");
     fetchBookings(true);
   };
 
   // Manual refresh
   const handleRefresh = () => {
+    console.log("🔄 Manual refresh triggered");
     hasFetched.current = false;
     fetchBookings(true);
   };
 
-  // Group bookings by asset
+  // ✅ Group bookings by asset (THIS IS THE CORRECT LOCATION)
   const assetBookings = groupBookingsByAsset(bookings);
   const assetCalendars: AssetCalendar[] = Object.values(assetBookings);
+
+  // ✅ Debug logging
+  useEffect(() => {
+    console.log("📊 Debug Info:");
+    console.log("  Total bookings:", bookings.length);
+    console.log("  Asset calendars:", assetCalendars.length);
+
+    assetCalendars.forEach((calendar, index) => {
+      console.log(`  Calendar ${index}:`, {
+        id: calendar.id.slice(0, 8) + "...",
+        name: calendar.name,
+        eventCount: calendar.events?.length || 0,
+      });
+    });
+
+    // Check current date bookings
+    const currentDateStr = formatDate(currentDate);
+    const todaysBookings = bookings.filter(
+      (b) => b.bookingTimeDt === currentDateStr
+    );
+    console.log(`  Bookings for ${currentDateStr}:`, todaysBookings.length);
+  }, [bookings, assetCalendars, currentDate]);
 
   // Visible assets state
   const [initialLoad, setInitialLoad] = useState(true);
@@ -372,6 +337,7 @@ export default function MulticalendarPage() {
     if (initialLoad && assetCalendars.length > 0) {
       setVisibleAssets(assetCalendars.map((_, index) => index));
       setInitialLoad(false);
+      console.log("✅ Initialized visible assets:", assetCalendars.length);
     }
   }, [assetCalendars, initialLoad]);
 

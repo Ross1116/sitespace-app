@@ -180,11 +180,12 @@ export const CalendarViewTrigger = forwardRef<
   React.HTMLAttributes<HTMLButtonElement> & {
     view: View;
   }
->(({ children, view, ...props }) => {
+>(({ children, view, ...props }, ref) => {
   const { view: currentView, setView, onChangeView } = useCalendar();
 
   return (
     <Button
+      ref={ref}  // ✅ Pass ref to Button
       aria-current={currentView === view}
       size="sm"
       variant="ghost"

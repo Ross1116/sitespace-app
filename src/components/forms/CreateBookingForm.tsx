@@ -22,7 +22,7 @@ import { format, addMinutes } from "date-fns";
 import { CalendarEvent } from "@/components/ui/full-calendar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { X, Calendar as CalendarIcon } from "lucide-react";
+import { X, Calendar as CalendarIcon, Info, CheckCircle } from "lucide-react"; // ✅ Added icons
 import { useAuth } from "@/app/context/AuthContext";
 import api from "@/lib/api";
 import { Calendar } from "@/components/ui/calendar";
@@ -32,6 +32,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Label } from "../ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert"; // ✅ Added Alert
 
 // ===== TYPE DEFINITIONS =====
 type CreateBookingForm = {
@@ -48,11 +49,11 @@ type CreateBookingForm = {
 
 interface BookingCreateRequest {
   project_id?: string;
-  subcontractor_id?: string;
+  subcontractor_id?: string; // ✅ Made optional
   asset_id: string;
-  booking_date: string; // YYYY-MM-DD
-  start_time: string; // HH:MM:SS
-  end_time: string; // HH:MM:SS
+  booking_date: string;
+  start_time: string;
+  end_time: string;
   notes?: string;
 }
 
@@ -65,10 +66,20 @@ interface BookingDetail {
   booking_date: string;
   start_time: string;
   end_time: string;
-  status: string;
+  status: string; // ✅ Will be "pending" or "confirmed"
   notes?: string;
   created_at: string;
   updated_at: string;
+}
+
+// ✅ Added Subcontractor interface
+interface Subcontractor {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  company_name?: string;
+  trade_specialty?: string;
 }
 
 export function CreateBookingForm({
@@ -104,6 +115,16 @@ export function CreateBookingForm({
   const [assets, setAssets] = useState<any[]>([]);
   const [assetError, setAssetError] = useState<boolean>(false);
   const [project, setProject] = useState<any>(null);
+
+  // ✅ NEW: Subcontractor selection state
+  const [subcontractors, setSubcontractors] = useState<Subcontractor[]>([]);
+  const [selectedSubcontractor, setSelectedSubcontractor] =
+    useState<string>("");
+  const [loadingSubcontractors, setLoadingSubcontractors] = useState(false);
+
+  // ✅ NEW: Determine user role
+  const isManager = user?.role === "manager" || user?.role === "admin";
+  const isSubcontractor = user?.role === "subcontractor";
 
   const handleDurationChange = (newDuration: string) => {
     setDuration(newDuration);
@@ -151,6 +172,127 @@ export function CreateBookingForm({
       setAssets([]);
     }
   }, [userId]);
+
+  // Load subcontractors from project (only for managers)
+  useEffect(() => {
+    const loadSubcontractors = async () => {
+      if (!project?.id || !isManager) {
+        console.log("Skipping subcontractor load:", {
+          hasProject: !!project?.id,
+          isManager,
+        });
+        return;
+      }
+
+      setLoadingSubcontractors(true);
+      try {
+        console.log("Loading subcontractors for project:", project.id);
+        const response = await api.get(
+          `/projects/${project.id}/subcontractors`
+        );
+
+        console.log("Full API response:", response.data);
+
+        // Handle different possible response structures
+        let subsData = [];
+
+        if (Array.isArray(response.data)) {
+          subsData = response.data;
+        } else if (
+          response.data.subcontractors &&
+          Array.isArray(response.data.subcontractors)
+        ) {
+          subsData = response.data.subcontractors;
+        } else if (response.data.data && Array.isArray(response.data.data)) {
+          subsData = response.data.data;
+        }
+
+        // ✅ Log the structure of the first item
+        if (subsData.length > 0) {
+          console.log("First subcontractor structure:", subsData[0]);
+          console.log("Available keys:", Object.keys(subsData[0]));
+        }
+
+        // ✅ Normalize the data structure
+        const normalizedSubs = subsData.map((sub: any) => ({
+          id: sub.id || sub.subcontractorKey || sub.contractor_id || sub.uuid,
+          first_name:
+            sub.first_name ||
+            sub.firstName ||
+            sub.contractorName?.split(" ")[0] ||
+            "",
+          last_name:
+            sub.last_name ||
+            sub.lastName ||
+            sub.contractorName?.split(" ").slice(1).join(" ") ||
+            "",
+          email: sub.email || sub.contractorEmail || "",
+          company_name:
+            sub.company_name || sub.companyName || sub.contractorCompany,
+          trade_specialty:
+            sub.trade_specialty || sub.tradeSpecialty || sub.contractorTrade,
+        }));
+
+        console.log("Normalized subcontractors:", normalizedSubs);
+        setSubcontractors(normalizedSubs);
+
+        if (normalizedSubs.length === 0) {
+          console.warn("No subcontractors found for project", project.id);
+        }
+      } catch (error: any) {
+        console.error("Error loading subcontractors:", error);
+        console.error("Error response:", error.response?.data);
+
+        // Try to load from localStorage as fallback
+        const cachedSubs = localStorage.getItem(`subcontractors_${userId}`);
+        if (cachedSubs) {
+          try {
+            const parsedSubs = JSON.parse(cachedSubs);
+            console.log("Using cached subcontractors:", parsedSubs);
+
+            // ✅ Also normalize cached data
+            const normalizedCached = parsedSubs.map((sub: any) => ({
+              id: sub.id || sub.contractorKey || sub.subcontractorKey,
+              first_name:
+                sub.first_name ||
+                sub.firstName ||
+                sub.contractorName?.split(" ")[0] ||
+                "",
+              last_name:
+                sub.last_name ||
+                sub.lastName ||
+                sub.contractorName?.split(" ").slice(1).join(" ") ||
+                "",
+              email: sub.email || sub.contractorEmail || "",
+              company_name:
+                sub.company_name || sub.companyName || sub.contractorCompany,
+              trade_specialty:
+                sub.trade_specialty ||
+                sub.tradeSpecialty ||
+                sub.contractorTrade,
+            }));
+
+            setSubcontractors(normalizedCached);
+          } catch (e) {
+            console.error("Error parsing cached subcontractors:", e);
+          }
+        }
+      } finally {
+        setLoadingSubcontractors(false);
+      }
+    };
+
+    if (isOpen && project) {
+      loadSubcontractors();
+    }
+  }, [isOpen, project, isManager, userId]);
+
+  // Auto-select current user if they're a subcontractor
+  useEffect(() => {
+    if (isSubcontractor && userId) {
+      setSelectedSubcontractor(userId);
+    }
+  }, [isSubcontractor, userId]);
 
   // Set default asset if provided
   useEffect(() => {
@@ -305,6 +447,8 @@ export function CreateBookingForm({
           start_time: startTimeFormatted,
           end_time: endTimeFormatted,
           notes: description || title,
+          // ✅ Include subcontractor_id (optional for managers)
+          subcontractor_id: selectedSubcontractor || undefined,
         };
 
         console.log("Creating booking:", bookingData);
@@ -319,12 +463,18 @@ export function CreateBookingForm({
       const createdBookings = await Promise.all(bookingPromises);
       console.log("Bookings created successfully:", createdBookings);
 
+      // ✅ Show success message based on status
+      const firstBooking = createdBookings[0];
+      const statusMessage =
+        firstBooking.status === "confirmed"
+          ? "Booking(s) confirmed!"
+          : "Booking(s) submitted for approval!";
+
       // Transform to calendar events
       const events = createdBookings.map((booking) => {
         const asset = assets.find((a) => a.assetKey === booking.asset_id);
         const assetTitle = asset?.assetTitle || booking.asset_id;
 
-        // Combine booking date and times to create full Date objects
         const startDateTime = new Date(
           `${booking.booking_date}T${booking.start_time}`
         );
@@ -344,6 +494,10 @@ export function CreateBookingForm({
       });
 
       onSave(events);
+
+      // ✅ Show success alert
+      alert(statusMessage);
+
       resetForm();
       onClose();
     } catch (error: any) {
@@ -370,12 +524,13 @@ export function CreateBookingForm({
     setEndMinute("");
     setSelectedAssetIds([]);
     setSelectedAssets([]);
+    setSelectedSubcontractor(isSubcontractor ? userId || "" : "");
     setError(null);
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-full max-w-md mx-auto rounded-xl p-3 sm:p-6 bg-white shadow-lg">
+      <DialogContent className="w-full max-w-md mx-auto rounded-xl p-3 sm:p-6 bg-white shadow-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader className="mb-4">
           <DialogTitle className="text-lg sm:text-xl font-semibold">
             Book Time Slot
@@ -401,7 +556,39 @@ export function CreateBookingForm({
           </div>
         )}
 
-        <div className="space-y-6">
+        {/* ✅ NEW: Booking Status Info */}
+        <Alert
+          className={
+            isManager
+              ? "bg-green-50 border-green-200"
+              : "bg-blue-50 border-blue-200"
+          }
+        >
+          {isManager ? (
+            <CheckCircle className="h-4 w-4 text-green-600" />
+          ) : (
+            <Info className="h-4 w-4 text-blue-600" />
+          )}
+          <AlertDescription
+            className={
+              isManager ? "text-green-700 text-xs" : "text-blue-700 text-xs"
+            }
+          >
+            {isManager ? (
+              <>
+                <strong>Manager Booking:</strong> Your booking will be
+                automatically confirmed.
+              </>
+            ) : (
+              <>
+                <strong>Subcontractor Booking:</strong> Your booking will be
+                pending until approved by a manager.
+              </>
+            )}
+          </AlertDescription>
+        </Alert>
+
+        <div className="space-y-6 mt-4">
           {/* Basic Info */}
           <div className="space-y-4">
             <div className="space-y-2">
@@ -579,6 +766,104 @@ export function CreateBookingForm({
               </SelectContent>
             </Select>
           </div>
+
+          {/* ✅ FIXED: Subcontractor Selection with clean display */}
+          {isManager && (
+            <div className="space-y-2">
+              <Label>
+                Assign to Subcontractor
+                <span className="text-gray-500 text-xs ml-2">(Optional)</span>
+              </Label>
+              <Select
+                value={selectedSubcontractor || "none"}
+                onValueChange={(value) => {
+                  console.log("Selected value:", value);
+                  if (value === "none") {
+                    setSelectedSubcontractor("");
+                  } else {
+                    setSelectedSubcontractor(value);
+                  }
+                }}
+                disabled={isSubmitting || loadingSubcontractors}
+              >
+                <SelectTrigger className="h-9 w-full text-sm">
+                  <SelectValue>
+                    {selectedSubcontractor
+                      ? (() => {
+                          const selected = subcontractors.find(
+                            (s) => s.id === selectedSubcontractor
+                          );
+                          if (!selected) return "None (Unassigned)";
+
+                          const name =
+                            `${selected.first_name} ${selected.last_name}`.trim();
+                          return name || selected.email || "Unknown";
+                        })()
+                      : "None (Unassigned)"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">
+                    <span className="font-normal">None (Unassigned)</span>
+                  </SelectItem>
+
+                  {loadingSubcontractors ? (
+                    <div className="px-2 py-1.5 text-sm text-gray-500">
+                      Loading subcontractors...
+                    </div>
+                  ) : subcontractors.length === 0 ? (
+                    <div className="px-2 py-1.5 text-sm text-gray-500">
+                      No subcontractors in this project
+                    </div>
+                  ) : (
+                    subcontractors.map((sub, index) => {
+                      if (!sub.id) {
+                        console.error(
+                          `Subcontractor at index ${index} has no id:`,
+                          sub
+                        );
+                        return null;
+                      }
+
+                      const fullName =
+                        `${sub.first_name} ${sub.last_name}`.trim();
+                      const displayName = fullName || sub.email || "Unknown";
+
+                      return (
+                        <SelectItem key={sub.id} value={sub.id}>
+                          <div className="flex flex-col py-1">
+                            <span className="font-medium">{displayName}</span>
+                            {/* ✅ Only show company name if it exists and is not "N/A" */}
+                            {sub.company_name && sub.company_name !== "N/A" && (
+                              <span className="text-xs text-gray-500">
+                                {sub.company_name}
+                              </span>
+                            )}
+                            {/* ✅ Optionally show trade specialty */}
+                            {sub.trade_specialty &&
+                              sub.trade_specialty !== "N/A" &&
+                              sub.trade_specialty !== "General" && (
+                                <span className="text-xs text-gray-400">
+                                  {sub.trade_specialty}
+                                </span>
+                              )}
+                          </div>
+                        </SelectItem>
+                      );
+                    })
+                  )}
+                </SelectContent>
+              </Select>
+
+              <p className="text-xs text-gray-500">
+                {subcontractors.length > 0
+                  ? `${subcontractors.length} subcontractor${
+                      subcontractors.length !== 1 ? "s" : ""
+                    } available`
+                  : "Leave unassigned to create a general booking"}
+              </p>
+            </div>
+          )}
 
           {/* Asset Selection */}
           <div className="space-y-2">
