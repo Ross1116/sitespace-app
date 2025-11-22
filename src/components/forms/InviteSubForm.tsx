@@ -63,13 +63,35 @@ interface Contractor {
 
 // ===== HELPER FUNCTIONS =====
 const generateTemporaryPassword = (): string => {
-  const chars =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
-  let password = "";
-  for (let i = 0; i < 12; i++) {
-    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  const length = 12;
+  const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const lower = "abcdefghijklmnopqrstuvwxyz";
+  const numbers = "0123456789";
+  const special = "!@#$%^&*";
+  const allChars = upper + lower + numbers + special;
+
+  // 1. Start by guaranteeing one character from each category
+  const passwordArray = [
+    upper.charAt(Math.floor(Math.random() * upper.length)),
+    lower.charAt(Math.floor(Math.random() * lower.length)),
+    numbers.charAt(Math.floor(Math.random() * numbers.length)), // Solves your error
+    special.charAt(Math.floor(Math.random() * special.length)),
+  ];
+
+  // 2. Fill the remaining length with random characters from the full pool
+  for (let i = passwordArray.length; i < length; i++) {
+    passwordArray.push(
+      allChars.charAt(Math.floor(Math.random() * allChars.length))
+    );
   }
-  return password;
+
+  // 3. Shuffle the array to ensure the guaranteed characters aren't always at the start
+  for (let i = passwordArray.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [passwordArray[i], passwordArray[j]] = [passwordArray[j], passwordArray[i]];
+  }
+
+  return passwordArray.join("");
 };
 
 const SubFormModal: React.FC<ContractorModalProps> = ({
