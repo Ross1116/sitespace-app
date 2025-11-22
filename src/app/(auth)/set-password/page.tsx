@@ -47,7 +47,7 @@ function SetPasswordForm() {
     return null;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
@@ -67,10 +67,11 @@ function SetPasswordForm() {
     setIsLoading(true);
 
     try {
-      // reuse the reset-password endpoint since the token logic is identical
+      // FIX: Add confirm_password to the payload
       await api.post("/auth/reset-password", {
         token: token,
         password: password,
+        confirm_password: confirmPassword, // <--- THIS WAS MISSING
       });
 
       setSuccess("Account activated successfully! Logging you in...");
