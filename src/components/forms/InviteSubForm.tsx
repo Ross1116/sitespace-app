@@ -67,31 +67,33 @@ const generateTemporaryPassword = (): string => {
   const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   const lower = "abcdefghijklmnopqrstuvwxyz";
   const numbers = "0123456789";
-  const special = "!@#$%^&*";
+  const special = "!@#$%^&*"; // ✅ Specifically defined special chars
   const allChars = upper + lower + numbers + special;
 
-  // 1. Start by guaranteeing one character from each category
-  const passwordArray = [
+  // 1. GUARANTEE one of each type
+  const requiredChars = [
     upper.charAt(Math.floor(Math.random() * upper.length)),
     lower.charAt(Math.floor(Math.random() * lower.length)),
-    numbers.charAt(Math.floor(Math.random() * numbers.length)), // Solves your error
-    special.charAt(Math.floor(Math.random() * special.length)),
+    numbers.charAt(Math.floor(Math.random() * numbers.length)),
+    special.charAt(Math.floor(Math.random() * special.length)), // Guaranteed special char
   ];
 
-  // 2. Fill the remaining length with random characters from the full pool
-  for (let i = passwordArray.length; i < length; i++) {
-    passwordArray.push(
+  // 2. Fill the rest of the length with random characters
+  const remainingLength = length - requiredChars.length;
+  for (let i = 0; i < remainingLength; i++) {
+    requiredChars.push(
       allChars.charAt(Math.floor(Math.random() * allChars.length))
     );
   }
 
-  // 3. Shuffle the array to ensure the guaranteed characters aren't always at the start
-  for (let i = passwordArray.length - 1; i > 0; i--) {
+  // 3. Shuffle the array so the special chars aren't always at the start
+  // Fisher-Yates Shuffle
+  for (let i = requiredChars.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [passwordArray[i], passwordArray[j]] = [passwordArray[j], passwordArray[i]];
+    [requiredChars[i], requiredChars[j]] = [requiredChars[j], requiredChars[i]];
   }
 
-  return passwordArray.join("");
+  return requiredChars.join("");
 };
 
 const SubFormModal: React.FC<ContractorModalProps> = ({
