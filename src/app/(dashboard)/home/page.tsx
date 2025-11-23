@@ -59,29 +59,51 @@ export default function HomePage() {
 
     const fetchProjects = async () => {
       try {
-        if (!user || hasFetched.current) {
+        if (!user || !userId) {
           console.log("No user ID available, skipping project fetch");
           return;
         }
 
-        // Updated to use new backend endpoint with filters
-        const response = await api.get("/projects/", {
-          params: {
-            my_projects: true,
-            limit: 100,
-            skip: 0,
-          },
-        });
+        // Prevent double fetching in Strict Mode, but ensure we fetch if user just loaded
+        if (hasFetched.current && project.length > 0) return;
 
-        // Updated to match new response structure
-        const projectData = response.data?.projects || [];
-        setProject(projectData);
+        let projectData = [];
 
-        console.log(projectData);
+        // ✅ LOGIC CHANGE: Check Role to determine Endpoint
+        if (user.role === "subcontractor") {
+          // 1. Subcontractor Endpoint
+          const response = await api.get(
+            `/subcontractors/${userId}/projects`
+          );
+          
+          // Map the subcontractor response (project_id, project_name) 
+          // to the format expected by ProjectSelector (id, name)
+          projectData = response.data.map((p: any) => ({
+            id: p.project_id,
+            name: p.project_name,
+            location: p.project_location,
+            status: p.is_active ? "active" : "inactive",
+            ...p // keep original fields just in case
+          }));
 
-        if (projectData.length > 0) {
-          console.log(projectData);
+        } else {
+          // 2. Manager/Admin Endpoint
+          const response = await api.get("/projects/", {
+            params: {
+              my_projects: true,
+              limit: 100,
+              skip: 0,
+            },
+          });
+          projectData = response.data?.projects || [];
         }
+
+        setProject(projectData);
+        
+        if (projectData.length > 0) {
+          console.log("Projects loaded:", projectData);
+        }
+
       } catch (error) {
         console.error("Error fetching projects:", error);
       }
@@ -114,7 +136,7 @@ export default function HomePage() {
 
     fetchProjects();
     fetchBookings();
-  }, [userId, user]);
+  }, [userId, user, project.length]); // Added project.length to deps to allow refetch if empty
 
   const getQuickAccessCards = () => {
     // Default cards for all users
@@ -161,27 +183,27 @@ export default function HomePage() {
   const handleOnChange = () => {
     const fetchAssets = async () => {
       try {
-        if (!user || hasFetched.current) {
-          console.log("No user ID available, skipping project fetch");
+        if (!user || !userId) {
+          console.log("No user ID available, skipping asset fetch");
           return;
         }
 
+        // Note: Subcontractors might not have permission for this endpoint depending on backend
+        // You might need to wrap this in a role check if subs shouldn't fetch asset lists like this
         const response = await api.get("/api/Asset/getAssetList", {
           params: { asset_project: userId },
         });
 
         const assetData =
           response.data?.asset_list || response.data?.assetlist || [];
-        console.log(assetData);
 
         if (assetData.length > 0) {
-          console.log(assetData);
+          console.log("Assets loaded:", assetData);
         }
         localStorage.setItem(`assets_${userId}`, JSON.stringify(assetData));
       } catch (error) {
-        console.error("Error fetching projects:", error);
+        console.error("Error fetching assets:", error);
       }
-      hasFetched.current = true;
     };
 
     fetchAssets();
