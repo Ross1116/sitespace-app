@@ -47,7 +47,7 @@ const combineDateAndTime = (dateStr: string, timeStr: string): Date => {
     const cleanDate = dateStr.split('T')[0]; 
     const cleanTime = timeStr ? timeStr.split('T').pop() : "00:00:00"; 
     return new Date(`${cleanDate}T${cleanTime}`);
-  } catch (e) {
+  } catch {
     return new Date();
   }
 };
@@ -135,7 +135,7 @@ export default function HomePage() {
                 setProject(parsed);
                 hasProjectCache = true;
             }
-        } catch (e) { localStorage.removeItem(projectsListCacheKey); }
+        } catch { localStorage.removeItem(projectsListCacheKey); }
     }
 
     // Bookings Cache
@@ -148,7 +148,7 @@ export default function HomePage() {
                 setLoadingBookings(false); // Hide spinner immediately
                 hasBookingCache = true;
             }
-        } catch (e) { localStorage.removeItem(bookingsCacheKey); }
+        } catch { localStorage.removeItem(bookingsCacheKey); }
     }
 
     // 2. FETCH FRESH DATA (Background)

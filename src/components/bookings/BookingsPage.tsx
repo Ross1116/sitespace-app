@@ -48,7 +48,7 @@ const combineDateAndTime = (dateStr: string, timeStr: string): Date => {
     const cleanTime = timeStr ? timeStr.split('T').pop() : "00:00:00";
     // Construct ISO string for Local Time parsing
     return new Date(`${cleanDate}T${cleanTime}`);
-  } catch (e) {
+  } catch {
     return new Date();
   }
 };
@@ -217,7 +217,7 @@ export default function BookingsPage() {
             setLoading(false); // Hide spinner immediately
             hasCache = true;
         }
-      } catch (error) {
+      } catch {
         localStorage.removeItem(storageKey);
       }
     }

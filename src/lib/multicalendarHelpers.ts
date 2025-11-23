@@ -193,5 +193,5 @@ function parseTimeToDate(dateStr: string, timeStr: string): Date {
     const hours = parseInt(timeParts[0], 10);
     const minutes = parseInt(timeParts[1], 10);
     return new Date(new Date(dateOnly).setHours(hours, minutes, 0, 0));
-  } catch (e) { return new Date(); }
+  } catch { return new Date(); }
 }
