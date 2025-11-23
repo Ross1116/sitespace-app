@@ -175,28 +175,34 @@ export default function HomePage() {
       try {
         if (!user || !userId) return;
 
-        // ✅ FIX: Get the SELECTED PROJECT ID from localStorage
-        // Do NOT use userId here.
         const storedProjectString = localStorage.getItem(`project_${userId}`);
         
         if (!storedProjectString) {
-            console.log("No project selected, skipping asset fetch");
+            console.log("No project selected");
             return;
         }
 
         const storedProject = JSON.parse(storedProjectString);
-        const projectId = storedProject.id || storedProject.project_id; // Handle both formats
+        const projectId = storedProject.id || storedProject.project_id;
+        
+        const isProjectValid = project.some((p: any) => 
+          (p.id === projectId) || (p.project_id === projectId)
+        );
+
+        if (!isProjectValid && project.length > 0) {
+           console.warn("User tried to access a project they no longer have access to.");
+           localStorage.removeItem(`project_${userId}`);
+           return; 
+        }
 
         if (!projectId) return;
 
         const response = await api.get("/api/Asset/getAssetList", {
-          params: { asset_project: projectId }, // ✅ Sending Project ID now
+          params: { asset_project: projectId },
         });
 
         const assetData =
           response.data?.asset_list || response.data?.assetlist || [];
-
-        console.log("Assets loaded for project:", projectId, assetData);
         
         localStorage.setItem(`assets_${userId}`, JSON.stringify(assetData));
       } catch (error) {
@@ -204,7 +210,10 @@ export default function HomePage() {
       }
     };
 
-    fetchAssets();
+    // Only run this if projects have been loaded
+    if (project.length > 0) {
+        fetchAssets();
+    }
   };
 
   const formatTime = (timeStr: string): string => {
