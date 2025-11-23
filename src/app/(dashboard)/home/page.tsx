@@ -79,8 +79,7 @@ export default function HomePage() {
          return; 
       }
 
-      // UPDATED API CALL HERE
-      const response = await api.get("/assets", {
+      const response = await api.get("/assets/", {
         params: { 
           project_id: projectId,
           limit: 100 // Optional: ensure we get enough assets
@@ -95,7 +94,7 @@ export default function HomePage() {
       console.error("Error fetching assets:", error);
     }
   }, [project, userId, user]);
-  
+
   useEffect(() => {
     const hour = new Date().getHours();
     if (hour < 12) setGreeting("Good morning");
