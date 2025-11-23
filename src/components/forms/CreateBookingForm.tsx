@@ -22,7 +22,7 @@ import { format, addMinutes } from "date-fns";
 import { CalendarEvent } from "@/components/ui/full-calendar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { X, Calendar as CalendarIcon, Info, CheckCircle } from "lucide-react"; // ✅ Added icons
+import { X, Calendar as CalendarIcon, Info, CheckCircle } from "lucide-react";
 import { useAuth } from "@/app/context/AuthContext";
 import api from "@/lib/api";
 import { Calendar } from "@/components/ui/calendar";
@@ -32,7 +32,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Label } from "../ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert"; // ✅ Added Alert
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 // ===== TYPE DEFINITIONS =====
 type CreateBookingForm = {
@@ -49,7 +49,7 @@ type CreateBookingForm = {
 
 interface BookingCreateRequest {
   project_id?: string;
-  subcontractor_id?: string; // ✅ Made optional
+  subcontractor_id?: string;
   asset_id: string;
   booking_date: string;
   start_time: string;
@@ -66,13 +66,12 @@ interface BookingDetail {
   booking_date: string;
   start_time: string;
   end_time: string;
-  status: string; // ✅ Will be "pending" or "confirmed"
+  status: string;
   notes?: string;
   created_at: string;
   updated_at: string;
 }
 
-// ✅ Added Subcontractor interface
 interface Subcontractor {
   id: string;
   first_name: string;
@@ -116,13 +115,11 @@ export function CreateBookingForm({
   const [assetError, setAssetError] = useState<boolean>(false);
   const [project, setProject] = useState<any>(null);
 
-  // ✅ NEW: Subcontractor selection state
   const [subcontractors, setSubcontractors] = useState<Subcontractor[]>([]);
   const [selectedSubcontractor, setSelectedSubcontractor] =
     useState<string>("");
   const [loadingSubcontractors, setLoadingSubcontractors] = useState(false);
 
-  // ✅ NEW: Determine user role
   const isManager = user?.role === "manager" || user?.role === "admin";
   const isSubcontractor = user?.role === "subcontractor";
 
@@ -152,7 +149,7 @@ export function CreateBookingForm({
     }
   }, [userId]);
 
-  // Load assets from localStorage
+  // Load assets from localStorage - FIXED MAPPING HERE
   useEffect(() => {
     const assetString = localStorage.getItem(`assets_${userId}`);
     if (!assetString) {
@@ -164,7 +161,15 @@ export function CreateBookingForm({
 
     try {
       const parsedAssets = JSON.parse(assetString);
-      setAssets(parsedAssets);
+      
+      // ✅ FIX: Map backend fields (id, name) to frontend fields (assetKey, assetTitle)
+      const normalizedAssets = parsedAssets.map((a: any) => ({
+        ...a,
+        assetKey: a.id || a.assetKey,       // Use 'id' from backend as 'assetKey'
+        assetTitle: a.name || a.assetTitle  // Use 'name' from backend as 'assetTitle'
+      }));
+
+      setAssets(normalizedAssets);
       setAssetError(false);
     } catch (error) {
       console.error("Error parsing assets:", error);
@@ -177,23 +182,15 @@ export function CreateBookingForm({
   useEffect(() => {
     const loadSubcontractors = async () => {
       if (!project?.id || !isManager) {
-        console.log("Skipping subcontractor load:", {
-          hasProject: !!project?.id,
-          isManager,
-        });
         return;
       }
 
       setLoadingSubcontractors(true);
       try {
-        console.log("Loading subcontractors for project:", project.id);
         const response = await api.get(
           `/projects/${project.id}/subcontractors`
         );
 
-        console.log("Full API response:", response.data);
-
-        // Handle different possible response structures
         let subsData = [];
 
         if (Array.isArray(response.data)) {
@@ -207,13 +204,6 @@ export function CreateBookingForm({
           subsData = response.data.data;
         }
 
-        // ✅ Log the structure of the first item
-        if (subsData.length > 0) {
-          console.log("First subcontractor structure:", subsData[0]);
-          console.log("Available keys:", Object.keys(subsData[0]));
-        }
-
-        // ✅ Normalize the data structure
         const normalizedSubs = subsData.map((sub: any) => ({
           id: sub.id || sub.subcontractorKey || sub.contractor_id || sub.uuid,
           first_name:
@@ -233,24 +223,16 @@ export function CreateBookingForm({
             sub.trade_specialty || sub.tradeSpecialty || sub.contractorTrade,
         }));
 
-        console.log("Normalized subcontractors:", normalizedSubs);
         setSubcontractors(normalizedSubs);
 
-        if (normalizedSubs.length === 0) {
-          console.warn("No subcontractors found for project", project.id);
-        }
       } catch (error: any) {
         console.error("Error loading subcontractors:", error);
-        console.error("Error response:", error.response?.data);
-
-        // Try to load from localStorage as fallback
+        
+        // Fallback
         const cachedSubs = localStorage.getItem(`subcontractors_${userId}`);
         if (cachedSubs) {
           try {
             const parsedSubs = JSON.parse(cachedSubs);
-            console.log("Using cached subcontractors:", parsedSubs);
-
-            // ✅ Also normalize cached data
             const normalizedCached = parsedSubs.map((sub: any) => ({
               id: sub.id || sub.contractorKey || sub.subcontractorKey,
               first_name:
@@ -271,7 +253,6 @@ export function CreateBookingForm({
                 sub.tradeSpecialty ||
                 sub.contractorTrade,
             }));
-
             setSubcontractors(normalizedCached);
           } catch (e) {
             console.error("Error parsing cached subcontractors:", e);
@@ -316,7 +297,7 @@ export function CreateBookingForm({
         setSelectedAssetIds([matchingAsset.assetKey]);
       }
     }
-  }, [defaultAssetName, defaultAsset, assets]);
+  }, [defaultAssetName, defaultAsset, assets, selectedAssets.length]);
 
   // Update end time when duration or start time changes
   useEffect(() => {
@@ -436,8 +417,6 @@ export function CreateBookingForm({
       const startTimeFormatted = format(customStartTime, "HH:mm:ss");
       const endTimeFormatted = format(customEndTime, "HH:mm:ss");
 
-      console.log("Creating bookings for assets:", selectedAssetIds);
-
       // Create one booking per asset
       const bookingPromises = selectedAssetIds.map(async (assetId) => {
         const bookingData: BookingCreateRequest = {
@@ -447,11 +426,8 @@ export function CreateBookingForm({
           start_time: startTimeFormatted,
           end_time: endTimeFormatted,
           notes: description || title,
-          // ✅ Include subcontractor_id (optional for managers)
           subcontractor_id: selectedSubcontractor || undefined,
         };
-
-        console.log("Creating booking:", bookingData);
 
         const response = await api.post<BookingDetail>(
           "/bookings/",
@@ -461,15 +437,7 @@ export function CreateBookingForm({
       });
 
       const createdBookings = await Promise.all(bookingPromises);
-      console.log("Bookings created successfully:", createdBookings);
-
-      // ✅ Show success message based on status
-      const firstBooking = createdBookings[0];
-      const statusMessage =
-        firstBooking.status === "confirmed"
-          ? "Booking(s) confirmed!"
-          : "Booking(s) submitted for approval!";
-
+      
       // Transform to calendar events
       const events = createdBookings.map((booking) => {
         const asset = assets.find((a) => a.assetKey === booking.asset_id);
@@ -494,9 +462,13 @@ export function CreateBookingForm({
       });
 
       onSave(events);
-
-      // ✅ Show success alert
-      alert(statusMessage);
+      
+      const firstBooking = createdBookings[0];
+      alert(
+        firstBooking.status === "confirmed"
+          ? "Booking(s) confirmed!"
+          : "Booking(s) submitted for approval!"
+      );
 
       resetForm();
       onClose();
@@ -556,7 +528,6 @@ export function CreateBookingForm({
           </div>
         )}
 
-        {/* ✅ NEW: Booking Status Info */}
         <Alert
           className={
             isManager
@@ -767,7 +738,7 @@ export function CreateBookingForm({
             </Select>
           </div>
 
-          {/* ✅ FIXED: Subcontractor Selection with clean display */}
+          {/* Subcontractor Selection */}
           {isManager && (
             <div className="space-y-2">
               <Label>
@@ -777,7 +748,6 @@ export function CreateBookingForm({
               <Select
                 value={selectedSubcontractor || "none"}
                 onValueChange={(value) => {
-                  console.log("Selected value:", value);
                   if (value === "none") {
                     setSelectedSubcontractor("");
                   } else {
@@ -816,15 +786,7 @@ export function CreateBookingForm({
                       No subcontractors in this project
                     </div>
                   ) : (
-                    subcontractors.map((sub, index) => {
-                      if (!sub.id) {
-                        console.error(
-                          `Subcontractor at index ${index} has no id:`,
-                          sub
-                        );
-                        return null;
-                      }
-
+                    subcontractors.map((sub) => {
                       const fullName =
                         `${sub.first_name} ${sub.last_name}`.trim();
                       const displayName = fullName || sub.email || "Unknown";
@@ -833,20 +795,11 @@ export function CreateBookingForm({
                         <SelectItem key={sub.id} value={sub.id}>
                           <div className="flex flex-col py-1">
                             <span className="font-medium">{displayName}</span>
-                            {/* ✅ Only show company name if it exists and is not "N/A" */}
                             {sub.company_name && sub.company_name !== "N/A" && (
                               <span className="text-xs text-gray-500">
                                 {sub.company_name}
                               </span>
                             )}
-                            {/* ✅ Optionally show trade specialty */}
-                            {sub.trade_specialty &&
-                              sub.trade_specialty !== "N/A" &&
-                              sub.trade_specialty !== "General" && (
-                                <span className="text-xs text-gray-400">
-                                  {sub.trade_specialty}
-                                </span>
-                              )}
                           </div>
                         </SelectItem>
                       );
@@ -854,14 +807,6 @@ export function CreateBookingForm({
                   )}
                 </SelectContent>
               </Select>
-
-              <p className="text-xs text-gray-500">
-                {subcontractors.length > 0
-                  ? `${subcontractors.length} subcontractor${
-                      subcontractors.length !== 1 ? "s" : ""
-                    } available`
-                  : "Leave unassigned to create a general booking"}
-              </p>
             </div>
           )}
 
@@ -920,7 +865,7 @@ export function CreateBookingForm({
                               ]);
                               setSelectedAssetIds([
                                 ...selectedAssetIds,
-                                asset.assetKey,
+                                asset.assetKey, // Ensure using correct ID
                               ]);
                             } else {
                               setSelectedAssets(

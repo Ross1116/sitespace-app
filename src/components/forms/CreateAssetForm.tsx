@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -17,914 +18,470 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { format, addMinutes } from "date-fns";
-import { CalendarEvent } from "@/components/ui/full-calendar";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import { X, Calendar as CalendarIcon, Info, CheckCircle } from "lucide-react";
-import { useAuth } from "@/app/context/AuthContext";
+import { cn } from "@/lib/utils";
 import api from "@/lib/api";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Label } from "../ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useAuth } from "@/app/context/AuthContext";
 
 // ===== TYPE DEFINITIONS =====
-type CreateBookingForm = {
+interface AssetModalProps {
   isOpen: boolean;
-  onClose: () => void;
-  startTime: Date | null;
-  endTime: Date | null;
-  onSave: (newEvent: Partial<CalendarEvent> | Partial<CalendarEvent>[]) => void;
-  selectedAssetId?: string;
-  bookedAssets?: string[];
-  defaultAsset?: string;
-  defaultAssetName?: string;
+  onClose: (open: boolean) => void;
+  onSave: () => void;
+  startTime?: Date;
+  endTime?: Date;
+}
+
+interface Asset {
+  assetTitle: string;
+  assetCode: string;
+  assetType: string;
+  assetLocation: string;
+  maintenanceStartdt: string;
+  maintenanceEnddt: string;
+  assetPoc: string;
+  assetStatus: string;
+  usageInstructions: string;
+  assetProject: string;
+}
+
+interface AssetCreateRequest {
+  asset_code: string;
+  name: string;
+  asset_type: string;
+  description?: string;
+  status: "available" | "in_use" | "maintenance" | "retired";
+  project_id?: string;
+  location?: string;
+  poc?: string;
+  usage_instructions?: string;
+  maintenance_start_date?: string;
+  maintenance_end_date?: string;
+}
+
+// ===== HELPER FUNCTIONS =====
+const mapFrontendStatusToBackend = (
+  status: string
+): "available" | "in_use" | "maintenance" | "retired" => {
+  const statusMap: Record<string, "available" | "in_use" | "maintenance" | "retired"> = {
+    Operational: "available",
+    "In Use": "in_use",
+    Maintenance: "maintenance",
+    "Out of Service": "retired",
+  };
+  return statusMap[status] || "available";
 };
 
-interface BookingCreateRequest {
-  project_id?: string;
-  subcontractor_id?: string;
-  asset_id: string;
-  booking_date: string;
-  start_time: string;
-  end_time: string;
-  notes?: string;
-}
+const generateAssetCode = (assetType: string, assetTitle: string): string => {
+  // Generate a simple asset code based on type and title
+  const typePrefix = assetType
+    .substring(0, 3)
+    .toUpperCase()
+    .replace(/[^A-Z]/g, "");
+  const titleSuffix = assetTitle
+    .substring(0, 3)
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "");
+  const timestamp = Date.now().toString().slice(-4);
+  return `${typePrefix || "AST"}-${titleSuffix || "XXX"}-${timestamp}`;
+};
 
-interface BookingDetail {
-  id: string;
-  project_id?: string;
-  manager_id: string;
-  subcontractor_id?: string;
-  asset_id: string;
-  booking_date: string;
-  start_time: string;
-  end_time: string;
-  status: string;
-  notes?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-interface Subcontractor {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  company_name?: string;
-  trade_specialty?: string;
-}
-
-export function CreateBookingForm({
-  isOpen,
-  onClose,
-  startTime = new Date(),
-  onSave,
-  defaultAsset,
-  defaultAssetName,
-  bookedAssets = [],
-}: CreateBookingForm) {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [selectedAssets, setSelectedAssets] = useState<string[]>([]);
-  const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([]);
-  const [duration, setDuration] = useState("60");
-  const [selectedDate, setSelectedDate] = useState(new Date());
+const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
+  const [project, setProject] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
   const userId = user?.id;
 
-  const [customStartTime, setCustomStartTime] = useState<Date | null>(
-    startTime
-  );
-  const [customEndTime, setCustomEndTime] = useState<Date | null>(null);
-
-  const [startHour, setStartHour] = useState<string>("");
-  const [startMinute, setStartMinute] = useState<string>("");
-  const [endHour, setEndHour] = useState<string>("");
-  const [endMinute, setEndMinute] = useState<string>("");
-
-  const [assets, setAssets] = useState<any[]>([]);
-  const [assetError, setAssetError] = useState<boolean>(false);
-  const [project, setProject] = useState<any>(null);
-
-  const [subcontractors, setSubcontractors] = useState<Subcontractor[]>([]);
-  const [selectedSubcontractor, setSelectedSubcontractor] =
-    useState<string>("");
-  const [loadingSubcontractors, setLoadingSubcontractors] = useState(false);
-
-  const isManager = user?.role === "manager" || user?.role === "admin";
-  const isSubcontractor = user?.role === "subcontractor";
-
-  const handleDurationChange = (newDuration: string) => {
-    setDuration(newDuration);
-    const durationMinutes = parseInt(newDuration, 10);
-
-    if (customStartTime) {
-      const newEndTime = new Date(customStartTime);
-      newEndTime.setMinutes(newEndTime.getMinutes() + durationMinutes);
-      setCustomEndTime(newEndTime);
-      setEndHour(newEndTime.getHours().toString().padStart(2, "0"));
-      setEndMinute(newEndTime.getMinutes().toString().padStart(2, "0"));
-    }
-  };
+  const [asset, setAsset] = useState<Asset>({
+    assetTitle: "",
+    assetCode: "",
+    assetType: "",
+    assetLocation: "",
+    maintenanceStartdt: "",
+    maintenanceEnddt: "",
+    assetPoc: "",
+    assetStatus: "Operational",
+    usageInstructions: "",
+    assetProject: "",
+  });
 
   // Load project from localStorage
   useEffect(() => {
     const projectString = localStorage.getItem(`project_${userId}`);
-    if (projectString) {
-      try {
-        const parsedProject = JSON.parse(projectString);
-        setProject(parsedProject);
-      } catch (error) {
-        console.error("Error parsing project:", error);
-      }
-    }
-  }, [userId]);
-
-  // Load assets from localStorage - FIXED MAPPING HERE
-  useEffect(() => {
-    const assetString = localStorage.getItem(`assets_${userId}`);
-    if (!assetString) {
-      console.error("No assets found in localStorage");
-      setAssetError(true);
-      setAssets([]);
+    if (!projectString) {
+      console.error("No project found in localStorage");
       return;
     }
 
     try {
-      const parsedAssets = JSON.parse(assetString);
-      
-      // ✅ FIX: Map backend fields (id, name) to frontend fields (assetKey, assetTitle)
-      const normalizedAssets = parsedAssets.map((a: any) => ({
-        ...a,
-        assetKey: a.id || a.assetKey,       // Use 'id' from backend as 'assetKey'
-        assetTitle: a.name || a.assetTitle  // Use 'name' from backend as 'assetTitle'
-      }));
+      const parsedProject = JSON.parse(projectString);
+      const parsedId = parsedProject.id;
+      setProject(parsedId);
 
-      setAssets(normalizedAssets);
-      setAssetError(false);
+      setAsset((prev) => ({
+        ...prev,
+        assetProject: parsedId,
+      }));
     } catch (error) {
-      console.error("Error parsing assets:", error);
-      setAssetError(true);
-      setAssets([]);
+      console.error("Error parsing project:", error);
     }
   }, [userId]);
 
-  // Load subcontractors from project (only for managers)
+  // Auto-generate asset code when type and title change
   useEffect(() => {
-    const loadSubcontractors = async () => {
-      if (!project?.id || !isManager) {
-        return;
-      }
-
-      setLoadingSubcontractors(true);
-      try {
-        const response = await api.get(
-          `/projects/${project.id}/subcontractors`
-        );
-
-        let subsData = [];
-
-        if (Array.isArray(response.data)) {
-          subsData = response.data;
-        } else if (
-          response.data.subcontractors &&
-          Array.isArray(response.data.subcontractors)
-        ) {
-          subsData = response.data.subcontractors;
-        } else if (response.data.data && Array.isArray(response.data.data)) {
-          subsData = response.data.data;
-        }
-
-        const normalizedSubs = subsData.map((sub: any) => ({
-          id: sub.id || sub.subcontractorKey || sub.contractor_id || sub.uuid,
-          first_name:
-            sub.first_name ||
-            sub.firstName ||
-            sub.contractorName?.split(" ")[0] ||
-            "",
-          last_name:
-            sub.last_name ||
-            sub.lastName ||
-            sub.contractorName?.split(" ").slice(1).join(" ") ||
-            "",
-          email: sub.email || sub.contractorEmail || "",
-          company_name:
-            sub.company_name || sub.companyName || sub.contractorCompany,
-          trade_specialty:
-            sub.trade_specialty || sub.tradeSpecialty || sub.contractorTrade,
-        }));
-
-        setSubcontractors(normalizedSubs);
-
-      } catch (error: any) {
-        console.error("Error loading subcontractors:", error);
-        
-        // Fallback
-        const cachedSubs = localStorage.getItem(`subcontractors_${userId}`);
-        if (cachedSubs) {
-          try {
-            const parsedSubs = JSON.parse(cachedSubs);
-            const normalizedCached = parsedSubs.map((sub: any) => ({
-              id: sub.id || sub.contractorKey || sub.subcontractorKey,
-              first_name:
-                sub.first_name ||
-                sub.firstName ||
-                sub.contractorName?.split(" ")[0] ||
-                "",
-              last_name:
-                sub.last_name ||
-                sub.lastName ||
-                sub.contractorName?.split(" ").slice(1).join(" ") ||
-                "",
-              email: sub.email || sub.contractorEmail || "",
-              company_name:
-                sub.company_name || sub.companyName || sub.contractorCompany,
-              trade_specialty:
-                sub.trade_specialty ||
-                sub.tradeSpecialty ||
-                sub.contractorTrade,
-            }));
-            setSubcontractors(normalizedCached);
-          } catch (e) {
-            console.error("Error parsing cached subcontractors:", e);
-          }
-        }
-      } finally {
-        setLoadingSubcontractors(false);
-      }
-    };
-
-    if (isOpen && project) {
-      loadSubcontractors();
+    if (asset.assetType && asset.assetTitle && !asset.assetCode) {
+      const generatedCode = generateAssetCode(asset.assetType, asset.assetTitle);
+      setAsset((prev) => ({
+        ...prev,
+        assetCode: generatedCode,
+      }));
     }
-  }, [isOpen, project, isManager, userId]);
+  }, [asset.assetType, asset.assetTitle]);
 
-  // Auto-select current user if they're a subcontractor
-  useEffect(() => {
-    if (isSubcontractor && userId) {
-      setSelectedSubcontractor(userId);
-    }
-  }, [isSubcontractor, userId]);
-
-  // Set default asset if provided
-  useEffect(() => {
-    if (defaultAssetName && assets.length > 0 && selectedAssets.length === 0) {
-      const assetNameWithoutPrefix = defaultAssetName.replace(
-        /^[A-Z]\d{3}-/,
-        ""
-      );
-
-      const matchingAsset = assets.find((asset) => {
-        const assetTitle = asset.assetTitle || "";
-        return (
-          assetTitle.toLowerCase() === assetNameWithoutPrefix.toLowerCase() ||
-          assetTitle.toLowerCase() === defaultAssetName.toLowerCase() ||
-          asset.assetKey === defaultAsset
-        );
-      });
-
-      if (matchingAsset) {
-        setSelectedAssets([matchingAsset.assetKey]);
-        setSelectedAssetIds([matchingAsset.assetKey]);
-      }
-    }
-  }, [defaultAssetName, defaultAsset, assets, selectedAssets.length]);
-
-  // Update end time when duration or start time changes
-  useEffect(() => {
-    if (startHour && startMinute && customStartTime) {
-      const newStartTime = new Date(customStartTime);
-      newStartTime.setHours(parseInt(startHour), parseInt(startMinute));
-
-      const calculatedEndTime = addMinutes(newStartTime, parseInt(duration));
-      setEndHour(calculatedEndTime.getHours().toString().padStart(2, "0"));
-      setEndMinute(calculatedEndTime.getMinutes().toString().padStart(2, "0"));
-
-      setCustomEndTime(calculatedEndTime);
-    }
-  }, [duration, startHour, startMinute, customStartTime]);
-
-  // Initialize times when modal opens
-  useEffect(() => {
-    if (startTime) {
-      const hours = startTime.getHours().toString().padStart(2, "0");
-      const roundedMinutes = Math.round(startTime.getMinutes() / 15) * 15;
-      const minutes = (roundedMinutes % 60).toString().padStart(2, "0");
-
-      setStartHour(hours);
-      setStartMinute(minutes);
-
-      const endTime = addMinutes(startTime, parseInt(duration));
-      setEndHour(endTime.getHours().toString().padStart(2, "0"));
-      setEndMinute(endTime.getMinutes().toString().padStart(2, "0"));
-
-      setCustomStartTime(startTime);
-      setCustomEndTime(endTime);
-    }
-  }, [startTime, isOpen, duration]);
-
-  const formatHour = (hour: number): string => {
-    const period = hour >= 12 ? "PM" : "AM";
-    const displayHour = hour % 12 || 12;
-    return `${displayHour} ${period}`;
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setAsset((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleStartHourChange = (value: string): void => {
-    setStartHour(value);
-    updateStartTime(value, startMinute);
+  const handleMaintenanceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setAsset((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
-  const handleStartMinuteChange = (value: string): void => {
-    setStartMinute(value);
-    updateStartTime(startHour, value);
+  const handleStatusChange = (status: string) => {
+    setAsset((prev) => ({ ...prev, assetStatus: status }));
   };
 
-  const updateStartTime = (hour: string, minute: string): void => {
-    if (hour && minute && customStartTime) {
-      const newStartTime = new Date(customStartTime);
-      newStartTime.setHours(parseInt(hour), parseInt(minute));
-      setCustomStartTime(newStartTime);
-
-      const calculatedEndTime = addMinutes(newStartTime, parseInt(duration));
-      setCustomEndTime(calculatedEndTime);
-      setEndHour(calculatedEndTime.getHours().toString().padStart(2, "0"));
-      setEndMinute(calculatedEndTime.getMinutes().toString().padStart(2, "0"));
-    }
-  };
-
-  const handleEndHourChange = (value: string): void => {
-    setEndHour(value);
-    updateEndTime(value, endMinute);
-  };
-
-  const handleEndMinuteChange = (value: string): void => {
-    setEndMinute(value);
-    updateEndTime(endHour, value);
-  };
-
-  const updateEndTime = (hour: string, minute: string): void => {
-    if (hour && minute && customStartTime) {
-      const newEndTime = new Date(customStartTime);
-      newEndTime.setHours(parseInt(hour), parseInt(minute));
-      setCustomEndTime(newEndTime);
-
-      const durationInMinutes =
-        (newEndTime.getTime() - customStartTime.getTime()) / (1000 * 60);
-
-      if (durationInMinutes > 0) {
-        setDuration(durationInMinutes.toString());
-      }
-    }
-  };
-
-  const removeAsset = (assetId: string) => {
-    setSelectedAssets((prev) => prev.filter((key) => key !== assetId));
-    setSelectedAssetIds((prev) => prev.filter((id) => id !== assetId));
-  };
-
-  const handleSubmit = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setError(null);
 
-    if (!customStartTime || !customEndTime || selectedAssetIds.length === 0) {
-      setError("Please fill in all required fields");
+    // Validation
+    if (!asset.assetTitle.trim()) {
+      setError("Asset name is required");
       return;
     }
 
-    if (!title.trim()) {
-      setError("Please enter a booking title");
+    if (!asset.assetType) {
+      setError("Asset type is required");
       return;
     }
 
-    if (!project) {
-      setError("No project selected");
+    if (!asset.assetCode.trim()) {
+      setError("Asset code is required");
       return;
     }
 
     try {
       setIsSubmitting(true);
+      console.log("Creating new asset...");
 
-      // Format date and times for backend
-      const bookingDate = format(selectedDate, "yyyy-MM-dd");
-      const startTimeFormatted = format(customStartTime, "HH:mm:ss");
-      const endTimeFormatted = format(customEndTime, "HH:mm:ss");
+      // Build create request matching backend AssetCreate schema
+      const createRequest: AssetCreateRequest = {
+        asset_code: asset.assetCode.trim(),
+        name: asset.assetTitle.trim(),
+        asset_type: asset.assetType,
+        description: asset.usageInstructions.trim() || undefined,
+        status: mapFrontendStatusToBackend(asset.assetStatus),
+        project_id: asset.assetProject || undefined,
+        location: asset.assetLocation.trim() || undefined,
+        poc: asset.assetPoc.trim() || undefined,
+        usage_instructions: asset.usageInstructions.trim() || undefined,
+      };
 
-      // Create one booking per asset
-      const bookingPromises = selectedAssetIds.map(async (assetId) => {
-        const bookingData: BookingCreateRequest = {
-          project_id: project.id,
-          asset_id: assetId,
-          booking_date: bookingDate,
-          start_time: startTimeFormatted,
-          end_time: endTimeFormatted,
-          notes: description || title,
-          subcontractor_id: selectedSubcontractor || undefined,
-        };
+      // Add maintenance dates if provided
+      if (asset.maintenanceStartdt) {
+        createRequest.maintenance_start_date = asset.maintenanceStartdt;
+      }
+      if (asset.maintenanceEnddt) {
+        createRequest.maintenance_end_date = asset.maintenanceEnddt;
+      }
 
-        const response = await api.post<BookingDetail>(
-          "/bookings/",
-          bookingData
-        );
-        return response.data;
+      console.log("Create request:", createRequest);
+
+      // Use new backend endpoint
+      const response = await api.post("/assets/", createRequest);
+
+      console.log("Asset created successfully:", response.data);
+
+      // Call onSave callback
+      onSave();
+      onClose(false);
+
+      // Reset form
+      setAsset({
+        assetTitle: "",
+        assetCode: "",
+        assetType: "",
+        assetLocation: "",
+        maintenanceStartdt: "",
+        maintenanceEnddt: "",
+        assetPoc: "",
+        assetStatus: "Operational",
+        usageInstructions: "",
+        assetProject: project,
       });
-
-      const createdBookings = await Promise.all(bookingPromises);
-      
-      // Transform to calendar events
-      const events = createdBookings.map((booking) => {
-        const asset = assets.find((a) => a.assetKey === booking.asset_id);
-        const assetTitle = asset?.assetTitle || booking.asset_id;
-
-        const startDateTime = new Date(
-          `${booking.booking_date}T${booking.start_time}`
-        );
-        const endDateTime = new Date(
-          `${booking.booking_date}T${booking.end_time}`
-        );
-
-        return {
-          id: booking.id,
-          title: `${title} - ${assetTitle}`,
-          description: description || title,
-          start: startDateTime,
-          end: endDateTime,
-          status: booking.status,
-          bookingData: booking,
-        } as Partial<CalendarEvent>;
-      });
-
-      onSave(events);
-      
-      const firstBooking = createdBookings[0];
-      alert(
-        firstBooking.status === "confirmed"
-          ? "Booking(s) confirmed!"
-          : "Booking(s) submitted for approval!"
-      );
-
-      resetForm();
-      onClose();
     } catch (error: any) {
-      console.error("Error creating bookings:", error);
+      console.error("Error creating asset:", error);
       const errorMessage =
         error.response?.data?.detail ||
         error.message ||
-        "Failed to create booking";
+        "Failed to create asset";
       setError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const resetForm = () => {
-    setTitle("");
-    setDescription("");
-    setDuration("60");
-    setCustomStartTime(null);
-    setCustomEndTime(null);
-    setStartHour("");
-    setStartMinute("");
-    setEndHour("");
-    setEndMinute("");
-    setSelectedAssetIds([]);
-    setSelectedAssets([]);
-    setSelectedSubcontractor(isSubcontractor ? userId || "" : "");
-    setError(null);
-  };
+  // Asset types (you might want to fetch these from backend or config)
+  const assetTypes = [
+    "Equipment",
+    "Vehicle",
+    "Tool",
+    "Machinery",
+    "Loading Zone",
+    "Storage Area",
+    "Crane",
+    "Excavator",
+    "Generator",
+    "Scaffolding",
+    "Other",
+  ];
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-full max-w-md mx-auto rounded-xl p-3 sm:p-6 bg-white shadow-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader className="mb-4">
-          <DialogTitle className="text-lg sm:text-xl font-semibold">
-            Book Time Slot
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-center mb-2">
+          <div className="inline-flex items-center bg-gray-100 px-3 py-1 rounded-full">
+            <div className="w-3 h-3 bg-gray-300 rounded-full mr-2"></div>
+            <span className="text-gray-700 text-sm">Asset Master</span>
+          </div>
+        </div>
+
+        <DialogHeader className="text-center">
+          <DialogTitle className="text-2xl font-semibold">
+            Define Assets
           </DialogTitle>
+          <p className="text-sm text-gray-600 mt-1">
+            Add and manage assets for the construction site
+          </p>
         </DialogHeader>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded text-sm mb-4">
-            {error}
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative">
+            <span className="block sm:inline">{error}</span>
+            <button
+              className="absolute top-0 bottom-0 right-0 px-4 py-3"
+              onClick={() => setError(null)}
+            >
+              <span className="text-2xl">&times;</span>
+            </button>
           </div>
         )}
 
-        {assetError && (
-          <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-3 py-2 rounded text-sm mb-4 flex items-start gap-2">
-            <span className="text-yellow-600 mt-0.5">⚠️</span>
-            <div>
-              <strong className="font-semibold">Asset Loading Error:</strong>
-              <p className="text-xs mt-1">
-                Unable to load assets. Please refresh the page or contact
-                support.
-              </p>
-            </div>
-          </div>
-        )}
-
-        <Alert
-          className={
-            isManager
-              ? "bg-green-50 border-green-200"
-              : "bg-blue-50 border-blue-200"
-          }
-        >
-          {isManager ? (
-            <CheckCircle className="h-4 w-4 text-green-600" />
-          ) : (
-            <Info className="h-4 w-4 text-blue-600" />
-          )}
-          <AlertDescription
-            className={
-              isManager ? "text-green-700 text-xs" : "text-blue-700 text-xs"
-            }
-          >
-            {isManager ? (
-              <>
-                <strong>Manager Booking:</strong> Your booking will be
-                automatically confirmed.
-              </>
-            ) : (
-              <>
-                <strong>Subcontractor Booking:</strong> Your booking will be
-                pending until approved by a manager.
-              </>
-            )}
-          </AlertDescription>
-        </Alert>
-
-        <div className="space-y-6 mt-4">
-          {/* Basic Info */}
-          <div className="space-y-4">
+        <form onSubmit={handleSubmit} className="mt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Asset Name */}
             <div className="space-y-2">
-              <Label htmlFor="title">
-                Booking Title <span className="text-red-500">*</span>
+              <Label htmlFor="assetTitle">
+                Asset Name <span className="text-red-500">*</span>
               </Label>
               <Input
-                id="title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Enter title"
-                className="h-9"
-                disabled={isSubmitting}
+                id="assetTitle"
+                name="assetTitle"
+                value={asset.assetTitle}
+                onChange={handleChange}
+                placeholder="ex. Loading Zone 1, Crane 2"
+                required
               />
             </div>
 
+            {/* Asset Type */}
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Add more details..."
-                rows={3}
-                className="resize-none text-sm"
-                disabled={isSubmitting}
-              />
-            </div>
-          </div>
-
-          {/* Date Picker */}
-          <div className="space-y-2">
-            <Label>
-              Date <span className="text-red-500">*</span>
-            </Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="w-full h-9 justify-start text-left text-sm font-normal"
-                  disabled={isSubmitting}
-                >
-                  <CalendarIcon className="w-4 h-4 mr-2" />
-                  {selectedDate ? format(selectedDate, "PPP") : "Select date"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="p-0">
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={(date) => date && setSelectedDate(date)}
-                  initialFocus
-                  disabled={(date) =>
-                    date < new Date(new Date().setHours(0, 0, 0, 0))
-                  }
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-
-          {/* Time Selectors */}
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>
-                Start Time <span className="text-red-500">*</span>
-              </Label>
-              <div className="flex items-center gap-2">
-                <Select
-                  value={startHour}
-                  onValueChange={handleStartHourChange}
-                  disabled={isSubmitting}
-                >
-                  <SelectTrigger className="h-9 w-full text-sm">
-                    <SelectValue placeholder="Hour" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 24 }).map((_, i) => {
-                      const val = i.toString().padStart(2, "0");
-                      return (
-                        <SelectItem key={val} value={val} className="text-sm">
-                          {formatHour(i)}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-                <span>:</span>
-                <Select
-                  value={startMinute}
-                  onValueChange={handleStartMinuteChange}
-                  disabled={isSubmitting}
-                >
-                  <SelectTrigger className="h-9 w-full text-sm">
-                    <SelectValue placeholder="Min" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {["00", "15", "30", "45"].map((val) => (
-                      <SelectItem key={val} value={val} className="text-sm">
-                        {val}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>
-                End Time <span className="text-red-500">*</span>
-              </Label>
-              <div className="flex items-center gap-2">
-                <Select
-                  value={endHour}
-                  onValueChange={handleEndHourChange}
-                  disabled={isSubmitting}
-                >
-                  <SelectTrigger className="h-9 w-full text-sm">
-                    <SelectValue placeholder="Hour" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 24 }).map((_, i) => {
-                      const val = i.toString().padStart(2, "0");
-                      return (
-                        <SelectItem key={val} value={val} className="text-sm">
-                          {formatHour(i)}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-                <span>:</span>
-                <Select
-                  value={endMinute}
-                  onValueChange={handleEndMinuteChange}
-                  disabled={isSubmitting}
-                >
-                  <SelectTrigger className="h-9 w-full text-sm">
-                    <SelectValue placeholder="Min" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {["00", "15", "30", "45"].map((val) => (
-                      <SelectItem key={val} value={val} className="text-sm">
-                        {val}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-
-          {/* Duration */}
-          <div className="space-y-2">
-            <Label>Duration (Quick Select)</Label>
-            <Select
-              value={duration}
-              onValueChange={handleDurationChange}
-              disabled={isSubmitting}
-            >
-              <SelectTrigger className="h-9 w-full text-sm">
-                <SelectValue placeholder="Select duration" />
-              </SelectTrigger>
-              <SelectContent>
-                {[15, 30, 45, 60, 90, 120, 180, 240, 300, 360].map((val) => (
-                  <SelectItem
-                    key={val}
-                    value={val.toString()}
-                    className="text-sm"
-                  >
-                    {val >= 60
-                      ? `${val / 60} hour${val >= 120 ? "s" : ""}`
-                      : `${val} minutes`}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Subcontractor Selection */}
-          {isManager && (
-            <div className="space-y-2">
-              <Label>
-                Assign to Subcontractor
-                <span className="text-gray-500 text-xs ml-2">(Optional)</span>
+              <Label htmlFor="assetType">
+                Asset Type <span className="text-red-500">*</span>
               </Label>
               <Select
-                value={selectedSubcontractor || "none"}
-                onValueChange={(value) => {
-                  if (value === "none") {
-                    setSelectedSubcontractor("");
-                  } else {
-                    setSelectedSubcontractor(value);
-                  }
-                }}
-                disabled={isSubmitting || loadingSubcontractors}
+                value={asset.assetType}
+                onValueChange={(value) =>
+                  setAsset((prev) => ({ ...prev, assetType: value }))
+                }
+                required
               >
-                <SelectTrigger className="h-9 w-full text-sm">
-                  <SelectValue>
-                    {selectedSubcontractor
-                      ? (() => {
-                          const selected = subcontractors.find(
-                            (s) => s.id === selectedSubcontractor
-                          );
-                          if (!selected) return "None (Unassigned)";
-
-                          const name =
-                            `${selected.first_name} ${selected.last_name}`.trim();
-                          return name || selected.email || "Unknown";
-                        })()
-                      : "None (Unassigned)"}
-                  </SelectValue>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select asset type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">
-                    <span className="font-normal">None (Unassigned)</span>
-                  </SelectItem>
-
-                  {loadingSubcontractors ? (
-                    <div className="px-2 py-1.5 text-sm text-gray-500">
-                      Loading subcontractors...
-                    </div>
-                  ) : subcontractors.length === 0 ? (
-                    <div className="px-2 py-1.5 text-sm text-gray-500">
-                      No subcontractors in this project
-                    </div>
-                  ) : (
-                    subcontractors.map((sub) => {
-                      const fullName =
-                        `${sub.first_name} ${sub.last_name}`.trim();
-                      const displayName = fullName || sub.email || "Unknown";
-
-                      return (
-                        <SelectItem key={sub.id} value={sub.id}>
-                          <div className="flex flex-col py-1">
-                            <span className="font-medium">{displayName}</span>
-                            {sub.company_name && sub.company_name !== "N/A" && (
-                              <span className="text-xs text-gray-500">
-                                {sub.company_name}
-                              </span>
-                            )}
-                          </div>
-                        </SelectItem>
-                      );
-                    })
-                  )}
+                  {assetTypes.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {type}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
-          )}
 
-          {/* Asset Selection */}
-          <div className="space-y-2">
-            <Label>
-              Select Assets <span className="text-red-500">*</span>
-            </Label>
-            {selectedAssets.length > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {selectedAssets.map((assetKey) => {
-                  const asset = assets.find((a) => a.assetKey === assetKey);
-                  return (
-                    <Badge
-                      key={assetKey}
-                      className="text-xs flex items-center gap-1"
-                    >
-                      {asset?.assetTitle || assetKey}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-4 w-4"
-                        onClick={() => removeAsset(assetKey)}
-                        disabled={isSubmitting}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </Badge>
-                  );
-                })}
+            {/* Asset Code */}
+            <div className="space-y-2">
+              <Label htmlFor="assetCode">
+                Asset Code <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="assetCode"
+                name="assetCode"
+                value={asset.assetCode}
+                onChange={handleChange}
+                placeholder="AUTO-GEN-001"
+                required
+              />
+              <span className="text-xs text-gray-500">
+                Auto-generated, but you can modify it
+              </span>
+            </div>
+
+            {/* Asset Location */}
+            <div className="space-y-2">
+              <Label htmlFor="assetLocation">Asset Location</Label>
+              <Input
+                id="assetLocation"
+                name="assetLocation"
+                value={asset.assetLocation}
+                onChange={handleChange}
+                placeholder="eg. Zone 1, Loading Zone 2"
+              />
+            </div>
+
+            {/* Maintenance Dates */}
+            <div className="space-y-2">
+              <Label>Maintenance Dates (Optional)</Label>
+              <div className="flex space-x-2">
+                <div className="flex-1">
+                  <Input
+                    type="date"
+                    name="maintenanceStartdt"
+                    value={asset.maintenanceStartdt}
+                    onChange={handleMaintenanceChange}
+                    placeholder="Start date"
+                  />
+                </div>
+                <div className="flex-1">
+                  <Input
+                    type="date"
+                    name="maintenanceEnddt"
+                    value={asset.maintenanceEnddt}
+                    onChange={handleMaintenanceChange}
+                    placeholder="End date"
+                  />
+                </div>
               </div>
-            )}
-            <ScrollArea className="h-24 border rounded-md p-2">
-              <div className="space-y-2">
-                {assets.length === 0 ? (
-                  <p className="text-sm text-gray-500 text-center py-4">
-                    No assets available
-                  </p>
-                ) : (
-                  assets.map((asset) => {
-                    const isSelected = selectedAssets.includes(asset.assetKey);
-                    const isBooked = bookedAssets.includes(asset.assetKey);
-                    return (
-                      <div
-                        key={asset.assetKey}
-                        className="flex items-center space-x-2"
-                      >
-                        <Checkbox
-                          id={`asset-${asset.assetKey}`}
-                          checked={isSelected}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setSelectedAssets([
-                                ...selectedAssets,
-                                asset.assetKey,
-                              ]);
-                              setSelectedAssetIds([
-                                ...selectedAssetIds,
-                                asset.assetKey, // Ensure using correct ID
-                              ]);
-                            } else {
-                              setSelectedAssets(
-                                selectedAssets.filter(
-                                  (k) => k !== asset.assetKey
-                                )
-                              );
-                              setSelectedAssetIds(
-                                selectedAssetIds.filter(
-                                  (id) => id !== asset.assetKey
-                                )
-                              );
-                            }
-                          }}
-                          disabled={isSubmitting || (isBooked && !isSelected)}
-                        />
-                        <label
-                          htmlFor={`asset-${asset.assetKey}`}
-                          className={`text-sm flex-1 truncate ${
-                            isBooked && !isSelected
-                              ? "line-through text-muted-foreground"
-                              : ""
-                          }`}
-                        >
-                          {asset.assetTitle}
-                          {isBooked && !isSelected && (
-                            <span className="ml-2 text-xs text-red-500">
-                              (Booked)
-                            </span>
-                          )}
-                        </label>
-                      </div>
-                    );
-                  })
-                )}
+              <span className="text-xs text-gray-500">
+                Select scheduled maintenance start and end date
+              </span>
+            </div>
+
+            {/* Asset Status */}
+            <div className="space-y-2">
+              <Label>
+                Asset Status <span className="text-red-500">*</span>
+              </Label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  className={cn(
+                    "px-4 py-2 rounded-md transition text-sm",
+                    asset.assetStatus === "Operational"
+                      ? "bg-green-100 text-green-800 font-medium border-2 border-green-500"
+                      : "bg-gray-100 hover:bg-gray-200 border-2 border-transparent"
+                  )}
+                  onClick={() => handleStatusChange("Operational")}
+                >
+                  Operational
+                </button>
+                <button
+                  type="button"
+                  className={cn(
+                    "px-4 py-2 rounded-md transition text-sm",
+                    asset.assetStatus === "In Use"
+                      ? "bg-blue-100 text-blue-800 font-medium border-2 border-blue-500"
+                      : "bg-gray-100 hover:bg-gray-200 border-2 border-transparent"
+                  )}
+                  onClick={() => handleStatusChange("In Use")}
+                >
+                  In Use
+                </button>
+                <button
+                  type="button"
+                  className={cn(
+                    "px-4 py-2 rounded-md transition text-sm",
+                    asset.assetStatus === "Maintenance"
+                      ? "bg-yellow-100 text-yellow-800 font-medium border-2 border-yellow-500"
+                      : "bg-gray-100 hover:bg-gray-200 border-2 border-transparent"
+                  )}
+                  onClick={() => handleStatusChange("Maintenance")}
+                >
+                  Maintenance
+                </button>
+                <button
+                  type="button"
+                  className={cn(
+                    "px-4 py-2 rounded-md transition text-sm",
+                    asset.assetStatus === "Out of Service"
+                      ? "bg-red-100 text-red-800 font-medium border-2 border-red-500"
+                      : "bg-gray-100 hover:bg-gray-200 border-2 border-transparent"
+                  )}
+                  onClick={() => handleStatusChange("Out of Service")}
+                >
+                  Out of Service
+                </button>
               </div>
-            </ScrollArea>
+            </div>
+
+            {/* Operator Information */}
+            <div className="space-y-2">
+              <Label htmlFor="assetPoc">Operator/Contact Person</Label>
+              <Input
+                id="assetPoc"
+                name="assetPoc"
+                value={asset.assetPoc}
+                onChange={handleChange}
+                placeholder="Enter operator or contact person name"
+              />
+            </div>
+
+            {/* Usage Instructions */}
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="usageInstructions">
+                Asset Description & Instructions
+              </Label>
+              <Textarea
+                id="usageInstructions"
+                name="usageInstructions"
+                value={asset.usageInstructions}
+                onChange={handleChange}
+                placeholder="Enter asset description, usage instructions, safety notes, etc."
+                className="min-h-[100px]"
+              />
+            </div>
           </div>
 
-          {/* Submit Button */}
-          <div className="pt-2 flex justify-end gap-2">
+          <div className="mt-8 flex justify-center space-x-4">
             <Button
-              variant="outline"
-              onClick={onClose}
+              type="button"
+              className="bg-gray-200 text-gray-800 hover:bg-gray-300"
+              onClick={() => onClose(false)}
               disabled={isSubmitting}
-              className="h-10 px-4 text-sm"
             >
               Cancel
             </Button>
             <Button
-              onClick={handleSubmit}
-              disabled={
-                !title ||
-                !customStartTime ||
-                !customEndTime ||
-                selectedAssets.length === 0 ||
-                isSubmitting
-              }
-              className="h-10 px-4 text-sm"
+              type="submit"
+              className="bg-black text-white hover:bg-gray-800"
+              disabled={isSubmitting}
             >
               {isSubmitting ? (
                 <span className="flex items-center">
@@ -951,12 +508,14 @@ export function CreateBookingForm({
                   Saving...
                 </span>
               ) : (
-                `Save Booking${selectedAssets.length > 1 ? "s" : ""}`
+                "Save Asset"
               )}
             </Button>
           </div>
-        </div>
+        </form>
       </DialogContent>
     </Dialog>
   );
-}
+};
+
+export default AssetModal;
