@@ -22,7 +22,6 @@ interface Booking {
   notes?: string;
   created_at: string;
   updated_at: string;
-  // Nested details from BookingDetailResponse
   project?: {
     id: string;
     name: string;
@@ -69,25 +68,24 @@ export default function HomePage() {
 
         let projectData = [];
 
-        // ✅ LOGIC CHANGE: Check Role to determine Endpoint
+        // ✅ 1. Check Role to determine Endpoint
         if (user.role === "subcontractor") {
-          // 1. Subcontractor Endpoint
+          // Subcontractor Endpoint
           const response = await api.get(
             `/subcontractors/${userId}/projects`
           );
           
-          // Map the subcontractor response (project_id, project_name) 
-          // to the format expected by ProjectSelector (id, name)
+          // Map the subcontractor response (project_id) to standard format (id)
           projectData = response.data.map((p: any) => ({
             id: p.project_id,
             name: p.project_name,
             location: p.project_location,
             status: p.is_active ? "active" : "inactive",
-            ...p // keep original fields just in case
+            ...p 
           }));
 
         } else {
-          // 2. Manager/Admin Endpoint
+          // Manager/Admin Endpoint
           const response = await api.get("/projects/", {
             params: {
               my_projects: true,
@@ -115,17 +113,10 @@ export default function HomePage() {
 
       try {
         setLoadingBookings(true);
-        // Use the new /bookings/my/upcoming endpoint
         const response = await api.get("/bookings/my/upcoming", {
-          params: {
-            limit: 3,
-          },
+          params: { limit: 3 },
         });
-
-        // Updated to match new response structure
         const bookingsData = response.data || [];
-
-        // The backend already returns upcoming bookings sorted, so we can use directly
         setUpcomingBookings(bookingsData);
       } catch (error) {
         console.error("Error fetching bookings:", error);
@@ -136,10 +127,10 @@ export default function HomePage() {
 
     fetchProjects();
     fetchBookings();
-  }, [userId, user, project.length]); // Added project.length to deps to allow refetch if empty
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, user]); 
 
   const getQuickAccessCards = () => {
-    // Default cards for all users
     const cards = [
       {
         title: "Live Calendar View",
@@ -157,7 +148,6 @@ export default function HomePage() {
       },
     ];
 
-    // Add role-specific cards
     if (user?.role?.includes("admin") || user?.role?.includes("manager")) {
       cards.push(
         {
@@ -177,29 +167,37 @@ export default function HomePage() {
       );
     }
 
-    return cards.slice(0, 4); // Limit to 4 cards
+    return cards.slice(0, 4);
   };
 
   const handleOnChange = () => {
     const fetchAssets = async () => {
       try {
-        if (!user || !userId) {
-          console.log("No user ID available, skipping asset fetch");
-          return;
+        if (!user || !userId) return;
+
+        // ✅ FIX: Get the SELECTED PROJECT ID from localStorage
+        // Do NOT use userId here.
+        const storedProjectString = localStorage.getItem(`project_${userId}`);
+        
+        if (!storedProjectString) {
+            console.log("No project selected, skipping asset fetch");
+            return;
         }
 
-        // Note: Subcontractors might not have permission for this endpoint depending on backend
-        // You might need to wrap this in a role check if subs shouldn't fetch asset lists like this
+        const storedProject = JSON.parse(storedProjectString);
+        const projectId = storedProject.id || storedProject.project_id; // Handle both formats
+
+        if (!projectId) return;
+
         const response = await api.get("/api/Asset/getAssetList", {
-          params: { asset_project: userId },
+          params: { asset_project: projectId }, // ✅ Sending Project ID now
         });
 
         const assetData =
           response.data?.asset_list || response.data?.assetlist || [];
 
-        if (assetData.length > 0) {
-          console.log("Assets loaded:", assetData);
-        }
+        console.log("Assets loaded for project:", projectId, assetData);
+        
         localStorage.setItem(`assets_${userId}`, JSON.stringify(assetData));
       } catch (error) {
         console.error("Error fetching assets:", error);
@@ -209,10 +207,8 @@ export default function HomePage() {
     fetchAssets();
   };
 
-  // Helper function to format time
   const formatTime = (timeStr: string): string => {
     try {
-      // Handle ISO format time strings
       if (timeStr.includes("T") || timeStr.includes("Z")) {
         const date = new Date(timeStr);
         return date.toLocaleTimeString([], {
@@ -220,39 +216,28 @@ export default function HomePage() {
           minute: "2-digit",
         });
       }
-
-      // Handle HH:MM:SS or HH:MM format
       const parts = timeStr.split(":");
       if (parts.length >= 2) {
         return `${parts[0]}:${parts[1]}`;
       }
-
       return timeStr;
     } catch {
       return timeStr;
     }
   };
 
-  // Helper function to get status color
   const getStatusColor = (status: string): string => {
     switch (status.toLowerCase()) {
-      case "confirmed":
-        return "bg-green-100 text-green-800";
-      case "pending":
-        return "bg-yellow-100 text-yellow-800";
-      case "cancelled":
-        return "bg-red-100 text-red-800";
-      case "completed":
-        return "bg-blue-100 text-blue-800";
-      default:
-        return "bg-gray-100 text-gray-800";
+      case "confirmed": return "bg-green-100 text-green-800";
+      case "pending": return "bg-yellow-100 text-yellow-800";
+      case "cancelled": return "bg-red-100 text-red-800";
+      case "completed": return "bg-blue-100 text-blue-800";
+      default: return "bg-gray-100 text-gray-800";
     }
   };
 
-  // Dashboard for authenticated users
   return (
     <Card className="px-6 sm:my-8 mx-4 bg-amber-50">
-      {/* Header with greeting */}
       <div className="p-3 sm:p-6">
         <h1 className="text-xl sm:text-3xl font-bold text-gray-900">
           {greeting}, {user?.first_name || "there"}!
@@ -262,7 +247,6 @@ export default function HomePage() {
         </p>
       </div>
 
-      {/* Quick access cards */}
       <div className="p-3 sm:p-6">
         <h2 className="text-xl font-semibold text-gray-800 mb-4">
           Quick Access
@@ -290,7 +274,6 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Recent activity */}
       <div className="flex flex-col md:flex-row gap-6 p-3 sm:p-6">
         <div className="flex-1">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">
@@ -313,38 +296,28 @@ export default function HomePage() {
           </Card>
         </div>
 
-        {/* Calendar preview or upcoming events */}
         <div className="flex-1">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">
             Upcoming Bookings
           </h2>
           <Card className="bg-stone-100 px-2 py-2">
             {loadingBookings ? (
-              // Show skeleton loaders while loading
               <>
                 <SkeletonBookingCard />
                 <SkeletonBookingCard />
                 <SkeletonBookingCard />
               </>
             ) : upcomingBookings.length > 0 ? (
-              // Show bookings when available
               upcomingBookings.map((booking) => {
                 const bookingDate = new Date(booking.booking_date);
                 const day = bookingDate.getDate();
                 const dayOfWeek = bookingDate.toLocaleDateString("en-US", {
                   weekday: "short",
                 });
-
-                // Format time range
                 const startTime = formatTime(booking.start_time);
                 const endTime = formatTime(booking.end_time);
                 const timeRange = `${startTime} - ${endTime}`;
-
-                // Determine if booking is today
-                const today =
-                  new Date().toDateString() === bookingDate.toDateString();
-
-                // Get asset name
+                const today = new Date().toDateString() === bookingDate.toDateString();
                 const assetName = booking.asset?.name || "Asset";
 
                 return (
@@ -352,18 +325,10 @@ export default function HomePage() {
                     <Card className="overflow-hidden border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200 mb-2 cursor-pointer">
                       <div className="flex w-full">
                         <div className="w-16 flex-shrink-0 flex flex-col items-center justify-center py-2 border-r border-gray-200">
-                          <div
-                            className={`text-xs font-medium uppercase ${
-                              today ? "text-orange-500" : "text-gray-500"
-                            }`}
-                          >
+                          <div className={`text-xs font-medium uppercase ${today ? "text-orange-500" : "text-gray-500"}`}>
                             {dayOfWeek}
                           </div>
-                          <div
-                            className={`text-xl font-bold ${
-                              today ? "text-orange-600" : "text-gray-800"
-                            }`}
-                          >
+                          <div className={`text-xl font-bold ${today ? "text-orange-600" : "text-gray-800"}`}>
                             {String(day).padStart(2, "0")}
                           </div>
                         </div>
@@ -373,22 +338,15 @@ export default function HomePage() {
                               <h4 className="font-semibold text-gray-900 line-clamp-1 text-sm">
                                 {booking.project?.name || "Booking"}
                               </h4>
-
                               <div className="flex items-center text-gray-500 text-xs mt-0.5">
                                 <Clock size={12} className="mr-1" />
                                 <span>{timeRange}</span>
                               </div>
                             </div>
-
-                            <div
-                              className={`ml-2 text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap capitalize ${getStatusColor(
-                                booking.status
-                              )}`}
-                            >
+                            <div className={`ml-2 text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap capitalize ${getStatusColor(booking.status)}`}>
                               {booking.status}
                             </div>
                           </div>
-
                           {booking.asset && (
                             <div className="flex flex-wrap gap-1 mt-1 overflow-hidden max-h-5">
                               <span className="px-1.5 py-0 text-xs bg-blue-50 text-blue-700 rounded-full border border-blue-100">
@@ -408,14 +366,12 @@ export default function HomePage() {
                 );
               })
             ) : (
-              // Show empty state when no bookings
               <EmptyBookingsState />
             )}
           </Card>
         </div>
       </div>
 
-      {/* Footer info */}
       <div className="mt-8 text-center text-gray-500 text-sm pb-6">
         <p>© 2025 Sitespace. All rights reserved.</p>
       </div>
@@ -423,7 +379,6 @@ export default function HomePage() {
   );
 }
 
-// Skeleton loader component
 const SkeletonBookingCard = () => (
   <Card className="overflow-hidden border border-gray-200 shadow-sm mb-2">
     <div className="flex w-full">
@@ -448,7 +403,6 @@ const SkeletonBookingCard = () => (
   </Card>
 );
 
-// Empty state component for no bookings
 const EmptyBookingsState = () => (
   <Card className="overflow-hidden border border-gray-200 bg-white">
     <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
