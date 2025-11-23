@@ -161,11 +161,12 @@ export function CreateBookingForm({
 
     try {
       const parsedAssets = JSON.parse(assetString);
-
+      
+      // ✅ FIX: Map backend fields (id, name) to frontend fields (assetKey, assetTitle)
       const normalizedAssets = parsedAssets.map((a: any) => ({
         ...a,
-        assetKey: a.id || a.assetKey,
-        assetTitle: a.name || a.assetTitle
+        assetKey: a.id || a.assetKey,       // Use 'id' from backend as 'assetKey'
+        assetTitle: a.name || a.assetTitle  // Use 'name' from backend as 'assetTitle'
       }));
 
       setAssets(normalizedAssets);
