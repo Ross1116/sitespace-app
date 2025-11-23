@@ -15,7 +15,7 @@ import {
   CalendarEvent,
   groupBookingsByAsset,
   AssetCalendar,
-  convertBookingToCalendarEvent  // ✅ Import the conversion function
+  convertBookingToCalendarEvent
 } from "@/lib/multicalendarHelpers";
 import { CalendarHeader } from "./CalendarHeader";
 import { MobileView } from "./MobileView";
@@ -33,40 +33,14 @@ interface BookingDetail {
   booking_date: string;
   start_time: string;
   end_time: string;
-  status: "pending" | "confirmed" | "completed" | "cancelled" | "in_progress";
-  purpose?: string;
+  status: string;
   notes?: string;
-  created_at: string;
-  updated_at: string;
-  project?: {
-    id: string;
-    name: string;
-    location?: string;
-    status?: string;
-  };
-  manager?: {
-    id: string;
-    first_name: string;
-    last_name: string;
-    email: string;
-    role?: string;
-  };
-  subcontractor?: {
-    id: string;
-    first_name: string;
-    last_name: string;
-    email?: string;
-    company_name?: string;
-    trade_specialty?: string;
-  };
   asset?: {
     id: string;
     name: string;
     asset_code: string;
-    asset_type?: string;
-    type?: string;
-    status?: string;
   };
+  [key: string]: any;
 }
 
 interface BookingListResponse {
@@ -80,26 +54,11 @@ interface BookingListResponse {
 interface CalendarDayView {
   date: string;
   bookings: BookingDetail[];
-  booking_count?: number;  // ✅ Made optional
+  booking_count?: number;
 }
 
 // ===== API FUNCTIONS =====
 const bookingsApi = {
-  getBookings: async (params: {
-    project_id?: string;
-    skip?: number;
-    limit?: number;
-  }): Promise<BookingListResponse> => {
-    const response = await api.get<BookingListResponse>("/bookings/", {
-      params: {
-        skip: params.skip ?? 0,
-        limit: params.limit ?? 1000,
-        ...params,
-      },
-    });
-    return response.data;
-  },
-
   getCalendarView: async (
     dateFrom: string,
     dateTo: string,
@@ -116,20 +75,6 @@ const bookingsApi = {
   },
 };
 
-// ❌ REMOVE THESE LINES - They're in the wrong place (lines 175-176)
-// const assetBookings = groupBookingsByAsset(bookings);
-// const assetCalendars: AssetCalendar[] = Object.values(assetBookings);
-
-// ===== HELPER FUNCTIONS =====
-const formatDate = (date: Date): string => {
-  return date.toISOString().split("T")[0];
-};
-
-// ❌ REMOVE this function - use the one from multicalendarHelpers instead
-// const parseTimeToDate = (dateStr: string, timeStr: string): Date => { ... }
-// const transformBookingToEvent = (booking: BookingDetail) => { ... }
-
-// ===== MAIN COMPONENT =====
 export default function MulticalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedAssetIndex, setSelectedAssetIndex] = useState(0);
@@ -140,10 +85,11 @@ export default function MulticalendarPage() {
   const { user } = useAuth();
   const hasFetched = useRef(false);
   const userId = user?.id;
-  const storageKey = `bookings_${userId}`;
+  
+  // ✅ SHARED KEY V5
+  const storageKey = `bookings_v5_${userId}`;
   const projectStorageKey = `project_${userId}`;
 
-  // Get stored project
   const getStoredProject = () => {
     if (!user) return null;
     const projectString = localStorage.getItem(projectStorageKey);
@@ -159,18 +105,19 @@ export default function MulticalendarPage() {
     }
   };
 
-  // Fetch bookings using calendar view (OPTIMIZED)
-  const fetchBookings = async (forceRefresh = false) => {
+  // ✅ FETCH FUNCTION
+  const fetchBookings = async (isBackground = false) => {
     if (!user) {
       setLoading(false);
       return;
     }
 
-    if (hasFetched.current && !forceRefresh) {
-      return;
+    // ✅ FIXED: Always show spinner for explicit refreshes (!isBackground)
+    // But keep it hidden for background updates (isBackground === true)
+    if (!isBackground) {
+        setLoading(true);
     }
 
-    setLoading(true);
     setError(null);
 
     const project = getStoredProject();
@@ -181,88 +128,59 @@ export default function MulticalendarPage() {
     }
 
     try {
-      console.log("📅 Fetching bookings for project:", project.id);
+      if (!isBackground) console.log("📅 Fetching fresh calendar data...");
 
-      // Calculate date range: 45 days before and 45 days after current date (90 days total)
       const today = new Date();
       const dateFrom = new Date(today);
       dateFrom.setDate(today.getDate() - 45);
-
       const dateTo = new Date(today);
       dateTo.setDate(today.getDate() + 45);
 
-      console.log(
-        "📅 Date range:",
-        formatDate(dateFrom),
-        "to",
-        formatDate(dateTo)
-      );
-
-      // Use calendar view endpoint for better performance
       const calendarData = await bookingsApi.getCalendarView(
-        formatDate(dateFrom),
-        formatDate(dateTo),
+        dateFrom.toISOString().split("T")[0],
+        dateTo.toISOString().split("T")[0],
         project.id
       );
 
-      console.log("📅 Calendar data fetched:", calendarData.length, "days");
-
-      // Flatten bookings from all days
       const allBookings: BookingDetail[] = calendarData.flatMap(
         (dayData) => dayData.bookings || []
       );
 
-      console.log("📦 Total raw bookings:", allBookings.length);
+      localStorage.setItem(storageKey, JSON.stringify(allBookings));
 
-      // ✅ Use the imported conversion function
       const transformedBookings: CalendarEvent[] = allBookings.map(
         convertBookingToCalendarEvent
       );
 
-      console.log("✅ Total transformed bookings:", transformedBookings.length);
       setBookings(transformedBookings);
-
-      // Cache the data
-      localStorage.setItem(storageKey, JSON.stringify(transformedBookings));
       hasFetched.current = true;
     } catch (err: any) {
       console.error("❌ Error fetching bookings:", err);
-      const errorMessage =
-        err.response?.data?.detail ||
-        err.response?.data?.message ||
-        err.message ||
-        "Failed to fetch bookings";
-      setError(errorMessage);
-
-      // Try to use cached data on error
-      const cachedBookings = localStorage.getItem(storageKey);
-      if (cachedBookings) {
-        try {
-          const parsedBookings = JSON.parse(cachedBookings);
-          console.log("📦 Using cached bookings:", parsedBookings.length);
-          setBookings(parsedBookings);
-        } catch (e) {
-          console.error("Error parsing cached bookings:", e);
-        }
+      if (bookings.length === 0) {
+        setError(err.message || "Failed to fetch bookings");
       }
     } finally {
       setLoading(false);
     }
   };
 
-  // Load cached data on mount, then fetch fresh
+  // ✅ OPTIMIZED EFFECT
   useEffect(() => {
     if (!user) return;
 
-    // Try to load from cache first for instant display
+    let foundCache = false;
+
+    // 1. Instant Load from Cache
     const cachedBookings = localStorage.getItem(storageKey);
     if (cachedBookings) {
       try {
-        const parsedBookings = JSON.parse(cachedBookings);
-        if (Array.isArray(parsedBookings)) {
-          console.log("📦 Loaded cached bookings:", parsedBookings.length);
-          setBookings(parsedBookings);
-          setLoading(false);
+        const parsedData = JSON.parse(cachedBookings);
+        if (Array.isArray(parsedData) && parsedData.length > 0) {
+            console.log("⚡ Instant Load from Cache (Calendar)");
+            const transformed = parsedData.map(convertBookingToCalendarEvent);
+            setBookings(transformed);
+            setLoading(false); // Stop spinner immediately
+            foundCache = true;
         }
       } catch (error) {
         console.error("Error parsing cached bookings:", error);
@@ -270,66 +188,38 @@ export default function MulticalendarPage() {
       }
     }
 
-    // Fetch fresh data
-    fetchBookings();
+    // 2. Fetch Fresh Data
+    if (!hasFetched.current) {
+        // If we found cache, run in background (true). 
+        // If no cache, run in foreground (false) to show spinner.
+        fetchBookings(foundCache);
+    }
 
-    // Set up periodic refresh (every 5 minutes)
-    const interval = setInterval(() => {
-      console.log("🔄 Auto-refreshing bookings...");
-      fetchBookings(true);
-    }, 300000);
-
+    // 3. Background Interval
+    const interval = setInterval(() => fetchBookings(true), 300000);
     return () => clearInterval(interval);
   }, [user]);
 
-  // Refetch when month changes
+  // Refetch when month changes (Background)
   useEffect(() => {
     if (hasFetched.current) {
-      console.log("📅 Month/Year changed, refetching...");
       fetchBookings(true);
     }
   }, [currentDate.getMonth(), currentDate.getFullYear()]);
 
-  // Handle booking actions (create/update/delete)
   const handleActionComplete = () => {
-    console.log("✅ Action completed, refreshing bookings...");
     fetchBookings(true);
   };
 
-  // Manual refresh
   const handleRefresh = () => {
-    console.log("🔄 Manual refresh triggered");
     hasFetched.current = false;
-    fetchBookings(true);
+    // ✅ Force foreground refresh (Spinner will show)
+    fetchBookings(false); 
   };
 
-  // ✅ Group bookings by asset (THIS IS THE CORRECT LOCATION)
   const assetBookings = groupBookingsByAsset(bookings);
   const assetCalendars: AssetCalendar[] = Object.values(assetBookings);
 
-  // ✅ Debug logging
-  useEffect(() => {
-    console.log("📊 Debug Info:");
-    console.log("  Total bookings:", bookings.length);
-    console.log("  Asset calendars:", assetCalendars.length);
-
-    assetCalendars.forEach((calendar, index) => {
-      console.log(`  Calendar ${index}:`, {
-        id: calendar.id.slice(0, 8) + "...",
-        name: calendar.name,
-        eventCount: calendar.events?.length || 0,
-      });
-    });
-
-    // Check current date bookings
-    const currentDateStr = formatDate(currentDate);
-    const todaysBookings = bookings.filter(
-      (b) => b.bookingTimeDt === currentDateStr
-    );
-    console.log(`  Bookings for ${currentDateStr}:`, todaysBookings.length);
-  }, [bookings, assetCalendars, currentDate]);
-
-  // Visible assets state
   const [initialLoad, setInitialLoad] = useState(true);
   const [visibleAssets, setVisibleAssets] = useState<number[]>([]);
 
@@ -337,18 +227,15 @@ export default function MulticalendarPage() {
     if (initialLoad && assetCalendars.length > 0) {
       setVisibleAssets(assetCalendars.map((_, index) => index));
       setInitialLoad(false);
-      console.log("✅ Initialized visible assets:", assetCalendars.length);
     }
   }, [assetCalendars, initialLoad]);
 
-  // Get selected calendar for mobile view
   const selectedCalendar = assetCalendars[selectedAssetIndex] || {
     id: "",
     name: "No asset selected",
     events: [],
   };
 
-  // Error state UI
   if (error && !loading && bookings.length === 0) {
     return (
       <div className="h-full flex items-center justify-center p-6">

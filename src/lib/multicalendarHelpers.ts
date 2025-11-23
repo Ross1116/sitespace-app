@@ -1,4 +1,3 @@
-// lib/multicalendarHelpers.ts
 import { monthEventVariants } from "@/components/ui/full-calendar/calendar-utils";
 import { 
   CalendarEvent as BaseCalendarEvent, 
@@ -11,9 +10,9 @@ export type VariantProps<Component extends (...args: any) => any> = Omit<
 >;
 export type OmitUndefined<T> = T extends undefined ? never : T;
 
-// ✅ Extended CalendarEvent with all booking fields
+// --- INTERFACES ---
+
 export interface CalendarEvent extends BaseCalendarEvent {
-  // Booking-specific fields
   bookingKey: string;
   bookingTitle: string;
   bookingDescription?: string;
@@ -25,6 +24,7 @@ export interface CalendarEvent extends BaseCalendarEvent {
   bookingFor?: string;
   assetId: string;
   assetName: string;
+  assetCode?: string;
   assetType?: string;
   bookedAssets: string[];
   status: string;
@@ -35,26 +35,73 @@ export interface CalendarEvent extends BaseCalendarEvent {
   projectId?: string;
   projectName?: string;
   projectLocation?: string;
-  bookingData?: any;
+  _originalData?: any;
 }
 
-// ✅ Extended AssetCalendar (uses extended CalendarEvent)
 export interface AssetCalendar extends Omit<BaseAssetCalendar, 'events'> {
   events: CalendarEvent[];
+  asset?: {
+    id: string;
+    name: string;
+    asset_code?: string;
+    [key: string]: any;
+  }; 
 }
 
-// ✅ Rest of your helper functions stay the same...
-export function convertBookingToCalendarEvent(booking: any): CalendarEvent {
-  const startDate = booking.start || parseTimeToDate(
-    booking.bookingTimeDt || booking.booking_date, 
-    booking.bookingStartTime || booking.start_time
-  );
-  const endDate = booking.end || parseTimeToDate(
-    booking.bookingTimeDt || booking.booking_date, 
-    booking.bookingEndTime || booking.end_time
-  );
+// Global debug flag (Module level variable instead of window)
+let hasLoggedDiagnostic = false;
 
-  const status = booking.status || booking.bookingStatus || "pending";
+// --- CONVERSION ---
+
+export function convertBookingToCalendarEvent(booking: any): CalendarEvent {
+  // 1. Resolve Raw Data
+  const raw = booking._originalData || booking;
+
+  // 2. DIAGNOSTIC LOG (Fixed TS Error)
+  // This runs once per page load to check if the API is sending the asset object
+  if (!hasLoggedDiagnostic && raw.asset_id) {
+      console.log("🔍 [DIAGNOSTIC] Checking first asset...");
+      if (raw.asset) {
+          console.log("✅ API is sending 'asset' object:", raw.asset);
+      } else {
+          console.error("❌ API is MISSING 'asset' object. Only found asset_id:", raw.asset_id);
+      }
+      hasLoggedDiagnostic = true;
+  }
+
+  // 3. ASSET EXTRACTION (Aggressive Fallbacks)
+  let assetId = "unknown";
+  let assetName = "Unknown Asset";
+  let assetCode = "";
+
+  // CHECK: Nested Object (booking.asset) - The standard path
+  if (raw.asset && typeof raw.asset === 'object') {
+      assetId = raw.asset.id || raw.asset_id || assetId;
+      assetCode = raw.asset.asset_code || raw.asset.code || assetCode;
+      if (raw.asset.name) assetName = raw.asset.name;
+  } 
+  // CHECK: Flat ID (booking.asset_id) - Fallback if join failed
+  else if (raw.asset_id) {
+      assetId = raw.asset_id;
+      // If we have a transformed event with a name, preserve it
+      if (booking.assetName && booking.assetName !== "Unknown Asset") {
+          assetName = booking.assetName;
+      }
+  }
+
+  // 4. FINAL NAME FALLBACK
+  // If name is STILL unknown, use Code or ID to prevent empty columns
+  if (assetName === "Unknown Asset" && assetId !== "unknown") {
+      if (assetCode) assetName = `Asset ${assetCode}`;
+      else assetName = `Asset ${assetId.slice(0, 6)}...`;
+  }
+
+  // 5. PARSE DATES
+  const startDate = booking.start || parseTimeToDate(raw.booking_date, raw.start_time);
+  const endDate = booking.end || parseTimeToDate(raw.booking_date, raw.end_time);
+
+  // 6. COLOR & STATUS
+  const status = booking.status || raw.status || "pending";
   const statusColorMap: Record<string, VariantProps<typeof monthEventVariants>["variant"]> = {
     "pending": "yellow",
     "confirmed": "green",
@@ -62,137 +109,89 @@ export function convertBookingToCalendarEvent(booking: any): CalendarEvent {
     "completed": "purple",
     "cancelled": "pink",
   };
-  
   let color = statusColorMap[status] || "default";
-  
-  const notes = booking.bookingNotes || booking.notes || "";
-  if (notes.toLowerCase().includes("emergency")) {
-    color = "purple";
-  }
+  const notes = booking.notes || raw.notes || "";
+  if (notes && notes.toLowerCase().includes("emergency")) color = "purple";
 
   return {
-    // Base calendar fields (from BaseCalendarEvent)
-    id: booking.id || booking.bookingKey,
+    id: booking.id || raw.id,
     start: startDate,
     end: endDate,
-    title: booking.title || booking.bookingTitle || "Booking",
-    description: booking.description || booking.bookingDescription || booking.notes,
+    title: raw.project?.name || "Booking",
+    description: raw.notes,
     color: color,
-    
-    // Extended booking fields
-    bookingKey: booking.id || booking.bookingKey,
-    bookingTitle: booking.title || booking.bookingTitle || "Booking",
-    bookingDescription: booking.description || booking.bookingDescription || booking.notes || "",
-    bookingNotes: booking.notes || booking.bookingNotes || "",
-    bookingTimeDt: booking.bookingTimeDt || booking.booking_date,
-    bookingStartTime: booking.bookingStartTime || booking.start_time,
-    bookingEndTime: booking.bookingEndTime || booking.end_time,
+    bookingKey: booking.id || raw.id,
+    bookingTitle: raw.project?.name || "Booking",
+    bookingDescription: raw.notes || "",
+    bookingNotes: raw.notes || "",
+    bookingTimeDt: raw.booking_date,
+    bookingStartTime: raw.start_time,
+    bookingEndTime: raw.end_time,
     bookingStatus: status,
-    bookingFor: booking.bookingFor || booking.managerName || "Manager",
-    assetId: booking.assetId || booking.asset_id,
-    assetName: booking.assetName || "Unknown Asset",
-    assetType: booking.assetType,
-    bookedAssets: booking.bookedAssets || (booking.assetName ? [booking.assetName] : []),
+    bookingFor: raw.manager?.first_name || "Manager",
+    
+    assetId: assetId,
+    assetName: assetName,
+    assetCode: assetCode,
+    assetType: raw.assetType,
+    bookedAssets: [assetName],
+    
     status: status,
-    managerId: booking.managerId || booking.manager_id,
-    managerName: booking.managerName,
-    subcontractorId: booking.subcontractorId || booking.subcontractor_id,
-    subcontractorName: booking.subcontractorName,
-    projectId: booking.projectId || booking.project_id,
-    projectName: booking.projectName,
-    projectLocation: booking.projectLocation,
-    bookingData: booking.bookingData || booking,
+    managerId: raw.manager_id,
+    managerName: raw.manager?.first_name,
+    subcontractorId: raw.subcontractor_id,
+    subcontractorName: raw.subcontractor?.company_name,
+    projectId: raw.project_id,
+    projectName: raw.project?.name,
+    projectLocation: raw.project?.location,
+    
+    _originalData: raw,
   };
 }
 
-function parseTimeToDate(dateStr: string, timeStr: string): Date {
-  try {
-    const dateOnly = dateStr.split('T')[0];
-    const timeParts = timeStr.split(':');
-    const hours = parseInt(timeParts[0], 10);
-    const minutes = parseInt(timeParts[1], 10);
-    const seconds = timeParts[2] ? parseInt(timeParts[2], 10) : 0;
-    
-    const date = new Date(dateOnly);
-    date.setHours(hours, minutes, seconds, 0);
-    
-    return date;
-  } catch (error) {
-    console.error("Error parsing time:", { dateStr, timeStr, error });
-    return new Date();
-  }
-}
+// --- GROUPING ---
 
 export function groupBookingsByAsset(bookings: any[]): Record<string, AssetCalendar> {
-  console.log("📦 Grouping bookings by asset:", bookings.length, "bookings");
-  
   const grouped: Record<string, AssetCalendar> = {};
 
-  bookings.forEach((booking, index) => {
-    const assetId = booking.assetId || booking.asset_id;
-    const assetName = booking.assetName || booking.asset?.name || `Asset ${assetId?.slice(0, 8)}...`;
+  bookings.forEach((booking) => {
+    const event = convertBookingToCalendarEvent(booking);
+    const assetId = event.assetId;
     
-    if (!assetId) {
-      console.warn(`⚠️  Booking ${index} has no asset ID:`, booking);
-      return;
-    }
+    if (!assetId || assetId === "unknown") return;
 
     if (!grouped[assetId]) {
       grouped[assetId] = {
         id: assetId,
-        name: assetName,
+        name: event.assetName,
+        asset: { id: assetId, name: event.assetName, asset_code: event.assetCode },
         events: [],
       };
-      console.log(`✅ Created calendar for: ${assetName} (${assetId.slice(0, 8)}...)`);
+    } else {
+      // Self-Healing Logic
+      const current = grouped[assetId].name;
+      const newer = event.assetName;
+      const isBad = current === "Unknown Asset" || current.startsWith("Asset ");
+      const isGood = newer !== "Unknown Asset" && !newer.startsWith("Asset ");
+      
+      if (isBad && isGood) {
+          grouped[assetId].name = newer;
+          if(grouped[assetId].asset) grouped[assetId].asset!.name = newer;
+      }
     }
-
-    const calendarEvent = convertBookingToCalendarEvent(booking);
-    grouped[assetId].events.push(calendarEvent);
-  });
-
-  const summary = Object.entries(grouped).map(([id, calendar]) => ({
-    id: id.slice(0, 8) + '...',
-    name: calendar.name,
-    eventCount: calendar.events.length,
-  }));
-  
-  console.log("📊 Grouped result:", {
-    totalAssets: Object.keys(grouped).length,
-    assets: summary,
+    grouped[assetId].events.push(event);
   });
 
   return grouped;
 }
 
-// Optional helper functions
-export function filterEventsForDate(events: CalendarEvent[], date: Date): CalendarEvent[] {
-  const dateStr = date.toISOString().split('T')[0];
-  
-  return events.filter(event => {
-    const eventDateStr = event.bookingTimeDt.split('T')[0];
-    return eventDateStr === dateStr;
-  });
-}
-
-export function getAssetCalendar(
-  groupedCalendars: Record<string, AssetCalendar>,
-  assetId: string
-): AssetCalendar | undefined {
-  return groupedCalendars[assetId];
-}
-
-export function getAllEvents(groupedCalendars: Record<string, AssetCalendar>): CalendarEvent[] {
-  return Object.values(groupedCalendars).flatMap(calendar => calendar.events);
-}
-
-// ✅ Helper to convert extended events back to base events (for calendar component)
-export function toBaseCalendarEvent(event: CalendarEvent): BaseCalendarEvent {
-  return {
-    id: event.id,
-    start: event.start,
-    end: event.end,
-    title: event.title,
-    description: event.description,
-    color: event.color,
-  };
+function parseTimeToDate(dateStr: string, timeStr: string): Date {
+  try {
+    if (!dateStr || !timeStr) return new Date();
+    const dateOnly = dateStr.split('T')[0];
+    const timeParts = timeStr.split(':');
+    const hours = parseInt(timeParts[0], 10);
+    const minutes = parseInt(timeParts[1], 10);
+    return new Date(new Date(dateOnly).setHours(hours, minutes, 0, 0));
+  } catch (e) { return new Date(); }
 }

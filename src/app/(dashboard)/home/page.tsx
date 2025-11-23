@@ -37,9 +37,28 @@ interface Booking {
   asset?: {
     id: string;
     name: string;
-    // Removed asset_type to prevent errors
   };
 }
+
+// ✅ HELPER: Fixes Timezone/Midnight offset issue
+const combineDateAndTime = (dateStr: string, timeStr: string): Date => {
+  try {
+    if (!dateStr) return new Date();
+    const cleanDate = dateStr.split('T')[0]; 
+    const cleanTime = timeStr ? timeStr.split('T').pop() : "00:00:00"; 
+    return new Date(`${cleanDate}T${cleanTime}`);
+  } catch (e) {
+    return new Date();
+  }
+};
+
+const formatTimeFromDate = (date: Date): string => {
+  return date.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+};
 
 export default function HomePage() {
   const { user } = useAuth();
@@ -49,6 +68,10 @@ export default function HomePage() {
   const [loadingBookings, setLoadingBookings] = useState(true);
   const hasFetched = useRef(false);
   const userId = user?.id;
+
+  // ✅ CACHE KEYS
+  const bookingsCacheKey = `home_upcoming_v1_${userId}`;
+  const projectsListCacheKey = `home_projects_list_v1_${userId}`;
 
   const fetchAssets = useCallback(async () => {
     try {
@@ -68,27 +91,22 @@ export default function HomePage() {
       const storedProject = JSON.parse(storedProjectString);
       const projectId = storedProject.id || storedProject.project_id;
 
+      // Validation logic...
       const isProjectValid = project.some((p: any) => 
         (p.id === projectId) || (p.project_id === projectId)
       );
 
       if (!isProjectValid) {
-         console.warn("User tried to access a project they no longer have access to. Resetting.");
          localStorage.removeItem(`project_${userId}`);
          if (project.length > 0) fetchAssets(); 
          return; 
       }
 
       const response = await api.get("/assets/", {
-        params: { 
-          project_id: projectId,
-          limit: 100 // Optional: ensure we get enough assets
-        },
+        params: { project_id: projectId, limit: 100 },
       });
 
-      // Backend returns { assets: [], total: int, ... }
       const assetData = response.data?.assets || [];
-      
       localStorage.setItem(`assets_${userId}`, JSON.stringify(assetData));
     } catch (error) {
       console.error("Error fetching assets:", error);
@@ -96,26 +114,51 @@ export default function HomePage() {
   }, [project, userId, user]);
 
   useEffect(() => {
+    // Set Greeting
     const hour = new Date().getHours();
     if (hour < 12) setGreeting("Good morning");
     else if (hour < 18) setGreeting("Good afternoon");
     else setGreeting("Good evening");
 
+    if (!user || !userId) return;
+
+    // 1. LOAD CACHE INSTANTLY
+    let hasProjectCache = false;
+    let hasBookingCache = false;
+
+    // Projects Cache
+    const cachedProjects = localStorage.getItem(projectsListCacheKey);
+    if (cachedProjects) {
+        try {
+            const parsed = JSON.parse(cachedProjects);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                setProject(parsed);
+                hasProjectCache = true;
+            }
+        } catch (e) { localStorage.removeItem(projectsListCacheKey); }
+    }
+
+    // Bookings Cache
+    const cachedBookings = localStorage.getItem(bookingsCacheKey);
+    if (cachedBookings) {
+        try {
+            const parsed = JSON.parse(cachedBookings);
+            if (Array.isArray(parsed)) {
+                setUpcomingBookings(parsed);
+                setLoadingBookings(false); // Hide spinner immediately
+                hasBookingCache = true;
+            }
+        } catch (e) { localStorage.removeItem(bookingsCacheKey); }
+    }
+
+    // 2. FETCH FRESH DATA (Background)
     const fetchProjects = async () => {
+      if (hasFetched.current && hasProjectCache) return; // Prevent double fetch if cache exists
+
       try {
-        if (!user || !userId) {
-          return;
-        }
-
-        if (hasFetched.current && project.length > 0) return;
-
         let projectData = [];
-
         if (user.role === "subcontractor") {
-          const response = await api.get(
-            `/subcontractors/${userId}/projects`
-          );
-          
+          const response = await api.get(`/subcontractors/${userId}/projects`);
           projectData = response.data.map((p: any) => ({
             id: p.project_id,
             name: p.project_name,
@@ -123,36 +166,37 @@ export default function HomePage() {
             status: p.is_active ? "active" : "inactive",
             ...p 
           }));
-
         } else {
           const response = await api.get("/projects/", {
-            params: {
-              my_projects: true,
-              limit: 100,
-              skip: 0,
-            },
+            params: { my_projects: true, limit: 100, skip: 0 },
           });
           projectData = response.data?.projects || [];
         }
 
         setProject(projectData);
+        // ✅ Save to cache
+        localStorage.setItem(projectsListCacheKey, JSON.stringify(projectData));
 
       } catch (error) {
         console.error("Error fetching projects:", error);
       }
-      hasFetched.current = true;
     };
 
-    const fetchBookings = async () => {
-      if (!user) return;
-
+    const fetchBookings = async (isBackground = false) => {
       try {
-        setLoadingBookings(true);
+        // Only show spinner if we don't have data
+        if (!isBackground && upcomingBookings.length === 0) {
+            setLoadingBookings(true);
+        }
+
         const response = await api.get("/bookings/my/upcoming", {
           params: { limit: 3 },
         });
         const bookingsData = response.data || [];
+        
         setUpcomingBookings(bookingsData);
+        // ✅ Save to cache
+        localStorage.setItem(bookingsCacheKey, JSON.stringify(bookingsData));
       } catch (error) {
         console.error("Error fetching bookings:", error);
       } finally {
@@ -161,7 +205,10 @@ export default function HomePage() {
     };
 
     fetchProjects();
-    fetchBookings();
+    // If we found cache, fetch quietly in background. If not, fetch normally.
+    fetchBookings(hasBookingCache);
+    
+    hasFetched.current = true;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, user]); 
 
@@ -171,6 +218,7 @@ export default function HomePage() {
     }
   }, [project, fetchAssets]);
 
+  // ... rest of helper functions (getQuickAccessCards, etc) ...
   const getQuickAccessCards = () => {
     const cards = [
       {
@@ -213,25 +261,6 @@ export default function HomePage() {
 
   const handleOnChange = () => {
     fetchAssets();
-  };
-
-  const formatTime = (timeStr: string): string => {
-    try {
-      if (timeStr.includes("T") || timeStr.includes("Z")) {
-        const date = new Date(timeStr);
-        return date.toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        });
-      }
-      const parts = timeStr.split(":");
-      if (parts.length >= 2) {
-        return `${parts[0]}:${parts[1]}`;
-      }
-      return timeStr;
-    } catch {
-      return timeStr;
-    }
   };
 
   const getStatusColor = (status: string): string => {
@@ -317,15 +346,17 @@ export default function HomePage() {
               </>
             ) : upcomingBookings.length > 0 ? (
               upcomingBookings.map((booking) => {
-                const bookingDate = new Date(booking.booking_date);
-                const day = bookingDate.getDate();
-                const dayOfWeek = bookingDate.toLocaleDateString("en-US", {
+                
+                // ✅ Date Logic
+                const startObj = combineDateAndTime(booking.booking_date, booking.start_time);
+                const endObj = combineDateAndTime(booking.booking_date, booking.end_time);
+
+                const day = startObj.getDate();
+                const dayOfWeek = startObj.toLocaleDateString("en-US", {
                   weekday: "short",
                 });
-                const startTime = formatTime(booking.start_time);
-                const endTime = formatTime(booking.end_time);
-                const timeRange = `${startTime} - ${endTime}`;
-                const today = new Date().toDateString() === bookingDate.toDateString();
+                const timeRange = `${formatTimeFromDate(startObj)} - ${formatTimeFromDate(endObj)}`;
+                const today = new Date().toDateString() === startObj.toDateString();
                 const assetName = booking.asset?.name || "Asset";
 
                 return (
@@ -360,7 +391,6 @@ export default function HomePage() {
                               <span className="px-1.5 py-0 text-xs bg-blue-50 text-blue-700 rounded-full border border-blue-100">
                                 {assetName}
                               </span>
-                              {/* Removed asset_type rendering block */}
                             </div>
                           )}
                         </div>
@@ -383,6 +413,7 @@ export default function HomePage() {
   );
 }
 
+// ... Skeletons and Empty States (same as before)
 const SkeletonBookingCard = () => (
   <Card className="overflow-hidden border border-gray-200 shadow-sm mb-2">
     <div className="flex w-full">

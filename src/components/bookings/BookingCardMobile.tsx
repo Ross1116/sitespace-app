@@ -15,7 +15,12 @@ export default function BookingCardMobile({ booking, onActionComplete }: Booking
   const [openDropdown, setOpenDropdown] = useState<boolean>(false);
   
   const { day, dayOfWeek, date } = formatDate(booking.bookingTimeDt);
-  const timeRange = formatTime(booking.bookingTimeDt, booking.bookingDurationMins);
+  const timeRange = formatTime(
+    booking.bookingTimeDt, 
+    booking.bookingDurationMins,
+    booking.bookingStartTime,
+    booking.bookingEndTime
+  );
   const today = isToday(date);
   const { icon: BookingIcon, color: iconColor } = getBookingIcon(booking.bookingFor);
 

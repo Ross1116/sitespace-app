@@ -56,22 +56,35 @@ export function AssetFilter({
           <p>No assets available</p>
         ) : (
           <div className="flex flex-col justify-evenly space-y-2">
-            {assetCalendars.map((calendar, index) => (
-              <div key={index} className="flex items-center space-x-2">
-                <Checkbox
-                  id={`asset-${index}`}
-                  checked={visibleAssets.includes(index)}
-                  onCheckedChange={() => toggleAssetVisibility(index)}
-                  className="data-[state=checked]:bg-amber-600 data-[state=checked]:border-amber-600"
-                />
-                <label
-                  htmlFor={`asset-${index}`}
-                  className="text-sm font-medium text-gray-700"
-                >
-                  {calendar.name}
-                </label>
-              </div>
-            ))}
+            {assetCalendars.map((calendar: any, index) => {
+              // Fix: Safely extract name and code from potentially nested asset objects
+              // Based on your JSON: asset.name = "Testing Asset", asset.asset_code = "VEH-TES-8717"
+              const assetName = calendar.asset?.name || calendar.name || "Unknown Asset";
+              const assetCode = calendar.asset?.asset_code || calendar.asset_code || "";
+              
+              return (
+                <div key={index} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`asset-${index}`}
+                    checked={visibleAssets.includes(index)}
+                    onCheckedChange={() => toggleAssetVisibility(index)}
+                    className="data-[state=checked]:bg-amber-600 data-[state=checked]:border-amber-600"
+                  />
+                  <label
+                    htmlFor={`asset-${index}`}
+                    className="text-sm font-medium text-gray-700 truncate cursor-pointer"
+                    title={assetCode ? `${assetName} (${assetCode})` : assetName}
+                  >
+                    {assetName}
+                    {assetCode && (
+                      <span className="ml-1 text-xs text-gray-500 font-normal">
+                        ({assetCode})
+                      </span>
+                    )}
+                  </label>
+                </div>
+              );
+            })}
           </div>
         )}
       </CardContent>

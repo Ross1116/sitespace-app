@@ -20,14 +20,14 @@ interface BookingDetail {
   booking_date: string;
   start_time: string;
   end_time: string;
-  status: "pending" | "confirmed" | "completed" | "cancelled";
+  status: string;
   notes?: string;
-  created_at: string;
-  updated_at: string;
-  project?: { id: string; name: string; location?: string };
-  manager?: { id: string; first_name: string; last_name: string };
-  subcontractor?: { id: string; company_name?: string; first_name: string; last_name: string };
-  asset?: { id: string; name: string; asset_type: string };
+  asset?: {
+    id: string;
+    name: string;
+    asset_code: string;
+  };
+  [key: string]: any;
 }
 
 interface BookingListResponse {
@@ -39,238 +39,229 @@ interface BookingListResponse {
 }
 
 // ===== HELPER FUNCTIONS =====
+
+// Fixes Timezone/Midnight offset issue
+const combineDateAndTime = (dateStr: string, timeStr: string): Date => {
+  try {
+    if (!dateStr) return new Date();
+    const cleanDate = dateStr.split('T')[0];
+    const cleanTime = timeStr ? timeStr.split('T').pop() : "00:00:00";
+    // Construct ISO string for Local Time parsing
+    return new Date(`${cleanDate}T${cleanTime}`);
+  } catch (e) {
+    return new Date();
+  }
+};
+
 const parseTimeToMinutes = (timeStr: string): number => {
+  if (!timeStr) return 0;
   const [hours, minutes] = timeStr.split(":").map(Number);
   return hours * 60 + minutes;
 };
 
 const calculateDuration = (startTime: string, endTime: string): number => {
+  if (!startTime || !endTime) return 60;
   const start = parseTimeToMinutes(startTime);
   const end = parseTimeToMinutes(endTime);
   return end - start;
 };
 
 const transformBookingToLegacyFormat = (booking: BookingDetail) => {
-  const duration = calculateDuration(booking.start_time, booking.end_time);
+  const raw = booking._originalData || booking;
   
+  // 1. Clean Strings
+  const cleanStart = (raw.start_time || "00:00").split(':').slice(0, 2).join(':');
+  const cleanEnd = (raw.end_time || "00:00").split(':').slice(0, 2).join(':');
+
+  // 2. Date Objects
+  const startDateObj = combineDateAndTime(raw.booking_date, raw.start_time);
+  const endDateObj = combineDateAndTime(raw.booking_date, raw.end_time);
+
+  const duration = calculateDuration(cleanStart, cleanEnd);
+  
+  // 3. Names
+  const managerName = raw.manager 
+    ? `${raw.manager.first_name} ${raw.manager.last_name}` 
+    : "Unknown";
+    
+  const subName = raw.subcontractor?.company_name || 
+                 (raw.subcontractor ? `${raw.subcontractor.first_name} ${raw.subcontractor.last_name}` : "");
+
+  const bookedFor = raw.subcontractor_id ? subName : managerName;
+
+  // 4. Assets
+  let assetId = "unknown";
+  let assetName = "Unknown Asset";
+  let assetCode = "";
+
+  if (raw.asset && typeof raw.asset === 'object') {
+    assetId = raw.asset.id || raw.asset.asset_id || assetId;
+    assetName = raw.asset.name || assetName;
+    assetCode = raw.asset.asset_code || raw.asset.code || assetCode;
+  } else if (raw.asset_id) {
+    assetId = raw.asset_id;
+    if (booking.assetName && booking.assetName !== "Unknown Asset") assetName = booking.assetName;
+  }
+
+  if (assetName === "Unknown Asset" && assetId !== "unknown") {
+      if (assetCode) assetName = `Asset ${assetCode}`;
+      else assetName = `Asset ${assetId.slice(0, 6)}...`;
+  }
+
   return {
-    bookingKey: booking.id,
-    bookingTitle: booking.project?.name || "Booking",
-    bookingDescription: booking.notes || "",
-    bookingNotes: booking.notes || "",
-    bookingTimeDt: booking.booking_date,
-    bookingStartTime: booking.start_time,
-    bookingEndTime: booking.end_time,
+    bookingKey: raw.id,
+    bookingTitle: raw.project?.name || "Booking",
+    bookingDescription: raw.notes || "",
+    bookingNotes: raw.notes || "",
+    
+    bookingTimeDt: raw.booking_date,
+    bookingStartTime: cleanStart, 
+    bookingEndTime: cleanEnd,     
+    
+    start: startDateObj,
+    end: endDateObj,
+    bookingStart: startDateObj,
+    bookingEnd: endDateObj,
+    
     bookingDurationMins: duration,
-    bookingStatus: booking.status.charAt(0).toUpperCase() + booking.status.slice(1), // Capitalize
-    bookingFor: booking.manager
-      ? `${booking.manager.first_name} ${booking.manager.last_name}`
-      : booking.subcontractor?.company_name || "Unknown",
-    bookedAssets: booking.asset ? [booking.asset.name] : [],
-    assetId: booking.asset_id,
-    assetName: booking.asset?.name,
-    subcontractorId: booking.subcontractor_id,
-    subcontractorName: booking.subcontractor?.company_name,
-    // Keep original data for reference
-    _originalData: booking,
+    bookingStatus: (raw.status || "pending").charAt(0).toUpperCase() + (raw.status || "pending").slice(1),
+    bookingFor: bookedFor || "Unknown",
+    
+    bookedAssets: [assetName],
+    assetId: assetId,
+    assetName: assetName,
+    assetCode: assetCode,
+    
+    subcontractorId: raw.subcontractor_id,
+    subcontractorName: subName,
+    
+    _originalData: raw,
   };
 };
 
 export default function BookingsPage() {
   const [activeTab, setActiveTab] = useState("Upcoming");
-  const [bookings, setBookings] = useState<any[]>([]);
+  const [bookings, setBookings] = useState<any[]>([]); 
   const [loading, setLoading] = useState(true);
   const [isBookingFormOpen, setIsBookingFormOpen] = useState(false);
   const { user } = useAuth();
   const hasFetched = useRef(false);
   const userId = user?.id;
-  const storageKey = `bookings_${userId}`;
+  
+  // ✅ SHARED KEY V5
+  const storageKey = `bookings_v5_${userId}`; 
   const projectStorageKey = `project_${userId}`;
-  const initialLoadComplete = useRef(false);
-
-  // Calculate times for booking form
+  
   const now = new Date();
   const nextHour = startOfHour(addHours(now, 1));
   const endHour = addHours(nextHour, 1);
 
-  // Fetch bookings from API using new backend
-  const fetchBookings = async (forceRefresh = false) => {
-    if (!user || (initialLoadComplete.current && !forceRefresh)) {
-      return;
+  const processRawBookings = (rawBookings: BookingDetail[]) => {
+    const validBookings = rawBookings.filter(b => b && (b.id || b.bookingKey));
+    return validBookings.map(transformBookingToLegacyFormat);
+  };
+
+  // ✅ UPDATED: Accepts isBackground flag
+  const fetchBookings = async (isBackground = false) => {
+    if (!user) return;
+
+    // Only show spinner if this is a hard load AND we have no data
+    if (!isBackground && bookings.length === 0) {
+        setLoading(true);
     }
 
-    setLoading(true);
-
     const projectString = localStorage.getItem(projectStorageKey);
-
     if (!projectString) {
-      console.error("No project found in localStorage");
+      console.error("No project found");
       setLoading(false);
       return;
     }
 
     try {
-      console.log("Fetching bookings from new backend...");
+      if (!isBackground) console.log("Fetching fresh bookings...");
+      
       const project = JSON.parse(projectString);
-
-      // Use new backend endpoint
       const response = await api.get<BookingListResponse>("/bookings/", {
-        params: {
-          project_id: project.id,
-          limit: 1000,
-          skip: 0,
-        },
+        params: { project_id: project.id, limit: 1000, skip: 0 },
       });
 
-      const bookingsData = response.data?.bookings || [];
-      console.log("Bookings fetched:", bookingsData.length);
-
-      // Transform to legacy format for backward compatibility
-      const transformedBookings = bookingsData.map(transformBookingToLegacyFormat);
+      const rawBookings = response.data?.bookings || [];
       
-      setBookings(transformedBookings);
-      localStorage.setItem(storageKey, JSON.stringify(transformedBookings));
+      // Save & Update
+      localStorage.setItem(storageKey, JSON.stringify(rawBookings));
+      const uiBookings = processRawBookings(rawBookings);
+      setBookings(uiBookings);
+      hasFetched.current = true;
     } catch (error: any) {
       console.error("Error fetching bookings:", error);
-      
-      // Try to use cached data on error
-      const cachedBookings = localStorage.getItem(storageKey);
-      if (cachedBookings) {
-        try {
-          const parsedBookings = JSON.parse(cachedBookings);
-          setBookings(parsedBookings);
-        } catch (e) {
-          console.error("Error parsing cached bookings:", e);
-        }
-      }
     } finally {
+      // Always turn off loading when done
       setLoading(false);
-      initialLoadComplete.current = true;
     }
   };
 
   useEffect(() => {
     if (!user) return;
 
-    // First attempt to load from localStorage
-    const cachedBookings = localStorage.getItem(storageKey);
-    if (cachedBookings) {
+    let hasCache = false;
+
+    // 1. LOAD CACHE INSTANTLY
+    const cachedData = localStorage.getItem(storageKey);
+    if (cachedData) {
       try {
-        const parsedBookings = JSON.parse(cachedBookings);
-        if (Array.isArray(parsedBookings)) {
-          setBookings(parsedBookings);
-          setLoading(false);
-          initialLoadComplete.current = true;
+        const parsedData = JSON.parse(cachedData);
+        if (Array.isArray(parsedData) && parsedData.length > 0) {
+            console.log("⚡ Instant Load from Cache (List)");
+            const uiBookings = processRawBookings(parsedData);
+            setBookings(uiBookings);
+            setLoading(false); // Hide spinner immediately
+            hasCache = true;
         }
       } catch (error) {
-        console.error("Error parsing cached bookings:", error);
         localStorage.removeItem(storageKey);
       }
     }
 
-    // Then fetch fresh data if we haven't already fetched
+    // 2. FETCH FRESH DATA
     if (!hasFetched.current) {
-      fetchBookings();
-      hasFetched.current = true;
-
-      // Set up periodic refresh (5 minutes)
-      const interval = setInterval(() => fetchBookings(true), 300000);
-      return () => clearInterval(interval);
+      // If we found cache, fetch in background (true). If not, show spinner (false).
+      fetchBookings(hasCache);
     }
+
+    const interval = setInterval(() => fetchBookings(true), 300000);
+    return () => clearInterval(interval);
   }, [user]);
 
-  const handleActionComplete = () => {
-    console.log("Action completed, refreshing bookings...");
-    fetchBookings(true);
-  };
-
-  const handleOnClickButton = () => {
-    setIsBookingFormOpen(true);
-  };
-
+  const handleActionComplete = () => fetchBookings(true);
+  const handleOnClickButton = () => setIsBookingFormOpen(true);
   const handleSaveBooking = () => {
-    console.log("Booking saved successfully");
     setIsBookingFormOpen(false);
-    fetchBookings(true);
+    fetchBookings(true); // Force refresh
   };
 
   return (
     <Card className="px-6 sm:my-8 mx-4 bg-stone-100">
       <div className="p-3 sm:p-6">
-        {/* Header with title and create button */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
           <div>
-            <h1 className="text-xl sm:text-3xl font-bold text-gray-900">
-              Bookings
-            </h1>
-            <p className="text-sm sm:text-base text-gray-500 mt-1">
-              See your scheduled events from your calendar events links.
-            </p>
+            <h1 className="text-xl sm:text-3xl font-bold text-gray-900">Bookings</h1>
+            <p className="text-sm sm:text-base text-gray-500 mt-1">See your scheduled events.</p>
           </div>
-
-          {/* Desktop button */}
-          <Button
-            onClick={handleOnClickButton}
-            className="hidden sm:flex mt-4 sm:mt-0 cursor-pointer"
-          >
-            Create new booking
-          </Button>
-
-          {/* Mobile button - icon only */}
-          <Button
-            onClick={handleOnClickButton}
-            className="sm:hidden fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-lg z-10"
-            size="icon"
-          >
-            <Plus size={24} />
-          </Button>
+          <Button onClick={handleOnClickButton} className="hidden sm:flex mt-4 sm:mt-0 cursor-pointer">Create new booking</Button>
+          <Button onClick={handleOnClickButton} className="sm:hidden fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-lg z-10" size="icon"><Plus size={24} /></Button>
         </div>
-
-        {/* Booking Form Modal */}
         {isBookingFormOpen && (
-          <CreateBookingForm
-            isOpen={isBookingFormOpen}
-            onClose={() => setIsBookingFormOpen(false)}
-            startTime={nextHour}
-            endTime={endHour}
-            onSave={handleSaveBooking}
-          />
+          <CreateBookingForm isOpen={isBookingFormOpen} onClose={() => setIsBookingFormOpen(false)} startTime={nextHour} endTime={endHour} onSave={handleSaveBooking} />
         )}
-
-        {/* Tabs - Scrollable on mobile */}
         <div className="mt-4 sm:mt-6 border-b overflow-x-auto pb-1">
           <div className="flex w-max min-w-full">
-            {[
-              "Upcoming",
-              "Pending",
-              "Confirmed",
-              "Completed",
-              "Cancelled",
-              "All",
-            ].map((tab) => (
-              <button
-                key={tab}
-                className={`px-3 sm:px-4 py-2 text-sm sm:text-base font-medium whitespace-nowrap ${
-                  activeTab === tab
-                    ? "text-blue-600 border-b-2 border-blue-600"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
-                onClick={() => setActiveTab(tab)}
-              >
-                {tab}
-              </button>
+            {["Upcoming", "Pending", "Confirmed", "Completed", "Cancelled", "All"].map((tab) => (
+              <button key={tab} className={`px-3 sm:px-4 py-2 text-sm sm:text-base font-medium whitespace-nowrap ${activeTab === tab ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-500 hover:text-gray-700"}`} onClick={() => setActiveTab(tab)}>{tab}</button>
             ))}
           </div>
         </div>
-
-        {/* Bookings List */}
         <div className="mt-4">
-          <BookingList
-            bookings={bookings}
-            activeTab={activeTab}
-            loading={loading}
-            onActionComplete={handleActionComplete}
-          />
+          <BookingList bookings={bookings} activeTab={activeTab} loading={loading} onActionComplete={handleActionComplete} />
         </div>
       </div>
     </Card>
