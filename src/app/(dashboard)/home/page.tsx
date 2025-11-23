@@ -79,19 +79,23 @@ export default function HomePage() {
          return; 
       }
 
-      const response = await api.get("/api/Asset/getAssetList", {
-        params: { asset_project: projectId },
+      // UPDATED API CALL HERE
+      const response = await api.get("/assets", {
+        params: { 
+          project_id: projectId,
+          limit: 100 // Optional: ensure we get enough assets
+        },
       });
 
-      const assetData =
-        response.data?.asset_list || response.data?.assetlist || [];
+      // Backend returns { assets: [], total: int, ... }
+      const assetData = response.data?.assets || [];
       
       localStorage.setItem(`assets_${userId}`, JSON.stringify(assetData));
     } catch (error) {
       console.error("Error fetching assets:", error);
     }
   }, [project, userId, user]);
-
+  
   useEffect(() => {
     const hour = new Date().getHours();
     if (hour < 12) setGreeting("Good morning");
