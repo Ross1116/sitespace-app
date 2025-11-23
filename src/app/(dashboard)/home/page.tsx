@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import { Calendar, Construction, Users, Clock, CalendarX } from "lucide-react";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import api from "@/lib/api";
 import ProjectSelector from "@/components/home/RadioToggle";
 
@@ -37,7 +37,7 @@ interface Booking {
   asset?: {
     id: string;
     name: string;
-    asset_type: string;
+    // Removed asset_type to prevent errors
   };
 }
 
@@ -50,6 +50,48 @@ export default function HomePage() {
   const hasFetched = useRef(false);
   const userId = user?.id;
 
+  const fetchAssets = useCallback(async () => {
+    try {
+      if (!user || !userId || project.length === 0) return;
+
+      const storedProjectString = localStorage.getItem(`project_${userId}`);
+      
+      if (!storedProjectString) {
+          if (project.length > 0) {
+            const defaultProject = project[0];
+            localStorage.setItem(`project_${userId}`, JSON.stringify(defaultProject));
+            fetchAssets(); 
+          }
+          return;
+      }
+
+      const storedProject = JSON.parse(storedProjectString);
+      const projectId = storedProject.id || storedProject.project_id;
+
+      const isProjectValid = project.some((p: any) => 
+        (p.id === projectId) || (p.project_id === projectId)
+      );
+
+      if (!isProjectValid) {
+         console.warn("User tried to access a project they no longer have access to. Resetting.");
+         localStorage.removeItem(`project_${userId}`);
+         if (project.length > 0) fetchAssets(); 
+         return; 
+      }
+
+      const response = await api.get("/api/Asset/getAssetList", {
+        params: { asset_project: projectId },
+      });
+
+      const assetData =
+        response.data?.asset_list || response.data?.assetlist || [];
+      
+      localStorage.setItem(`assets_${userId}`, JSON.stringify(assetData));
+    } catch (error) {
+      console.error("Error fetching assets:", error);
+    }
+  }, [project, userId, user]);
+
   useEffect(() => {
     const hour = new Date().getHours();
     if (hour < 12) setGreeting("Good morning");
@@ -59,23 +101,18 @@ export default function HomePage() {
     const fetchProjects = async () => {
       try {
         if (!user || !userId) {
-          console.log("No user ID available, skipping project fetch");
           return;
         }
 
-        // Prevent double fetching in Strict Mode, but ensure we fetch if user just loaded
         if (hasFetched.current && project.length > 0) return;
 
         let projectData = [];
 
-        // ✅ 1. Check Role to determine Endpoint
         if (user.role === "subcontractor") {
-          // Subcontractor Endpoint
           const response = await api.get(
             `/subcontractors/${userId}/projects`
           );
           
-          // Map the subcontractor response (project_id) to standard format (id)
           projectData = response.data.map((p: any) => ({
             id: p.project_id,
             name: p.project_name,
@@ -85,7 +122,6 @@ export default function HomePage() {
           }));
 
         } else {
-          // Manager/Admin Endpoint
           const response = await api.get("/projects/", {
             params: {
               my_projects: true,
@@ -97,10 +133,6 @@ export default function HomePage() {
         }
 
         setProject(projectData);
-        
-        if (projectData.length > 0) {
-          console.log("Projects loaded:", projectData);
-        }
 
       } catch (error) {
         console.error("Error fetching projects:", error);
@@ -129,6 +161,12 @@ export default function HomePage() {
     fetchBookings();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, user]); 
+
+  useEffect(() => {
+    if (project.length > 0) {
+      fetchAssets();
+    }
+  }, [project, fetchAssets]);
 
   const getQuickAccessCards = () => {
     const cards = [
@@ -171,49 +209,7 @@ export default function HomePage() {
   };
 
   const handleOnChange = () => {
-    const fetchAssets = async () => {
-      try {
-        if (!user || !userId) return;
-
-        const storedProjectString = localStorage.getItem(`project_${userId}`);
-        
-        if (!storedProjectString) {
-            console.log("No project selected");
-            return;
-        }
-
-        const storedProject = JSON.parse(storedProjectString);
-        const projectId = storedProject.id || storedProject.project_id;
-        
-        const isProjectValid = project.some((p: any) => 
-          (p.id === projectId) || (p.project_id === projectId)
-        );
-
-        if (!isProjectValid && project.length > 0) {
-           console.warn("User tried to access a project they no longer have access to.");
-           localStorage.removeItem(`project_${userId}`);
-           return; 
-        }
-
-        if (!projectId) return;
-
-        const response = await api.get("/api/Asset/getAssetList", {
-          params: { asset_project: projectId },
-        });
-
-        const assetData =
-          response.data?.asset_list || response.data?.assetlist || [];
-        
-        localStorage.setItem(`assets_${userId}`, JSON.stringify(assetData));
-      } catch (error) {
-        console.error("Error fetching assets:", error);
-      }
-    };
-
-    // Only run this if projects have been loaded
-    if (project.length > 0) {
-        fetchAssets();
-    }
+    fetchAssets();
   };
 
   const formatTime = (timeStr: string): string => {
@@ -361,11 +357,7 @@ export default function HomePage() {
                               <span className="px-1.5 py-0 text-xs bg-blue-50 text-blue-700 rounded-full border border-blue-100">
                                 {assetName}
                               </span>
-                              {booking.asset.asset_type && (
-                                <span className="px-1.5 py-0 text-xs bg-gray-50 text-gray-600 rounded-full border border-gray-100">
-                                  {booking.asset.asset_type}
-                                </span>
-                              )}
+                              {/* Removed asset_type rendering block */}
                             </div>
                           )}
                         </div>
