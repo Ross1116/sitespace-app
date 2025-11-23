@@ -32,12 +32,13 @@ interface ContractorModalProps {
 interface SubcontractorCreateRequest {
   email: string;
   password: string;
-  confirm_password: string; // ✅ Added this
+  confirm_password: string;
   first_name: string;
   last_name: string;
   company_name?: string;
   trade_specialty?: string;
   phone?: string;
+  project_id?: string;
 }
 
 interface SubcontractorResponse {
@@ -308,14 +309,17 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
       let isNewAccount = false;
 
       if (existingSubcontractor) {
-        // Use existing subcontractor
         subcontractorId = existingSubcontractor.id;
+        
+        // link them to the project
+        await api.post(
+          `/subcontractors/${existingSubcontractor.id}/projects/${contractor.contractorProjectId}`
+        );
+        
         setSuccess("Adding existing subcontractor to your project...");
       } else {
-        // Create new subcontractor
         console.log("Creating new subcontractor account...");
 
-        // Validation for new accounts
         if (!contractor.firstName.trim() || !contractor.lastName.trim()) {
           setError("First name and last name are required for new accounts");
           setIsSubmitting(false);
@@ -333,79 +337,52 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
           company_name: contractor.companyName.trim() || undefined,
           trade_specialty: contractor.tradeSpecialty || undefined,
           phone: contractor.contractorPhone.trim() || undefined,
+          project_id: contractor.contractorProjectId,
         };
 
         const createResponse = await api.post(
           "/subcontractors/",
           subcontractorData
         );
+        
         const createdSubcontractor = createResponse.data;
-
-        console.log("Subcontractor created:", createdSubcontractor);
         subcontractorId = createdSubcontractor.id;
         isNewAccount = true;
-      }
 
-      // Assign subcontractor to the project
-      try {
-        console.log("Assigning to project:", contractor.contractorProjectId);
-
-        await api.post(
-          `/projects/${contractor.contractorProjectId}/subcontractors`,
-          {
-            subcontractor_id: subcontractorId,
-            hourly_rate: null,
-          }
-        );
-
-        console.log("Subcontractor assigned to project successfully");
-      } catch (assignError: any) {
-        console.error("Error assigning to project:", assignError);
-
-        if (assignError.response?.status === 400) {
-          setError("This subcontractor is already assigned to this project");
-          setIsSubmitting(false);
-          return;
-        }
-
-        throw assignError;
-      }
-
-      // ✅ CHANGED: Send welcome email (only for new accounts)
-      if (isNewAccount) {
+        // Send welcome email (only for new accounts)
         try {
-          console.log("Sending welcome email to new account...");
+          console.log("Sending welcome email...");
           await api.post(
             `/subcontractors/${subcontractorId}/send-welcome-email`
           );
-          console.log("Welcome email sent");
         } catch (emailError) {
           console.error("Error sending welcome email:", emailError);
-          // Don't fail if email sending fails
         }
       }
-
-      // Show success message
+      
       const successMessage = isNewAccount
         ? "Subcontractor invited! They will receive an email to set their password."
         : "Existing subcontractor added to your project successfully!";
 
       setSuccess(successMessage);
 
-      // Call onSave callback
       onSave({ id: subcontractorId });
 
-      // Close modal after 2 seconds
       setTimeout(() => {
         onClose(false);
       }, 2000);
+
     } catch (error: any) {
       console.error("Error processing subcontractor:", error);
-      const errorMessage =
-        error.response?.data?.detail ||
-        error.message ||
-        "Failed to process subcontractor";
-      setError(errorMessage);
+      
+      // Handle "Already Assigned" errors specifically
+      const errorMessage = error.response?.data?.detail || error.message;
+      
+      if (typeof errorMessage === 'string' && errorMessage.includes("already assigned")) {
+         setError("This subcontractor is already assigned to this project.");
+      } else {
+         setError(typeof errorMessage === 'string' ? errorMessage : "Failed to process request");
+      }
     } finally {
       setIsSubmitting(false);
     }
