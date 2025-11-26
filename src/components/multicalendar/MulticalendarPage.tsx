@@ -82,7 +82,7 @@ const assetsApi = {
   getProjectAssets: async (projectId: string): Promise<Asset[]> => {
     try {
       // Fetching up to 100 assets for the project to ensure we have the list
-      const response = await api.get<AssetListResponse>("/assets", {
+      const response = await api.get<AssetListResponse>("/assets/", {
         params: {
           project_id: projectId,
           limit: 100, 

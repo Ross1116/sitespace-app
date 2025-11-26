@@ -108,6 +108,7 @@ export default function BookingCardDesktop({ booking, onActionComplete }: Bookin
             <BookingCardDropdown
               bookingKey={booking.bookingKey}
               bookingStatus={booking.bookingStatus}
+              subcontractorId={booking.subcontractorId}
               isOpen={openDropdown}
               onToggle={toggleDropdown}
               onActionComplete={onActionComplete}

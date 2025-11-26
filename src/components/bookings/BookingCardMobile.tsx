@@ -125,6 +125,7 @@ export default function BookingCardMobile({ booking, onActionComplete }: Booking
                 <BookingCardDropdown
                   bookingKey={booking.bookingKey}
                   bookingStatus={booking.bookingStatus}
+                  subcontractorId={booking.subcontractorId}
                   isOpen={openDropdown}
                   onToggle={toggleDropdown}
                   onActionComplete={onActionComplete}

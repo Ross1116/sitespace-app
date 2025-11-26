@@ -28,19 +28,21 @@ export default function BookingList({
 
   const filteredBookings = (monthBookings: any[]) => {
     return monthBookings.filter((booking) => {
+      const status = booking.bookingStatus.toLowerCase();
+
+      // 1. UPCOMING: Future dates, excluding dead bookings
       if (activeTab === "Upcoming") {
         const bookingDate = new Date(booking.bookingTimeDt);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        return bookingDate >= today && booking.bookingStatus !== "Cancelled";
+        return bookingDate >= today && status !== "cancelled" && status !== "denied";
       }
+      
+      // 2. ALL: Show everything
       if (activeTab === "All") return true;
-      
-      // Normalize status comparison (handle both capitalized and lowercase)
-      const normalizedBookingStatus = booking.bookingStatus.toLowerCase();
-      const normalizedActiveTab = activeTab.toLowerCase();
-      
-      return normalizedBookingStatus === normalizedActiveTab;
+
+      // 3. EXACT MATCH: Works for Pending, Confirmed, Completed, Cancelled, AND Denied
+      return status === activeTab.toLowerCase();
     });
   };
 
