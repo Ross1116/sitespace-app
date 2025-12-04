@@ -30,14 +30,18 @@ export default function BookingList({
     return monthBookings.filter((booking) => {
       const status = booking.bookingStatus.toLowerCase();
 
-      // 1. UPCOMING: Future dates, excluding dead bookings
+      // 1. UPCOMING: include bookings whose END datetime is now or in the future,
+      //    and exclude cancelled/denied
       if (activeTab === "Upcoming") {
-        const bookingDate = new Date(booking.bookingTimeDt);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        return bookingDate >= today && status !== "cancelled" && status !== "denied";
+        // booking.bookingEnd should already be a Date (from transformBookingToLegacyFormat).
+        // Wrap in `new Date(...)` for safety if it's a string.
+        const endDt = booking.bookingEnd
+          ? new Date(booking.bookingEnd)
+          : new Date(booking.bookingTimeDt);
+        const now = new Date();
+        return endDt >= now && status !== "cancelled" && status !== "denied";
       }
-      
+
       // 2. ALL: Show everything
       if (activeTab === "All") return true;
 
