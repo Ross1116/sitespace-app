@@ -128,8 +128,9 @@ export default function HomePage() {
   const fetchBookings = useCallback(
     async (isBackground = false) => {
       try {
-        if (!isBackground && upcomingBookings.length === 0)
+        if (!isBackground && upcomingBookings.length === 0) {
           setLoadingBookings(true);
+        }
 
         const resp = await api.get("/bookings/my/upcoming", {
           params: { limit: 50 },
@@ -205,10 +206,19 @@ export default function HomePage() {
       }
     }
 
-    // fetch fresh data
+    // fetch fresh data (Option 3 behavior)
     if (!hasFetched.current) {
       fetchProjects();
-      fetchBookings(!!cachedBookings);
+
+      if (cachedBookings) {
+        // we have cache: refresh in background so we don't show spinner
+        fetchBookings(true);
+      } else {
+        // no cache: show spinner while fetching
+        setLoadingBookings(true);
+        fetchBookings(false);
+      }
+
       hasFetched.current = true;
     } else {
       // still refresh bookings when component mounts again
@@ -222,6 +232,8 @@ export default function HomePage() {
     if (!selectedProject) return;
     // update caches & fetch relevant resources
     fetchAssets();
+    // show spinner for explicit project change (foreground fetch)
+    setLoadingBookings(true);
     fetchBookings(false);
   }, [selectedProject, fetchAssets, fetchBookings]);
 
@@ -364,14 +376,29 @@ export default function HomePage() {
           <h2 className="text-xl font-semibold text-gray-800 mb-4">
             Your Projects
           </h2>
+
           <Card className="p-0">
             {projects.length > 0 ? (
-              // Pass selectedProject or let ProjectSelector write into localStorage and call onChange()
-              <ProjectSelector
-                projects={projects}
-                userId={userId}
-                onChange={(proj?: any) => handleProjectSelect(proj)}
-              />
+              <>
+                {/* Clear label above selector */}
+                <div className="px-4 pt-4 pb-1">
+                  <div className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                    <Calendar size={16} className="text-orange-500" />
+                    Select a Project
+                  </div>
+                </div>
+
+                {/* Highlighted selector area */}
+                <div className="px-2 pb-3">
+                  <div className="border border-orange-200 rounded-md p-2 bg-white">
+                    <ProjectSelector
+                      projects={projects}
+                      userId={userId}
+                      onChange={(proj?: any) => handleProjectSelect(proj)}
+                    />
+                  </div>
+                </div>
+              </>
             ) : (
               <div className="p-4 space-y-1">
                 <Skeleton className="h-8 w-full" />
@@ -387,7 +414,7 @@ export default function HomePage() {
             Upcoming Bookings
           </h2>
           <Card className="bg-stone-100 px-2 py-2">
-            {loadingBookings ? (
+            {(loadingBookings || !hasFetched.current) ? (
               <>
                 <SkeletonBookingCard />
                 <SkeletonBookingCard />
@@ -505,26 +532,49 @@ export default function HomePage() {
   );
 }
 
-// Skeletons and Empty State (unchanged)
+// Skeletons and Empty State
 const SkeletonBookingCard = () => (
-  <Card className="overflow-hidden border border-gray-200 shadow-sm mb-2">
-    <div className="flex w-full">
-      <div className="w-16 flex-shrink-0 flex flex-col items-center justify-center py-2 border-r border-gray-200">
-        <Skeleton className="h-3 w-8 mb-1" />
-        <Skeleton className="h-6 w-8" />
+  <Card className="border-b last:border-b-0 my-2 bg-stone-50">
+    {/* Desktop skeleton */}
+    <div className="hidden sm:flex w-full p-3 animate-pulse">
+      <div className="w-24 sm:w-32 flex-shrink-0 flex flex-col items-center text-center justify-center border-r-2 pr-4">
+        <div className="h-4 w-16 bg-gray-200 rounded mb-2"></div>
+        <div className="h-8 w-10 bg-gray-200 rounded"></div>
       </div>
-      <div className="flex-1 px-6 flex flex-col justify-center py-3">
-        <div className="flex justify-between items-center">
-          <div className="flex-1 pr-2">
-            <Skeleton className="h-4 w-3/4 mb-2" />
-            <Skeleton className="h-3 w-1/3" />
-          </div>
-          <Skeleton className="h-5 w-16 rounded-full" />
+
+      <div className="flex-1 flex gap-4">
+        <div className="w-64 lg:w-80">
+          <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+          <div className="h-3 bg-gray-200 rounded w-2/3 mb-2"></div>
+          <div className="h-3 bg-gray-200 rounded w-1/2"></div>
         </div>
-        <div className="flex gap-1 mt-1">
-          <Skeleton className="h-4 w-12 rounded-full" />
-          <Skeleton className="h-4 w-12 rounded-full" />
+
+        <div className="flex-1">
+          <div className="h-4 bg-gray-200 rounded w-full mb-2"></div>
+          <div className="h-3 bg-gray-200 rounded w-5/6"></div>
         </div>
+
+        <div className="w-24 flex-shrink-0 flex flex-col items-end justify-between">
+          <div className="h-8 w-16 bg-gray-200 rounded mb-2"></div>
+          <div className="h-4 w-16 bg-gray-200 rounded"></div>
+        </div>
+      </div>
+    </div>
+
+    {/* Mobile skeleton */}
+    <div className="sm:hidden p-3 animate-pulse">
+      <div className="flex items-center mb-3">
+        <div className="w-12 h-14 bg-gray-200 rounded mr-3"></div>
+        <div className="flex-1">
+          <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+          <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+        </div>
+      </div>
+      <div className="h-3 bg-gray-200 rounded w-full mb-2"></div>
+      <div className="h-3 bg-gray-200 rounded w-2/3"></div>
+      <div className="flex gap-2 mt-3">
+        <div className="h-4 w-16 bg-gray-200 rounded"></div>
+        <div className="h-4 w-16 bg-gray-200 rounded"></div>
       </div>
     </div>
   </Card>
