@@ -439,7 +439,7 @@ export function CreateBookingForm({
       const createdBookings = await Promise.all(bookingPromises);
 
       if (isManager && Array.isArray(createdBookings)) {
-        for (let b of createdBookings) {
+        for (const b of createdBookings) {
           // If backend already returned confirmed, keep it.
           // Otherwise, upgrade pending/undefined -> confirmed so UI shows correct state instantly.
           if (!b.status || b.status === "pending") {
