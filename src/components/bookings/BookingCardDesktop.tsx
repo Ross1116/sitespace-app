@@ -28,6 +28,8 @@ export default function BookingCardDesktop({ booking, onActionComplete }: Bookin
     setOpenDropdown(!openDropdown);
   };
 
+  const status = (booking.bookingStatus || "").toString().toLowerCase();
+
   return (
     <Card className="border-b last:border-b-0 my-2 bg-stone-50">
       <div className="hidden sm:flex w-full">
@@ -37,7 +39,7 @@ export default function BookingCardDesktop({ booking, onActionComplete }: Bookin
             className={`text-gray-500 text-sm sm:text-lg ${
               today
                 ? "text-orange-500"
-                : booking.bookingStatus === "Pending"
+                : status === "pending"
                 ? "text-yellow-400"
                 : "text-gray-500"
             }`}
@@ -48,7 +50,7 @@ export default function BookingCardDesktop({ booking, onActionComplete }: Bookin
             className={`text-2xl sm:text-4xl font-semibold ${
               today
                 ? "text-orange-600"
-                : booking.bookingStatus === "Pending"
+                : status === "pending"
                 ? "text-yellow-500"
                 : "text-gray-800"
             }`}
@@ -64,7 +66,7 @@ export default function BookingCardDesktop({ booking, onActionComplete }: Bookin
             <div className="flex items-center text-gray-500 mb-1">
               <Clock size={16} className="mr-1" />
               <span>{timeRange}</span>
-              {booking.bookingStatus === "Pending" && (
+              {status === "pending" && (
                 <AlertCircle
                   size={16}
                   className="ml-2 text-yellow-400"
@@ -79,28 +81,45 @@ export default function BookingCardDesktop({ booking, onActionComplete }: Bookin
 
             {/* Asset tags */}
             <div className="flex flex-wrap gap-1 mt-2">
-              {booking.bookedAssets.map((asset: string) => (
-                <span
-                  key={asset}
-                  className="px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full"
-                >
-                  {asset}
-                </span>
-              ))}
+              {Array.isArray(booking.bookedAssets) &&
+                booking.bookedAssets.map((asset: string) => (
+                  <span
+                    key={asset}
+                    className="px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full"
+                  >
+                    {asset}
+                  </span>
+                ))}
             </div>
           </div>
 
           {/* Middle description column */}
           <div className="w-full md:flex-1 px-0 md:px-4">
+            {/* Primary bold title */}
             <div className="font-semibold text-base lg:text-lg text-gray-900 mb-1 text-left">
-              {booking.bookingTitle}
+              {booking.bookingTitle || "Booking"}
             </div>
-            <div className="text-sm lg:text-md text-gray-700 mb-2 text-left">
-              {booking.bookingDescription}
-            </div>
-            <div className="text-xs lg:text-sm text-gray-500 mb-2 text-left">
-              {booking.bookingNotes}
-            </div>
+
+            {/* Secondary description */}
+            {booking.bookingDescription && (
+              <div className="text-sm lg:text-md text-gray-700 mb-1 text-left">
+                {booking.bookingDescription}
+              </div>
+            )}
+
+            {/* Notes (smaller) */}
+            {booking.bookingNotes && (
+              <div className="text-xs lg:text-sm text-gray-500 mb-2 text-left">
+                {booking.bookingNotes}
+              </div>
+            )}
+
+            {/* Project subscript (tiny muted) */}
+            {booking.projectName && (
+              <div className="text-[11px] text-gray-400 mt-1 text-left">
+                {booking.projectName}
+              </div>
+            )}
           </div>
 
           {/* Right action column */}
@@ -118,11 +137,11 @@ export default function BookingCardDesktop({ booking, onActionComplete }: Bookin
             <div
               className={`absolute bottom-0 right-0 text-xs px-2 py-1 rounded
               ${
-                booking.bookingStatus === "Confirmed"
+                status === "confirmed"
                   ? "bg-green-100 text-green-800"
-                  : booking.bookingStatus === "Pending"
+                  : status === "pending"
                   ? "bg-yellow-100 text-yellow-800"
-                  : booking.bookingStatus === "Denied"
+                  : status === "denied" || status === "cancelled"
                   ? "bg-red-100 text-red-800"
                   : "bg-gray-100 text-gray-800"
               }`}

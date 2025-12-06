@@ -28,6 +28,8 @@ export default function BookingCardMobile({ booking, onActionComplete }: Booking
     setOpenDropdown(!openDropdown);
   };
 
+  const status = (booking.bookingStatus || "").toString().toLowerCase();
+
   return (
     <Card className="border-b last:border-b-0 my-2 bg-stone-50">
       <div className="block sm:hidden p-3">
@@ -38,7 +40,7 @@ export default function BookingCardMobile({ booking, onActionComplete }: Booking
               className={`text-xs ${
                 today
                   ? "text-orange-500"
-                  : booking.bookingStatus === "Pending"
+                  : status === "pending"
                   ? "text-yellow-400"
                   : "text-gray-500"
               }`}
@@ -49,7 +51,7 @@ export default function BookingCardMobile({ booking, onActionComplete }: Booking
               className={`text-xl font-semibold ${
                 today
                   ? "text-orange-600"
-                  : booking.bookingStatus === "Pending"
+                  : status === "pending"
                   ? "text-yellow-500"
                   : "text-gray-800"
               }`}
@@ -60,16 +62,34 @@ export default function BookingCardMobile({ booking, onActionComplete }: Booking
 
           <div className="flex-1">
             <div className="flex justify-between items-start">
-              <div className="font-semibold text-gray-900">
-                {booking.bookingTitle}
+              <div className="flex flex-col">
+                {/* Primary bold title */}
+                <div className="font-semibold text-gray-900">
+                  {booking.bookingTitle || "Booking"}
+                </div>
+
+                {/* Description (secondary) */}
+                {booking.bookingDescription && (
+                  <div className="text-xs text-gray-700 mt-0.5 truncate">
+                    {booking.bookingDescription}
+                  </div>
+                )}
+
+                {/* Project as tiny muted subscript */}
+                {booking.projectName && (
+                  <div className="text-[11px] text-gray-400 mt-1">
+                    {booking.projectName}
+                  </div>
+                )}
               </div>
+
               <div
                 className={`text-xs px-2 py-1 rounded ml-1 flex-shrink-0 ${
-                  booking.bookingStatus === "Confirmed"
+                  status === "confirmed"
                     ? "bg-green-100 text-green-800"
-                    : booking.bookingStatus === "Pending"
+                    : status === "pending"
                     ? "bg-yellow-100 text-yellow-800"
-                    : booking.bookingStatus === "Denied"
+                    : status === "denied" || status === "cancelled"
                     ? "bg-red-100 text-red-800"
                     : "bg-gray-100 text-gray-800"
                 }`}
@@ -78,10 +98,10 @@ export default function BookingCardMobile({ booking, onActionComplete }: Booking
               </div>
             </div>
 
-            <div className="flex items-center text-xs text-gray-500 mt-0.5">
+            <div className="flex items-center text-xs text-gray-500 mt-1">
               <Clock size={12} className="mr-1" />
               <span>{timeRange}</span>
-              {booking.bookingStatus === "Pending" && (
+              {status === "pending" && (
                 <AlertCircle
                   size={12}
                   className="ml-1 text-yellow-400"
@@ -91,11 +111,8 @@ export default function BookingCardMobile({ booking, onActionComplete }: Booking
 
             {/* Booking details - aligned with date */}
             <div className="mt-2">
-              <div className="text-xs text-gray-700">
-                {booking.bookingDescription}
-              </div>
               {booking.bookingNotes && (
-                <div className="text-xs text-gray-500 mt-1">
+                <div className="text-xs text-gray-500">
                   {booking.bookingNotes}
                 </div>
               )}
@@ -109,7 +126,7 @@ export default function BookingCardMobile({ booking, onActionComplete }: Booking
             {/* Asset tags and edit button in same row */}
             <div className="flex justify-between items-center mt-1.5">
               <div className="flex flex-wrap gap-1 flex-1">
-                {booking.bookedAssets &&
+                {Array.isArray(booking.bookedAssets) &&
                   booking.bookedAssets.map((asset: string) => (
                     <span
                       key={asset}

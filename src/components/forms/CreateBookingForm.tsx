@@ -70,6 +70,7 @@ interface BookingDetail {
   notes?: string;
   created_at: string;
   updated_at: string;
+  [key: string]: any;
 }
 
 interface Subcontractor {
@@ -161,12 +162,12 @@ export function CreateBookingForm({
 
     try {
       const parsedAssets = JSON.parse(assetString);
-      
+
       // ✅ FIX: Map backend fields (id, name) to frontend fields (assetKey, assetTitle)
       const normalizedAssets = parsedAssets.map((a: any) => ({
         ...a,
-        assetKey: a.id || a.assetKey,       // Use 'id' from backend as 'assetKey'
-        assetTitle: a.name || a.assetTitle  // Use 'name' from backend as 'assetTitle'
+        assetKey: a.id || a.assetKey, // Use 'id' from backend as 'assetKey'
+        assetTitle: a.name || a.assetTitle, // Use 'name' from backend as 'assetTitle'
       }));
 
       setAssets(normalizedAssets);
@@ -224,10 +225,9 @@ export function CreateBookingForm({
         }));
 
         setSubcontractors(normalizedSubs);
-
       } catch (error: any) {
         console.error("Error loading subcontractors:", error);
-        
+
         // Fallback
         const cachedSubs = localStorage.getItem(`subcontractors_${userId}`);
         if (cachedSubs) {
@@ -437,8 +437,36 @@ export function CreateBookingForm({
       });
 
       const createdBookings = await Promise.all(bookingPromises);
-      
-      // Transform to calendar events
+
+      if (isManager && Array.isArray(createdBookings)) {
+        for (let b of createdBookings) {
+          // If backend already returned confirmed, keep it.
+          // Otherwise, upgrade pending/undefined -> confirmed so UI shows correct state instantly.
+          if (!b.status || b.status === "pending") {
+            b.status = "confirmed";
+          }
+        }
+      }
+
+      // --- Append raw created bookings to cache so local storage shape matches API fetch ---
+      try {
+        const storageKey = `bookings_v5_${userId}`;
+        const existingRaw = (() => {
+          try {
+            const s = localStorage.getItem(storageKey);
+            return s ? JSON.parse(s) : [];
+          } catch {
+            return [];
+          }
+        })();
+
+        const newCache = [...existingRaw, ...createdBookings];
+        localStorage.setItem(storageKey, JSON.stringify(newCache));
+      } catch (e) {
+        console.error("Failed to update local booking cache:", e);
+      }
+
+      // Transform to calendar events (include _originalData for parity)
       const events = createdBookings.map((booking) => {
         const asset = assets.find((a) => a.assetKey === booking.asset_id);
         const assetTitle = asset?.assetTitle || booking.asset_id;
@@ -458,11 +486,12 @@ export function CreateBookingForm({
           end: endDateTime,
           status: booking.status,
           bookingData: booking,
+          _originalData: booking,
         } as Partial<CalendarEvent>;
       });
 
       onSave(events);
-      
+
       const firstBooking = createdBookings[0];
       alert(
         firstBooking.status === "confirmed"
