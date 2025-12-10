@@ -21,18 +21,20 @@ export function MobileView({
 }: MobileViewProps) {
   return (
     <div className="flex-1 overflow-hidden">
-      <div className="border rounded-md flex flex-col h-full min-h-96 overflow-hidden">
-        <div className="p-3 bg-orange-200 font-medium">
-          {loading ? <Skeleton className="h-6 w-40" /> : selectedCalendar.name}
+      <div className="border border-slate-200 rounded-xl flex flex-col h-full min-h-96 overflow-hidden bg-white shadow-sm">
+        <div className="p-3 bg-[#0B1120] text-white font-semibold flex items-center justify-between">
+          {loading ? (
+            <Skeleton className="h-6 w-40 bg-slate-700" />
+          ) : (
+            <span className="truncate">{selectedCalendar.name}</span>
+          )}
         </div>
         <div className="flex-1 overflow-hidden">
           {loading ? (
             <div className="p-4 space-y-3">
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
+              {[1, 2, 3, 4, 5].map((i) => (
+                <Skeleton key={i} className="h-12 w-full bg-slate-100" />
+              ))}
             </div>
           ) : (
             <Calendar

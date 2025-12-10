@@ -23,32 +23,22 @@ export const CalendarNextTrigger = forwardRef<
   const { date, setDate, view, enableHotkeys } = useCalendar();
 
   const next = useCallback(() => {
-    if (view === "day") {
-      setDate(addDays(date, 1));
-    } else if (view === "week") {
-      setDate(addWeeks(date, 1));
-    } else if (view === "month") {
-      setDate(addMonths(date, 1));
-    } else if (view === "year") {
-      setDate(addYears(date, 1));
-    }
+    if (view === "day") setDate(addDays(date, 1));
+    else if (view === "week") setDate(addWeeks(date, 1));
+    else if (view === "month") setDate(addMonths(date, 1));
+    else if (view === "year") setDate(addYears(date, 1));
   }, [date, view, setDate]);
 
-  useHotkeys("ArrowRight", () => next(), {
-    enabled: enableHotkeys,
-  });
+  useHotkeys("ArrowRight", () => next(), { enabled: enableHotkeys });
 
   return (
     <Button
       size="icon"
-      variant="outline"
+      variant="ghost"
       ref={ref}
-      className={className}
+      className={className} // ClassName passed from Header controls the styling entirely
       {...props}
-      onClick={(e) => {
-        next();
-        onClick?.(e);
-      }}
+      onClick={(e) => { next(); onClick?.(e); }}
     >
       {children}
     </Button>
@@ -62,33 +52,23 @@ export const CalendarPrevTrigger = forwardRef<
 >(({ children, onClick, className = "", ...props }, ref) => {
   const { date, setDate, view, enableHotkeys } = useCalendar();
 
-  useHotkeys("ArrowLeft", () => prev(), {
-    enabled: enableHotkeys,
-  });
-
   const prev = useCallback(() => {
-    if (view === "day") {
-      setDate(subDays(date, 1));
-    } else if (view === "week") {
-      setDate(subWeeks(date, 1));
-    } else if (view === "month") {
-      setDate(subMonths(date, 1));
-    } else if (view === "year") {
-      setDate(subYears(date, 1));
-    }
+    if (view === "day") setDate(subDays(date, 1));
+    else if (view === "week") setDate(subWeeks(date, 1));
+    else if (view === "month") setDate(subMonths(date, 1));
+    else if (view === "year") setDate(subYears(date, 1));
   }, [date, view, setDate]);
+
+  useHotkeys("ArrowLeft", () => prev(), { enabled: enableHotkeys });
 
   return (
     <Button
       size="icon"
-      variant="outline"
+      variant="ghost"
       ref={ref}
       className={className}
       {...props}
-      onClick={(e) => {
-        prev();
-        onClick?.(e);
-      }}
+      onClick={(e) => { prev(); onClick?.(e); }}
     >
       {children}
     </Button>
@@ -102,24 +82,15 @@ export const CalendarTodayTrigger = forwardRef<
 >(({ children, onClick, className = "", ...props }, ref) => {
   const { setDate, enableHotkeys, today } = useCalendar();
 
-  useHotkeys("t", () => jumpToToday(), {
-    enabled: enableHotkeys,
-  });
-
-  const jumpToToday = useCallback(() => {
-    setDate(today);
-  }, [today, setDate]);
+  useHotkeys("t", () => setDate(today), { enabled: enableHotkeys });
 
   return (
     <Button
-      variant="outline"
+      variant="ghost"
       ref={ref}
       className={className}
       {...props}
-      onClick={(e) => {
-        jumpToToday();
-        onClick?.(e);
-      }}
+      onClick={(e) => { setDate(today); onClick?.(e); }}
     >
       {children}
     </Button>
@@ -127,37 +98,27 @@ export const CalendarTodayTrigger = forwardRef<
 });
 CalendarTodayTrigger.displayName = "CalendarTodayTrigger";
 
-export const CalendarCurrentDate = ({
-  className = "",
-}: {
-  className?: string;
-}) => {
+export const CalendarCurrentDate = ({ className = "" }: { className?: string }) => {
   const { date, view } = useCalendar();
 
-  // Ensure date is valid; fallback to current date if necessary
   const stableDate = useMemo(() => {
-    const validDate =
-      date && !isNaN(new Date(date).getTime()) ? new Date(date) : new Date();
+    const validDate = date && !isNaN(new Date(date).getTime()) ? new Date(date) : new Date();
     validDate.setHours(0, 0, 0, 0);
     return validDate.toISOString();
   }, [date]);
 
-  // Format for mobile (default)
-  const mobileFormattedDate = useMemo(() => {
-    const validDate = new Date(stableDate);
-    return format(validDate, view === "day" ? "dd MMM yy" : "MMMM yyyy");
-  }, [stableDate, view]);
+  const mobileFormat = useMemo(() => 
+    format(new Date(stableDate), view === "day" ? "dd MMM yy" : "MMM yyyy"), 
+  [stableDate, view]);
 
-  // Format for desktop
-  const desktopFormattedDate = useMemo(() => {
-    const validDate = new Date(stableDate);
-    return format(validDate, view === "day" ? "dd MMMM yyyy" : "MMMM yyyy");
-  }, [stableDate, view]);
+  const desktopFormat = useMemo(() => 
+    format(new Date(stableDate), view === "day" ? "dd MMMM yyyy" : "MMMM yyyy"), 
+  [stableDate, view]);
 
   return (
     <time dateTime={stableDate} className={`tabular-nums ${className}`}>
-      <span className="md:hidden">{mobileFormattedDate}</span>
-      <span className="hidden md:inline">{desktopFormattedDate}</span>
+      <span className="md:hidden">{mobileFormat}</span>
+      <span className="hidden md:inline">{desktopFormat}</span>
     </time>
   );
 };
