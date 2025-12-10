@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from 'react';
-import { Clock, AlertCircle } from "lucide-react";
+import { Clock, AlertCircle, HardHat, Briefcase } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { formatDate, formatTime, getBookingIcon, isToday } from './../../lib/bookingHelpers';
+import { formatDate, formatTime, isToday } from './../../lib/bookingHelpers';
 import BookingCardDropdown from './BookingCardDropdown';
 
 interface BookingCardMobileProps {
@@ -22,7 +22,12 @@ export default function BookingCardMobile({ booking, onActionComplete }: Booking
     booking.bookingEndTime
   );
   const today = isToday(date);
-  const { icon: BookingIcon, color: iconColor } = getBookingIcon(booking.bookingFor);
+
+  // --- ICON LOGIC ---
+  const isSubcontractor = !!booking.subcontractorId;
+  const RoleIcon = isSubcontractor ? HardHat : Briefcase;
+  const iconColor = isSubcontractor ? "text-orange-600" : "text-blue-600";
+  // ------------------
 
   const toggleDropdown = () => {
     setOpenDropdown(!openDropdown);
@@ -119,7 +124,8 @@ export default function BookingCardMobile({ booking, onActionComplete }: Booking
             </div>
 
             <div className="flex items-center text-xs text-gray-500 mt-2">
-              <BookingIcon size={16} className={`mr-1 ${iconColor}`} />
+              {/* UPDATED ICON */}
+              <RoleIcon size={16} className={`mr-1 ${iconColor}`} />
               <span>{booking.bookingFor}</span>
             </div>
 
