@@ -4,6 +4,8 @@ import type { NextRequest } from 'next/server';
 export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const token = request.cookies.get('accessToken')?.value;
+  // Define Public Paths (Landing Page, About, etc.)
+  const isPublicPath = path === '/';
   
   // Define auth pages - these are in the (auth) route group
   const isAuthPage = path === '/login' || 
