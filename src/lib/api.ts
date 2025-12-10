@@ -1,9 +1,10 @@
 import axios from 'axios';
 
-// Create axios instance with default timeout
+// Create axios instance with default timeout and include credentials (cookies)
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
   timeout: 10000, // 10 seconds timeout
+  withCredentials: true, // <-- critical: send cookies / include cross-site credentials
 });
 
 // Request interceptor to add auth token
@@ -11,6 +12,7 @@ api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('accessToken');
     if (token) {
+      config.headers = config.headers || {};
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
@@ -24,7 +26,7 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // Handle server timeout
+    // Handle server timeout / network
     if (error.code === 'ECONNABORTED' || !error.response) {
       console.error('Server connection timeout or server down');
       alert('Server connection timeout or server down');
@@ -36,6 +38,9 @@ api.interceptors.response.use(
       originalRequest._retry = true;
 
       const refreshToken = localStorage.getItem('refreshToken');
+
+      // If you rely solely on cookies for session, you might not have a refreshToken.
+      // In that case, skip refresh flow and redirect to login.
       if (!refreshToken) {
         localStorage.removeItem('accessToken');
         localStorage.removeItem('user');
@@ -44,8 +49,8 @@ api.interceptors.response.use(
       }
 
       try {
-        // Call backend to refresh token
-        const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`, {
+        // Use the same instance so withCredentials is applied
+        const res = await api.post('/auth/refresh', {
           refresh_token: refreshToken,
         });
 
