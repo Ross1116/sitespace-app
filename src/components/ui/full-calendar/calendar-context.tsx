@@ -22,12 +22,12 @@ export type View = "day" | "week" | "month" | "year";
 export const monthEventVariants = cva("size-2 rounded-full", {
   variants: {
     variant: {
-      default: "bg-primary",
-      blue: "bg-blue-500",
-      green: "bg-green-500",
-      pink: "bg-pink-500",
-      purple: "bg-purple-500",
-      yellow: "bg-yellow-500",
+      default: "bg-slate-900", // Previously primary
+      blue: "bg-blue-600",
+      green: "bg-emerald-600",
+      pink: "bg-rose-600",
+      purple: "bg-violet-600",
+      yellow: "bg-amber-500",
     },
   },
   defaultVariants: {
@@ -36,16 +36,16 @@ export const monthEventVariants = cva("size-2 rounded-full", {
 });
 
 export const dayEventVariants = cva(
-  "font-bold border-l-4 rounded p-2 text-xs",
+  "font-bold border-l-4 rounded p-2 text-xs shadow-sm transition-all hover:brightness-95",
   {
     variants: {
       variant: {
-        default: "bg-muted/30 text-muted-foreground border-muted",
-        blue: "bg-blue-500/30 text-blue-700 border-blue-500",
-        green: "bg-green-500/30 text-green-700 border-green-500",
-        pink: "bg-pink-500/30 text-pink-700 border-pink-500",
-        purple: "bg-purple-500/30 text-purple-700 border-purple-500",
-        yellow: "bg-yellow-500/30 text-yellow-700 border-yellow-400",
+        default: "bg-slate-100 text-slate-700 border-slate-400",
+        blue: "bg-sky-50 text-sky-800 border-sky-600",
+        green: "bg-emerald-50 text-emerald-800 border-emerald-600",
+        pink: "bg-rose-50 text-rose-800 border-rose-600",
+        purple: "bg-violet-50 text-violet-800 border-violet-600",
+        yellow: "bg-amber-50 text-amber-800 border-amber-500",
       },
     },
     defaultVariants: {
@@ -61,12 +61,15 @@ export type CalendarEvent = {
   title: string;
   description?: string;
   color?: VariantProps<typeof monthEventVariants>["variant"];
+  // Allow other props to pass through without TS errors
+  [key: string]: any;
 };
 
 export type AssetCalendar = {
   id: string;
   name: string;
   events: CalendarEvent[];
+  asset?: any; 
 };
 
 type ContextType = {
@@ -132,7 +135,6 @@ export const Calendar = ({
       for (let i = 0; i < prev.length; i++) {
         const a = prev[i];
         const b = incoming[i];
-        // compare stable identifiers + times — adjust if your events don't have id
         if (a.id !== b.id) return false;
         if (a.start?.getTime() !== b.start?.getTime()) return false;
         if (a.end?.getTime() !== b.end?.getTime()) return false;
@@ -144,16 +146,13 @@ export const Calendar = ({
       setEvents(incoming);
       prevDefaultEventsRef.current = incoming;
     }
-    // only depend on defaultEvents reference
   }, [defaultEvents]);
-  // Handle date changes
+
   const handleDateChange = useCallback(
     (newDate: Date) => {
       if (isDateControlled) {
-        // If controlled, call the external handler
         onDateChange?.(newDate);
       } else {
-        // If uncontrolled, update internal state
         setInternalDate(newDate);
       }
     },
@@ -165,23 +164,11 @@ export const Calendar = ({
     onChangeView?.(view);
   };
 
-  useHotkeys("m", () => changeView("month"), {
-    enabled: enableHotkeys,
-  });
+  useHotkeys("m", () => changeView("month"), { enabled: enableHotkeys });
+  useHotkeys("w", () => changeView("week"), { enabled: enableHotkeys });
+  useHotkeys("y", () => changeView("year"), { enabled: enableHotkeys });
+  useHotkeys("d", () => changeView("day"), { enabled: enableHotkeys });
 
-  useHotkeys("w", () => changeView("week"), {
-    enabled: enableHotkeys,
-  });
-
-  useHotkeys("y", () => changeView("year"), {
-    enabled: enableHotkeys,
-  });
-
-  useHotkeys("d", () => changeView("day"), {
-    enabled: enableHotkeys,
-  });
-
-  // Update context value with the appropriate date and setter
   return (
     <Context.Provider
       value={{
@@ -208,15 +195,21 @@ export const CalendarViewTrigger = forwardRef<
   React.HTMLAttributes<HTMLButtonElement> & {
     view: View;
   }
->(({ children, view, ...props }, ref) => {
+>(({ children, view, className, ...props }, ref) => {
   const { view: currentView, setView, onChangeView } = useCalendar();
 
   return (
     <Button
-      ref={ref} // ✅ Pass ref to Button
+      ref={ref}
       aria-current={currentView === view}
       size="sm"
       variant="ghost"
+      className={`
+        ${currentView === view 
+          ? "bg-[#0B1120] text-white hover:bg-[#0B1120]/90" 
+          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"}
+        ${className}
+      `}
       {...props}
       onClick={() => {
         setView(view);

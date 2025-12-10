@@ -18,14 +18,11 @@ export function AssetFilter({
   visibleAssets,
   setVisibleAssets,
 }: AssetFilterProps) {
-  // Function to toggle asset visibility
   const toggleAssetVisibility = (assetIndex: number) => {
     setVisibleAssets((prevVisible) => {
       if (prevVisible.includes(assetIndex)) {
-        // Remove asset if already visible
         return prevVisible.filter((index) => index !== assetIndex);
       } else {
-        // Add asset if not visible
         return [...prevVisible, assetIndex];
       }
     });
@@ -35,49 +32,45 @@ export function AssetFilter({
     <Card
       className={`${
         isCollapsed ? "lg:hidden" : "col-span-3 lg:flex"
-      } row-span-3 overflow-hidden hidden bg-amber-50 rounded-2xl transition-all duration-600 px-4`}
+      } row-span-3 overflow-hidden hidden bg-white border border-slate-100 shadow-sm rounded-2xl transition-all duration-600 px-4`}
     >
       <CardHeader>
-        <CardTitle>Assets Filter</CardTitle>
-        <CardDescription>
+        <CardTitle className="text-slate-900">Assets Filter</CardTitle>
+        <CardDescription className="text-slate-500">
           Choose which assets you would like to view
         </CardDescription>
       </CardHeader>
-      <CardContent className="-mt-2 overflow-auto">
+      <CardContent className="-mt-2 overflow-auto custom-scrollbar">
         {loading ? (
           <div className="space-y-2">
-            <Skeleton className="h-6 w-full" />
-            <Skeleton className="h-6 w-full" />
-            <Skeleton className="h-6 w-full" />
-            <Skeleton className="h-6 w-full" />
-            <Skeleton className="h-6 w-full" />
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Skeleton key={i} className="h-6 w-full bg-slate-100" />
+            ))}
           </div>
         ) : assetCalendars.length === 0 ? (
-          <p>No assets available</p>
+          <p className="text-slate-500 text-sm">No assets available</p>
         ) : (
           <div className="flex flex-col justify-evenly space-y-2">
             {assetCalendars.map((calendar: any, index) => {
-              // Fix: Safely extract name and code from potentially nested asset objects
-              // Based on your JSON: asset.name = "Testing Asset", asset.asset_code = "VEH-TES-8717"
               const assetName = calendar.asset?.name || calendar.name || "Unknown Asset";
               const assetCode = calendar.asset?.asset_code || calendar.asset_code || "";
               
               return (
-                <div key={index} className="flex items-center space-x-2">
+                <div key={index} className="flex items-center space-x-2 group">
                   <Checkbox
                     id={`asset-${index}`}
                     checked={visibleAssets.includes(index)}
                     onCheckedChange={() => toggleAssetVisibility(index)}
-                    className="data-[state=checked]:bg-amber-600 data-[state=checked]:border-amber-600"
+                    className="border-slate-300 data-[state=checked]:bg-[#0B1120] data-[state=checked]:border-[#0B1120]"
                   />
                   <label
                     htmlFor={`asset-${index}`}
-                    className="text-sm font-medium text-gray-700 truncate cursor-pointer"
+                    className="text-sm font-medium text-slate-700 truncate cursor-pointer group-hover:text-[#0B1120] transition-colors select-none"
                     title={assetCode ? `${assetName} (${assetCode})` : assetName}
                   >
                     {assetName}
                     {assetCode && (
-                      <span className="ml-1 text-xs text-gray-500 font-normal">
+                      <span className="ml-1 text-xs text-slate-400 font-normal">
                         ({assetCode})
                       </span>
                     )}

@@ -30,43 +30,42 @@ export function DesktopView({
         isCollapsed
           ? "grid-cols-2 lg:grid-cols-5 xl:grid-cols-6"
           : "grid-cols-2 lg:grid-cols-4"
-      } flex-1 gap-1 overflow-visible`}
+      } flex-1 gap-3 overflow-visible`} // Increased gap for better separation on gray bg
     >
       {loading ? (
-        // Create multiple skeleton placeholders in a grid
-        Array.from({ length: 6 }).map((_, index) => (
+        // Create multiple skeleton placeholders
+        Array.from({ length: 4 }).map((_, index) => (
           <div
             key={index}
-            className="flex flex-col h-full bg-stone-100 rounded-lg shadow-sm overflow-hidden mb-1"
+            className="flex flex-col h-full bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm"
           >
-            <div className="px-4 py-2 border-b border-gray-200 bg-white sticky top-0 z-10 flex justify-between items-center">
+            <div className="px-4 py-3 border-b border-slate-100 bg-white sticky top-0 z-10 flex justify-between items-center">
               <div>
-                <Skeleton className="h-5 w-24 mb-1" />
-                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-5 w-24 mb-1 bg-slate-100" />
+                <Skeleton className="h-3 w-16 bg-slate-50" />
               </div>
-              <Skeleton className="h-3 w-8" />
+              <Skeleton className="h-3 w-8 bg-slate-50" />
             </div>
             <div className="flex flex-1 relative">
-              <div className="w-14 flex-shrink-0 border-r border-gray-200 bg-gray-50">
+              <div className="w-14 flex-shrink-0 border-r border-slate-100 bg-slate-50/50">
                 {Array.from({ length: 4 }).map((_, i) => (
                   <div
                     key={i}
                     className="h-12 flex items-start justify-end pr-2 pt-0.5"
                   >
-                    <Skeleton className="h-3 w-6" />
+                    <Skeleton className="h-3 w-6 bg-slate-200" />
                   </div>
                 ))}
               </div>
-              <div className="flex-1 relative">
+              <div className="flex-1 relative bg-white">
                 <div className="grid grid-rows-[repeat(4,minmax(3rem,1fr))] w-full h-full">
                   {Array.from({ length: 4 }).map((_, i) => (
                     <div
                       key={i}
-                      className={`relative border-t ${
-                        i % 2 === 0 ? "bg-white" : "bg-gray-50/50"
+                      className={`relative border-t border-slate-50 ${
+                        i % 2 === 0 ? "bg-white" : "bg-slate-50/20"
                       }`}
                     >
-                      <Skeleton className="h-8 w-3/4 m-2" />
                     </div>
                   ))}
                 </div>
@@ -75,8 +74,8 @@ export function DesktopView({
           </div>
         ))
       ) : assetCalendars.length === 0 ? (
-        <div className="col-span-full flex items-center justify-center h-64">
-          <p>No bookings found</p>
+        <div className="col-span-full flex items-center justify-center h-64 border-2 border-dashed border-slate-300 rounded-xl bg-slate-50/50">
+          <p className="text-slate-500 font-medium">No bookings found</p>
         </div>
       ) : (
         assetCalendars
@@ -84,24 +83,21 @@ export function DesktopView({
           .map((calendar, index) => (
             <div
               key={calendar.id || index}
-              className="flex flex-col h-full bg-white rounded-lg shadow-sm overflow-hidden mb-1"
+              className="flex flex-col h-full bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden"
             >
-              <div className="px-4 py-2 border-b border-gray-200 bg-white sticky top-0 z-10 flex justify-between items-center">
-                <div>
+              <div className="px-3 py-3 border-b border-slate-100 bg-white sticky top-0 z-10 flex justify-between items-center h-14">
+                <div className="overflow-hidden">
                   {calendar.name && (
-                    <h2 className="text-lg font-semibold text-gray-800">
+                    <h2 className="text-sm font-bold text-slate-800 truncate leading-tight" title={calendar.name}>
                       {calendar.name}
                     </h2>
                   )}
-                  <p className="text-xs text-gray-500">
+                  <p className="text-[10px] uppercase tracking-wide font-bold text-slate-400 mt-0.5">
                     {format(currentDate, "EEE, MMM d")}
                   </p>
                 </div>
-                <div className="text-xs text-gray-500">
-                  {format(currentDate, "yyyy")}
-                </div>
-              </div>{" "}
-              <div className="flex-1 overflow-hidden">
+              </div>
+              <div className="flex-1 overflow-hidden relative">
                 <Calendar
                   key={`desktop-calendar-${calendar.id || index}`}
                   events={calendar.events}

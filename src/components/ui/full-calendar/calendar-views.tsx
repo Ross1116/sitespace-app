@@ -91,7 +91,7 @@ export const CalendarDayView = ({
       const start = (evt.start || new Date()) as Date;
       const end = (evt.end as Date) || addHours(start, 1);
 
-      // attempt to preserve booking metadata if provided (CreateBookingForm attaches bookingData)
+      // attempt to preserve booking metadata if provided
       const bookingData =
         (evt as any).bookingData || (evt as any).booking || null;
       const bookingStatus =
@@ -195,7 +195,6 @@ export const CalendarDayView = ({
           "";
 
         // === status/color ===
-        // If backend returned 'confirmed', use it. Otherwise, if current user is manager mark confirmed:
         let bookingStatus = (
           e.bookingStatus ||
           e.booking_status ||
@@ -289,51 +288,49 @@ export const CalendarDayView = ({
   const isCurrentDay = isSameDay(date, new Date());
 
   return (
-    <div className="flex flex-col h-full bg-white rounded-lg shadow-sm overflow-hidden">
-      {}
-      <div className="flex flex-1 relative overflow-y-auto overflow-x-hidden">
-        {}
-        <div className="w-14 flex-shrink-0 border-r border-gray-200 bg-gray-50 flex flex-col">
+    <div className="flex flex-col h-full bg-white rounded-lg shadow-sm overflow-hidden border border-slate-100">
+      <div className="flex flex-1 relative overflow-y-auto overflow-x-hidden custom-scrollbar">
+        {/* Sidebar Hours */}
+        <div className="w-14 flex-shrink-0 border-r border-slate-100 bg-slate-50 flex flex-col">
           {hours.map((hour) => (
             <div
               key={hour.toString()}
-              className="h-12 flex-none flex items-start justify-end pr-2 pt-0.5 text-xs text-gray-500 font-medium border-t border-gray-200"
+              className="h-12 flex-none flex items-start justify-end pr-2 pt-0.5 text-xs text-slate-400 font-medium border-t border-slate-100"
             >
               {format(hour, "h a")}
             </div>
           ))}
         </div>
 
-        {}
+        {/* Calendar Grid */}
         <div className="flex-1 relative">
-          {}
+          {/* Current Time Indicator - Changed from Red to Navy */}
           {isCurrentDay && currentHour >= 6 && currentHour < 20 && (
             <div
-              className="absolute w-full border-t-2 border-red-500 z-20"
+              className="absolute w-full border-t-2 border-[#0B1120] z-20"
               style={{
                 top: `${(currentHour - 6) * 48}px`,
               }}
             >
-              <div className="absolute -left-1.5 -top-1.5 w-3 h-3 rounded-full bg-red-500"></div>
+              <div className="absolute -left-1.5 -top-1.5 w-3 h-3 rounded-full bg-[#0B1120]"></div>
             </div>
           )}
 
-          {}
           <div className="flex flex-col w-full h-full">
             {hours.map((hour, index) => (
               <div
                 key={hour.toString()}
-                className={`relative border-t h-12 flex-none ${
-                  index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
+                className={`relative border-t border-slate-100 h-12 flex-none ${
+                  index % 2 === 0 ? "bg-white" : "bg-slate-50/30"
                 } ${
                   isCurrentDay && hour.getHours() === currentHour
-                    ? "bg-blue-50/50"
+                    ? "bg-blue-50/5"
                     : ""
                 }`}
               >
-                {}
+                {/* Clickable Area - changed hover from blue to slate */}
                 <div
-                  className="absolute inset-0 w-full h-full cursor-pointer hover:bg-blue-100/40 transition-colors"
+                  className="absolute inset-0 w-full h-full cursor-pointer hover:bg-slate-100/60 transition-colors"
                   onClick={() => handleTimeSlotClick(hour)}
                   style={{
                     pointerEvents: hourHasEvents[hour.toString()]
@@ -342,10 +339,9 @@ export const CalendarDayView = ({
                   }}
                 />
 
-                {}
-                <div className="absolute w-full border-t border-gray-200 border-dashed top-1/2"></div>
+                {/* Half hour marker */}
+                <div className="absolute w-full border-t border-slate-100 border-dashed top-1/2 pointer-events-none"></div>
 
-                {}
                 <EventGroupSideBySide hour={hour} events={events || []} />
               </div>
             ))}
@@ -353,7 +349,6 @@ export const CalendarDayView = ({
         </div>
       </div>
 
-      {}
       {isBookingFormOpen && (
         <CreateBookingForm
           isOpen={isBookingFormOpen}
@@ -474,23 +469,24 @@ export const CalendarWeekView = () => {
   if (view !== "week") return null;
 
   return (
-    <div className="flex flex-col relative overflow-auto h-full">
-      <div className="flex sticky top-0 bg-card z-10 border-b mb-3">
+    <div className="flex flex-col relative overflow-auto h-full bg-white rounded-xl border border-slate-100 shadow-sm">
+      <div className="flex sticky top-0 bg-white z-10 border-b border-slate-100 mb-3 pt-3">
         <div className="w-12"></div>
         {headerDays.map((date, i) => (
           <div
             key={date.toString()}
             className={cn(
-              "text-center flex-1 gap-1 pb-2 text-sm text-muted-foreground flex items-center justify-center",
-              [0, 6].includes(i) && "text-muted-foreground/50"
+              "text-center flex-1 gap-1 pb-2 text-sm text-slate-500 font-medium flex items-center justify-center",
+              [0, 6].includes(i) && "text-slate-400"
             )}
           >
             {format(date, "E", { locale })}
             <span
               className={cn(
-                "h-6 grid place-content-center",
-                isToday(date) &&
-                  "bg-primary text-primary-foreground rounded-full size-6"
+                "h-6 w-6 ml-1 grid place-content-center rounded-full text-xs font-bold",
+                isToday(date)
+                  ? "bg-[#0B1120] text-white"
+                  : "text-slate-900"
               )}
             >
               {format(date, "d")}
@@ -504,15 +500,13 @@ export const CalendarWeekView = () => {
         </div>
         <div className="grid grid-cols-7 flex-1 relative pr-4">
           {" "}
-          {}
-          {}
           <div className="absolute inset-0 grid grid-cols-7 pointer-events-none">
             {weekDates.map((hours, i) => {
               return (
                 <div
                   className={cn(
-                    "h-full text-sm text-muted-foreground border-l first:border-l-0",
-                    [0, 6].includes(i) && "bg-muted/50"
+                    "h-full text-sm text-slate-500 border-l border-slate-100 first:border-l-0",
+                    [0, 6].includes(i) && "bg-slate-50/50"
                   )}
                   key={hours[0].toString()}
                 >
@@ -527,23 +521,21 @@ export const CalendarWeekView = () => {
               );
             })}
           </div>
-          {}
           <div className="absolute inset-0 grid grid-cols-7">
             {weekDates.map((hours, dayIndex) => (
               <div
                 key={`clickable-${dayIndex}`}
                 className={cn(
-                  "grid grid-rows-[repeat(16,1fr)] h-full border-l first:border-l-0",
-                  [0, 6].includes(dayIndex) && "bg-muted/50"
+                  "grid grid-rows-[repeat(16,1fr)] h-full border-l border-slate-100 first:border-l-0",
+                  [0, 6].includes(dayIndex) && "bg-slate-50/30"
                 )}
               >
                 {hours.map((hour) => (
                   <div
                     key={`slot-${hour.toString()}`}
-                    className="border-t last:border-b w-full h-full cursor-pointer hover:bg-orange-200 transition-colors"
+                    className="border-t border-slate-100 last:border-b w-full h-full cursor-pointer hover:bg-slate-100 transition-colors"
                     onClick={() => handleTimeSlotClick(hour)}
                   >
-                    {}
                   </div>
                 ))}
               </div>
@@ -552,7 +544,6 @@ export const CalendarWeekView = () => {
         </div>
       </div>
 
-      {}
       {isBookingFormOpen && (
         <CreateBookingForm
           isOpen={isBookingFormOpen}
@@ -579,44 +570,46 @@ export const CalendarMonthView = () => {
   };
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="grid grid-cols-7 gap-px sticky top-0 bg-background border-b">
+    <div className="h-full flex flex-col bg-white">
+      <div className="grid grid-cols-7 gap-px sticky top-0 bg-white border-b border-slate-100 pb-2">
         {weekDays.map((day, i) => (
           <div
             key={day}
             className={cn(
-              "mb-2 text-right text-sm text-muted-foreground pr-2",
-              [0, 6].includes(i) && "text-muted-foreground/50"
+              "text-center text-xs font-bold uppercase tracking-wider text-slate-400",
+              [0, 6].includes(i) && "text-slate-300"
             )}
           >
             {day}
           </div>
         ))}
       </div>
-      <div className="grid overflow-hidden -mt-px flex-1 auto-rows-fr p-px grid-cols-7 gap-px">
+      <div className="grid overflow-hidden -mt-px flex-1 auto-rows-fr p-px grid-cols-7 gap-px bg-slate-100">
         {monthDates.map((_date) => {
           const currentEvents = events.filter((event) =>
             isSameDay(event.start, _date)
           );
 
           const isSelectedDate = isSameDay(_date, date);
+          const isCurrentMonth = isSameMonth(date, _date);
 
           return (
             <div
               className={cn(
-                "ring-1 p-2 text-sm text-muted-foreground ring-border overflow-auto cursor-pointer hover:bg-orange-100/60 transition-colors",
-                !isSameMonth(date, _date) && "text-muted-foreground/50"
+                "bg-white relative p-2 text-sm ring-1 ring-slate-100 overflow-hidden hover:bg-slate-50 transition-colors cursor-pointer flex flex-col gap-1",
+                !isCurrentMonth && "bg-slate-50/50 text-slate-300"
               )}
               key={_date.toString()}
               onClick={() => handleDateClick(_date)}
             >
               <span
                 className={cn(
-                  "size-6 grid place-items-center rounded-full mb-1 sticky top-0",
-                  isToday(_date) && "bg-primary text-primary-foreground",
-                  isSelectedDate &&
-                    !isToday(_date) &&
-                    "bg-orange-100 text-orange-800 font-medium"
+                  "size-7 grid place-items-center rounded-full text-xs font-medium mb-1",
+                  isToday(_date)
+                    ? "bg-[#0B1120] text-white font-bold"
+                    : isSelectedDate && !isToday(_date)
+                    ? "bg-slate-200 text-slate-900"
+                    : "text-slate-700"
                 )}
               >
                 {format(_date, "d")}
@@ -626,7 +619,7 @@ export const CalendarMonthView = () => {
                 return (
                   <div
                     key={event.id}
-                    className="px-1 rounded text-sm flex items-center gap-1"
+                    className="px-1.5 py-0.5 rounded-[3px] text-[10px] font-medium flex items-center gap-1 truncate border border-slate-100 bg-slate-50 text-slate-600"
                   >
                     <div
                       className={cn(
@@ -635,9 +628,6 @@ export const CalendarMonthView = () => {
                       )}
                     ></div>
                     <span className="flex-1 truncate">{event.title}</span>
-                    <time className="tabular-nums text-muted-foreground/50 text-xs">
-                      {format(event.start, "HH:mm")}
-                    </time>
                   </div>
                 );
               })}
@@ -667,37 +657,44 @@ export const CalendarYearView = () => {
   if (view !== "year") return null;
 
   return (
-    <div className="grid grid-cols-4 gap-10 overflow-auto h-full">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 overflow-auto h-full p-4">
       {months.map((days, i) => (
-        <div key={days[0].toString()}>
-          <span className="text-xl">{i + 1}</span>
+        <div 
+          key={days[0].toString()} 
+          className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm"
+        >
+          <span className="text-lg font-bold text-slate-900 mb-4 block px-2">
+            {format(setMonth(date, i), "MMMM")}
+          </span>
 
-          <div className="grid grid-cols-7 gap-2 my-5">
+          <div className="grid grid-cols-7 gap-2 my-3">
             {weekDays.map((day) => (
               <div
                 key={day}
-                className="text-center text-xs text-muted-foreground"
+                className="text-center text-[10px] uppercase font-bold text-slate-400"
               >
                 {day}
               </div>
             ))}
           </div>
 
-          <div className="grid gap-x-2 text-center grid-cols-7 text-xs tabular-nums">
+          <div className="grid gap-x-2 gap-y-1 text-center grid-cols-7 text-xs tabular-nums">
             {days.map((_date: string | number | Date) => {
+              const isCurrentMonth = getMonth(_date) === i;
               return (
                 <div
                   key={_date.toString()}
                   className={cn(
-                    getMonth(_date) !== i && "text-muted-foreground"
+                    !isCurrentMonth && "text-slate-200",
+                    isCurrentMonth && "text-slate-600"
                   )}
                 >
                   <div
                     className={cn(
-                      "aspect-square grid place-content-center size-full tabular-nums",
+                      "aspect-square grid place-content-center size-full rounded-md",
                       isSameDay(today, _date) &&
-                        getMonth(_date) === i &&
-                        "bg-primary text-primary-foreground rounded-full"
+                        isCurrentMonth &&
+                        "bg-[#0B1120] text-white font-bold"
                     )}
                   >
                     {format(_date, "d")}
@@ -743,7 +740,7 @@ export const EventGroup = ({
               <TooltipTrigger asChild>
                 <div
                   className={cn(
-                    "absolute cursor-pointer",
+                    "absolute cursor-pointer shadow-sm hover:shadow-md transition-shadow",
                     dayEventVariants({ variant: event.color })
                   )}
                   style={{
@@ -757,13 +754,13 @@ export const EventGroup = ({
                   {event.title}
                 </div>
               </TooltipTrigger>
-              <TooltipContent>
+              <TooltipContent className="bg-[#0B1120] text-white border-slate-700">
                 <div className="flex flex-col gap-1">
-                  <p className="font-medium">{event.title}</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="font-bold">{event.title}</p>
+                  <p className="text-xs text-slate-300">
                     {startTime} - {endTime}
                   </p>
-                  <p>{event.description}</p>
+                  <p className="text-xs text-slate-400">{event.description}</p>
                 </div>
               </TooltipContent>
             </Tooltip>
@@ -792,15 +789,10 @@ const EventGroupSideBySide = ({ hour, events }: EventGroupSideBySideProps) => {
     <div className="absolute inset-0 flex w-full h-full">
       {eventsInHour.map((event) => {
         const minutesOffset = event.start.getMinutes();
-
         const durationMinutes = differenceInMinutes(event.end, event.start);
-
         const hoursSpan = Math.ceil(durationMinutes / 60);
-
         const topPercent = (minutesOffset / 60) * 100;
-
         const heightPercent = Math.min((durationMinutes / 60) * 100, 100);
-
         const zIndex = Math.floor(durationMinutes / 15);
 
         return (
@@ -810,7 +802,7 @@ const EventGroupSideBySide = ({ hour, events }: EventGroupSideBySideProps) => {
                 <div
                   className={cn(
                     dayEventVariants({ variant: event.color }),
-                    "absolute cursor-pointer overflow-hidden text-xs min-h-[24px]"
+                    "absolute cursor-pointer overflow-hidden text-xs min-h-[24px] shadow-sm hover:z-50 hover:shadow-md transition-all hover:scale-[1.02]"
                   )}
                   style={{
                     top: `${topPercent}%`,
@@ -827,24 +819,24 @@ const EventGroupSideBySide = ({ hour, events }: EventGroupSideBySideProps) => {
                     onEventClick?.(event);
                   }}
                 >
-                  <div className="font-medium truncate">{event.title}</div>
+                  <div className="font-bold truncate">{event.title}</div>
                   {durationMinutes >= 20 && (
-                    <div className="text-xs opacity-70">
+                    <div className="text-[10px] opacity-80 mt-0.5 font-medium">
                       {format(event.start, "h:mm a")} -{" "}
                       {format(event.end, "h:mm a")}
                     </div>
                   )}
                 </div>
               </TooltipTrigger>
-              <TooltipContent>
+              <TooltipContent className="bg-[#0B1120] text-white border-slate-700">
                 <div>
                   <div className="font-bold">{event.title}</div>
-                  <div className="text-xs">
+                  <div className="text-xs text-slate-300">
                     {format(event.start, "h:mm a")} -{" "}
                     {format(event.end, "h:mm a")}
                   </div>
                   {event.description && (
-                    <div className="mt-1 text-xs max-w-[300px]">
+                    <div className="mt-1 text-xs text-slate-400 max-w-[300px]">
                       {event.description}
                     </div>
                   )}
