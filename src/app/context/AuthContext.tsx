@@ -58,6 +58,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAccessToken(storedAccess);
       setRefreshToken(storedRefresh);
       setUser(JSON.parse(storedUser));
+
+      Cookies.set("accessToken", storedAccess, {
+        expires: 7,
+        secure: true, // Set to false if testing on http://localhost
+        sameSite: 'Lax', // 'Lax' is safer than 'Strict' for redirects
+        path: '/' // Ensure it's available on all routes
+      });
     }
 
     setIsLoading(false);
