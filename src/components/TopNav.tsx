@@ -62,6 +62,9 @@ function TopNav() {
                     /* FIX: Added legacyBehavior and passHref here */
                     <Link href={item.href} legacyBehavior passHref>
                       <NavigationMenuLink className="font-medium text-sm px-3 py-2 hover:bg-orange-200/50 rounded-md transition-colors">
+                    /* FIX: Added legacyBehavior and passHref here */
+                    <Link href={item.href} legacyBehavior passHref>
+                      <NavigationMenuLink className="font-medium text-sm px-3 py-2 hover:bg-orange-200/50 rounded-md transition-colors">
                         {item.title}
                       </NavigationMenuLink>
                     </Link>
@@ -84,11 +87,22 @@ function TopNav() {
                               size="sm"
                               className="mt-10 bg-orange-500 hover:bg-orange-600 text-white"
                             >
+                            <Button
+                              size="sm"
+                              className="mt-10 bg-orange-500 hover:bg-orange-600 text-white"
+                            >
                               Book a call today
                             </Button>
                           </div>
                           <div className="flex flex-col text-sm h-full justify-end space-y-1">
                             {item.items?.map((subItem) => (
+                              /* FIX: Added legacyBehavior and passHref here */
+                              <Link
+                                href={subItem.href}
+                                key={subItem.title}
+                                legacyBehavior
+                                passHref
+                              >
                               /* FIX: Added legacyBehavior and passHref here */
                               <Link
                                 href={subItem.href}
@@ -120,6 +134,14 @@ function TopNav() {
             <a>
               <Image src="/full-logo.svg" alt="Sitespace" width={120} height={48} className="cursor-pointer hover:scale-105 transition-all" />
             </a>
+          <Link href="/">
+            <Image
+              src="/full-logo.svg"
+              alt="Sitespace"
+              width={120}
+              height={48}
+              className="cursor-pointer hover:scale-105 transition-all"
+            />
           </Link>
         </div>
 
@@ -129,9 +151,30 @@ function TopNav() {
             variant="ghost"
             className="text-sm h-9 px-3 hover:bg-orange-200/50"
           >
+          <Button
+            variant="ghost"
+            className="text-sm h-9 px-3 hover:bg-orange-200/50"
+          >
             Book a demo
           </Button>
           <div className="border-r h-6 hidden md:inline-block border-orange-300/70"></div>
+          
+          {/* FIX: Used asChild on Button to properly wrap Link */}
+          <Button
+            variant="outline"
+            className="cursor-pointer text-sm h-9 px-3 border-orange-300/70 hover:bg-orange-200/50 focus-visible:ring-orange-400"
+            asChild
+          >
+            <Link href="/login">Sign in</Link>
+          </Button>
+
+          {/* FIX: Used asChild on Button to properly wrap Link */}
+          <Button
+            className="cursor-pointer text-sm h-9 px-3 bg-orange-500 hover:bg-orange-600 focus-visible:ring-orange-400 text-white"
+            asChild
+          >
+            <Link href="/register">Get Started</Link>
+          </Button>
           
           {/* FIX: Used asChild on Button to properly wrap Link */}
           <Button
@@ -158,6 +201,11 @@ function TopNav() {
             onClick={() => setOpen(!isOpen)}
             className="p-2"
           >
+          <Button
+            variant="ghost"
+            onClick={() => setOpen(!isOpen)}
+            className="p-2"
+          >
             {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </Button>
         </div>
@@ -175,6 +223,10 @@ function TopNav() {
                   key={item.title}
                   className="py-2 border-b border-orange-200/40 last:border-b-0"
                 >
+                <div
+                  key={item.title}
+                  className="py-2 border-b border-orange-200/40 last:border-b-0"
+                >
                   <div className="flex flex-col gap-2">
                     {item.href ? (
                       <Link
@@ -185,9 +237,15 @@ function TopNav() {
                         <span className="text-lg font-medium">
                           {item.title}
                         </span>
+                        <span className="text-lg font-medium">
+                          {item.title}
+                        </span>
                         <MoveRight className="w-4 h-4 stroke-1 text-muted-foreground" />
                       </Link>
                     ) : (
+                      <p className="text-lg font-medium text-gray-800 py-2">
+                        {item.title}
+                      </p>
                       <p className="text-lg font-medium text-gray-800 py-2">
                         {item.title}
                       </p>
@@ -233,6 +291,31 @@ function TopNav() {
                 >
                   <Link href="/register">Get Started</Link>
                 </Button>
+                <Button
+                  variant="outline"
+                  className="border-orange-300/70 hover:bg-orange-200/50 focus-visible:ring-orange-400 text-orange-700 hover:text-orange-800"
+                >
+                  Book a demo
+                </Button>
+                
+                {/* FIX: Used asChild on Button to properly wrap Link */}
+                <Button
+                  variant="outline"
+                  className="border-orange-300/70 hover:bg-orange-200/50 focus-visible:ring-orange-400 text-orange-700 hover:text-orange-800"
+                  asChild
+                  onClick={() => setOpen(false)}
+                >
+                  <Link href="/login">Sign in</Link>
+                </Button>
+
+                {/* FIX: Used asChild on Button to properly wrap Link */}
+                <Button
+                  className="bg-orange-500 hover:bg-orange-600 focus-visible:ring-orange-400 text-white"
+                  asChild
+                  onClick={() => setOpen(false)}
+                >
+                  <Link href="/register">Get Started</Link>
+                </Button>
               </div>
             </div>
           </div>
@@ -242,4 +325,5 @@ function TopNav() {
   );
 }
 
+export { TopNav };
 export { TopNav };
