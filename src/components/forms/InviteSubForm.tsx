@@ -123,23 +123,17 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
   });
 
   // Trade specialties list
-  const tradeSpecialties = [
-    "Electrical",
-    "Plumbing",
-    "HVAC",
-    "Carpentry",
-    "Masonry",
-    "Roofing",
-    "Painting",
-    "Flooring",
-    "Landscaping",
-    "Concrete",
-    "Drywall",
-    "Insulation",
-    "Welding",
-    "Excavation",
-    "General Contractor",
-    "Other",
+  const tradeOptions = [
+    { label: "Electrician", value: "electrician" },
+    { label: "Plumber", value: "plumber" },
+    { label: "Carpenter", value: "carpenter" },
+    { label: "Mason", value: "mason" },
+    { label: "Painter", value: "painter" },
+    { label: "HVAC", value: "hvac" },
+    { label: "Roofer", value: "roofer" },
+    { label: "Landscaper", value: "landscaper" },
+    { label: "General Contractor", value: "general" },
+    { label: "Other", value: "other" },
   ];
 
   // Load project from localStorage
@@ -310,12 +304,12 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
 
       if (existingSubcontractor) {
         subcontractorId = existingSubcontractor.id;
-        
+
         // link them to the project
         await api.post(
           `/subcontractors/${existingSubcontractor.id}/projects/${contractor.contractorProjectId}`
         );
-        
+
         setSuccess("Adding existing subcontractor to your project...");
       } else {
         console.log("Creating new subcontractor account...");
@@ -344,7 +338,7 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
           "/subcontractors/",
           subcontractorData
         );
-        
+
         const createdSubcontractor = createResponse.data;
         subcontractorId = createdSubcontractor.id;
         isNewAccount = true;
@@ -359,7 +353,7 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
           console.error("Error sending welcome email:", emailError);
         }
       }
-      
+
       const successMessage = isNewAccount
         ? "Subcontractor invited! They will receive an email to set their password."
         : "Existing subcontractor added to your project successfully!";
@@ -371,17 +365,23 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
       setTimeout(() => {
         onClose(false);
       }, 2000);
-
     } catch (error: any) {
       console.error("Error processing subcontractor:", error);
-      
+
       // Handle "Already Assigned" errors specifically
       const errorMessage = error.response?.data?.detail || error.message;
-      
-      if (typeof errorMessage === 'string' && errorMessage.includes("already assigned")) {
-         setError("This subcontractor is already assigned to this project.");
+
+      if (
+        typeof errorMessage === "string" &&
+        errorMessage.includes("already assigned")
+      ) {
+        setError("This subcontractor is already assigned to this project.");
       } else {
-         setError(typeof errorMessage === 'string' ? errorMessage : "Failed to process request");
+        setError(
+          typeof errorMessage === "string"
+            ? errorMessage
+            : "Failed to process request"
+        );
       }
     } finally {
       setIsSubmitting(false);
@@ -610,9 +610,9 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
                       <SelectValue placeholder="Select trade specialty" />
                     </SelectTrigger>
                     <SelectContent>
-                      {tradeSpecialties.map((trade) => (
-                        <SelectItem key={trade} value={trade}>
-                          {trade}
+                      {tradeOptions.map((trade) => (
+                        <SelectItem key={trade.value} value={trade.value}>
+                          {trade.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
