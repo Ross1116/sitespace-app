@@ -22,10 +22,16 @@ interface BookingDetail {
   end_time: string;
   status: string;
   notes?: string;
+  purpose?: string; // Added from your raw JSON
+  title?: string;
   asset?: {
     id: string;
     name: string;
     asset_code: string;
+  };
+  project?: {
+    id: string;
+    name: string;
   };
   [key: string]: any;
 }
@@ -40,13 +46,11 @@ interface BookingListResponse {
 
 // ===== HELPER FUNCTIONS =====
 
-// Fixes Timezone/Midnight offset issue
 const combineDateAndTime = (dateStr: string, timeStr: string): Date => {
   try {
     if (!dateStr) return new Date();
     const cleanDate = dateStr.split('T')[0];
     const cleanTime = timeStr ? timeStr.split('T').pop() : "00:00:00";
-    // Construct ISO string for Local Time parsing
     return new Date(`${cleanDate}T${cleanTime}`);
   } catch {
     return new Date();
@@ -108,12 +112,55 @@ const transformBookingToLegacyFormat = (booking: BookingDetail) => {
       else assetName = `Asset ${assetId.slice(0, 6)}...`;
   }
 
+  // --- REVISED TITLE / DESC LOGIC BASED ON RAW DATA ---
+
+  let finalTitle = "";
+  let finalDescription = "No description provided";
+
+  const rawTitle = raw.title;
+  const rawPurpose = raw.purpose; // e.g. "SAI BOOKING"
+  const rawNotes = raw.notes;     // e.g. "Double book test"
+
+  // Priority: Title -> Purpose -> Notes -> Fallback
+  if (rawTitle && rawTitle.trim() !== "") {
+      finalTitle = rawTitle;
+      // If we used Title, we can use notes or purpose for description
+      finalDescription = rawNotes || rawPurpose || "No description provided";
+  } 
+  else if (rawPurpose && rawPurpose.trim() !== "") {
+      finalTitle = rawPurpose;
+      // If we used Purpose for title, use notes for description
+      finalDescription = rawNotes || "No description provided";
+  } 
+  else if (rawNotes && rawNotes.trim() !== "") {
+      finalTitle = rawNotes;
+      // If we used Notes for title, we have no text left for description
+      finalDescription = "No description provided";
+  } 
+  else {
+      // Fallback if absolutely no text exists
+      finalTitle = `Booking for ${bookedFor}`;
+      finalDescription = "No description provided";
+  }
+
+  // ----------------------------------
+
   return {
     bookingKey: raw.id,
-    bookingTitle: raw.project?.name || "Booking",
-    bookingDescription: raw.notes || "",
-    bookingNotes: raw.notes || "",
     
+    // The main bold header
+    bookingTitle: finalTitle,
+    
+    // The text below the header
+    bookingDescription: finalDescription,
+    
+    // IMPORTANT: Set to empty string. The BookingCard component displays this 
+    // as a 3rd line. We don't want to repeat the notes if we used them in Title/Desc.
+    bookingNotes: "", 
+    
+    // The grey subscript at the bottom
+    projectName: raw.project?.name || "", 
+
     bookingTimeDt: raw.booking_date,
     bookingStartTime: cleanStart, 
     bookingEndTime: cleanEnd,     
