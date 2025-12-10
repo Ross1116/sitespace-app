@@ -24,7 +24,7 @@ export function middleware(request: NextRequest) {
   
   if (isAuthPage && token) {
     // Redirect to home if trying to access auth pages while logged in
-    return NextResponse.redirect(new URL('/', request.url));
+    return NextResponse.redirect(new URL('/home', request.url));
   }
   
   return NextResponse.next();
