@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from 'react';
-import { Clock, AlertCircle, HardHat, Briefcase } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { formatDate, formatTime, isToday } from './../../lib/bookingHelpers';
+import { Clock, HardHat, Briefcase } from "lucide-react";
+import { formatDate, formatTime, isToday } from '@/lib/bookingHelpers';
 import BookingCardDropdown from './BookingCardDropdown';
 
 interface BookingCardMobileProps {
@@ -23,11 +22,8 @@ export default function BookingCardMobile({ booking, onActionComplete }: Booking
   );
   const today = isToday(date);
 
-  // --- ICON LOGIC ---
   const isSubcontractor = !!booking.subcontractorId;
   const RoleIcon = isSubcontractor ? HardHat : Briefcase;
-  const iconColor = isSubcontractor ? "text-orange-600" : "text-blue-600";
-  // ------------------
 
   const toggleDropdown = () => {
     setOpenDropdown(!openDropdown);
@@ -36,128 +32,62 @@ export default function BookingCardMobile({ booking, onActionComplete }: Booking
   const status = (booking.bookingStatus || "").toString().toLowerCase();
 
   return (
-    <Card className="border-b last:border-b-0 my-2 bg-stone-50">
-      <div className="block sm:hidden p-3">
-        {/* Header with date and status */}
-        <div className="flex mb-2">
-          <div className="flex flex-col items-center justify-center mr-3 bg-gray-50 rounded p-1 w-12">
-            <div
-              className={`text-xs ${
-                today
-                  ? "text-orange-500"
-                  : status === "pending"
-                  ? "text-yellow-400"
-                  : "text-gray-500"
-              }`}
-            >
-              {dayOfWeek}
+    <div className={`
+        bg-white rounded-xl p-4 border border-slate-200 
+        shadow-[0_2px_8px_rgba(0,0,0,0.02)]
+    `}>
+      <div className="flex mb-3">
+        {/* Date */}
+        <div className={`flex flex-col items-center justify-center w-12 h-12 rounded-lg border flex-shrink-0 mr-3 
+            ${today ? 'bg-orange-50 border-orange-100 text-orange-700' : 'bg-slate-50 border-slate-100 text-slate-600'}`}>
+            <span className="text-[9px] font-bold uppercase tracking-wider">{dayOfWeek}</span>
+            <span className="text-lg font-bold leading-none">{String(day).padStart(2, '0')}</span>
+        </div>
+
+        <div className="flex-1 min-w-0">
+            <div className="flex justify-between items-start mb-1">
+                <div className="font-bold text-slate-900 truncate pr-2">{booking.bookingTitle || "Booking"}</div>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border shrink-0
+                    ${status === 'confirmed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 
+                      status === 'pending' ? 'bg-amber-50 text-amber-700 border-amber-100' :
+                      status === 'cancelled' || status === 'denied' ? 'bg-red-50 text-red-700 border-red-100' :
+                      'bg-slate-100 text-slate-700 border-slate-200'}
+                `}>
+                    {status}
+                </span>
             </div>
-            <div
-              className={`text-xl font-semibold ${
-                today
-                  ? "text-orange-600"
-                  : status === "pending"
-                  ? "text-yellow-500"
-                  : "text-gray-800"
-              }`}
-            >
-              {String(day).padStart(2, "0")}
-            </div>
-          </div>
-
-          <div className="flex-1">
-            <div className="flex justify-between items-start">
-              <div className="flex flex-col">
-                {/* Primary bold title */}
-                <div className="font-semibold text-gray-900">
-                  {booking.bookingTitle || "Booking"}
-                </div>
-
-                {/* Description (secondary) */}
-                {booking.bookingDescription && (
-                  <div className="text-xs text-gray-700 mt-0.5 truncate">
-                    {booking.bookingDescription}
-                  </div>
-                )}
-
-                {/* Project as tiny muted subscript */}
-                {booking.projectName && (
-                  <div className="text-[11px] text-gray-400 mt-1">
-                    {booking.projectName}
-                  </div>
-                )}
-              </div>
-
-              <div
-                className={`text-xs px-2 py-1 rounded ml-1 flex-shrink-0 ${
-                  status === "confirmed"
-                    ? "bg-green-100 text-green-800"
-                    : status === "pending"
-                    ? "bg-yellow-100 text-yellow-800"
-                    : status === "denied" || status === "cancelled"
-                    ? "bg-red-100 text-red-800"
-                    : "bg-gray-100 text-gray-800"
-                }`}
-              >
-                {booking.bookingStatus}
-              </div>
-            </div>
-
-            <div className="flex items-center text-xs text-gray-500 mt-1">
-              <Clock size={12} className="mr-1" />
-              <span>{timeRange}</span>
-              {status === "pending" && (
-                <AlertCircle
-                  size={12}
-                  className="ml-1 text-yellow-400"
-                />
-              )}
-            </div>
-
-            {/* Booking details - aligned with date */}
-            <div className="mt-2">
-              {booking.bookingNotes && (
-                <div className="text-xs text-gray-500">
-                  {booking.bookingNotes}
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center text-xs text-gray-500 mt-2">
-              {/* UPDATED ICON */}
-              <RoleIcon size={16} className={`mr-1 ${iconColor}`} />
-              <span>{booking.bookingFor}</span>
-            </div>
-
-            {/* Asset tags and edit button in same row */}
-            <div className="flex justify-between items-center mt-1.5">
-              <div className="flex flex-wrap gap-1 flex-1">
-                {Array.isArray(booking.bookedAssets) &&
-                  booking.bookedAssets.map((asset: string) => (
-                    <span
-                      key={asset}
-                      className="px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full"
-                    >
-                      {asset}
-                    </span>
-                  ))}
-              </div>
-
-              {/* Edit button aligned with asset tags */}
-              <div className="relative ml-2">
-                <BookingCardDropdown
-                  bookingKey={booking.bookingKey}
-                  bookingStatus={booking.bookingStatus}
-                  subcontractorId={booking.subcontractorId}
-                  isOpen={openDropdown}
-                  onToggle={toggleDropdown}
-                  onActionComplete={onActionComplete}
-                />
-              </div>
-            </div>
-          </div>
+            <p className="text-xs text-slate-600 truncate">{booking.bookingDescription}</p>
         </div>
       </div>
-    </Card>
+
+      <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+         <div className="flex flex-col gap-1.5">
+            <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+                <Clock size={12} className="text-slate-400" />
+                {timeRange}
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+                <RoleIcon size={12} className="text-slate-400" />
+                <span className="truncate max-w-[150px]">{booking.bookingFor}</span>
+            </div>
+         </div>
+
+         <div className="flex items-center gap-2">
+            <div className="flex -space-x-1">
+                {Array.isArray(booking.bookedAssets) && booking.bookedAssets.slice(0, 2).map((asset: string, i: number) => (
+                    <div key={i} className="w-2 h-2 rounded-full bg-blue-500 ring-2 ring-white" />
+                ))}
+            </div>
+            <BookingCardDropdown
+                bookingKey={booking.bookingKey}
+                bookingStatus={booking.bookingStatus}
+                subcontractorId={booking.subcontractorId}
+                isOpen={openDropdown}
+                onToggle={toggleDropdown}
+                onActionComplete={onActionComplete}
+            />
+         </div>
+      </div>
+    </div>
   );
 }

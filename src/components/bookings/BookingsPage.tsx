@@ -1,16 +1,18 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Card } from "@/components/ui/card";
 import api from "@/lib/api";
 import { useAuth } from "@/app/context/AuthContext";
 import BookingList from "./BookingList";
-import { Button } from "../ui/button";
+import { Button } from "@/components/ui/button";
 import { addHours, startOfHour } from "date-fns";
-import { Plus } from "lucide-react";
-import { CreateBookingForm } from "../forms/CreateBookingForm";
+import { Plus, Search } from "lucide-react";
+import { CreateBookingForm } from "@/components/forms/CreateBookingForm";
+import { Input } from "@/components/ui/input";
 
-// ===== TYPE DEFINITIONS =====
+// ===== TYPE DEFINITIONS & HELPERS =====
+// (Kept exactly as per your logic to ensure data integrity)
+
 interface BookingDetail {
   id: string;
   project_id?: string;
@@ -22,17 +24,10 @@ interface BookingDetail {
   end_time: string;
   status: string;
   notes?: string;
-  purpose?: string; // Added from your raw JSON
+  purpose?: string;
   title?: string;
-  asset?: {
-    id: string;
-    name: string;
-    asset_code: string;
-  };
-  project?: {
-    id: string;
-    name: string;
-  };
+  asset?: { id: string; name: string; asset_code: string; };
+  project?: { id: string; name: string; };
   [key: string]: any;
 }
 
@@ -43,8 +38,6 @@ interface BookingListResponse {
   limit: number;
   has_more: boolean;
 }
-
-// ===== HELPER FUNCTIONS =====
 
 const combineDateAndTime = (dateStr: string, timeStr: string): Date => {
   try {
@@ -72,28 +65,16 @@ const calculateDuration = (startTime: string, endTime: string): number => {
 
 const transformBookingToLegacyFormat = (booking: BookingDetail) => {
   const raw = booking._originalData || booking;
-  
-  // 1. Clean Strings
   const cleanStart = (raw.start_time || "00:00").split(':').slice(0, 2).join(':');
   const cleanEnd = (raw.end_time || "00:00").split(':').slice(0, 2).join(':');
-
-  // 2. Date Objects
   const startDateObj = combineDateAndTime(raw.booking_date, raw.start_time);
   const endDateObj = combineDateAndTime(raw.booking_date, raw.end_time);
-
   const duration = calculateDuration(cleanStart, cleanEnd);
   
-  // 3. Names
-  const managerName = raw.manager 
-    ? `${raw.manager.first_name} ${raw.manager.last_name}` 
-    : "Unknown";
-    
-  const subName = raw.subcontractor?.company_name || 
-                 (raw.subcontractor ? `${raw.subcontractor.first_name} ${raw.subcontractor.last_name}` : "");
-
+  const managerName = raw.manager ? `${raw.manager.first_name} ${raw.manager.last_name}` : "Unknown";
+  const subName = raw.subcontractor?.company_name || (raw.subcontractor ? `${raw.subcontractor.first_name} ${raw.subcontractor.last_name}` : "");
   const bookedFor = raw.subcontractor_id ? subName : managerName;
 
-  // 4. Assets
   let assetId = "unknown";
   let assetName = "Unknown Asset";
   let assetCode = "";
@@ -112,76 +93,48 @@ const transformBookingToLegacyFormat = (booking: BookingDetail) => {
       else assetName = `Asset ${assetId.slice(0, 6)}...`;
   }
 
-  // --- REVISED TITLE / DESC LOGIC BASED ON RAW DATA ---
-
   let finalTitle = "";
   let finalDescription = "No description provided";
-
   const rawTitle = raw.title;
-  const rawPurpose = raw.purpose; // e.g. "SAI BOOKING"
-  const rawNotes = raw.notes;     // e.g. "Double book test"
+  const rawPurpose = raw.purpose;
+  const rawNotes = raw.notes;
 
-  // Priority: Title -> Purpose -> Notes -> Fallback
   if (rawTitle && rawTitle.trim() !== "") {
       finalTitle = rawTitle;
-      // If we used Title, we can use notes or purpose for description
       finalDescription = rawNotes || rawPurpose || "No description provided";
-  } 
-  else if (rawPurpose && rawPurpose.trim() !== "") {
+  } else if (rawPurpose && rawPurpose.trim() !== "") {
       finalTitle = rawPurpose;
-      // If we used Purpose for title, use notes for description
       finalDescription = rawNotes || "No description provided";
-  } 
-  else if (rawNotes && rawNotes.trim() !== "") {
+  } else if (rawNotes && rawNotes.trim() !== "") {
       finalTitle = rawNotes;
-      // If we used Notes for title, we have no text left for description
       finalDescription = "No description provided";
-  } 
-  else {
-      // Fallback if absolutely no text exists
+  } else {
       finalTitle = `Booking for ${bookedFor}`;
       finalDescription = "No description provided";
   }
 
-  // ----------------------------------
-
   return {
     bookingKey: raw.id,
-    
-    // The main bold header
     bookingTitle: finalTitle,
-    
-    // The text below the header
     bookingDescription: finalDescription,
-    
-    // IMPORTANT: Set to empty string. The BookingCard component displays this 
-    // as a 3rd line. We don't want to repeat the notes if we used them in Title/Desc.
     bookingNotes: "", 
-    
-    // The grey subscript at the bottom
     projectName: raw.project?.name || "", 
-
     bookingTimeDt: raw.booking_date,
     bookingStartTime: cleanStart, 
     bookingEndTime: cleanEnd,     
-    
     start: startDateObj,
     end: endDateObj,
     bookingStart: startDateObj,
     bookingEnd: endDateObj,
-    
     bookingDurationMins: duration,
     bookingStatus: (raw.status || "pending").charAt(0).toUpperCase() + (raw.status || "pending").slice(1),
     bookingFor: bookedFor || "Unknown",
-    
     bookedAssets: [assetName],
     assetId: assetId,
     assetName: assetName,
     assetCode: assetCode,
-    
     subcontractorId: raw.subcontractor_id,
     subcontractorName: subName,
-    
     _originalData: raw,
   };
 };
@@ -191,11 +144,11 @@ export default function BookingsPage() {
   const [bookings, setBookings] = useState<any[]>([]); 
   const [loading, setLoading] = useState(true);
   const [isBookingFormOpen, setIsBookingFormOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const { user } = useAuth();
   const hasFetched = useRef(false);
   const userId = user?.id;
   
-  // ✅ SHARED KEY V5
   const storageKey = `bookings_v5_${userId}`; 
   const projectStorageKey = `project_${userId}`;
   
@@ -208,14 +161,9 @@ export default function BookingsPage() {
     return validBookings.map(transformBookingToLegacyFormat);
   };
 
-  // ✅ UPDATED: Accepts isBackground flag
   const fetchBookings = async (isBackground = false) => {
     if (!user) return;
-
-    // Only show spinner if this is a hard load AND we have no data
-    if (!isBackground && bookings.length === 0) {
-        setLoading(true);
-    }
+    if (!isBackground && bookings.length === 0) setLoading(true);
 
     const projectString = localStorage.getItem(projectStorageKey);
     if (!projectString) {
@@ -226,15 +174,12 @@ export default function BookingsPage() {
 
     try {
       if (!isBackground) console.log("Fetching fresh bookings...");
-      
       const project = JSON.parse(projectString);
       const response = await api.get<BookingListResponse>("/bookings/", {
         params: { project_id: project.id, limit: 1000, skip: 0 },
       });
 
       const rawBookings = response.data?.bookings || [];
-      
-      // Save & Update
       localStorage.setItem(storageKey, JSON.stringify(rawBookings));
       const uiBookings = processRawBookings(rawBookings);
       setBookings(uiBookings);
@@ -242,39 +187,28 @@ export default function BookingsPage() {
     } catch (error: any) {
       console.error("Error fetching bookings:", error);
     } finally {
-      // Always turn off loading when done
       setLoading(false);
     }
   };
 
   useEffect(() => {
     if (!user) return;
-
     let hasCache = false;
-
-    // 1. LOAD CACHE INSTANTLY
     const cachedData = localStorage.getItem(storageKey);
     if (cachedData) {
       try {
         const parsedData = JSON.parse(cachedData);
         if (Array.isArray(parsedData) && parsedData.length > 0) {
-            console.log("⚡ Instant Load from Cache (List)");
             const uiBookings = processRawBookings(parsedData);
             setBookings(uiBookings);
-            setLoading(false); // Hide spinner immediately
+            setLoading(false);
             hasCache = true;
         }
       } catch {
         localStorage.removeItem(storageKey);
       }
     }
-
-    // 2. FETCH FRESH DATA
-    if (!hasFetched.current) {
-      // If we found cache, fetch in background (true). If not, show spinner (false).
-      fetchBookings(hasCache);
-    }
-
+    if (!hasFetched.current) fetchBookings(hasCache);
     const interval = setInterval(() => fetchBookings(true), 300000);
     return () => clearInterval(interval);
   }, [user]);
@@ -283,34 +217,113 @@ export default function BookingsPage() {
   const handleOnClickButton = () => setIsBookingFormOpen(true);
   const handleSaveBooking = () => {
     setIsBookingFormOpen(false);
-    fetchBookings(true); // Force refresh
+    fetchBookings(true);
   };
 
+  // Filter based on search
+  const filteredBookings = bookings.filter(b => 
+    b.bookingTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    b.assetName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    b.bookingFor.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const pendingCount = bookings.filter(b => b.bookingStatus.toLowerCase() === 'pending').length;
+
   return (
-    <Card className="px-6 sm:my-8 mx-4 bg-stone-100">
-      <div className="p-3 sm:p-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
-          <div>
-            <h1 className="text-xl sm:text-3xl font-bold text-gray-900">Bookings</h1>
-            <p className="text-sm sm:text-base text-gray-500 mt-1">See your scheduled events.</p>
-          </div>
-          <Button onClick={handleOnClickButton} className="hidden sm:flex mt-4 sm:mt-0 cursor-pointer">Create new booking</Button>
-          <Button onClick={handleOnClickButton} className="sm:hidden fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-lg z-10" size="icon"><Plus size={24} /></Button>
+    <div className="min-h-screen bg-[hsl(20,60%,99%)] p-4 sm:p-6 lg:p-8 font-sans">
+      <div className="max-w-screen mx-auto space-y-6">
+        
+        {/* --- MAIN CARD --- */}
+        <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-1 min-h-[85vh] flex flex-col relative overflow-hidden">
+            
+            <div className="p-6 flex-1 flex flex-col">
+                
+                {/* --- HEADER --- */}
+                <div className="flex flex-col xl:flex-row justify-between items-end mb-8 gap-6">
+                    <div>
+                        <h1 className="text-2xl font-extrabold text-slate-900">Bookings</h1>
+                        <p className="text-slate-500 text-sm mt-1 font-medium">Manage and track scheduled events</p>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row items-center gap-4 w-full xl:w-auto">
+                        {/* Stats Cards */}
+                        <div className="flex gap-3 w-full sm:w-auto">
+                            <div className="bg-[#0B1120] text-white rounded-xl px-5 py-2 flex flex-col items-center justify-center min-w-[110px] shadow-md shadow-slate-900/10">
+                                <span className="text-2xl font-bold leading-none">{bookings.length}</span>
+                                <span className="text-[10px] font-medium opacity-80 uppercase tracking-wide">Total</span>
+                            </div>
+                            <div className="bg-[#D94E09] text-white rounded-xl px-5 py-2 flex flex-col items-center justify-center min-w-[110px] shadow-md shadow-orange-900/10">
+                                <span className="text-2xl font-bold leading-none">{pendingCount}</span>
+                                <span className="text-[10px] font-medium opacity-90 uppercase tracking-wide">Pending</span>
+                            </div>
+                        </div>
+
+                        {/* Add Button */}
+                        <Button 
+                            onClick={handleOnClickButton}
+                            className="bg-[#0B1120] hover:bg-[#1a253a] text-white rounded-lg px-6 py-5 h-auto text-sm font-bold shadow-md shadow-slate-900/10 w-full sm:w-auto"
+                        >
+                            <Plus className="mr-2 h-4 w-4 stroke-[3]" /> New Booking
+                        </Button>
+                    </div>
+                </div>
+
+                {/* --- CONTROLS ROW (Search & Tabs) --- */}
+                <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+                    {/* Search */}
+                    <div className="relative w-full md:max-w-xs">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <Input 
+                            placeholder="Search bookings..." 
+                            className="pl-10 bg-slate-50 border-transparent focus:bg-white transition-all rounded-xl h-10 text-sm"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+
+                    {/* Tabs */}
+                    <div className="flex overflow-x-auto pb-2 md:pb-0 w-full md:w-auto no-scrollbar gap-2">
+                        {["Upcoming", "Pending", "Confirmed", "Denied", "Completed", "Cancelled", "All"].map((tab) => (
+                            <button 
+                                key={tab} 
+                                onClick={() => setActiveTab(tab)}
+                                className={`
+                                    px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap
+                                    ${activeTab === tab 
+                                        ? "bg-[#0B1120] text-white shadow-md shadow-slate-900/10" 
+                                        : "bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-900"}
+                                `}
+                            >
+                                {tab}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* --- BOOKING LIST --- */}
+                <div className="flex-1">
+                    <BookingList 
+                        bookings={filteredBookings} 
+                        activeTab={activeTab} 
+                        loading={loading} 
+                        onActionComplete={handleActionComplete} 
+                    />
+                </div>
+
+            </div>
         </div>
+
+        {/* Modal */}
         {isBookingFormOpen && (
-          <CreateBookingForm isOpen={isBookingFormOpen} onClose={() => setIsBookingFormOpen(false)} startTime={nextHour} endTime={endHour} onSave={handleSaveBooking} />
+          <CreateBookingForm 
+            isOpen={isBookingFormOpen} 
+            onClose={() => setIsBookingFormOpen(false)} 
+            startTime={nextHour} 
+            endTime={endHour} 
+            onSave={handleSaveBooking} 
+          />
         )}
-        <div className="mt-4 sm:mt-6 border-b overflow-x-auto pb-1">
-          <div className="flex w-max min-w-full">
-            {["Upcoming", "Pending", "Confirmed", "Denied", "Completed", "Cancelled", "All"].map((tab) => (
-              <button key={tab} className={`px-3 sm:px-4 py-2 text-sm sm:text-base font-medium whitespace-nowrap ${activeTab === tab ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-500 hover:text-gray-700"}`} onClick={() => setActiveTab(tab)}>{tab}</button>
-            ))}
-          </div>
-        </div>
-        <div className="mt-4">
-          <BookingList bookings={bookings} activeTab={activeTab} loading={loading} onActionComplete={handleActionComplete} />
-        </div>
       </div>
-    </Card>
+    </div>
   );
 }

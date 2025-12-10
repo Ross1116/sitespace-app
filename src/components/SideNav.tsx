@@ -47,11 +47,11 @@ const SideNav = () => {
     { icon: Users, label: "Subcontractor", href: "/subcontractors", visible: ["admin", "manager"] },
     { icon: HardHat, label: "Assets", href: "/assets", visible: ["admin", "manager"] },
     { icon: CalendarRange, label: "Bookings", href: "/bookings", visible: [] },
-    { icon: Megaphone, label: "Announcements", href: "/announcements", visible: [] },
+    // { icon: Megaphone, label: "Announcements", href: "/announcements", visible: [] },
   ];
 
   const bottomMenuItems: MenuItem[] = [
-    { icon: Settings, label: "Settings", href: "/settings", visible: [] },
+    { icon: Settings, label: "Settings", href: "#", visible: [] },
     { icon: LogOut, label: "Logout", href: "#", visible: [], onClick: handleLogout },
   ];
 
