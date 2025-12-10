@@ -1,35 +1,30 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Home,
   Calendar,
   HardHat,
-  Construction,
-  CalendarRangeIcon,
-  Speaker,
-  User,
+  CalendarRange,
+  Megaphone,
+  Users,
   Settings,
   LogOut,
   Menu,
   X,
 } from "lucide-react";
-import { Card } from "./ui/card";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/app/context/AuthContext";
-import { useRouter } from "next/navigation";
 
 // Define types for menu items
 interface MenuItem {
   icon: React.ElementType;
   label: string;
   href: string;
-  visible: string[]; // Empty array = available to all
+  visible: string[];
   onClick?: (e: React.MouseEvent) => void;
-}
-
-interface MenuSection {
-  items: MenuItem[];
 }
 
 const SideNav = () => {
@@ -37,8 +32,8 @@ const SideNav = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user, isAuthenticated, logout } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
-  // Handle logout function
   const handleLogout = (e: React.MouseEvent) => {
     e.preventDefault();
     logout();
@@ -46,311 +41,184 @@ const SideNav = () => {
     router.push("/login");
   };
 
-  const menuItems: MenuSection[] = [
-    {
-      items: [
-        {
-          icon: Home,
-          label: "Home",
-          href: "/home",
-          visible: [], // ✅ Available to everyone
-        },
-        {
-          icon: Calendar,
-          label: "Live calendar view",
-          href: "/multicalendar",
-          visible: [], // ✅ Available to everyone
-        },
-        {
-          icon: HardHat,
-          label: "Subcontractors",
-          href: "/subcontractors",
-          visible: ["admin", "manager"], // 🔒 Restricted
-        },
-        {
-          icon: Construction,
-          label: "Assets",
-          href: "/assets",
-          visible: ["admin", "manager"], // 🔒 Restricted
-        },
-        {
-          icon: CalendarRangeIcon,
-          label: "Bookings",
-          href: "/bookings",
-          visible: [], // ✅ Available to everyone
-        },
-        {
-          icon: Speaker,
-          label: "Announcements",
-          href: "#",
-          visible: [], // ✅ Available to everyone
-        },
-      ],
-    },
-    {
-      items: [
-        {
-          icon: User,
-          label: "Profile",
-          href: "#",
-          visible: [], // ✅ Available to everyone
-        },
-        {
-          icon: Settings,
-          label: "Settings",
-          href: "#",
-          visible: [], // ✅ Available to everyone
-        },
-        {
-          icon: LogOut,
-          label: "Logout",
-          href: "#",
-          visible: [], // ✅ Available to everyone
-          onClick: handleLogout,
-        },
-      ],
-    },
+  const topMenuItems: MenuItem[] = [
+    { icon: Home, label: "Home", href: "/home", visible: [] },
+    { icon: Calendar, label: "Live Calendar", href: "/multicalendar", visible: [] },
+    { icon: Users, label: "Subcontractor", href: "/subcontractors", visible: ["admin", "manager"] },
+    { icon: HardHat, label: "Assets", href: "/assets", visible: ["admin", "manager"] },
+    { icon: CalendarRange, label: "Bookings", href: "/bookings", visible: [] },
+    { icon: Megaphone, label: "Announcements", href: "/announcements", visible: [] },
   ];
 
-  // Function to get user role (single role from AuthContext)
-  const getUserRole = (): string | null => {
-    if (!user?.role) return null;
-    return user.role.toLowerCase().trim();
-  };
+  const bottomMenuItems: MenuItem[] = [
+    { icon: Settings, label: "Settings", href: "/settings", visible: [] },
+    { icon: LogOut, label: "Logout", href: "#", visible: [], onClick: handleLogout },
+  ];
 
-  // Function to check if the current user has permission to see a menu item
   const hasPermission = (item: MenuItem): boolean => {
-    // If not authenticated, hide all items
     if (!user || !isAuthenticated) return false;
-
-    // ✅ Empty visible array = available to all authenticated users
-    if (!item.visible || item.visible.length === 0) {
-      return true;
-    }
-
-    const userRole = getUserRole();
+    if (!item.visible || item.visible.length === 0) return true;
+    const userRole = user.role?.toLowerCase().trim();
     if (!userRole) return false;
-
-    // Check if user's role is in the item's visible array
     return item.visible.some((role) => role.toLowerCase() === userRole);
   };
 
-  // Get user initials for avatar
-  const getUserInitials = (): string => {
-    if (user?.first_name && user?.last_name) {
-      return `${user.first_name[0]}${user.last_name[0]}`.toUpperCase();
-    }
-    if (user?.email) {
-      return user.email.substring(0, 2).toUpperCase();
-    }
-    return "U";
-  };
-
-  // Close mobile menu when screen size changes to desktop
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth >= 768) {
-        setIsMobileMenuOpen(false);
-      }
+      if (window.innerWidth >= 768) setIsMobileMenuOpen(false);
     };
-
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Prevent scrolling when mobile menu is open
-  useEffect(() => {
-    if (isMobileMenuOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [isMobileMenuOpen]);
+  const renderNavItem = (item: MenuItem, isMobile: boolean = false) => {
+    const isActive = pathname === item.href;
+
+    // Active Style
+    const activeClasses = isActive
+      ? "bg-gradient-to-r from-[rgba(14,124,155,0.3)] to-transparent text-white border-l-[3px] border-[#0e7c9b]"
+      : "text-gray-400 hover:text-white hover:bg-white/5 border-l-[3px] border-transparent";
+
+    return (
+      <Link
+        key={item.label}
+        href={item.href}
+        onClick={(e) => {
+          if (item.onClick) item.onClick(e);
+          else if (isMobile) setIsMobileMenuOpen(false);
+        }}
+        // ANCHORING: Keep padding consistent so icons don't jump
+        className={`group flex items-center h-12 mb-1 transition-all duration-200 relative overflow-hidden
+          ${activeClasses}
+          ${isMobile ? "px-6" : "pl-6"} 
+        `}
+      >
+        <div className="flex items-center justify-center flex-shrink-0">
+          <item.icon
+            size={20}
+            className={`transition-colors duration-200 ${
+              isActive ? "text-white" : "text-gray-400 group-hover:text-white"
+            }`}
+            strokeWidth={1.5}
+          />
+        </div>
+
+        <span
+          className={`ml-4 text-sm font-medium tracking-wide whitespace-nowrap transition-all duration-300 ease-in-out
+            ${isMobile 
+                ? "opacity-100 translate-x-0" 
+                : isExpanded 
+                    ? "opacity-100 translate-x-0" 
+                    : "opacity-0 -translate-x-2 pointer-events-none"
+            }
+          `}
+        >
+          {item.label}
+        </span>
+
+        {!isMobile && !isExpanded && (
+          <div className="absolute left-20 z-50 bg-navy-light text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap border border-white/10 shadow-xl">
+            {item.label}
+          </div>
+        )}
+      </Link>
+    );
+  };
 
   return (
     <>
-      {/* Mobile Hamburger Button - Fixed Position */}
+      {/* 
+        1. GHOST SPACER (The "Push") 
+        This div sits in the normal document flow.
+        - w-20: Matches the collapsed sidebar width (80px)
+        - ml-4: Matches the sidebar's left position (16px)
+        - mr-4: Creates the margin to the right of the nav (16px)
+        - flex-shrink-0: Ensures it doesn't get squished
+      */}
+      <div className="hidden md:block w-20 ml-4 flex-shrink-0 h-screen" aria-hidden="true" />
+
+      {/* 2. MOBILE TOGGLE */}
       <button
-        className="fixed top-4 left-4 z-50 p-2 rounded-md bg-amber-100 md:hidden"
+        className="fixed top-4 left-4 z-50 p-2 rounded-lg bg-navy text-white md:hidden shadow-lg border border-white/10"
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         aria-label="Toggle menu"
       >
         {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
       </button>
 
-      {/* Mobile Menu Container - Fixed Full Screen */}
+      {/* 3. MOBILE MENU OVERLAY */}
       <div
         className={`fixed inset-0 z-40 flex md:hidden transition-transform duration-300 ${
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        {/* Dark Overlay */}
-        <div
-          className="absolute inset-0 bg-black/50"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-
-        {/* Mobile Menu Content */}
-        <Card className="relative w-64 h-full bg-amber-50 rounded-none">
-          <div className="pt-16 overflow-y-auto h-full">
-            {/* User Info Section */}
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)} />
+        <div className="relative w-72 h-full bg-navy border-r border-white/10 flex flex-col shadow-2xl">
+          <div className="h-24 flex items-center px-6 border-b border-white/5">
+             <Image src="/full-logo-dark.svg" alt="Logo" width={140} height={40} className="object-contain" priority />
+          </div>
+          <div className="py-6 flex-1 overflow-y-auto">
             {user && (
-              <div className="px-4 py-3 mb-4 border-b border-amber-200">
-                <p className="text-sm font-medium text-gray-700">
-                  {user.first_name && user.last_name
-                    ? `${user.first_name} ${user.last_name}`
-                    : user.email}
-                </p>
-                <p className="text-xs text-gray-500 capitalize">
-                  {user.role || user.user_type || "User"}
-                </p>
+              <div className="mb-6 px-6 pb-4 border-b border-white/10">
+                <p className="text-white font-semibold">{user.first_name} {user.last_name}</p>
+                <p className="text-xs text-gray-400 capitalize">{user.role}</p>
               </div>
             )}
-
-            {menuItems.map((section, sectionIndex) => {
-              // Filter items based on user permissions
-              const visibleItems = section.items.filter((item) =>
-                hasPermission(item)
-              );
-
-              // Only render section if it has visible items
-              if (visibleItems.length === 0) return null;
-
-              return (
-                <div
-                  className="flex flex-col gap-2 px-2 mb-4"
-                  key={`section-${sectionIndex}`}
-                >
-                  {visibleItems.map((item, itemIndex) => (
-                    <Link
-                      href={item.href}
-                      key={`item-${sectionIndex}-${itemIndex}-${item.label}`}
-                      className="flex items-center px-4 py-3 text-gray-700 rounded-md hover:bg-amber-100 transition-colors group"
-                      onClick={(e) => {
-                        if (item.onClick) {
-                          item.onClick(e);
-                        } else {
-                          setIsMobileMenuOpen(false);
-                        }
-                      }}
-                    >
-                      <div className="flex items-center justify-center min-w-8">
-                        {item.icon && <item.icon size={20} />}
-                      </div>
-                      <span className="ml-3">{item.label}</span>
-                    </Link>
-                  ))}
-
-                  {/* Add divider between sections */}
-                  {sectionIndex < menuItems.length - 1 && (
-                    <div className="h-px bg-amber-200 my-2" />
-                  )}
-                </div>
-              );
-            })}
+            <div className="space-y-1">
+              {topMenuItems.filter(hasPermission).map(item => renderNavItem(item, true))}
+            </div>
           </div>
-        </Card>
+          <div className="py-4 border-t border-white/10 bg-navy-light/30">
+            {bottomMenuItems.filter(hasPermission).map(item => renderNavItem(item, true))}
+          </div>
+        </div>
       </div>
 
-      {/* Desktop Sidebar */}
-      <Card
-        className={`fixed hidden md:block transition-all duration-300 text-sm bg-amber-50 h-full z-30
-          rounded-r-2xl rounded-b-2xl rounded-l-none rounded-bl-none
-          ${isExpanded ? "w-48" : "w-16"}`}
+      {/* 4. DESKTOP FLOATING SIDEBAR */}
+      <aside
+        className={`fixed left-4 top-4 bottom-4 hidden md:flex flex-col bg-navy rounded-2xl border border-white/5 shadow-2xl transition-[width] duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1.0)] z-50 overflow-hidden
+          ${isExpanded ? "w-64" : "w-20"}
+        `}
         onMouseEnter={() => setIsExpanded(true)}
         onMouseLeave={() => setIsExpanded(false)}
       >
-        <div className="pt-4 overflow-hidden h-full flex flex-col">
-          {/* Profile Section - Always Visible */}
-          {user && (
-            <div className="px-4 py-3 mb-2 border-b border-amber-200">
-              <div className="flex items-center">
-                {/* Avatar Circle - aligned with menu icons */}
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-gray-600 to-gray-800 flex items-center justify-center text-white font-semibold text-xs shadow-sm">
-                  {getUserInitials()}
-                </div>
-                
-                {/* User Info - Only visible when expanded */}
-                <div
-                  className={`ml-3 overflow-hidden transition-all duration-300 ${
-                    isExpanded ? "max-w-[120px] opacity-100" : "max-w-0 opacity-0"
-                  }`}
-                >
-                  <p className="text-xs font-medium text-gray-700 truncate leading-tight">
-                    {user.first_name && user.last_name
-                      ? `${user.first_name} ${user.last_name}`
-                      : user.email}
-                  </p>
-                  <p className="text-xs text-gray-500 capitalize truncate mt-0.5">
-                    {user.role || user.user_type || "User"}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Menu Items */}
-          <div className="flex-1 overflow-y-auto">
-            {menuItems.map((section, sectionIndex) => {
-              // Filter items based on user permissions
-              const visibleItems = section.items.filter((item) =>
-                hasPermission(item)
-              );
-
-              // Only render section if it has visible items
-              if (visibleItems.length === 0) return null;
-
-              return (
-                <div
-                  className="flex flex-col gap-1 mb-4"
-                  key={`section-${sectionIndex}`}
-                >
-                  {visibleItems.map((item, itemIndex) => (
-                    <Link
-                      href={item.href}
-                      key={`item-${sectionIndex}-${itemIndex}-${item.label}`}
-                      className="flex items-center px-4 py-3 text-gray-700 rounded-md hover:bg-amber-100 transition-colors group relative"
-                      onClick={(e) => item.onClick && item.onClick(e)}
-                    >
-                      <div className="flex items-center justify-center w-8 h-8 flex-shrink-0">
-                        {item.icon && <item.icon size={20} />}
-                      </div>
-                      <span
-                        className={`ml-3 whitespace-nowrap overflow-hidden transition-all duration-300 ${
-                          isExpanded
-                            ? "max-w-[150px] opacity-100"
-                            : "max-w-0 opacity-0"
-                        }`}
-                      >
-                        {item.label}
-                      </span>
-
-                      {/* Tooltip for collapsed state */}
-                      {!isExpanded && (
-                        <div className="absolute left-16 bg-gray-800 text-white px-2 py-1 rounded shadow-lg text-xs whitespace-nowrap z-10 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity">
-                          {item.label}
-                        </div>
-                      )}
-                    </Link>
-                  ))}
-
-                  {/* Add divider between sections (except last) */}
-                  {sectionIndex < menuItems.length - 1 && (
-                    <div
-                      className={`h-px bg-amber-200 my-2 transition-all duration-300 ${
-                        isExpanded ? "mx-4" : "mx-2"
-                      }`}
+        {/* LOGO AREA */}
+        <div className="h-24 flex items-center flex-shrink-0 pl-6 mb-2">
+            <div className="relative w-full h-10 flex items-center">
+                {/* Collapsed Icon */}
+                <div className={`absolute left-0 top-1/2 -translate-y-1/2 transition-opacity duration-300 ${isExpanded ? 'opacity-0' : 'opacity-100'}`}>
+                    <Image 
+                        src="/icon.svg" 
+                        alt="Icon" 
+                        width={32} 
+                        height={32} 
+                        className="object-contain"
                     />
-                  )}
                 </div>
-              );
-            })}
-          </div>
+                {/* Full Logo */}
+                <div className={`absolute left-0 top-1/2 -translate-y-1/2 transition-opacity duration-300 ${isExpanded ? 'opacity-100 delay-75' : 'opacity-0'}`}>
+                    <Image 
+                        src="/full-logo-dark.svg" 
+                        alt="SiteSpace" 
+                        width={140} 
+                        height={40} 
+                        className="object-contain"
+                        priority
+                    />
+                </div>
+            </div>
         </div>
-      </Card>
+
+        {/* ITEMS */}
+        <div className="flex-1 py-2 overflow-y-auto overflow-x-hidden custom-scrollbar flex flex-col gap-1">
+          {topMenuItems.filter(hasPermission).map((item) => renderNavItem(item))}
+        </div>
+
+        {/* FOOTER */}
+        <div className="py-4 border-t border-white/5 bg-navy-light/20 flex-shrink-0">
+          {bottomMenuItems.filter(hasPermission).map((item) => renderNavItem(item))}
+        </div>
+      </aside>
     </>
   );
 };

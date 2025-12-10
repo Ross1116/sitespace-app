@@ -4,11 +4,28 @@ import { useAuth } from "@/app/context/AuthContext";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
-import { Calendar, Construction, Users, Clock, CalendarX } from "lucide-react";
+import {
+  Calendar,
+  HardHat,
+  Users,
+  ListChecks,
+  Search,
+  Bell,
+  ChevronDown,
+  CalendarX,
+  Clock,
+  Plus,
+  Check,
+  MapPin,
+  Briefcase,
+  AlertCircle,
+} from "lucide-react";
 import { useEffect, useState, useRef, useCallback } from "react";
 import api from "@/lib/api";
-import ProjectSelector from "@/components/home/RadioToggle";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
+// --- Types ---
 interface Booking {
   id: string;
   project_id?: string;
@@ -18,29 +35,45 @@ interface Booking {
   booking_date: string;
   start_time: string;
   end_time: string;
-  status: "pending" | "confirmed" | "cancelled" | "completed" | string;
+  status:
+    | "pending"
+    | "confirmed"
+    | "cancelled"
+    | "completed"
+    | "denied"
+    | string;
   notes?: string;
+  purpose?: string;
+  title?: string;
   created_at: string;
   updated_at: string;
-  project?: {
-    id: string;
-    name: string;
-  };
+  project?: { id: string; name: string };
+  // Updated interfaces to match backend structure more closely for name construction
   manager?: {
     id: string;
-    full_name: string;
+    first_name: string;
+    last_name: string;
+    full_name?: string;
   };
   subcontractor?: {
     id: string;
-    company_name: string;
+    company_name?: string;
+    first_name: string;
+    last_name: string;
   };
-  asset?: {
-    id: string;
-    name: string;
-  };
+  asset?: { id: string; name: string };
 }
 
-// Helper to combine date+time avoiding midnight/offset issues
+// --- Color Palette ---
+const PALETTE = {
+  bg: "bg-[hsl(20,60%,99%)]",
+  darkNavy: "bg-[#0B1120]",
+  navy: "bg-[#0f2a4a]",
+  blue: "bg-[#004e89]",
+  teal: "bg-[#0e7c9b]",
+};
+
+// --- Helpers ---
 const combineDateAndTime = (dateStr: string, timeStr: string): Date => {
   try {
     if (!dateStr) return new Date();
@@ -52,28 +85,81 @@ const combineDateAndTime = (dateStr: string, timeStr: string): Date => {
   }
 };
 
-const formatTimeFromDate = (date: Date): string =>
-  date.toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
+const formatDate = (dateString: string) => {
+  const date = new Date(dateString);
+  const day = date.getDate();
+  const month = date.toLocaleString("default", {
+    month: "long",
+    year: "numeric",
   });
+  const dayOfWeek = date.toLocaleString("default", { weekday: "short" });
+  return { day, month, dayOfWeek, date };
+};
+
+const formatTimeRange = (start: Date, end: Date) => {
+  const format = (d: Date) =>
+    d.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+  return `${format(start)} - ${format(end)}`;
+};
+
+const isToday = (date: Date) => {
+  const currentDate = new Date();
+  return (
+    date.getDate() === currentDate.getDate() &&
+    date.getMonth() === currentDate.getMonth() &&
+    date.getFullYear() === currentDate.getFullYear()
+  );
+};
+
+// Grouping Logic
+const groupBookingsByMonth = (bookings: Booking[]) => {
+  const groups: Record<string, Booking[]> = {};
+  bookings.forEach((b) => {
+    const date = new Date(`${b.booking_date}T00:00:00`);
+    const month = date.toLocaleString("default", {
+      month: "long",
+      year: "numeric",
+    });
+    if (!groups[month]) groups[month] = [];
+    groups[month].push(b);
+  });
+  return groups;
+};
 
 export default function HomePage() {
   const { user } = useAuth();
-  const [greeting, setGreeting] = useState("Good day");
+
+  // Data States
   const [projects, setProjects] = useState<any[]>([]);
   const [selectedProject, setSelectedProject] = useState<any | null>(null);
   const [upcomingBookings, setUpcomingBookings] = useState<Booking[]>([]);
+
+  // Dashboard Counters
+  const [assetCount, setAssetCount] = useState<number>(0);
+  const [subcontractorCount, setSubcontractorCount] = useState<number>(0);
+
+  // Loading & UI States
   const [loadingBookings, setLoadingBookings] = useState(true);
-  const hasFetched = useRef(false);
+  const [showProjectSelector, setShowProjectSelector] = useState(false);
+
+  const hasInitialized = useRef(false);
   const userId = user?.id;
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const bookingsCacheKey = `home_upcoming_v1_${userId}`;
-  const projectsListCacheKey = `home_projects_list_v1_${userId}`;
+  // Cache keys
+  const currentProjId =
+    selectedProject?.id || selectedProject?.project_id || "all";
+  const bookingsCacheKey = `home_bookings_${userId}_${currentProjId}`;
+  const projectsListCacheKey = `home_projects_list_${userId}`;
 
-  // Fetch projects (exposed so we can call it when needed)
+  // --- API Calls ---
+
   const fetchProjects = useCallback(async () => {
+    if (!userId) return;
     try {
       let projectData: any[] = [];
       if (user?.role === "subcontractor") {
@@ -94,61 +180,71 @@ export default function HomePage() {
       setProjects(projectData);
       localStorage.setItem(projectsListCacheKey, JSON.stringify(projectData));
 
-      // If no selectedProject in localStorage, set default to first project
       const stored = localStorage.getItem(`project_${userId}`);
       if (!stored && projectData.length > 0) {
-        localStorage.setItem(
-          `project_${userId}`,
-          JSON.stringify(projectData[0])
-        );
-        setSelectedProject(projectData[0]);
+        const defaultProj = projectData[0];
+        localStorage.setItem(`project_${userId}`, JSON.stringify(defaultProj));
+        setSelectedProject(defaultProj);
+      } else if (stored) {
+        setSelectedProject(JSON.parse(stored));
       }
     } catch (err) {
       console.error("Error fetching projects:", err);
     }
-  }, [userId, user, projectsListCacheKey]);
+  }, [userId, user?.role, projectsListCacheKey]);
 
-  // Fetch assets (unchanged, but exposed)
   const fetchAssets = useCallback(async () => {
+    if (!userId || !selectedProject) return;
     try {
-      if (!user || !userId || !selectedProject) return;
-
       const projectId = selectedProject.id || selectedProject.project_id;
       const response = await api.get("/assets/", {
         params: { project_id: projectId, limit: 100 },
       });
       const assetData = response.data?.assets || [];
-      localStorage.setItem(`assets_${userId}`, JSON.stringify(assetData));
+      setAssetCount(response.data?.total || assetData.length);
     } catch (error) {
-      console.error("Error fetching assets:", error);
+      setAssetCount(0);
     }
-  }, [selectedProject, userId, user]);
+  }, [selectedProject, userId]);
 
-  // Fetch bookings and filter by selectedProject if present
+  const fetchSubcontractors = useCallback(async () => {
+    if (!userId || !selectedProject) return;
+    try {
+      const projectId = selectedProject.id || selectedProject.project_id;
+      const isAdmin = user?.role === "admin";
+      const endpoint = isAdmin
+        ? "/subcontractors/"
+        : "/subcontractors/my-subcontractors";
+
+      const response = await api.get(endpoint, {
+        params: { project_id: projectId, limit: 1, is_active: true },
+      });
+
+      const total =
+        response.data?.total ??
+        (Array.isArray(response.data) ? response.data.length : 0);
+      setSubcontractorCount(total);
+    } catch (error) {
+      setSubcontractorCount(0);
+    }
+  }, [selectedProject, userId, user?.role]);
+
   const fetchBookings = useCallback(
     async (isBackground = false) => {
+      if (!userId || !selectedProject) return;
       try {
-        if (!isBackground && upcomingBookings.length === 0) {
-          setLoadingBookings(true);
-        }
+        if (!isBackground) setLoadingBookings(true);
 
+        const projectId = selectedProject.id || selectedProject.project_id;
         const resp = await api.get("/bookings/my/upcoming", {
-          params: { limit: 50 },
+          params: { limit: 50, project_id: projectId },
         });
-        let bookingsData: Booking[] = resp.data || [];
 
-        // If a project is selected, filter bookings for that project (by project.id or project_id)
-        if (selectedProject) {
-          const projId = selectedProject.id || selectedProject.project_id;
-          bookingsData = bookingsData.filter((b) => {
-            // some items may have project as object; others may have project_id
-            return (
-              (b.project &&
-                (b.project.id === projId || b.project.id === projId)) ||
-              b.project_id === projId
-            );
-          });
-        }
+        let bookingsData: Booking[] = resp.data || [];
+        bookingsData = bookingsData.filter((b) => {
+          const bProjId = b.project?.id || b.project_id;
+          return bProjId === projectId;
+        });
 
         setUpcomingBookings(bookingsData);
         localStorage.setItem(bookingsCacheKey, JSON.stringify(bookingsData));
@@ -158,446 +254,561 @@ export default function HomePage() {
         setLoadingBookings(false);
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selectedProject, userId]
+    [selectedProject, userId, bookingsCacheKey]
   );
 
-  // On mount: greeting + load caches + initial fetches
+  // --- Effects ---
   useEffect(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) setGreeting("Good morning");
-    else if (hour < 18) setGreeting("Good afternoon");
-    else setGreeting("Good evening");
+    if (!user || hasInitialized.current) return;
+    fetchProjects();
+    hasInitialized.current = true;
+  }, [user, fetchProjects]);
 
-    if (!user || !userId) return;
-
-    // load caches
-    const cachedProjects = localStorage.getItem(projectsListCacheKey);
-    if (cachedProjects) {
-      try {
-        const parsed = JSON.parse(cachedProjects);
-        if (Array.isArray(parsed) && parsed.length > 0) setProjects(parsed);
-      } catch {
-        localStorage.removeItem(projectsListCacheKey);
-      }
-    }
-
-    const cachedBookings = localStorage.getItem(bookingsCacheKey);
-    if (cachedBookings) {
-      try {
-        const parsed = JSON.parse(cachedBookings);
-        if (Array.isArray(parsed)) {
-          setUpcomingBookings(parsed);
-          setLoadingBookings(false);
-        }
-      } catch {
-        localStorage.removeItem(bookingsCacheKey);
-      }
-    }
-
-    // selectedProject from localStorage if set
-    const stored = localStorage.getItem(`project_${userId}`);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        setSelectedProject(parsed);
-      } catch {
-        localStorage.removeItem(`project_${userId}`);
-      }
-    }
-
-    // fetch fresh data (Option 3 behavior)
-    if (!hasFetched.current) {
-      fetchProjects();
-
-      if (cachedBookings) {
-        // we have cache: refresh in background so we don't show spinner
-        fetchBookings(true);
-      } else {
-        // no cache: show spinner while fetching
-        setLoadingBookings(true);
-        fetchBookings(false);
-      }
-
-      hasFetched.current = true;
-    } else {
-      // still refresh bookings when component mounts again
-      fetchBookings(true);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, user]);
-
-  // When selectedProject changes, fetch assets + bookings for that project
   useEffect(() => {
     if (!selectedProject) return;
-    // update caches & fetch relevant resources
     fetchAssets();
-    // show spinner for explicit project change (foreground fetch)
-    setLoadingBookings(true);
+    fetchSubcontractors();
     fetchBookings(false);
-  }, [selectedProject, fetchAssets, fetchBookings]);
+  }, [selectedProject, fetchAssets, fetchSubcontractors, fetchBookings]);
 
-  // Handler when ProjectSelector changes selection
-  // If your ProjectSelector gives you the selected project directly, pass it in here.
-  const handleProjectSelect = (maybeProject?: any) => {
-    // if the ProjectSelector passes the new project object, use it:
-    if (maybeProject && maybeProject.id) {
-      localStorage.setItem(`project_${userId}`, JSON.stringify(maybeProject));
-      setSelectedProject(maybeProject);
-      // clear bookings cache for home (so we don't reuse stale project-scoped bookings)
-      localStorage.removeItem(bookingsCacheKey);
-      return;
-    }
-
-    // otherwise read from localStorage (works if ProjectSelector writes selection itself)
-    const stored = localStorage.getItem(`project_${userId}`);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        setSelectedProject(parsed);
-        localStorage.removeItem(bookingsCacheKey);
-      } catch {
-        localStorage.removeItem(`project_${userId}`);
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowProjectSelector(false);
       }
     }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleProjectSelect = (proj: any) => {
+    if (!proj || !proj.id) return;
+    setShowProjectSelector(false);
+    localStorage.setItem(`project_${userId}`, JSON.stringify(proj));
+    setSelectedProject(proj);
+    window.location.reload();
   };
 
-  const isBookingEndInFutureOrNow = (b: Booking): boolean => {
-    // Use booking end time to decide whether it's still relevant/open
-    const end = combineDateAndTime(b.booking_date, b.end_time);
-    const now = new Date();
-    return end >= now;
-  };
+  // --- Derived Data ---
+  const isBookingEndInFutureOrNow = (b: Booking) =>
+    combineDateAndTime(b.booking_date, b.end_time) >= new Date();
 
-  // sort ascending by start time (so upcoming/ongoing bookings appear in chronological order)
-  // and filter out bookings whose end time is already in the past
   const filteredSortedBookings = upcomingBookings
     .filter(isBookingEndInFutureOrNow)
-    .sort((a, b) => {
-      const ta = combineDateAndTime(a.booking_date, a.start_time).getTime();
-      const tb = combineDateAndTime(b.booking_date, b.start_time).getTime();
-      return ta - tb;
-    });
+    .sort(
+      (a, b) =>
+        combineDateAndTime(a.booking_date, a.start_time).getTime() -
+        combineDateAndTime(b.booking_date, b.start_time).getTime()
+    )
+    .slice(0, 5);
 
-  // Quick access cards (unchanged)
-  const getQuickAccessCards = () => {
-    const cards = [
-      {
-        title: "Live Calendar View",
-        icon: Calendar,
-        description: "View all your bookings and schedule",
-        link: "/multicalendar",
-        color: "bg-green-100",
-      },
-      {
-        title: "Manage Bookings",
-        icon: Construction,
-        description: "View and manage your scheduled bookings",
-        link: "/bookings",
-        color: "bg-blue-100",
-      },
-    ];
-    if (user?.role?.includes("admin") || user?.role?.includes("manager")) {
-      cards.push(
-        {
-          title: "Subcontractors",
-          icon: Users,
-          description: "View and manage your subcontractors",
-          link: "/subcontractors",
-          color: "bg-purple-100",
-        },
-        {
-          title: "Assets",
-          icon: Users,
-          description: "View and manage your assets",
-          link: "/assets",
-          color: "bg-amber-100",
-        }
-      );
-    }
-    return cards.slice(0, 4);
-  };
+  const groupedBookings = groupBookingsByMonth(filteredSortedBookings);
 
-  const getStatusColor = (status: string): string => {
-    switch (status.toLowerCase()) {
-      case "confirmed":
-        return "bg-green-100 text-green-800";
-      case "pending":
-        return "bg-yellow-100 text-yellow-800";
-      case "cancelled":
-        return "bg-red-100 text-red-800";
-      case "completed":
-        return "bg-blue-100 text-blue-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
+  const eventsTodayCount = upcomingBookings.filter((b) => {
+    const d = combineDateAndTime(b.booking_date, b.start_time);
+    const now = new Date();
+    return d.toDateString() === now.toDateString();
+  }).length;
+
+  const pendingBookingsCount = upcomingBookings.filter(
+    (b) => b.status === "pending"
+  ).length;
 
   return (
-    <Card className="px-6 sm:my-8 mx-4 bg-amber-50">
-      <div className="p-3 sm:p-6">
-        <h1 className="text-xl sm:text-3xl font-bold text-gray-900">
-          {greeting}, {user?.first_name || "there"}!
-        </h1>
-        <p className="text-sm sm:text-base text-gray-500 mt-1">
-          Welcome to your site management dashboard
-        </p>
-      </div>
+    <div
+      className={`min-h-screen ${PALETTE.bg} p-2 sm:p-4 lg:p-6 space-y-8 font-sans text-slate-800`}
+    >
+      {/* --- HEADER --- */}
+      <div className="w-full max-w-screen mx-auto flex items-center justify-between gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+        {/* Accent + Welcome */}
+        <div className="flex items-center gap-4">
+          <div className="w-1.5 h-10 rounded-full bg-gradient-to-b from-slate-200 to-slate-50" />
+          <div className="flex flex-col">
+            <p className="text-sm text-slate-500">Welcome back,</p>
+            <p className="text-lg md:text-xl font-semibold text-slate-900">
+              {user?.first_name ? `${user.first_name} 👋` : `${user?.email} 👋`}
+            </p>
+            <p className="text-xs text-slate-400 mt-1">
+              Here’s what’s happening in your workspace today.
+            </p>
+          </div>
+        </div>
 
-      <div className="p-3 sm:p-6">
-        <h2 className="text-xl font-semibold text-gray-800 mb-4">
-          Quick Access
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {getQuickAccessCards().map((card, index) => (
-            <Link href={card.link} key={`card-${index}`}>
-              <Card
-                className={`p-4 h-full hover:shadow-md transition-shadow ${card.color}`}
-              >
-                <div className="flex items-start">
-                  <div className="p-2 rounded-full bg-white mr-3">
-                    <card.icon size={24} />
-                  </div>
-                  <div>
-                    <h3 className="font-medium text-gray-800">{card.title}</h3>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {card.description}
-                    </p>
-                  </div>
-                </div>
-              </Card>
-            </Link>
-          ))}
+        {/* Profile (compact card) */}
+        <div className="flex items-center gap-3 pl-4 border-l border-slate-100">
+          <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 font-semibold border border-slate-200">
+            {user?.first_name?.charAt(0) || "U"}
+          </div>
+
+          <div className="hidden sm:flex flex-col leading-tight max-w-xs">
+            <p className="text-sm font-medium text-slate-900">
+              {user?.first_name && user?.last_name
+                ? `${user.first_name} ${user.last_name}`
+                : "Unknown User"}
+            </p>
+            <p className="text-xs text-slate-500 truncate">
+              {user?.email || "No email available"}
+            </p>
+          </div>
         </div>
       </div>
+      {/* --- MAIN CARD: contains the rest of the dashboard so it reads as one panel --- */}
+      <div className="w-full max-w-screen mx-auto bg-white rounded-2xl shadow-sm border border-slate-100 p-6 space-y-6">
+        {/* --- PROJECT TITLE & SWITCHER --- */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 relative z-20">
+          <div>
+            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+              {selectedProject ? selectedProject.name : "Select a Project"}
+            </h1>
+            <p className="text-slate-500 mt-1 font-medium flex items-center gap-1">
+              {selectedProject && selectedProject.location ? (
+                <>
+                  <MapPin size={14} className="text-slate-200" />
+                  {selectedProject.location}
+                </>
+              ) : (
+                "Welcome to your site management dashboard"
+              )}
+            </p>
+          </div>
 
-      <div className="flex flex-col md:flex-row gap-6 p-3 sm:p-6">
-        <div className="flex-1">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">
-            Your Projects
-          </h2>
+          {/* Dropdown Container */}
+          <div className="relative" ref={dropdownRef}>
+            <Button
+              onClick={() => setShowProjectSelector(!showProjectSelector)}
+              className={`${PALETTE.darkNavy} text-white hover:opacity-90 flex items-center gap-2 px-6 rounded-lg font-semibold shadow-md transition-all active:scale-95`}
+            >
+              {showProjectSelector ? "Close" : "Switch Project"}
+              <ChevronDown
+                size={16}
+                className={`transition-transform duration-200 ${
+                  showProjectSelector ? "rotate-180" : ""
+                }`}
+              />
+            </Button>
 
-          <Card className="p-0">
-            {projects.length > 0 ? (
-              <>
-                {/* Clear label above selector */}
-                <div className="px-4 pt-4 pb-1">
-                  <div className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                    <Calendar size={16} className="text-orange-500" />
-                    Select a Project
-                  </div>
+            {showProjectSelector && (
+              <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-slate-100 z-50 overflow-hidden ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-200">
+                <div className="p-3 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Available Projects
+                  </span>
+                  <span className="text-[10px] bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full font-bold">
+                    {projects.length}
+                  </span>
                 </div>
 
-                {/* Highlighted selector area */}
-                <div className="px-2 pb-3">
-                  <div className="border border-orange-200 rounded-md p-2 bg-white">
-                    <ProjectSelector
-                      projects={projects}
-                      userId={userId}
-                      onChange={(proj?: any) => handleProjectSelect(proj)}
-                    />
-                  </div>
+                <div className="max-h-[300px] overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                  {projects.length === 0 ? (
+                    <div className="text-center py-4 text-sm text-slate-400">
+                      No projects found
+                    </div>
+                  ) : (
+                    projects.map((proj) => {
+                      const isActive = selectedProject?.id === proj.id;
+                      return (
+                        <button
+                          key={proj.id}
+                          onClick={() => handleProjectSelect(proj)}
+                          className={`w-full text-left px-3 py-3 rounded-lg text-sm font-medium transition-all flex items-center justify-between group cursor-pointer
+                                      ${
+                                        isActive
+                                          ? "bg-[#0B1120] text-white shadow-md shadow-slate-900/10"
+                                          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                                      }`}
+                        >
+                          <div className="flex flex-col items-start gap-0.5 overflow-hidden">
+                            <span className="truncate w-full font-bold">
+                              {proj.name}
+                            </span>
+                            <span
+                              className={`text-[11px] truncate w-full ${
+                                isActive ? "text-slate-300" : "text-slate-400"
+                              }`}
+                            >
+                              {proj.location || "No location"}
+                            </span>
+                          </div>
+                          {isActive && (
+                            <Check
+                              size={16}
+                              className="text-white flex-shrink-0 ml-2"
+                            />
+                          )}
+                        </button>
+                      );
+                    })
+                  )}
                 </div>
-              </>
-            ) : (
-              <div className="p-4 space-y-1">
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-8 w-full" />
               </div>
             )}
-          </Card>
+          </div>
         </div>
 
-        <div className="flex-1">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">
-            Upcoming Bookings
+        {/* --- QUICK ACCESS CARDS --- */}
+        <div>
+          <h2 className="text-lg font-bold text-slate-900 mb-4">
+            Quick Access
           </h2>
-          <Card className="bg-stone-100 px-2 py-2">
-            {(loadingBookings || !hasFetched.current) ? (
-              <>
-                <SkeletonBookingCard />
-                <SkeletonBookingCard />
-                <SkeletonBookingCard />
-              </>
-            ) : filteredSortedBookings.length > 0 ? (
-              // add small gap between items with space-y-2; cards have minimal vertical margins
-              <div className="max-h-[420px] overflow-y-auto space-y-2 px-1 py-1">
-                {filteredSortedBookings.map((booking, index) => {
-                  const startObj = combineDateAndTime(
-                    booking.booking_date,
-                    booking.start_time
-                  );
-                  const endObj = combineDateAndTime(
-                    booking.booking_date,
-                    booking.end_time
-                  );
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <QuickAccessCard
+              title="Calendar"
+              count={upcomingBookings.length}
+              subtitle={`${eventsTodayCount} events today`}
+              icon={Calendar}
+              bgColor={PALETTE.darkNavy}
+              href="/multicalendar"
+            />
+            <QuickAccessCard
+              title="Assets"
+              count={assetCount}
+              subtitle={`${
+                assetCount > 0 ? "Active on site" : "No assets active"
+              }`}
+              icon={HardHat}
+              bgColor={PALETTE.navy}
+              href="/assets"
+            />
+            <QuickAccessCard
+              title="Subcontractor"
+              count={subcontractorCount}
+              subtitle={`${subcontractorCount} Active`}
+              icon={Users}
+              bgColor={PALETTE.blue}
+              href="/subcontractors"
+            />
+            <QuickAccessCard
+              title="Bookings"
+              count={upcomingBookings.length}
+              subtitle={`${pendingBookingsCount} Pending`}
+              icon={ListChecks}
+              bgColor={PALETTE.teal}
+              href="/bookings"
+            />
+          </div>
+        </div>
 
-                  const day = startObj.getDate();
-                  const dayOfWeek = startObj.toLocaleDateString("en-US", {
-                    weekday: "short",
-                  });
-                  const timeRange = `${formatTimeFromDate(
-                    startObj
-                  )} - ${formatTimeFromDate(endObj)}`;
-                  const today =
-                    new Date().toDateString() === startObj.toDateString();
-                  const assetName = booking.asset?.name || "Asset";
+        {/* --- DASHBOARD GRID --- */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          {/* LEFT COL: Upcoming Bookings */}
+          <div className="col-span-12 lg:col-span-8 space-y-4">
+            <div className="flex justify-between items-end mb-2">
+              <h2 className="text-xl font-bold text-slate-900">
+                Upcoming Bookings
+              </h2>
+              <div className="flex bg-slate-200 rounded-lg p-1 gap-1">
+                <Link href="/bookings">
+                  <span className="text-xs font-bold px-4 py-1.5 bg-white rounded-md shadow-sm text-slate-900 inline-block cursor-pointer">
+                    Bookings
+                  </span>
+                </Link>
+                <Link href="/multicalendar">
+                  <span className="text-xs font-bold px-4 py-1.5 text-slate-500 inline-block cursor-pointer hover:text-slate-900">
+                    Calendar
+                  </span>
+                </Link>
+              </div>
+            </div>
 
-                  // 👉 NEW: Check if this row should have a gap before it
-                  let showGap = false;
-                  if (index > 0) {
-                    const prev = filteredSortedBookings[index - 1];
-                    const prevStartObj = combineDateAndTime(
-                      prev.booking_date,
-                      prev.start_time
-                    );
+            <div className="bg-white rounded-2xl shadow-sm p-6 min-h-[400px] border border-slate-100 flex flex-col">
+              {loadingBookings ? (
+                <div className="space-y-4">
+                  {[1, 2, 3, 4].map((i) => (
+                    <Skeleton key={i} className="h-24 w-full rounded-xl" />
+                  ))}
+                </div>
+              ) : filteredSortedBookings.length > 0 ? (
+                <div className="space-y-6">
+                  {Object.keys(groupedBookings).map((month) => (
+                    <div key={month} className="space-y-2">
+                      {/* Month Header */}
+                      <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2 pl-1 border-b border-slate-100 pb-1">
+                        {month}
+                      </h3>
 
-                    if (
-                      prevStartObj.toDateString() !== startObj.toDateString()
-                    ) {
-                      showGap = true;
-                    }
-                  }
+                      {groupedBookings[month].map((booking) => {
+                        const startObj = combineDateAndTime(
+                          booking.booking_date,
+                          booking.start_time
+                        );
+                        const endObj = combineDateAndTime(
+                          booking.booking_date,
+                          booking.end_time
+                        );
+                        const timeRange = formatTimeRange(startObj, endObj);
 
-                  return (
-                    <div key={booking.id}>
-                      {/* 👉 NEW GAP */}
-                      {showGap && <div className="h-2" />}
+                        const { day, dayOfWeek } = formatDate(
+                          booking.booking_date
+                        );
+                        const isBookingToday = isToday(startObj);
+                        const status = booking.status.toLowerCase();
 
-                      <Link href="/bookings">
-                        <Card className="overflow-hidden border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200 py-2 px-3 cursor-pointer">
-                          <div className="flex w-full items-center">
-                            <div className="w-14 flex-shrink-0 flex flex-col items-center justify-center py-2 border-r border-gray-200">
+                        // --- LOGIC FROM BOOKINGS PAGE ---
+                        // 1. Manager Name
+                        const managerName = booking.manager
+                          ? `${booking.manager.first_name} ${booking.manager.last_name}`.trim()
+                          : "Unknown Manager";
+
+                        // 2. Subcontractor Name
+                        const subName =
+                          booking.subcontractor?.company_name ||
+                          (booking.subcontractor
+                            ? `${booking.subcontractor.first_name} ${booking.subcontractor.last_name}`.trim()
+                            : "");
+
+                        // 3. Assignee logic: If sub exists, it's for them. Else manager.
+                        const assignee = booking.subcontractor_id
+                          ? subName || "Unknown Subcontractor"
+                          : managerName;
+
+                        // 4. Icon Logic
+                        const isSubcontractor = !!booking.subcontractor_id;
+                        const RoleIcon = isSubcontractor ? HardHat : Briefcase;
+                        const iconColor = isSubcontractor
+                          ? "text-orange-600"
+                          : "text-blue-600";
+
+                        // Title logic (fallback to assignee)
+                        let displayTitle = "";
+                        if (booking.title && booking.title.trim() !== "")
+                          displayTitle = booking.title;
+                        else if (
+                          booking.purpose &&
+                          booking.purpose.trim() !== ""
+                        )
+                          displayTitle = booking.purpose;
+                        else if (booking.notes && booking.notes.trim() !== "")
+                          displayTitle = booking.notes;
+                        else displayTitle = `Booking for ${assignee}`;
+
+                        return (
+                          <div
+                            key={booking.id}
+                            className="bg-[#F8F9FB] rounded-xl flex overflow-hidden border border-transparent hover:border-slate-200 hover:shadow-sm transition-all group"
+                          >
+                            {/* --- LEFT: DATE COLUMN --- */}
+                            <div className="w-20 sm:w-24 flex-shrink-0 flex flex-col items-center justify-center border-r border-slate-200 bg-slate-50/50">
                               <div
-                                className={`text-xs font-medium uppercase ${
-                                  today ? "text-orange-500" : "text-gray-500"
+                                className={`text-sm font-medium uppercase ${
+                                  isBookingToday
+                                    ? "text-orange-500"
+                                    : status === "pending"
+                                    ? "text-yellow-500"
+                                    : "text-slate-500"
                                 }`}
                               >
                                 {dayOfWeek}
                               </div>
                               <div
-                                className={`text-lg font-bold ${
-                                  today ? "text-orange-600" : "text-gray-800"
+                                className={`text-2xl sm:text-3xl font-bold ${
+                                  isBookingToday
+                                    ? "text-orange-600"
+                                    : status === "pending"
+                                    ? "text-yellow-500"
+                                    : "text-slate-800"
                                 }`}
                               >
                                 {String(day).padStart(2, "0")}
                               </div>
                             </div>
 
-                            <div className="flex-1 px-4 flex items-center justify-between">
-                              <div className="flex-1 pr-2">
-                                <h4 className="font-semibold text-gray-900 line-clamp-1 text-sm">
-                                  {booking.project?.name || "Booking"}
-                                </h4>
-                                <div className="flex items-center text-gray-500 text-xs mt-0.5">
-                                  <Clock size={12} className="mr-1" />
-                                  <span>{timeRange}</span>
-                                </div>
-                                {booking.asset && (
-                                  <div className="flex flex-wrap gap-1 mt-1 overflow-hidden max-h-5">
-                                    <span className="px-1.5 py-0 text-xs bg-blue-50 text-blue-700 rounded-full border border-blue-100">
-                                      {assetName}
-                                    </span>
-                                  </div>
+                            {/* --- RIGHT: DETAILS --- */}
+                            <div className="flex-1 p-3 pl-4 flex flex-col justify-center">
+                              <div className="flex justify-between items-start mb-1">
+                                <h3 className="font-bold text-slate-900 text-sm line-clamp-1">
+                                  {displayTitle}
+                                </h3>
+                                <span
+                                  className={`text-[10px] font-bold px-2 py-0.5 rounded ml-2 capitalize tracking-wide flex-shrink-0 ${
+                                    status === "confirmed"
+                                      ? "bg-green-100 text-green-700"
+                                      : status === "pending"
+                                      ? "bg-orange-100 text-orange-700"
+                                      : status === "denied" ||
+                                        status === "cancelled"
+                                      ? "bg-red-100 text-red-700"
+                                      : "bg-slate-100 text-slate-700"
+                                  }`}
+                                >
+                                  {booking.status}
+                                </span>
+                              </div>
+
+                              <div className="flex items-center text-xs text-slate-500 font-medium mb-1.5">
+                                <Clock
+                                  size={13}
+                                  className="mr-1.5 text-slate-400"
+                                />
+                                <span>{timeRange}</span>
+                                {status === "pending" && (
+                                  <AlertCircle
+                                    size={13}
+                                    className="ml-2 text-yellow-500"
+                                  />
                                 )}
                               </div>
 
-                              <div
-                                className={`ml-2 text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap capitalize ${getStatusColor(
-                                  booking.status
-                                )}`}
-                              >
-                                {booking.status}
+                              <div className="flex items-center gap-1 text-xs font-medium text-slate-400">
+                                <RoleIcon size={13} className={iconColor} />
+                                <span>Assigned to</span>
+                                <span className="text-slate-600 truncate max-w-[180px]">
+                                  {assignee}
+                                </span>
                               </div>
                             </div>
                           </div>
-                        </Card>
-                      </Link>
+                        );
+                      })}
                     </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <EmptyBookingsState />
-            )}
-          </Card>
-        </div>
-      </div>
+                  ))}
+                </div>
+              ) : (
+                <EmptyBookingsState />
+              )}
+            </div>
+          </div>
 
-      <div className="mt-8 text-center text-gray-500 text-sm pb-6">
-        <p>© 2025 Sitespace. All rights reserved.</p>
-      </div>
-    </Card>
+          {/* RIGHT COL: Today's Schedule */}
+          <div className="col-span-12 lg:col-span-4 space-y-4">
+            <div className="flex justify-between items-center mb-2">
+              <h2 className="text-xl font-bold text-slate-900">
+                Today&apos;s Schedule
+              </h2>
+              <Button size="sm" className={`${PALETTE.darkNavy} h-8 text-xs`}>
+                <Plus className="h-3 w-3 mr-1" /> Add Task
+              </Button>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-sm p-6 min-h-[400px] border border-slate-100">
+              <SimpleCalendar />
+              <div className="mt-6 space-y-4 relative pl-4 border-l-2 border-slate-100">
+                <div className="absolute top-0 left-[-5px] h-2.5 w-2.5 rounded-full bg-slate-300 border-2 border-white"></div>
+                <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                  <div className="text-xs text-slate-400 font-bold mb-1">
+                    08:00 AM
+                  </div>
+                  <div className="text-sm font-bold text-slate-800">
+                    Site Opening
+                  </div>
+                </div>
+                <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                  <div className="text-xs text-slate-400 font-bold mb-1">
+                    10:30 AM
+                  </div>
+                  <div className="text-sm font-bold text-slate-800">
+                    Material Delivery
+                  </div>
+                  <div className="text-xs text-slate-500 mt-1">
+                    Drywall panels - Bay 4
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>{" "}
+      {/* end MAIN CARD */}
+    </div>
   );
 }
 
-// Skeletons and Empty State
-const SkeletonBookingCard = () => (
-  <Card className="border-b last:border-b-0 my-2 bg-stone-50">
-    {/* Desktop skeleton */}
-    <div className="hidden sm:flex w-full p-3 animate-pulse">
-      <div className="w-24 sm:w-32 flex-shrink-0 flex flex-col items-center text-center justify-center border-r-2 pr-4">
-        <div className="h-4 w-16 bg-gray-200 rounded mb-2"></div>
-        <div className="h-8 w-10 bg-gray-200 rounded"></div>
-      </div>
-
-      <div className="flex-1 flex gap-4">
-        <div className="w-64 lg:w-80">
-          <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-          <div className="h-3 bg-gray-200 rounded w-2/3 mb-2"></div>
-          <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+// --- Sub-Components ---
+const QuickAccessCard = ({
+  title,
+  count,
+  subtitle,
+  icon: Icon,
+  bgColor,
+  href,
+}: any) => {
+  return (
+    <Link href={href} className="block group">
+      <Card
+        className={`${bgColor} text-white p-5 border-none shadow-lg shadow-slate-900/10 h-32 flex flex-col justify-center hover:translate-y-[-2px] transition-transform cursor-pointer rounded-lg relative overflow-hidden`}
+      >
+        <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+        <div className="flex justify-between items-center h-full">
+          <div className="flex items-center justify-center pl-2">
+            <Icon className="h-10 w-10 opacity-90 stroke-[1.5]" />
+          </div>
+          <div className="flex flex-col items-end justify-center pr-1">
+            <span className="text-sm font-medium opacity-90 block mb-1">
+              {title}
+            </span>
+            <span className="text-4xl font-bold leading-none block mb-1">
+              {count}
+            </span>
+            <span className="text-[10px] font-medium opacity-70 tracking-wide uppercase">
+              {subtitle}
+            </span>
+          </div>
         </div>
-
-        <div className="flex-1">
-          <div className="h-4 bg-gray-200 rounded w-full mb-2"></div>
-          <div className="h-3 bg-gray-200 rounded w-5/6"></div>
-        </div>
-
-        <div className="w-24 flex-shrink-0 flex flex-col items-end justify-between">
-          <div className="h-8 w-16 bg-gray-200 rounded mb-2"></div>
-          <div className="h-4 w-16 bg-gray-200 rounded"></div>
-        </div>
-      </div>
-    </div>
-
-    {/* Mobile skeleton */}
-    <div className="sm:hidden p-3 animate-pulse">
-      <div className="flex items-center mb-3">
-        <div className="w-12 h-14 bg-gray-200 rounded mr-3"></div>
-        <div className="flex-1">
-          <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-          <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-        </div>
-      </div>
-      <div className="h-3 bg-gray-200 rounded w-full mb-2"></div>
-      <div className="h-3 bg-gray-200 rounded w-2/3"></div>
-      <div className="flex gap-2 mt-3">
-        <div className="h-4 w-16 bg-gray-200 rounded"></div>
-        <div className="h-4 w-16 bg-gray-200 rounded"></div>
-      </div>
-    </div>
-  </Card>
-);
+      </Card>
+    </Link>
+  );
+};
 
 const EmptyBookingsState = () => (
-  <Card className="overflow-hidden border border-gray-200 bg-white">
-    <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
-      <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-        <CalendarX size={32} className="text-gray-400" />
-      </div>
-      <h3 className="text-lg font-semibold text-gray-900 mb-2">
-        No Upcoming Bookings
-      </h3>
-      <p className="text-sm text-gray-500 mb-4 max-w-sm">
-        You don&apos;t have any upcoming bookings scheduled. Create a new
-        booking to get started!
-      </p>
-      <Link href="/bookings">
-        <button className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors text-sm font-medium">
-          Create Booking
-        </button>
-      </Link>
+  <div className="flex flex-col items-center justify-center py-12 px-6 text-center h-full border-2 border-dashed border-slate-100 rounded-xl">
+    <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center mb-4">
+      <CalendarX size={32} className="text-slate-400" />
     </div>
-  </Card>
+    <h3 className="text-base font-bold text-slate-900 mb-1">
+      No Upcoming Bookings
+    </h3>
+    <p className="text-sm text-slate-500 mb-6 max-w-sm mx-auto">
+      Your schedule is clear. Use the button below to create a new booking.
+    </p>
+    <Link href="/bookings">
+      <Button
+        className={`${PALETTE.teal} hover:opacity-90 text-white font-medium px-6`}
+      >
+        Create Booking
+      </Button>
+    </Link>
+  </div>
 );
+
+const SimpleCalendar = () => {
+  const days = ["M", "T", "W", "T", "F", "S", "S"];
+  const today = new Date().getDate();
+  const startDay = Math.max(1, today - 3);
+  const displayDates = Array.from({ length: 7 }, (_, i) => startDay + i);
+
+  return (
+    <div className="text-xs w-full">
+      <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-2">
+        <span className="font-bold text-slate-800 text-sm">
+          {new Date().toLocaleString("default", {
+            month: "long",
+            year: "numeric",
+          })}
+        </span>
+        <ChevronDown className="h-4 w-4 text-slate-400" />
+      </div>
+      <div className="grid grid-cols-7 gap-1 text-center mb-2 text-slate-400 font-medium">
+        {days.map((d, i) => (
+          <div key={i}>{d}</div>
+        ))}
+      </div>
+      <div className="grid grid-cols-7 gap-1 text-center">
+        {displayDates.map((d) => (
+          <div
+            key={d}
+            className={`h-8 w-8 mx-auto flex items-center justify-center rounded-lg font-medium transition-colors
+                            ${
+                              d === today
+                                ? `${PALETTE.darkNavy} text-white shadow-md`
+                                : "text-slate-600 hover:bg-slate-100 cursor-pointer"
+                            }`}
+          >
+            {d}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
