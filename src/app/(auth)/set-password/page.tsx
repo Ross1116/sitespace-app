@@ -67,11 +67,10 @@ function SetPasswordForm() {
     setIsLoading(true);
 
     try {
-      // FIX: Add confirm_password to the payload
       await api.post("/auth/reset-password", {
         token: token,
         password: password,
-        confirm_password: confirmPassword, // <--- THIS WAS MISSING
+        confirm_password: confirmPassword,
       });
 
       setSuccess("Account activated successfully! Logging you in...");
