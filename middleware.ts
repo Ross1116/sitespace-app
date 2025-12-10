@@ -10,7 +10,7 @@ export function middleware(request: NextRequest) {
 
   // Define auth pages - these are in the (auth) route group
   const isAuthPage =
-    path === "/login" || path === "/register" || path === "/forgot-password";
+    path === "/login" || path === "/register" || path === "/forgot-password" || path === "/reset-password" || path === "/set-password";
 
   // All other routes are considered protected (dashboard routes)
   // Since we're using route groups, we don't need to check for specific paths
