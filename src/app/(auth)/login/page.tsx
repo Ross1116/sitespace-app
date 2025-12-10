@@ -13,15 +13,15 @@ export default function Login() {
   const [localError, setLocalError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [touched, setTouched] = useState({ email: false, password: false });
-  const [showPassword, setShowPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);``
 
   const { login, isAuthenticated, error: authError, clearError } = useAuth();
   const router = useRouter();
 
-  // Redirect if already authenticated
-  useEffect(() => {
-    if (isAuthenticated) router.replace("/home");
-  }, [isAuthenticated, router]);
+  // // Redirect if already authenticated
+  // useEffect(() => {
+  //   if (isAuthenticated) router.replace("/home");
+  // }, [isAuthenticated, router]);
 
   // Load remembered email
   useEffect(() => {

@@ -61,9 +61,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       Cookies.set("accessToken", storedAccess, {
         expires: 7,
-        secure: true, // Set to false if testing on http://localhost
-        sameSite: 'Lax', // 'Lax' is safer than 'Strict' for redirects
-        path: '/' // Ensure it's available on all routes
+        secure: true,
+        sameSite: "Lax",
+        path: "/",
       });
     }
 
@@ -103,15 +103,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setRefreshToken(data.refresh_token);
 
       Cookies.set("accessToken", data.access_token, {
-        expires: 7, // Expires in 7 days
-        secure: true, // Essential for Vercel (HTTPS)
-        sameSite: "Strict",
+        expires: 7,
+        secure: true,
+        sameSite: "Lax",
+        path: "/",
       });
 
       localStorage.setItem("accessToken", data.access_token);
       localStorage.setItem("refreshToken", data.refresh_token);
       localStorage.setItem("user", JSON.stringify(newUser));
-
+      router.refresh();
       router.push("/home");
     } catch (err: any) {
       console.error("Login error:", err);
@@ -180,7 +181,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAccessToken(null);
       setRefreshToken(null);
       localStorage.clear();
-      Cookies.remove("accessToken"); 
+      Cookies.remove("accessToken");
       router.push("/");
     }
   };
