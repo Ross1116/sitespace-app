@@ -2,11 +2,12 @@
 
 import { Button } from "@/components/ui/button";
 import { SetStateAction, useEffect, useRef, useState } from "react";
-import { X, Plus, Search, Mail, Phone, Briefcase, User, Calendar } from "lucide-react";
+import { X, Plus, Search, Mail, Phone, Briefcase, User, Calendar, CheckCircle, XCircle, Clock } from "lucide-react";
 import SubFormModal from "@/components/forms/InviteSubForm";
 import { useAuth } from "@/app/context/AuthContext";
 import api from "@/lib/api";
 import { Input } from "@/components/ui/input";
+import { format } from "date-fns";
 
 // ===== TYPE DEFINITIONS =====
 interface SubcontractorFromBackend {
@@ -209,7 +210,9 @@ export default function Page() {
   // Filter based on search
   const filteredSubs = subcontractors.filter(sub => 
     sub.contractorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    sub.contractorCompany.toLowerCase().includes(searchTerm.toLowerCase())
+    sub.contractorCompany.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    sub.contractorTrade.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    sub.contractorEmail.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const totalPages = Math.ceil(totalSubs / itemsPerPage);
@@ -218,33 +221,7 @@ export default function Page() {
     <div className="min-h-screen bg-[hsl(20,60%,99%)] p-4 sm:p-6 lg:p-8 font-sans">
       <div className="max-w-screen mx-auto space-y-6">
         
-        {/* --- Top Bar: Search (COMMENTED OUT) --- */}
-        {/* 
-        <div className="flex flex-col sm:flex-row gap-4 items-center bg-white p-3 rounded-2xl shadow-sm border border-slate-100">
-             <div className="relative w-full sm:max-w-lg">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <Input 
-                    placeholder="Search" 
-                    className="pl-10 bg-slate-50 border-transparent focus:bg-white transition-all rounded-xl h-10"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                />
-            </div>
-            
-            <div className="ml-auto flex items-center gap-3">
-                 <div className="hidden sm:flex flex-col items-end mr-2">
-                    <span className="text-sm font-bold text-slate-900">{user?.first_name} {user?.last_name}</span>
-                    <span className="text-xs text-slate-500">{user?.email}</span>
-                 </div>
-                 <div className="h-9 w-9 bg-slate-100 rounded-full flex items-center justify-center text-slate-600 font-bold border border-slate-200">
-                    {user?.first_name?.charAt(0) || "U"}
-                 </div>
-            </div>
-        </div> 
-        */}
-
         {/* --- Main Content Card --- */}
-        {/* Adjusted min-height to 85vh to compensate for missing top bar */}
         <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-1 min-h-[85vh] flex flex-col relative overflow-hidden">
             
             {/* Inner Padding Container */}
@@ -262,6 +239,17 @@ export default function Page() {
                     >
                         <Plus className="mr-2 h-4 w-4" /> Invite a subcontractor
                     </Button>
+                </div>
+
+                {/* Search Bar (Added) */}
+                <div className="mb-4 relative max-w-sm">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Input 
+                        placeholder="Search by name, company, or email..." 
+                        className="pl-10 bg-slate-50 border-transparent focus:bg-white transition-all rounded-xl h-10 text-sm"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
                 </div>
 
                 {/* Table Header - Dark Navy Gradient Pill */}
@@ -287,6 +275,7 @@ export default function Page() {
                         </div>
                     ) : filteredSubs.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-64 text-slate-400 border-2 border-dashed border-slate-100 rounded-2xl bg-slate-50/50">
+                            <User className="h-10 w-10 mb-2 opacity-50" />
                             <p>No subcontractors found matching your criteria.</p>
                         </div>
                     ) : (
@@ -304,12 +293,10 @@ export default function Page() {
                                         grid grid-cols-1 sm:grid-cols-12 gap-2 sm:gap-4 items-center
                                         shadow-[0_2px_8px_rgba(0,0,0,0.02)] 
                                         
-                                        /* HOVER EFFECTS: Strong shadow, slight lift */
                                         hover:shadow-lg hover:-translate-y-0.5 hover:border-slate-300
                                         transition-all duration-200 cursor-pointer 
                                         
-                                        /* Selected State: Just cleaner, removed the blue ring/border */
-                                        ${isSelected ? "bg-slate-50" : ""}
+                                        ${isSelected ? "bg-slate-50 border-slate-300" : ""}
                                     `}
                                 >
                                     {/* Mobile Label/Value Structure */}
@@ -384,76 +371,104 @@ export default function Page() {
             </div>
         </div>
 
-        {/* --- Sidebar Detail View --- */}
-        <div className={`fixed inset-y-0 right-0 w-full sm:w-[400px] bg-white shadow-2xl transform transition-transform duration-300 ease-in-out z-50 ${sidebarOpen ? "translate-x-0" : "translate-x-full"}`}>
+        {/* --- Sidebar Detail View (Redesigned) --- */}
+        <div className={`fixed inset-y-0 right-0 w-full sm:w-[480px] bg-white shadow-2xl transform transition-transform duration-300 ease-in-out z-50 ${sidebarOpen ? "translate-x-0" : "translate-x-full"}`}>
             {selectedContractor && (
                 <div className="h-full flex flex-col">
+                    {/* Header */}
                     <div className="p-8 bg-[#0B1120] text-white flex justify-between items-start">
-                         <div>
-                            <div className="h-12 w-12 rounded-full bg-white/10 flex items-center justify-center text-xl font-bold mb-4 border border-white/20">
-                                {selectedContractor.contractorName.charAt(0)}
+                         <div className="flex-1 pr-4">
+                            <div className="flex items-center gap-4 mb-4">
+                                <div className="h-12 w-12 rounded-full bg-white/10 flex items-center justify-center text-xl font-bold border border-white/20">
+                                    {selectedContractor.contractorName.charAt(0)}
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-bold leading-tight">{selectedContractor.contractorName}</h2>
+                                    <p className="text-slate-300 text-sm mt-0.5">{selectedContractor.contractorCompany}</p>
+                                </div>
                             </div>
-                            <h2 className="text-xl font-bold">{selectedContractor.contractorName}</h2>
-                            <p className="text-slate-300 text-sm mt-1">{selectedContractor.contractorCompany}</p>
                          </div>
                          <Button onClick={() => setSidebarOpen(false)} variant="ghost" className="text-white hover:bg-white/10 rounded-full h-8 w-8 p-0">
                             <X size={20} />
                          </Button>
                     </div>
 
-                    <div className="flex-1 p-8 overflow-y-auto bg-white space-y-8">
+                    {/* Scrollable Content */}
+                    <div className="flex-1 p-8 overflow-y-auto bg-slate-50 space-y-6">
                         
-                        <div>
-                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Contact Information</h3>
+                        {/* 1. Account Status */}
+                        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Account Status</h3>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <User className="h-5 w-5 text-slate-400" />
+                                    <span className="text-sm font-medium text-slate-600">Current State</span>
+                                </div>
+                                {selectedContractor.isActive ? (
+                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                        <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                                        Active
+                                    </span>
+                                ) : (
+                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-orange-50 text-orange-700 border border-orange-100">
+                                        <div className="h-1.5 w-1.5 rounded-full bg-orange-500" />
+                                        Waiting / Inactive
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* 2. Contact Information */}
+                        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Contact Details</h3>
                             <div className="space-y-4">
-                                <div className="flex items-center gap-4 p-3 rounded-lg hover:bg-slate-50 transition-colors">
-                                    <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">
-                                        <Mail size={14} />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-slate-500 font-medium">Email</p>
+                                <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
+                                    <Mail className="h-5 w-5 text-slate-500 mt-0.5" />
+                                    <div className="flex-1 overflow-hidden">
+                                        <p className="text-[10px] text-slate-500 font-bold uppercase mb-0.5">Email Address</p>
                                         <p className="text-sm font-semibold text-slate-900 break-all">{selectedContractor.contractorEmail}</p>
                                     </div>
                                 </div>
-
-                                <div className="flex items-center gap-4 p-3 rounded-lg hover:bg-slate-50 transition-colors">
-                                    <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">
-                                        <Phone size={14} />
-                                    </div>
+                                <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
+                                    <Phone className="h-5 w-5 text-slate-500 mt-0.5" />
                                     <div>
-                                        <p className="text-xs text-slate-500 font-medium">Phone</p>
+                                        <p className="text-[10px] text-slate-500 font-bold uppercase mb-0.5">Phone Number</p>
                                         <p className="text-sm font-semibold text-slate-900">{selectedContractor.contractorPhone}</p>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div>
-                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Business Details</h3>
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-4 p-3 rounded-lg hover:bg-slate-50 transition-colors">
-                                    <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">
-                                        <Briefcase size={14} />
+                        {/* 3. Business Info */}
+                        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Business Profile</h3>
+                            <div className="grid grid-cols-1 gap-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <Briefcase className="h-4 w-4 text-slate-400" />
+                                        <span className="text-sm font-medium text-slate-500">Company Name</span>
                                     </div>
-                                    <div>
-                                        <p className="text-xs text-slate-500 font-medium">Trade</p>
-                                        <p className="text-sm font-semibold text-slate-900">{selectedContractor.contractorTrade}</p>
-                                    </div>
+                                    <span className="text-sm font-semibold text-slate-900">{selectedContractor.contractorCompany}</span>
                                 </div>
-                                
-                                <div className="flex items-center gap-4 p-3 rounded-lg hover:bg-slate-50 transition-colors">
-                                    <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">
-                                        <Calendar size={14} />
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <Briefcase className="h-4 w-4 text-slate-400" />
+                                        <span className="text-sm font-medium text-slate-500">Trade Specialty</span>
                                     </div>
-                                    <div>
-                                        <p className="text-xs text-slate-500 font-medium">Status</p>
-                                        <span className={`inline-block px-2 py-0.5 rounded text-xs font-bold mt-0.5 ${selectedContractor.isActive ? 'text-emerald-600 bg-emerald-50' : 'text-orange-600 bg-orange-50'}`}>
-                                            {selectedContractor.isActive ? "ACCEPTED" : "WAITING"}
-                                        </span>
-                                    </div>
+                                    <span className="text-sm font-semibold text-slate-900">{selectedContractor.contractorTrade}</span>
                                 </div>
                             </div>
                         </div>
+
+                        {/* 4. Timestamps (Audit) */}
+                        {selectedContractor._originalData && (
+                            <div className="text-center space-y-1 py-4 pt-2 border-t border-slate-200 mt-4">
+                                <p className="text-[10px] text-slate-400 flex items-center justify-center gap-1">
+                                    <Clock size={10} />
+                                    Created: {format(new Date(selectedContractor._originalData.created_at), "PPP p")}
+                                </p>
+                            </div>
+                        )}
 
                     </div>
                 </div>
