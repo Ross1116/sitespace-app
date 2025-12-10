@@ -115,14 +115,11 @@ function TopNav() {
 
         {/* Logo/Brand Name: Centered on desktop (grid col 2), natural width on mobile (flex item) */}
         <div className="flex items-center lg:justify-center lg:col-start-2">
-          <Link href="/">
-            <Image
-              src="/full-logo.svg"
-              alt="Sitespace"
-              width={120}
-              height={48}
-              className="cursor-pointer hover:scale-105 transition-all"
-            />
+          <Link href="/" passHref legacyBehavior>
+            {/* <a className="font-semibold text-xl hover:text-orange-600 transition-colors">Sitespace</a> */}
+            <a>
+              <Image src="/full-logo.svg" alt="Sitespace" width={120} height={48} className="cursor-pointer hover:scale-105 transition-all" />
+            </a>
           </Link>
         </div>
 
