@@ -59,12 +59,9 @@ function TopNav() {
               {navigationItems.map((item) => (
                 <NavigationMenuItem key={item.title}>
                   {item.href ? (
-                    <Link href={item.href}>
-                      {/* @next-codemod-error This Link previously used the now removed `legacyBehavior` prop, and has a child that might not be an anchor. The codemod bailed out of lifting the child props to the Link. Check that the child component does not render an anchor, and potentially move the props manually to Link. */
-                      }
-                      <NavigationMenuLink
-                        className="font-medium text-sm px-3 py-2 hover:bg-orange-200/50 rounded-md transition-colors"
-                      >
+                    /* FIX: Added legacyBehavior and passHref here */
+                    <Link href={item.href} legacyBehavior passHref>
+                      <NavigationMenuLink className="font-medium text-sm px-3 py-2 hover:bg-orange-200/50 rounded-md transition-colors">
                         {item.title}
                       </NavigationMenuLink>
                     </Link>
@@ -83,15 +80,22 @@ function TopNav() {
                                 {item.description}
                               </p>
                             </div>
-                            <Button size="sm" className="mt-10 bg-orange-500 hover:bg-orange-600 text-white">
+                            <Button
+                              size="sm"
+                              className="mt-10 bg-orange-500 hover:bg-orange-600 text-white"
+                            >
                               Book a call today
                             </Button>
                           </div>
                           <div className="flex flex-col text-sm h-full justify-end space-y-1">
                             {item.items?.map((subItem) => (
-                              <Link href={subItem.href} key={subItem.title}>
-                                {/* @next-codemod-error This Link previously used the now removed `legacyBehavior` prop, and has a child that might not be an anchor. The codemod bailed out of lifting the child props to the Link. Check that the child component does not render an anchor, and potentially move the props manually to Link. */
-                                }
+                              /* FIX: Added legacyBehavior and passHref here */
+                              <Link
+                                href={subItem.href}
+                                key={subItem.title}
+                                legacyBehavior
+                                passHref
+                              >
                                 <NavigationMenuLink className="flex flex-row justify-between items-center hover:bg-orange-200/50 py-2 px-3 rounded-md transition-colors">
                                   <span>{subItem.title}</span>
                                   <MoveRight className="w-4 h-4 text-muted-foreground" />
@@ -112,34 +116,51 @@ function TopNav() {
         {/* Logo/Brand Name: Centered on desktop (grid col 2), natural width on mobile (flex item) */}
         <div className="flex items-center lg:justify-center lg:col-start-2">
           <Link href="/">
-            {/* <a className="font-semibold text-xl hover:text-orange-600 transition-colors">Sitespace</a> */}
-
-            <Image src="/full-logo.svg" alt="Sitespace" width={120} height={48} className="cursor-pointer hover:scale-105 transition-all" />
-
+            <Image
+              src="/full-logo.svg"
+              alt="Sitespace"
+              width={120}
+              height={48}
+              className="cursor-pointer hover:scale-105 transition-all"
+            />
           </Link>
         </div>
 
         {/* Desktop Right Buttons: Hidden on mobile, occupies 3rd grid column on lg screens */}
         <div className="hidden lg:flex justify-end items-center gap-2 md:gap-3 lg:col-start-3">
-          <Button variant="ghost" className="text-sm h-9 px-3 hover:bg-orange-200/50">
+          <Button
+            variant="ghost"
+            className="text-sm h-9 px-3 hover:bg-orange-200/50"
+          >
             Book a demo
           </Button>
           <div className="border-r h-6 hidden md:inline-block border-orange-300/70"></div>
-          <Link href="/login">
-            {/* @next-codemod-error This Link previously used the now removed `legacyBehavior` prop, and has a child that might not be an anchor. The codemod bailed out of lifting the child props to the Link. Check that the child component does not render an anchor, and potentially move the props manually to Link. */
-            }
-            <Button variant="outline" className="cursor-pointer text-sm h-9 px-3 border-orange-300/70 hover:bg-orange-200/50 focus-visible:ring-orange-400">Sign in</Button>
-          </Link>
-          <Link href="/register">
-            {/* @next-codemod-error This Link previously used the now removed `legacyBehavior` prop, and has a child that might not be an anchor. The codemod bailed out of lifting the child props to the Link. Check that the child component does not render an anchor, and potentially move the props manually to Link. */
-            }
-            <Button className="cursor-pointer text-sm h-9 px-3 bg-orange-500 hover:bg-orange-600 focus-visible:ring-orange-400 text-white">Get Started</Button>
-          </Link>
+          
+          {/* FIX: Used asChild on Button to properly wrap Link */}
+          <Button
+            variant="outline"
+            className="cursor-pointer text-sm h-9 px-3 border-orange-300/70 hover:bg-orange-200/50 focus-visible:ring-orange-400"
+            asChild
+          >
+            <Link href="/login">Sign in</Link>
+          </Button>
+
+          {/* FIX: Used asChild on Button to properly wrap Link */}
+          <Button
+            className="cursor-pointer text-sm h-9 px-3 bg-orange-500 hover:bg-orange-600 focus-visible:ring-orange-400 text-white"
+            asChild
+          >
+            <Link href="/register">Get Started</Link>
+          </Button>
         </div>
 
         {/* Mobile Hamburger Menu Toggle: Visible only on mobile (<lg), pushed to the right by justify-between on parent */}
         <div className="lg:hidden flex items-center">
-          <Button variant="ghost" onClick={() => setOpen(!isOpen)} className="p-2">
+          <Button
+            variant="ghost"
+            onClick={() => setOpen(!isOpen)}
+            className="p-2"
+          >
             {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </Button>
         </div>
@@ -153,7 +174,10 @@ function TopNav() {
           >
             <div className="container mx-auto flex flex-col py-4 px-4 sm:px-6 gap-2">
               {navigationItems.map((item) => (
-                <div key={item.title} className="py-2 border-b border-orange-200/40 last:border-b-0">
+                <div
+                  key={item.title}
+                  className="py-2 border-b border-orange-200/40 last:border-b-0"
+                >
                   <div className="flex flex-col gap-2">
                     {item.href ? (
                       <Link
@@ -161,11 +185,15 @@ function TopNav() {
                         onClick={() => setOpen(false)}
                         className="flex justify-between items-center py-2 text-gray-700 hover:text-orange-600"
                       >
-                        <span className="text-lg font-medium">{item.title}</span>
+                        <span className="text-lg font-medium">
+                          {item.title}
+                        </span>
                         <MoveRight className="w-4 h-4 stroke-1 text-muted-foreground" />
                       </Link>
                     ) : (
-                      <p className="text-lg font-medium text-gray-800 py-2">{item.title}</p>
+                      <p className="text-lg font-medium text-gray-800 py-2">
+                        {item.title}
+                      </p>
                     )}
                     {item.items &&
                       item.items.map((subItem) => (
@@ -183,17 +211,31 @@ function TopNav() {
                 </div>
               ))}
               <div className="flex flex-col gap-3 pt-4 mt-2 border-t border-orange-200/40">
-                <Button variant="outline" className="border-orange-300/70 hover:bg-orange-200/50 focus-visible:ring-orange-400 text-orange-700 hover:text-orange-800">Book a demo</Button>
-                <Link href="/login">
-                  {/* @next-codemod-error This Link previously used the now removed `legacyBehavior` prop, and has a child that might not be an anchor. The codemod bailed out of lifting the child props to the Link. Check that the child component does not render an anchor, and potentially move the props manually to Link. */
-                  }
-                  <Button variant="outline" className="border-orange-300/70 hover:bg-orange-200/50 focus-visible:ring-orange-400 text-orange-700 hover:text-orange-800" onClick={() => setOpen(false)}>Sign in</Button>
-                </Link>
-                <Link href="/register">
-                  {/* @next-codemod-error This Link previously used the now removed `legacyBehavior` prop, and has a child that might not be an anchor. The codemod bailed out of lifting the child props to the Link. Check that the child component does not render an anchor, and potentially move the props manually to Link. */
-                  }
-                  <Button className="bg-orange-500 hover:bg-orange-600 focus-visible:ring-orange-400 text-white" onClick={() => setOpen(false)}>Get Started</Button>
-                </Link>
+                <Button
+                  variant="outline"
+                  className="border-orange-300/70 hover:bg-orange-200/50 focus-visible:ring-orange-400 text-orange-700 hover:text-orange-800"
+                >
+                  Book a demo
+                </Button>
+                
+                {/* FIX: Used asChild on Button to properly wrap Link */}
+                <Button
+                  variant="outline"
+                  className="border-orange-300/70 hover:bg-orange-200/50 focus-visible:ring-orange-400 text-orange-700 hover:text-orange-800"
+                  asChild
+                  onClick={() => setOpen(false)}
+                >
+                  <Link href="/login">Sign in</Link>
+                </Button>
+
+                {/* FIX: Used asChild on Button to properly wrap Link */}
+                <Button
+                  className="bg-orange-500 hover:bg-orange-600 focus-visible:ring-orange-400 text-white"
+                  asChild
+                  onClick={() => setOpen(false)}
+                >
+                  <Link href="/register">Get Started</Link>
+                </Button>
               </div>
             </div>
           </div>
@@ -203,4 +245,4 @@ function TopNav() {
   );
 }
 
-export { TopNav }; // Changed from default export to named export to match original if that was intended
+export { TopNav };
