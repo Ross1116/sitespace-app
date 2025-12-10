@@ -69,9 +69,11 @@ export default function ResetPassword() {
     setIsLoading(true);
 
     try {
+      // FIX: Added confirm_password to the payload
       await api.post("/auth/reset-password", {
         token: token,
         password: password,
+        confirm_password: confirmPassword, 
       });
 
       setSuccess("Password reset successfully! Redirecting to login...");
@@ -84,7 +86,7 @@ export default function ResetPassword() {
       const errorMessage =
         error.response?.data?.detail ||
         "Failed to reset password. The link may be expired.";
-      setError(errorMessage);
+      setError(typeof errorMessage === 'string' ? errorMessage : "Validation error");
     } finally {
       setIsLoading(false);
     }
