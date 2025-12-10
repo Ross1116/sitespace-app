@@ -181,8 +181,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAccessToken(null);
       setRefreshToken(null);
       localStorage.clear();
+      Cookies.remove("accessToken", { path: '/' }); 
       Cookies.remove("accessToken");
-      router.push("/");
+      router.push("/login");
     }
   };
 
