@@ -2,11 +2,11 @@
 
 import { Button } from "@/components/ui/button";
 import { SetStateAction, useEffect, useRef, useState } from "react";
-import { Card } from "@/components/ui/card";
-import { X, Plus } from "lucide-react";
+import { X, Plus, Search, Mail, Phone, Briefcase, User, Calendar } from "lucide-react";
 import SubFormModal from "@/components/forms/InviteSubForm";
 import { useAuth } from "@/app/context/AuthContext";
 import api from "@/lib/api";
+import { Input } from "@/components/ui/input";
 
 // ===== TYPE DEFINITIONS =====
 interface SubcontractorFromBackend {
@@ -48,10 +48,10 @@ const transformBackendSubcontractor = (
   return {
     contractorKey: backendSub.id,
     contractorName: `${backendSub.first_name} ${backendSub.last_name}`.trim(),
-    contractorCompany: backendSub.company_name || "N/A",
+    contractorCompany: backendSub.company_name || "-",
     contractorTrade: backendSub.trade_specialty || "General",
     contractorEmail: backendSub.email,
-    contractorPhone: backendSub.phone || "N/A",
+    contractorPhone: backendSub.phone || "-",
     isActive: backendSub.is_active,
     _originalData: backendSub,
   };
@@ -66,15 +66,14 @@ export default function Page() {
   const [loading, setLoading] = useState(true);
   const [totalSubs, setTotalSubs] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const itemsPerPage = 10;
+  const [searchTerm, setSearchTerm] = useState("");
+  const itemsPerPage = 7; 
   const { user } = useAuth();
   const userId = user?.id;
   const hasFetched = useRef(false);
 
-  // We'll store the selected project object here (same storage key used by your homepage)
   const [selectedProject, setSelectedProject] = useState<any | null>(null);
 
-  // Helper: read the project object from localStorage using the same key your homepage uses
   const readProjectFromStorage = (): any | null => {
     try {
       if (!userId) return null;
@@ -82,28 +81,23 @@ export default function Page() {
       if (!raw) return null;
       return JSON.parse(raw);
     } catch (e) {
-      console.warn("Failed to read project from storage", e);
       return null;
     }
   };
 
-  // Resolve project id (string or number) from the stored project object
   const getProjectId = (proj: any | null): string | number | null => {
     if (!proj) return null;
     return proj.id ?? proj.project_id ?? null;
   };
 
-  // Initialize selectedProject from storage on mount and whenever user changes
   useEffect(() => {
     if (!userId) return;
     const proj = readProjectFromStorage();
     setSelectedProject(proj ?? null);
-    // reset so we fetch for the new project
     hasFetched.current = false;
     setCurrentPage(1);
   }, [userId]);
 
-  // Listen for localStorage changes (so homepage/project selector can update us)
   useEffect(() => {
     const handler = (e: StorageEvent) => {
       if (!userId) return;
@@ -124,25 +118,19 @@ export default function Page() {
     }
   }, [userId]);
 
-  // Build cache key used for storing subcontractors per-user+project
   const projectIdForCache = getProjectId(selectedProject);
   const cacheKey = `subcontractors_${userId}_project_${projectIdForCache ?? "all"}`;
 
-  // Fetch subcontractors from backend (includes project_id when available)
   const fetchSubs = async (forceRefresh = false) => {
     try {
-      if (!user || (hasFetched.current && !forceRefresh)) {
-        return;
-      }
+      if (!user || (hasFetched.current && !forceRefresh)) return;
 
       setLoading(true);
       setError(null);
 
-      // Determine endpoint
       const isAdmin = user?.role === "admin";
       const endpoint = isAdmin ? "/subcontractors/" : "/subcontractors/my-subcontractors";
 
-      // Build params
       const params: Record<string, any> = {
         skip: (currentPage - 1) * itemsPerPage,
         limit: itemsPerPage,
@@ -154,102 +142,63 @@ export default function Page() {
         params.project_id = projectId;
       }
 
-      console.log("Fetching subcontractors with params:", params);
-
       const response = await api.get<SubcontractorListResponse>(endpoint, { params });
-
       const subsData = response.data?.subcontractors || [];
       const total = response.data?.total ?? subsData.length ?? 0;
-
       const transformedSubs = subsData.map(transformBackendSubcontractor);
 
       setSubs(transformedSubs);
       setTotalSubs(total);
 
-      // cache per user+project
       try {
         localStorage.setItem(cacheKey, JSON.stringify(transformedSubs));
-      } catch (e) {
-        console.warn("Could not cache subcontractors", e);
-      }
+      } catch (e) {}
 
       hasFetched.current = true;
     } catch (err: any) {
-      console.error("Error fetching subcontractors:", err);
       const errMsg = err?.response?.data?.detail || "Failed to fetch subcontractors";
       setError(errMsg);
-
-      // fallback to cache
       try {
         const cached = typeof window !== "undefined" ? localStorage.getItem(cacheKey) : null;
-        if (cached) {
-          setSubs(JSON.parse(cached));
-        }
-      } catch (e) {
-        console.error("Error parsing cached subcontractors:", e);
-      }
+        if (cached) setSubs(JSON.parse(cached));
+      } catch (e) {}
     } finally {
       setLoading(false);
     }
   };
 
-  // Initial load: try to use cached data then fetch fresh
   useEffect(() => {
     if (!user) return;
-
-    // load cache first
     try {
       const cached = typeof window !== "undefined" ? localStorage.getItem(cacheKey) : null;
       if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed)) {
-          setSubs(parsed);
-          setLoading(false);
-        }
+        setSubs(JSON.parse(cached));
+        setLoading(false);
       }
-    } catch (e) {
-      console.warn("Error loading subcontractors cache", e);
-    }
-
-    // fetch fresh
+    } catch (e) {}
     fetchSubs();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, cacheKey]); // re-run when user or cacheKey (i.e. project) changes
+  }, [user, cacheKey]);
 
-  // Refetch when page changes
   useEffect(() => {
-    if (hasFetched.current) {
-      fetchSubs(true);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (hasFetched.current) fetchSubs(true);
   }, [currentPage]);
 
-  // When selectedProject changes, reset pagination and force refresh
   useEffect(() => {
     if (!user) return;
     hasFetched.current = false;
     setCurrentPage(1);
     fetchSubs(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedProject]);
 
-  // Pagination helpers
-  const totalPages = Math.ceil(totalSubs / itemsPerPage);
   const handlePageChange = (pageNumber: SetStateAction<number>) => {
     setCurrentPage(pageNumber);
-    if (typeof window !== "undefined") {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
   };
 
-  // UI handlers
-  const handleCardClick = (contractor: SetStateAction<Contractor | null>) => {
+  const handleCardClick = (contractor: Contractor) => {
     setSelectedContractor(contractor);
     setSidebarOpen(true);
   };
-  const closeSidebar = () => setSidebarOpen(false);
-  const isSelected = (contractorKey: string) => sidebarOpen && selectedContractor?.contractorKey === contractorKey;
-  const handleOnClickButton = () => setIsSubFormOpen(true);
+  
   const handleSaveSubs = () => {
     setIsSubFormOpen(false);
     hasFetched.current = false;
@@ -257,251 +206,274 @@ export default function Page() {
     fetchSubs(true);
   };
 
-  // Error UI when there are no subs and an error occurred
-  if (error && !loading && subcontractors.length === 0) {
-    return (
-      <Card className="px-6 sm:my-8 mx-4 bg-stone-100">
-        <div className="p-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Subcontractors</h1>
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-            <p className="font-medium">Error loading subcontractors</p>
-            <p className="text-sm mt-1">{error}</p>
-            <Button onClick={() => fetchSubs(true)} className="mt-3" variant="outline">Retry</Button>
-          </div>
-        </div>
-      </Card>
-    );
-  }
+  // Filter based on search
+  const filteredSubs = subcontractors.filter(sub => 
+    sub.contractorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    sub.contractorCompany.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const totalPages = Math.ceil(totalSubs / itemsPerPage);
 
   return (
-    <Card className="px-6 sm:my-8 mx-4 bg-stone-100">
-      <div className="p-3 sm:px-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
-          <div>
-            <h1 className="text-xl sm:text-3xl font-bold text-gray-900">Subcontractors</h1>
-            <p className="text-sm sm:text-base text-gray-500 mt-1">
-              Manage your subcontractors here
-              {totalSubs > 0 && ` (${totalSubs} total)`}
-              {/* {projectIdForCache ? ` — project ${String(projectIdForCache)}` : ""} */}
-            </p>
-          </div>
-
-          <Button onClick={handleOnClickButton} className="hidden sm:flex mt-4 sm:mt-0 cursor-pointer">Invite a subcontractor</Button>
-
-          <Button
-            onClick={handleOnClickButton}
-            className="sm:hidden fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-lg z-10"
-            size="icon"
-          >
-            <Plus size={24} />
-          </Button>
-        </div>
-
-        {isSubFormOpen && (
-          <SubFormModal
-            isOpen={isSubFormOpen}
-            onClose={() => setIsSubFormOpen(false)}
-            onSave={handleSaveSubs}
-            // If InviteSubForm needs project_id you can pass it via props here:
-            // projectId={getProjectId(selectedProject)}
-          />
-        )}
-
-        <div className="sm:hidden text-xs text-gray-500 font-medium mb-2">
-          Tap on a contractor to view details
-        </div>
-
-        <div className="flex-grow overflow-x-auto rounded-lg">
-          <div className="min-w-full w-full">
-            <div className="hidden sm:grid sticky top-0 text-gray-700 uppercase text-sm grid-cols-5 px-2 border-b last:border-b-0">
-              <div className="px-6 py-4 text-left">Name</div>
-              <div className="px-6 py-4 text-left">Company</div>
-              <div className="px-6 py-4 text-left">Trade</div>
-              <div className="px-6 py-4 text-left">Email</div>
-              <div className="px-6 py-4 text-left">Phone</div>
+    <div className="min-h-screen bg-[hsl(20,60%,99%)] p-4 sm:p-6 lg:p-8 font-sans">
+      <div className="max-w-screen mx-auto space-y-6">
+        
+        {/* --- Top Bar: Search (COMMENTED OUT) --- */}
+        {/* 
+        <div className="flex flex-col sm:flex-row gap-4 items-center bg-white p-3 rounded-2xl shadow-sm border border-slate-100">
+             <div className="relative w-full sm:max-w-lg">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Input 
+                    placeholder="Search" 
+                    className="pl-10 bg-slate-50 border-transparent focus:bg-white transition-all rounded-xl h-10"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
             </div>
+            
+            <div className="ml-auto flex items-center gap-3">
+                 <div className="hidden sm:flex flex-col items-end mr-2">
+                    <span className="text-sm font-bold text-slate-900">{user?.first_name} {user?.last_name}</span>
+                    <span className="text-xs text-slate-500">{user?.email}</span>
+                 </div>
+                 <div className="h-9 w-9 bg-slate-100 rounded-full flex items-center justify-center text-slate-600 font-bold border border-slate-200">
+                    {user?.first_name?.charAt(0) || "U"}
+                 </div>
+            </div>
+        </div> 
+        */}
 
-            <div>
-              {loading ? (
-                Array.from({ length: 5 }).map((_, index) => (
-                  <Card key={index} className="w-full p-0 px-2 my-2 bg-stone-50">
-                    <div className="hidden sm:grid grid-cols-5 w-full py-6 animate-pulse">
-                      <div className="px-6">
-                        <div className="h-5 bg-gray-200 rounded w-3/4"></div>
-                      </div>
-                      <div className="px-6">
-                        <div className="h-5 bg-gray-200 rounded w-1/2"></div>
-                      </div>
-                      <div className="px-6">
-                        <div className="h-5 bg-gray-200 rounded w-2/3"></div>
-                      </div>
-                      <div className="px-6">
-                        <div className="h-5 bg-gray-200 rounded w-full"></div>
-                      </div>
-                      <div className="px-6">
-                        <div className="h-5 bg-gray-200 rounded w-3/4"></div>
-                      </div>
+        {/* --- Main Content Card --- */}
+        {/* Adjusted min-height to 85vh to compensate for missing top bar */}
+        <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-1 min-h-[85vh] flex flex-col relative overflow-hidden">
+            
+            {/* Inner Padding Container */}
+            <div className="p-6 flex-1 flex flex-col">
+                
+                {/* Header Title Area */}
+                <div className="flex justify-between items-end mb-6">
+                    <div>
+                        <h1 className="text-2xl font-extrabold text-slate-900">Subcontractors</h1>
+                        <p className="text-slate-500 text-sm mt-1 font-medium">Manage your subcontractors here</p>
                     </div>
-
-                    <div className="sm:hidden p-4 animate-pulse">
-                      <div className="h-5 bg-gray-200 rounded w-1/2 mb-2"></div>
-                      <div className="h-4 bg-gray-200 rounded w-3/4 mt-2"></div>
-                      <div className="h-4 bg-gray-200 rounded w-2/3 mt-2"></div>
-                      <div className="h-3 bg-gray-200 rounded w-full mt-2"></div>
-                    </div>
-                  </Card>
-                ))
-              ) : subcontractors.length > 0 ? (
-                subcontractors.map((contractor) => (
-                  <div key={contractor.contractorKey} onClick={() => handleCardClick(contractor)}>
-                    <Card
-                      className={`w-full p-0 cursor-pointer px-2 my-2 transition-colors duration-200 
-                        ${isSelected(contractor.contractorKey) ? "bg-orange-400 hover:bg-orange-100" : "bg-stone-50 hover:bg-orange-100"}`}
+                    <Button 
+                        onClick={() => setIsSubFormOpen(true)} 
+                        className="bg-[#0B1120] hover:bg-[#1a253a] text-white rounded-lg px-4 py-2 h-auto text-sm font-medium shadow-md shadow-slate-900/10"
                     >
-                      <div className="hidden sm:grid grid-cols-5 w-full py-6">
-                        <div className="px-6 font-medium">
-                          {contractor.contractorName}
-                          {!contractor.isActive && <span className="ml-2 text-xs text-red-500">(Inactive)</span>}
-                        </div>
-                        <div className="px-6">{contractor.contractorCompany}</div>
-                        <div className="px-6">
-                          <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">{contractor.contractorTrade}</span>
-                        </div>
-                        <div className="px-6 text-sm text-gray-600">{contractor.contractorEmail}</div>
-                        <div className="px-6">{contractor.contractorPhone}</div>
-                      </div>
-
-                      <div className="sm:hidden p-4">
-                        <div className="flex justify-between items-center mb-2">
-                          <div className="font-medium">
-                            {contractor.contractorName}
-                            {!contractor.isActive && <span className="ml-2 text-xs text-red-500">(Inactive)</span>}
-                          </div>
-                        </div>
-                        <div className="text-sm text-gray-600 mb-1">{contractor.contractorCompany}</div>
-                        <div className="mb-2">
-                          <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">{contractor.contractorTrade}</span>
-                        </div>
-                        <div className="mt-2 text-xs text-gray-600">{contractor.contractorEmail}</div>
-                        <div className="text-xs text-gray-600">{contractor.contractorPhone}</div>
-                      </div>
-                    </Card>
-                  </div>
-                ))
-              ) : (
-                <div className="p-8 text-center text-gray-500">
-                  <p className="text-lg mb-2">No subcontractors found</p>
-                  <p className="text-sm">Invite your first subcontractor to get started</p>
+                        <Plus className="mr-2 h-4 w-4" /> Invite a subcontractor
+                    </Button>
                 </div>
-              )}
+
+                {/* Table Header - Dark Navy Gradient Pill */}
+                <div className="hidden sm:grid grid-cols-12 gap-4 bg-gradient-to-r from-[#0f2a4a] to-[#0B1120] text-white py-3.5 px-6 rounded-xl text-sm font-semibold shadow-md shadow-slate-200 mb-4">
+                    <div className="col-span-3">Name</div>
+                    <div className="col-span-2">Company</div>
+                    <div className="col-span-2">Trade</div>
+                    <div className="col-span-2">Phone</div>
+                    <div className="col-span-2">Email</div>
+                    <div className="col-span-1 text-center">Status</div>
+                </div>
+
+                {/* Rows Area */}
+                <div className="space-y-3 flex-1">
+                    {loading ? (
+                        Array.from({ length: 5 }).map((_, i) => (
+                             <div key={i} className="h-16 bg-slate-50 rounded-xl animate-pulse w-full border border-slate-100" />
+                        ))
+                    ) : error ? (
+                        <div className="p-8 text-center text-red-500 bg-red-50 rounded-xl border border-red-100 m-2">
+                            {error}
+                            <Button variant="outline" size="sm" onClick={() => fetchSubs(true)} className="ml-4">Retry</Button>
+                        </div>
+                    ) : filteredSubs.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center h-64 text-slate-400 border-2 border-dashed border-slate-100 rounded-2xl bg-slate-50/50">
+                            <p>No subcontractors found matching your criteria.</p>
+                        </div>
+                    ) : (
+                        filteredSubs.map((sub) => {
+                            const isSelected = selectedContractor?.contractorKey === sub.contractorKey;
+                            
+                            return (
+                                <div 
+                                    key={sub.contractorKey}
+                                    onClick={() => handleCardClick(sub)}
+                                    className={`
+                                        group relative
+                                        bg-white rounded-xl p-3 sm:px-6 sm:py-3.5 
+                                        border border-slate-200
+                                        grid grid-cols-1 sm:grid-cols-12 gap-2 sm:gap-4 items-center
+                                        shadow-[0_2px_8px_rgba(0,0,0,0.02)] 
+                                        
+                                        /* HOVER EFFECTS: Strong shadow, slight lift */
+                                        hover:shadow-lg hover:-translate-y-0.5 hover:border-slate-300
+                                        transition-all duration-200 cursor-pointer 
+                                        
+                                        /* Selected State: Just cleaner, removed the blue ring/border */
+                                        ${isSelected ? "bg-slate-50" : ""}
+                                    `}
+                                >
+                                    {/* Mobile Label/Value Structure */}
+                                    <div className="col-span-3 font-semibold text-slate-800 text-sm flex items-center gap-3">
+                                        <div className="h-8 w-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500 text-xs font-bold shrink-0">
+                                            {sub.contractorName.charAt(0)}
+                                        </div>
+                                        {sub.contractorName}
+                                    </div>
+                                    
+                                    <div className="col-span-2 text-slate-500 text-xs sm:text-sm font-medium">
+                                        <span className="sm:hidden text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Company</span>
+                                        {sub.contractorCompany}
+                                    </div>
+                                    
+                                    <div className="col-span-2 text-slate-500 text-xs sm:text-sm font-medium">
+                                        <span className="sm:hidden text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Trade</span>
+                                        {sub.contractorTrade}
+                                    </div>
+                                    
+                                    <div className="col-span-2 text-slate-500 text-xs sm:text-sm font-medium truncate">
+                                        <span className="sm:hidden text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Phone</span>
+                                        {sub.contractorPhone}
+                                    </div>
+
+                                    <div className="col-span-2 text-slate-500 text-xs sm:text-sm font-medium truncate" title={sub.contractorEmail}>
+                                        <span className="sm:hidden text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Email</span>
+                                        {sub.contractorEmail}
+                                    </div>
+                                    
+                                    <div className="col-span-1 flex justify-start sm:justify-center">
+                                        {sub.isActive ? (
+                                            <span className="text-[10px] font-bold text-emerald-600 tracking-wide uppercase">
+                                                Accepted
+                                            </span>
+                                        ) : (
+                                            <span className="text-[10px] font-bold text-orange-500 tracking-wide uppercase">
+                                                Waiting
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })
+                    )}
+                </div>
+
+                {/* Pagination - Bottom Center */}
+                {totalSubs > 0 && (
+                    <div className="mt-auto pt-6 flex justify-center items-center gap-6">
+                        <Button 
+                            onClick={() => handlePageChange(currentPage - 1)}
+                            disabled={currentPage === 1}
+                            className="bg-[#0B1120] text-white hover:bg-[#1a253a] disabled:bg-slate-200 disabled:text-slate-400 rounded-full h-10 px-6 text-xs font-bold tracking-wide"
+                        >
+                            Previous
+                        </Button>
+                        
+                        <span className="text-sm font-semibold text-slate-500">
+                             Page <span className="text-slate-900">{currentPage}</span> of <span className="text-slate-900">{totalPages || 1}</span>
+                        </span>
+
+                        <Button 
+                             onClick={() => handlePageChange(currentPage + 1)}
+                             disabled={currentPage >= totalPages}
+                             className="bg-[#0B1120] text-white hover:bg-[#1a253a] disabled:bg-slate-200 disabled:text-slate-400 rounded-full h-10 px-6 text-xs font-bold tracking-wide"
+                        >
+                            Next
+                        </Button>
+                    </div>
+                )}
             </div>
-          </div>
         </div>
 
-        {totalSubs > 0 && totalPages > 1 && (
-          <div className="flex justify-center items-center mt-4 space-x-1 sm:space-x-2">
-            <button
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className={`px-2 sm:px-3 py-1 rounded text-sm ${currentPage === 1 ? "bg-gray-200 text-gray-500 cursor-not-allowed" : "bg-orange-200 text-gray-700 hover:bg-orange-300"}`}
-            >
-              Prev
-            </button>
-
-            {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
-              let pageNumber;
-              if (totalPages <= 7) pageNumber = i + 1;
-              else if (currentPage <= 4) pageNumber = i + 1;
-              else if (currentPage >= totalPages - 3) pageNumber = totalPages - 6 + i;
-              else pageNumber = currentPage - 3 + i;
-
-              return (
-                <button
-                  key={pageNumber}
-                  onClick={() => handlePageChange(pageNumber)}
-                  className={`px-2 sm:px-3 py-1 rounded text-sm ${currentPage === pageNumber ? "bg-orange-400 text-white" : "bg-orange-200 text-gray-700 hover:bg-orange-300"}`}
-                >
-                  {pageNumber}
-                </button>
-              );
-            })}
-
-            <button
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className={`px-2 sm:px-3 py-1 rounded text-sm ${currentPage === totalPages ? "bg-gray-200 text-gray-500 cursor-not-allowed" : "bg-orange-200 text-gray-700 hover:bg-orange-300"}`}
-            >
-              Next
-            </button>
-          </div>
-        )}
-
-        {totalSubs > 0 && (
-          <div className="text-center mt-2 text-sm text-gray-600">
-            Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, totalSubs)} of {totalSubs} subcontractors
-          </div>
-        )}
-      </div>
-
-      {/* Sidebar */}
-      <div className={`fixed inset-y-0 right-0 w-full sm:w-1/3 bg-white shadow-lg transform transition-transform duration-300 ease-in-out z-40 ${sidebarOpen ? "translate-x-0" : "translate-x-full"}`}>
-        {selectedContractor && (
-          <div className="h-full flex flex-col p-6 py-16 px-12">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-semibold text-gray-800">Subcontractor Details</h2>
-              <Button onClick={closeSidebar} className="p-1 rounded-full hover:bg-gray-100" variant="ghost">
-                <X className="h-6 w-6" />
-              </Button>
-            </div>
-
-            <div className="flex-grow overflow-y-auto">
-              <div className="space-y-6">
-                {!selectedContractor.isActive && (
-                  <div className="bg-red-50 border border-red-200 rounded p-3">
-                    <p className="text-sm text-red-700 font-medium">This subcontractor is currently inactive</p>
-                  </div>
-                )}
-
-                <div>
-                  <h3 className="text-lg font-medium text-gray-700 mb-3">Contact Information</h3>
-                  <Card className="p-4 bg-amber-50">
-                    <div className="space-y-3">
-                      <div>
-                        <p className="text-sm text-gray-500">Name</p>
-                        <p className="font-medium">{selectedContractor.contractorName}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Company</p>
-                        <p className="font-medium">{selectedContractor.contractorCompany}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Trade Specialty</p>
-                        <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium mt-1">{selectedContractor.contractorTrade}</span>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Email</p>
-                        <a href={`mailto:${selectedContractor.contractorEmail}`} className="font-medium text-orange-600 hover:text-orange-700">{selectedContractor.contractorEmail}</a>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Phone</p>
-                        <a href={`tel:${selectedContractor.contractorPhone}`} className="font-medium text-orange-600 hover:text-orange-700">{selectedContractor.contractorPhone}</a>
-                      </div>
+        {/* --- Sidebar Detail View --- */}
+        <div className={`fixed inset-y-0 right-0 w-full sm:w-[400px] bg-white shadow-2xl transform transition-transform duration-300 ease-in-out z-50 ${sidebarOpen ? "translate-x-0" : "translate-x-full"}`}>
+            {selectedContractor && (
+                <div className="h-full flex flex-col">
+                    <div className="p-8 bg-[#0B1120] text-white flex justify-between items-start">
+                         <div>
+                            <div className="h-12 w-12 rounded-full bg-white/10 flex items-center justify-center text-xl font-bold mb-4 border border-white/20">
+                                {selectedContractor.contractorName.charAt(0)}
+                            </div>
+                            <h2 className="text-xl font-bold">{selectedContractor.contractorName}</h2>
+                            <p className="text-slate-300 text-sm mt-1">{selectedContractor.contractorCompany}</p>
+                         </div>
+                         <Button onClick={() => setSidebarOpen(false)} variant="ghost" className="text-white hover:bg-white/10 rounded-full h-8 w-8 p-0">
+                            <X size={20} />
+                         </Button>
                     </div>
-                  </Card>
-                </div>
-              </div>
-            </div>
 
-            <div className="mt-6 flex space-x-3">
-              <Button className="flex-1 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50" onClick={closeSidebar}>Close</Button>
-            </div>
-          </div>
+                    <div className="flex-1 p-8 overflow-y-auto bg-white space-y-8">
+                        
+                        <div>
+                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Contact Information</h3>
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-4 p-3 rounded-lg hover:bg-slate-50 transition-colors">
+                                    <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">
+                                        <Mail size={14} />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-slate-500 font-medium">Email</p>
+                                        <p className="text-sm font-semibold text-slate-900 break-all">{selectedContractor.contractorEmail}</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-4 p-3 rounded-lg hover:bg-slate-50 transition-colors">
+                                    <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">
+                                        <Phone size={14} />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-slate-500 font-medium">Phone</p>
+                                        <p className="text-sm font-semibold text-slate-900">{selectedContractor.contractorPhone}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Business Details</h3>
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-4 p-3 rounded-lg hover:bg-slate-50 transition-colors">
+                                    <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">
+                                        <Briefcase size={14} />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-slate-500 font-medium">Trade</p>
+                                        <p className="text-sm font-semibold text-slate-900">{selectedContractor.contractorTrade}</p>
+                                    </div>
+                                </div>
+                                
+                                <div className="flex items-center gap-4 p-3 rounded-lg hover:bg-slate-50 transition-colors">
+                                    <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">
+                                        <Calendar size={14} />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-slate-500 font-medium">Status</p>
+                                        <span className={`inline-block px-2 py-0.5 rounded text-xs font-bold mt-0.5 ${selectedContractor.isActive ? 'text-emerald-600 bg-emerald-50' : 'text-orange-600 bg-orange-50'}`}>
+                                            {selectedContractor.isActive ? "ACCEPTED" : "WAITING"}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            )}
+        </div>
+
+        {/* Sidebar Overlay */}
+        {sidebarOpen && (
+            <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 transition-opacity" onClick={() => setSidebarOpen(false)} />
+        )}
+
+        {/* Invite Modal */}
+        {isSubFormOpen && (
+            <SubFormModal
+                isOpen={isSubFormOpen}
+                onClose={() => setIsSubFormOpen(false)}
+                onSave={handleSaveSubs}
+            />
         )}
       </div>
-
-      {sidebarOpen && (
-        <div className="fixed inset-0 bg-black/30 z-30 sm:block hidden" onClick={closeSidebar}></div>
-      )}
-    </Card>
+    </div>
   );
 }
