@@ -9,6 +9,8 @@ import {
   forwardRef,
   useCallback,
   useContext,
+  useEffect,
+  useRef,
   useState,
 } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
@@ -25,7 +27,7 @@ export const monthEventVariants = cva("size-2 rounded-full", {
       green: "bg-green-500",
       pink: "bg-pink-500",
       purple: "bg-purple-500",
-      yellow: "bg-yellow-500"
+      yellow: "bg-yellow-500",
     },
   },
   defaultVariants: {
@@ -43,7 +45,7 @@ export const dayEventVariants = cva(
         green: "bg-green-500/30 text-green-700 border-green-500",
         pink: "bg-pink-500/30 text-pink-700 border-pink-500",
         purple: "bg-purple-500/30 text-purple-700 border-purple-500",
-        yellow: "bg-yellow-500/30 text-yellow-700 border-yellow-400"
+        yellow: "bg-yellow-500/30 text-yellow-700 border-yellow-400",
       },
     },
     defaultVariants: {
@@ -118,6 +120,32 @@ export const Calendar = ({
   const isDateControlled = controlledDate !== undefined;
   const currentDate = isDateControlled ? controlledDate : internalDate;
 
+  const prevDefaultEventsRef = useRef<CalendarEvent[] | null>(null);
+
+  useEffect(() => {
+    const incoming = defaultEvents || [];
+    const prev = prevDefaultEventsRef.current;
+
+    const isSame = (() => {
+      if (!prev) return false;
+      if (prev.length !== incoming.length) return false;
+      for (let i = 0; i < prev.length; i++) {
+        const a = prev[i];
+        const b = incoming[i];
+        // compare stable identifiers + times — adjust if your events don't have id
+        if (a.id !== b.id) return false;
+        if (a.start?.getTime() !== b.start?.getTime()) return false;
+        if (a.end?.getTime() !== b.end?.getTime()) return false;
+      }
+      return true;
+    })();
+
+    if (!isSame) {
+      setEvents(incoming);
+      prevDefaultEventsRef.current = incoming;
+    }
+    // only depend on defaultEvents reference
+  }, [defaultEvents]);
   // Handle date changes
   const handleDateChange = useCallback(
     (newDate: Date) => {
@@ -185,7 +213,7 @@ export const CalendarViewTrigger = forwardRef<
 
   return (
     <Button
-      ref={ref}  // ✅ Pass ref to Button
+      ref={ref} // ✅ Pass ref to Button
       aria-current={currentView === view}
       size="sm"
       variant="ghost"

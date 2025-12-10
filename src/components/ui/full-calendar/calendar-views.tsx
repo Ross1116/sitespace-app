@@ -31,14 +31,20 @@ import { getDaysInMonth, generateWeekdays } from "./calendar-helpers";
 import { TimeTable } from "./calendar-utils";
 import { AssetCalendar } from "./calendar-context";
 import { CreateBookingForm } from "@/components/forms/CreateBookingForm";
+import { useAuth } from "@/app/context/AuthContext";
 
 export const CalendarDayView = ({
   assetCalendar,
   onActionComplete,
+  onBookingCreated,
 }: {
   assetCalendar?: AssetCalendar;
   onActionComplete?: () => void;
+  onBookingCreated?: (
+    events: Partial<CalendarEvent>[] | Partial<CalendarEvent>
+  ) => void;
 }) => {
+  const { user } = useAuth();
   const { view, events, date, setEvents, onEventClick } = useCalendar();
   const [isBookingFormOpen, setIsBookingFormOpen] = useState(false);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<{
@@ -69,7 +75,7 @@ export const CalendarDayView = ({
       assetName: assetCalendar?.name,
     });
     setIsBookingFormOpen(true);
-  }
+  };
 
   const handleSaveEvent = (
     newEvent: Partial<CalendarEvent> | Partial<CalendarEvent>[]
@@ -77,46 +83,198 @@ export const CalendarDayView = ({
     console.log("Save event worked");
     if (!setEvents || !events) return;
 
-    if (Array.isArray(newEvent)) {
-      const completeEvents = newEvent
-        .filter((event) => event.start && event.title)
-        .map((event, index) => {
-          const start = event.start as Date;
+    // Helper to convert incoming partial event -> full CalendarEvent keeping booking meta
+    const toCompleteEvent = (
+      evt: Partial<CalendarEvent>,
+      idx = 0
+    ): CalendarEvent => {
+      const start = (evt.start || new Date()) as Date;
+      const end = (evt.end as Date) || addHours(start, 1);
 
-          return {
-            id: event.id || `${Math.random().toString(36).substring(2, 11)}-${Date.now()}-${index}`,
-            start,
-            end: event.end || addHours(start, 1),
-            title: event.title as string,
-            description: event.description || "",
-            color: event.color || "yellow",
-          } as CalendarEvent;
-        });
+      // attempt to preserve booking metadata if provided (CreateBookingForm attaches bookingData)
+      const bookingData =
+        (evt as any).bookingData || (evt as any).booking || null;
+      const bookingStatus =
+        (evt as any).bookingStatus ||
+        bookingData?.status ||
+        (evt as any).status ||
+        "pending";
+      const bookingKey =
+        (evt as any).bookingKey ||
+        bookingData?.id ||
+        evt.id ||
+        `${Math.random().toString(36).substring(2, 11)}-${Date.now()}-${idx}`;
 
-      setEvents([...events, ...completeEvents]);
+      const assetId =
+        (evt as any).assetId ||
+        bookingData?.asset_id ||
+        (evt as any).asset_id ||
+        assetCalendar?.id ||
+        "unknown";
+      const assetName =
+        (evt as any).assetName ||
+        bookingData?.asset_name ||
+        (evt as any).asset_name ||
+        assetCalendar?.name ||
+        `Asset ${String(assetId).slice(0, 6)}...`;
 
-      if (onEventClick && completeEvents.length > 0) {
-        onEventClick(completeEvents[completeEvents.length - 1]);
-      }
-    } else {
-      if (newEvent.start && newEvent.title) {
-        const completeEvent: CalendarEvent = {
-          id: newEvent.id || `${Math.random().toString(36).substring(2, 11)}-${Date.now()}`,
-          start: newEvent.start,
-          end: newEvent.end || addHours(newEvent.start, 1),
-          title: newEvent.title,
-          description: newEvent.description || "",
-          color: newEvent.color || "yellow",
-        };
+      return {
+        id: evt.id || bookingKey,
+        start,
+        end,
+        title:
+          (evt.title as string) ||
+          `${(evt as any).bookingTitle || "Booking"} - ${assetName}`,
+        description:
+          (evt.description as string) || (evt as any).bookingDescription || "",
+        color:
+          (evt as any).color ||
+          (bookingStatus === "confirmed" ? "green" : "yellow"),
+        // booking-specific fields
+        bookingKey: bookingKey,
+        bookingTitle:
+          (evt as any).bookingTitle || (evt.title as string) || "Booking",
+        bookingDescription:
+          (evt as any).bookingDescription || (evt as any).description || "",
+        bookingNotes: (evt as any).bookingNotes || bookingData?.notes || "",
+        bookingTimeDt:
+          (evt as any).bookingTimeDt || bookingData?.booking_date || "",
+        bookingStartTime:
+          (evt as any).bookingStartTime || bookingData?.start_time || "",
+        bookingEndTime:
+          (evt as any).bookingEndTime || bookingData?.end_time || "",
+        bookingStatus: bookingStatus,
+        bookingFor: (evt as any).bookingFor || bookingData?.manager || "",
+        assetId,
+        assetName,
+        assetCode: (evt as any).assetCode || bookingData?.asset_code || "",
+        assetType: (evt as any).assetType || bookingData?.asset_type || "",
+        bookedAssets:
+          (evt as any).bookedAssets || (assetName ? [assetName] : []),
+        status: bookingStatus,
+        managerId: bookingData?.manager_id || (evt as any).managerId,
+        managerName:
+          bookingData?.manager?.first_name || (evt as any).managerName,
+        subcontractorId:
+          bookingData?.subcontractor_id || (evt as any).subcontractorId,
+        subcontractorName:
+          bookingData?.subcontractor?.company_name ||
+          (evt as any).subcontractorName,
+        projectId: bookingData?.project_id || (evt as any).projectId,
+        projectName: bookingData?.project?.name || (evt as any).projectName,
+        projectLocation:
+          bookingData?.project?.location || (evt as any).projectLocation,
+        _originalData: bookingData || (evt as any)._originalData || null,
+      } as CalendarEvent;
+    };
 
-        setEvents([...events, completeEvent]);
+    const incomingArray = Array.isArray(newEvent) ? newEvent : [newEvent];
 
-        if (onEventClick) {
-          onEventClick(completeEvent);
+    const completeEvents = incomingArray
+      .filter((ev) => ev.start && ev.title)
+      .map((ev, idx) => {
+        const e = ev as any;
+
+        const start = e.start as Date;
+        const original = e._originalData || e.bookingData || null;
+
+        // === asset resolution (most important) ===
+        const assetId = String(
+          e.assetId ||
+            e.asset_id ||
+            original?.asset_id ||
+            assetCalendar?.id ||
+            ""
+        ).trim();
+        const assetName =
+          e.assetName ||
+          e.asset_name ||
+          original?.asset?.name ||
+          original?.asset_name ||
+          assetCalendar?.name ||
+          "";
+
+        // === status/color ===
+        // If backend returned 'confirmed', use it. Otherwise, if current user is manager mark confirmed:
+        let bookingStatus = (
+          e.bookingStatus ||
+          e.booking_status ||
+          original?.status ||
+          original?.booking_status ||
+          "pending"
+        )
+          .toString()
+          .toLowerCase();
+        if (!bookingStatus || bookingStatus === "pending") {
+          if (user?.role === "manager" || user?.role === "admin") {
+            bookingStatus = "confirmed";
+          }
         }
-      }
-    }
 
+        const color =
+          e.color || (bookingStatus === "confirmed" ? "green" : "yellow");
+
+        return {
+          id:
+            e.id ||
+            e.bookingKey ||
+            original?.id ||
+            `${Math.random().toString(36).slice(2, 9)}-${Date.now()}-${idx}`,
+          start,
+          end: e.end || addHours(start, 1),
+          title: e.title as string,
+          description: e.description || e.bookingDescription || "",
+          color,
+          // preserved booking fields (safe access)
+          bookingKey: e.bookingKey || original?.id || null,
+          bookingTitle: e.bookingTitle || e.title || original?.title || "",
+          bookingDescription:
+            e.bookingDescription || e.description || original?.notes || "",
+          bookingNotes: e.bookingNotes || original?.notes || "",
+          bookingTimeDt: e.bookingTimeDt || original?.booking_date || "",
+          bookingStartTime: e.bookingStartTime || original?.start_time || "",
+          bookingEndTime: e.bookingEndTime || original?.end_time || "",
+          bookingStatus,
+          assetId,
+          assetName,
+          assetCode:
+            e.assetCode ||
+            original?.asset?.asset_code ||
+            original?.asset_code ||
+            "",
+          assetType: e.assetType || original?.assetType || "",
+          bookedAssets:
+            e.bookedAssets ||
+            (assetName ? [assetName] : []) ||
+            (original?.asset
+              ? [
+                  original.asset.name ||
+                    original.asset.asset_code ||
+                    original.asset.id,
+                ]
+              : []),
+          status: e.status || bookingStatus,
+          managerId: e.managerId || original?.manager_id || null,
+          subcontractorId:
+            e.subcontractorId || original?.subcontractor_id || null,
+          projectId: e.projectId || original?.project_id || null,
+          projectName:
+            e.projectName ||
+            original?.project?.name ||
+            original?.project_name ||
+            "",
+          _originalData: original,
+        } as CalendarEvent;
+      });
+
+    setEvents([...events, ...completeEvents]);
+
+    // notify parent page so it can update global bookings + localStorage / assetCalendars
+    onBookingCreated?.(completeEvents);
+
+    if (onEventClick && completeEvents.length > 0) {
+      onEventClick(completeEvents[completeEvents.length - 1]);
+    }
     onActionComplete?.();
   };
 
@@ -165,9 +323,13 @@ export const CalendarDayView = ({
             {hours.map((hour, index) => (
               <div
                 key={hour.toString()}
-                className={`relative border-t h-12 flex-none ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
-                  } ${isCurrentDay && hour.getHours() === currentHour ? 'bg-blue-50/50' : ''
-                  }`}
+                className={`relative border-t h-12 flex-none ${
+                  index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
+                } ${
+                  isCurrentDay && hour.getHours() === currentHour
+                    ? "bg-blue-50/50"
+                    : ""
+                }`}
               >
                 {}
                 <div
@@ -184,10 +346,7 @@ export const CalendarDayView = ({
                 <div className="absolute w-full border-t border-gray-200 border-dashed top-1/2"></div>
 
                 {}
-                <EventGroupSideBySide
-                  hour={hour}
-                  events={events || []}
-                />
+                <EventGroupSideBySide hour={hour} events={events || []} />
               </div>
             ))}
           </div>
@@ -331,7 +490,7 @@ export const CalendarWeekView = () => {
               className={cn(
                 "h-6 grid place-content-center",
                 isToday(date) &&
-                "bg-primary text-primary-foreground rounded-full size-6"
+                  "bg-primary text-primary-foreground rounded-full size-6"
               )}
             >
               {format(date, "d")}
@@ -456,8 +615,8 @@ export const CalendarMonthView = () => {
                   "size-6 grid place-items-center rounded-full mb-1 sticky top-0",
                   isToday(_date) && "bg-primary text-primary-foreground",
                   isSelectedDate &&
-                  !isToday(_date) &&
-                  "bg-orange-100 text-orange-800 font-medium"
+                    !isToday(_date) &&
+                    "bg-orange-100 text-orange-800 font-medium"
                 )}
               >
                 {format(_date, "d")}
@@ -537,8 +696,8 @@ export const CalendarYearView = () => {
                     className={cn(
                       "aspect-square grid place-content-center size-full tabular-nums",
                       isSameDay(today, _date) &&
-                      getMonth(_date) === i &&
-                      "bg-primary text-primary-foreground rounded-full"
+                        getMonth(_date) === i &&
+                        "bg-primary text-primary-foreground rounded-full"
                     )}
                   >
                     {format(_date, "d")}
@@ -655,9 +814,10 @@ const EventGroupSideBySide = ({ hour, events }: EventGroupSideBySideProps) => {
                   )}
                   style={{
                     top: `${topPercent}%`,
-                    height: hoursSpan > 1
-                      ? `${(100 - topPercent) + ((hoursSpan - 1) * 100)}%`
-                      : `${Math.max(heightPercent, 10)}%`,
+                    height:
+                      hoursSpan > 1
+                        ? `${100 - topPercent + (hoursSpan - 1) * 100}%`
+                        : `${Math.max(heightPercent, 10)}%`,
                     width: `${widthPercent}%`,
                     left: `${eventsInHour.indexOf(event) * widthPercent}%`,
                     zIndex: zIndex,

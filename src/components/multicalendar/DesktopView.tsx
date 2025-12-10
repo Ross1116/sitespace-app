@@ -1,6 +1,6 @@
 import { Calendar, CalendarDayView } from "@/components/ui/full-calendar/index";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AssetCalendar } from "@/lib/multicalendarHelpers";
+import { AssetCalendar, CalendarEvent } from "@/lib/multicalendarHelpers";
 import { format } from "date-fns";
 
 interface DesktopViewProps {
@@ -10,6 +10,9 @@ interface DesktopViewProps {
   visibleAssets: number[];
   currentDate: Date;
   onActionComplete?: () => void;
+  onBookingCreated?: (
+    newEvents: Partial<CalendarEvent> | Partial<CalendarEvent>[]
+  ) => void;
 }
 
 export function DesktopView({
@@ -19,13 +22,15 @@ export function DesktopView({
   visibleAssets,
   currentDate,
   onActionComplete,
+  onBookingCreated,
 }: DesktopViewProps) {
   return (
     <div
-      className={`grid ${isCollapsed
-        ? "grid-cols-2 lg:grid-cols-5 xl:grid-cols-6"
-        : "grid-cols-2 lg:grid-cols-4"
-        } flex-1 gap-1 overflow-visible`}
+      className={`grid ${
+        isCollapsed
+          ? "grid-cols-2 lg:grid-cols-5 xl:grid-cols-6"
+          : "grid-cols-2 lg:grid-cols-4"
+      } flex-1 gap-1 overflow-visible`}
     >
       {loading ? (
         // Create multiple skeleton placeholders in a grid
@@ -44,7 +49,10 @@ export function DesktopView({
             <div className="flex flex-1 relative">
               <div className="w-14 flex-shrink-0 border-r border-gray-200 bg-gray-50">
                 {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="h-12 flex items-start justify-end pr-2 pt-0.5">
+                  <div
+                    key={i}
+                    className="h-12 flex items-start justify-end pr-2 pt-0.5"
+                  >
                     <Skeleton className="h-3 w-6" />
                   </div>
                 ))}
@@ -52,7 +60,12 @@ export function DesktopView({
               <div className="flex-1 relative">
                 <div className="grid grid-rows-[repeat(4,minmax(3rem,1fr))] w-full h-full">
                   {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className={`relative border-t ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}>
+                    <div
+                      key={i}
+                      className={`relative border-t ${
+                        i % 2 === 0 ? "bg-white" : "bg-gray-50/50"
+                      }`}
+                    >
                       <Skeleton className="h-8 w-3/4 m-2" />
                     </div>
                   ))}
@@ -76,7 +89,9 @@ export function DesktopView({
               <div className="px-4 py-2 border-b border-gray-200 bg-white sticky top-0 z-10 flex justify-between items-center">
                 <div>
                   {calendar.name && (
-                    <h2 className="text-lg font-semibold text-gray-800">{calendar.name}</h2>
+                    <h2 className="text-lg font-semibold text-gray-800">
+                      {calendar.name}
+                    </h2>
                   )}
                   <p className="text-xs text-gray-500">
                     {format(currentDate, "EEE, MMM d")}
@@ -85,7 +100,8 @@ export function DesktopView({
                 <div className="text-xs text-gray-500">
                   {format(currentDate, "yyyy")}
                 </div>
-              </div>              <div className="flex-1 overflow-hidden">
+              </div>{" "}
+              <div className="flex-1 overflow-hidden">
                 <Calendar
                   key={`desktop-calendar-${calendar.id || index}`}
                   events={calendar.events}
@@ -95,6 +111,7 @@ export function DesktopView({
                   <CalendarDayView
                     assetCalendar={calendar}
                     onActionComplete={onActionComplete}
+                    onBookingCreated={onBookingCreated}
                   />
                 </Calendar>
               </div>

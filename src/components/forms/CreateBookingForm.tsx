@@ -179,7 +179,7 @@ export function CreateBookingForm({
     }
   }, [userId]);
 
-  // Load subcontractors from project (only for managers)
+  // Replace the existing useEffect that loads subcontractors with this block
   useEffect(() => {
     const loadSubcontractors = async () => {
       if (!project?.id || !isManager) {
@@ -188,70 +188,132 @@ export function CreateBookingForm({
 
       setLoadingSubcontractors(true);
       try {
+        // New endpoint format provided by you
         const response = await api.get(
-          `/projects/${project.id}/subcontractors`
+          `/subcontractors/my-subcontractors`,
+          {
+            params: {
+              skip: 0,
+              limit: 100, // fetch up to 100; adjust if you want paging
+              is_active: true,
+              project_id: project.id,
+            },
+          }
         );
 
-        let subsData = [];
+        // Response shape: could be an array or paginated object. Try common shapes:
+        // 1) response.data -> array
+        // 2) response.data.subcontractors -> array
+        // 3) response.data.data -> array
+        let subsData: any[] = [];
 
         if (Array.isArray(response.data)) {
           subsData = response.data;
-        } else if (
-          response.data.subcontractors &&
-          Array.isArray(response.data.subcontractors)
-        ) {
+        } else if (Array.isArray(response.data.subcontractors)) {
           subsData = response.data.subcontractors;
-        } else if (response.data.data && Array.isArray(response.data.data)) {
+        } else if (Array.isArray(response.data.data)) {
           subsData = response.data.data;
+        } else if (
+          response.data.records &&
+          Array.isArray(response.data.records)
+        ) {
+          // sometimes railway/python backends use 'records'
+          subsData = response.data.records;
+        } else {
+          // fallback: try to find array anywhere in payload
+          const values = Object.values(response.data || {});
+          const arr = values.find((v) => Array.isArray(v));
+          if (arr) subsData = arr;
         }
 
         const normalizedSubs = subsData.map((sub: any) => ({
-          id: sub.id || sub.subcontractorKey || sub.contractor_id || sub.uuid,
+          id:
+            sub.id ||
+            sub.subcontractor_id ||
+            sub.subcontractorKey ||
+            sub.uuid ||
+            sub.key,
           first_name:
             sub.first_name ||
             sub.firstName ||
-            sub.contractorName?.split(" ")[0] ||
+            (typeof sub.name === "string" ? sub.name.split(" ")[0] : "") ||
             "",
           last_name:
             sub.last_name ||
             sub.lastName ||
-            sub.contractorName?.split(" ").slice(1).join(" ") ||
+            (typeof sub.name === "string"
+              ? sub.name.split(" ").slice(1).join(" ")
+              : "") ||
             "",
-          email: sub.email || sub.contractorEmail || "",
+          email: sub.email || sub.contractorEmail || sub.contact_email || "",
           company_name:
-            sub.company_name || sub.companyName || sub.contractorCompany,
+            sub.company_name ||
+            sub.companyName ||
+            sub.contractorCompany ||
+            sub.employer ||
+            "",
           trade_specialty:
-            sub.trade_specialty || sub.tradeSpecialty || sub.contractorTrade,
+            sub.trade_specialty ||
+            sub.tradeSpecialty ||
+            sub.contractorTrade ||
+            sub.role ||
+            "",
+          raw: sub, // keep raw payload for debugging if needed
         }));
 
         setSubcontractors(normalizedSubs);
+
+        // cache for fallback if API later fails
+        try {
+          localStorage.setItem(
+            `subcontractors_${userId}`,
+            JSON.stringify(subsData)
+          );
+        } catch (e) {
+          // ignore storage errors
+        }
       } catch (error: any) {
         console.error("Error loading subcontractors:", error);
 
-        // Fallback
+        // Fallback: try cached subcontractors
         const cachedSubs = localStorage.getItem(`subcontractors_${userId}`);
         if (cachedSubs) {
           try {
             const parsedSubs = JSON.parse(cachedSubs);
             const normalizedCached = parsedSubs.map((sub: any) => ({
-              id: sub.id || sub.contractorKey || sub.subcontractorKey,
+              id:
+                sub.id ||
+                sub.subcontractor_id ||
+                sub.subcontractorKey ||
+                sub.uuid ||
+                sub.key,
               first_name:
                 sub.first_name ||
                 sub.firstName ||
-                sub.contractorName?.split(" ")[0] ||
+                (typeof sub.name === "string" ? sub.name.split(" ")[0] : "") ||
                 "",
               last_name:
                 sub.last_name ||
                 sub.lastName ||
-                sub.contractorName?.split(" ").slice(1).join(" ") ||
+                (typeof sub.name === "string"
+                  ? sub.name.split(" ").slice(1).join(" ")
+                  : "") ||
                 "",
-              email: sub.email || sub.contractorEmail || "",
+              email:
+                sub.email || sub.contractorEmail || sub.contact_email || "",
               company_name:
-                sub.company_name || sub.companyName || sub.contractorCompany,
+                sub.company_name ||
+                sub.companyName ||
+                sub.contractorCompany ||
+                sub.employer ||
+                "",
               trade_specialty:
                 sub.trade_specialty ||
                 sub.tradeSpecialty ||
-                sub.contractorTrade,
+                sub.contractorTrade ||
+                sub.role ||
+                "",
+              raw: sub,
             }));
             setSubcontractors(normalizedCached);
           } catch (e) {
@@ -326,6 +388,9 @@ export function CreateBookingForm({
       const endTime = addMinutes(startTime, parseInt(duration));
       setEndHour(endTime.getHours().toString().padStart(2, "0"));
       setEndMinute(endTime.getMinutes().toString().padStart(2, "0"));
+
+      // <-- NEW: ensure the booking modal's date picker uses the clicked date
+      setSelectedDate(new Date(startTime));
 
       setCustomStartTime(startTime);
       setCustomEndTime(endTime);
@@ -468,8 +533,22 @@ export function CreateBookingForm({
 
       // Transform to calendar events (include _originalData for parity)
       const events = createdBookings.map((booking) => {
+        const returnedAssetId =
+          booking.asset?.id ||
+          booking.asset_id ||
+          booking.assetId ||
+          booking.assetKey;
         const asset = assets.find((a) => a.assetKey === booking.asset_id);
-        const assetTitle = asset?.assetTitle || booking.asset_id;
+        const assetTitle =
+          booking.asset?.name ||
+          assets.find(
+            (a) => a.assetKey === booking.asset_id || a.id === booking.asset_id
+          )?.assetTitle ||
+          booking.asset_name ||
+          booking.assetTitle ||
+          booking.asset?.name ||
+          booking.assetName ||
+          booking.asset_id;
 
         const startDateTime = new Date(
           `${booking.booking_date}T${booking.start_time}`
@@ -484,8 +563,23 @@ export function CreateBookingForm({
           description: description || title,
           start: startDateTime,
           end: endDateTime,
+          color: booking.status === "confirmed" ? "green" : "yellow",
+          assetId: String(returnedAssetId),
+          assetName: assetTitle,
+          bookedAssets: [assetTitle],
+          bookingKey: booking.id,
+          bookingTitle: title,
+          bookingDescription: booking.notes || description || "",
+          bookingNotes: booking.notes || "",
+          bookingTimeDt: booking.booking_date,
+          bookingStartTime: booking.start_time,
+          bookingEndTime: booking.end_time,
+          bookingStatus: booking.status,
           status: booking.status,
-          bookingData: booking,
+          managerId: booking.manager_id,
+          subcontractorId: booking.subcontractor_id,
+          projectId: booking.project_id,
+          projectName: booking.project?.name || project?.name,
           _originalData: booking,
         } as Partial<CalendarEvent>;
       });
