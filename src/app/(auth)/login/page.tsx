@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/app/context/AuthContext";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -12,6 +13,7 @@ export default function Login() {
   const [localError, setLocalError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [touched, setTouched] = useState({ email: false, password: false });
+  const [showPassword, setShowPassword] = useState(false);
 
   const { login, isAuthenticated, error: authError, clearError } = useAuth();
   const router = useRouter();
@@ -83,7 +85,9 @@ export default function Login() {
         errorMessage.toLowerCase().includes("network") ||
         errorMessage.toLowerCase().includes("connect")
       ) {
-        setLocalError("Connection error. Please check your internet and try again");
+        setLocalError(
+          "Connection error. Please check your internet and try again"
+        );
       } else {
         setLocalError(errorMessage);
       }
@@ -118,8 +122,8 @@ export default function Login() {
           </h1>
 
           <p className="text-gray-300 text-xl max-w-8/12">
-            Skip repetitive and manual scheduling. Get highly productive through
-            automation and save tons of time!
+            {/* Skip repetitive and manual scheduling. Get highly productive through
+            automation and save tons of time! */}
           </p>
         </div>
 
@@ -128,11 +132,36 @@ export default function Login() {
         </div>
 
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <svg className="absolute inset-0 w-full h-full opacity-10" preserveAspectRatio="none">
-            <pattern id="curves" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
-              <path d="M0 50 Q 25 25, 50 50 T 100 50" stroke="white" strokeWidth="2" fill="none" />
-              <path d="M0 25 Q 25 0, 50 25 T 100 25" stroke="white" strokeWidth="1.5" fill="none" />
-              <path d="M0 75 Q 25 50, 50 75 T 100 75" stroke="white" strokeWidth="1.5" fill="none" />
+          <svg
+            className="absolute inset-0 w-full h-full opacity-10"
+            preserveAspectRatio="none"
+          >
+            <pattern
+              id="curves"
+              x="0"
+              y="0"
+              width="100"
+              height="100"
+              patternUnits="userSpaceOnUse"
+            >
+              <path
+                d="M0 50 Q 25 25, 50 50 T 100 50"
+                stroke="white"
+                strokeWidth="2"
+                fill="none"
+              />
+              <path
+                d="M0 25 Q 25 0, 50 25 T 100 25"
+                stroke="white"
+                strokeWidth="1.5"
+                fill="none"
+              />
+              <path
+                d="M0 75 Q 25 50, 50 75 T 100 75"
+                stroke="white"
+                strokeWidth="1.5"
+                fill="none"
+              />
             </pattern>
             <rect width="100%" height="100%" fill="url(#curves)" />
           </svg>
@@ -142,13 +171,18 @@ export default function Login() {
       {/* Right Side */}
       <div className="w-full md:w-1/2 bg-orange-50 flex items-center justify-center min-h-screen md:min-h-0 md:p-16">
         <div className="max-w-md w-full px-6 py-12 md:p-0">
-          <h2 className="text-4xl md:text-5xl font-bold mb-8 md:mb-16">Sitespace</h2>
+          <h2 className="text-4xl md:text-5xl font-bold mb-8 md:mb-16">
+            Sitespace
+          </h2>
 
           <h3 className="text-2xl md:text-3xl font-bold mb-2">Welcome Back!</h3>
 
           <p className="text-gray-600 mb-8">
             Don&apos;t have an account?{" "}
-            <Link href="/register" className="text-blue-600 font-medium hover:underline">
+            <Link
+              href="/register"
+              className="text-blue-600 font-medium hover:underline"
+            >
               Create a new account now
             </Link>
             .
@@ -181,15 +215,17 @@ export default function Login() {
                 disabled={isLoading}
               />
               {touched.email && validateField("email", email) && (
-                <p className="text-red-500 text-xs mt-1">{validateField("email", email)}</p>
+                <p className="text-red-500 text-xs mt-1">
+                  {validateField("email", email)}
+                </p>
               )}
             </div>
 
-            <div>
+            <div className="relative">
               <input
                 id="password"
                 name="password"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 autoComplete="current-password"
                 required
                 value={password}
@@ -198,13 +234,32 @@ export default function Login() {
                   setLocalError("");
                   clearError();
                 }}
-                onBlur={() => setTouched((prev) => ({ ...prev, password: true }))}
+                onBlur={() =>
+                  setTouched((prev) => ({ ...prev, password: true }))
+                }
                 placeholder="Password"
-                className="w-full p-3 border-b border-gray-300 focus:border-blue-500 focus:outline-none bg-gray-100 rounded-lg transition-colors"
+                className="w-full p-3 pr-12 border-b border-gray-300 focus:border-blue-500 focus:outline-none bg-gray-100 rounded-lg transition-colors"
                 disabled={isLoading}
               />
+
+              {/* Toggle Button */}
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                tabIndex={-1}
+              >
+                {showPassword ? (
+                  <EyeOff size={20} strokeWidth={2} />
+                ) : (
+                  <Eye size={20} strokeWidth={2} />
+                )}
+              </button>
+
               {touched.password && validateField("password", password) && (
-                <p className="text-red-500 text-xs mt-1">{validateField("password", password)}</p>
+                <p className="text-red-500 text-xs mt-1">
+                  {validateField("password", password)}
+                </p>
               )}
             </div>
 
@@ -218,7 +273,10 @@ export default function Login() {
                 />
                 <span className="text-sm text-gray-600">Remember me</span>
               </label>
-              <Link href="/forgot-password" className="text-sm text-blue-600 hover:underline">
+              <Link
+                href="/forgot-password"
+                className="text-sm text-blue-600 hover:underline"
+              >
                 Forgot password?
               </Link>
             </div>
@@ -227,7 +285,9 @@ export default function Login() {
               <button
                 type="submit"
                 className={`w-full py-3 px-4 bg-black text-white font-medium rounded relative transition-opacity ${
-                  isLoading ? "opacity-70 cursor-not-allowed" : "hover:opacity-90"
+                  isLoading
+                    ? "opacity-70 cursor-not-allowed"
+                    : "hover:opacity-90"
                 }`}
                 disabled={isLoading}
               >
