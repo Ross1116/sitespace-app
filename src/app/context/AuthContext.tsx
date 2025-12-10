@@ -1,5 +1,6 @@
 "use client";
 
+import Cookies from "js-cookie";
 import {
   createContext,
   useContext,
@@ -94,6 +95,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAccessToken(data.access_token);
       setRefreshToken(data.refresh_token);
 
+      Cookies.set("accessToken", data.access_token, {
+        expires: 7, // Expires in 7 days
+        secure: true, // Essential for Vercel (HTTPS)
+        sameSite: "Strict",
+      });
+
       localStorage.setItem("accessToken", data.access_token);
       localStorage.setItem("refreshToken", data.refresh_token);
       localStorage.setItem("user", JSON.stringify(newUser));
@@ -166,6 +173,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAccessToken(null);
       setRefreshToken(null);
       localStorage.clear();
+      Cookies.remove("accessToken"); 
+
       router.push("/");
     }
   };
