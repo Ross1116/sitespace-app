@@ -14,10 +14,10 @@ export default function Footer() {
           {/* Company Info */}
           <div>
             <div className="flex items-center mb-4">
-              <Link href="/" passHref legacyBehavior>
-                <a>
-                  <Image src="/full-logo-dark.svg" alt="Sitespace" width={120} height={48} className="cursor-pointer hover:scale-105 transition-all" />
-                </a>
+              <Link href="/">
+
+                <Image src="/full-logo-dark.svg" alt="Sitespace" width={120} height={48} className="cursor-pointer hover:scale-105 transition-all" />
+
               </Link>
             </div>
             <p className="mb-4">{footer.description}</p>
@@ -81,7 +81,7 @@ export default function Footer() {
         </div>
       </div>
     </footer>
-  )
+  );
 }
 
 function SocialLink({ href, icon, ariaLabel }: { href: string; icon: React.ReactNode; ariaLabel: string }) {
