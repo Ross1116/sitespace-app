@@ -68,18 +68,16 @@ const generateTemporaryPassword = (): string => {
   const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   const lower = "abcdefghijklmnopqrstuvwxyz";
   const numbers = "0123456789";
-  const special = "!@#$%^&*"; // ✅ Specifically defined special chars
+  const special = "!@#$%^&*"; 
   const allChars = upper + lower + numbers + special;
 
-  // 1. GUARANTEE one of each type
   const requiredChars = [
     upper.charAt(Math.floor(Math.random() * upper.length)),
     lower.charAt(Math.floor(Math.random() * lower.length)),
     numbers.charAt(Math.floor(Math.random() * numbers.length)),
-    special.charAt(Math.floor(Math.random() * special.length)), // Guaranteed special char
+    special.charAt(Math.floor(Math.random() * special.length)),
   ];
 
-  // 2. Fill the rest of the length with random characters
   const remainingLength = length - requiredChars.length;
   for (let i = 0; i < remainingLength; i++) {
     requiredChars.push(
@@ -87,8 +85,6 @@ const generateTemporaryPassword = (): string => {
     );
   }
 
-  // 3. Shuffle the array so the special chars aren't always at the start
-  // Fisher-Yates Shuffle
   for (let i = requiredChars.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [requiredChars[i], requiredChars[j]] = [requiredChars[j], requiredChars[i]];
@@ -122,7 +118,6 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
     contractorProjectId: "",
   });
 
-  // Trade specialties list
   const tradeOptions = [
     { label: "Electrician", value: "electrician" },
     { label: "Plumber", value: "plumber" },
@@ -136,7 +131,6 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
     { label: "Other", value: "other" },
   ];
 
-  // Load project from localStorage
   useEffect(() => {
     const projectStorageKey = `project_${userId}`;
     const projectString = localStorage.getItem(projectStorageKey);
@@ -154,7 +148,6 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
     }
   }, [userId]);
 
-  // Reset states when modal closes
   useEffect(() => {
     if (!isOpen) {
       setEmailChecked(false);
@@ -177,7 +170,6 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
     const { name, value } = e.target;
     setContractor((prev) => ({ ...prev, [name]: value }));
 
-    // Reset email check if email changes
     if (name === "contractorEmail") {
       setEmailChecked(false);
       setExistingSubcontractor(null);
@@ -185,14 +177,10 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
     }
   };
 
-  // Check if subcontractor exists by email
   const checkSubcontractorExists = async (
     email: string
   ): Promise<SubcontractorResponse | null> => {
     try {
-      console.log("Checking if subcontractor exists:", email);
-
-      // Use search endpoint to find by email
       const response = await api.get("/subcontractors/search", {
         params: {
           search_term: email,
@@ -202,14 +190,12 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
 
       const subcontractors = response.data?.subcontractors || [];
 
-      // Find exact email match (case-insensitive)
       const exactMatch = subcontractors.find(
         (sub: SubcontractorResponse) =>
           sub.email.toLowerCase() === email.toLowerCase()
       );
 
       if (exactMatch) {
-        console.log("Found existing subcontractor:", exactMatch);
         return exactMatch;
       }
 
@@ -220,14 +206,12 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
     }
   };
 
-  // Handle email check
   const handleCheckEmail = async () => {
     if (!contractor.contractorEmail.trim()) {
       setError("Please enter an email address");
       return;
     }
 
-    // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(contractor.contractorEmail.trim())) {
       setError("Please enter a valid email address");
@@ -246,7 +230,6 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
       setEmailChecked(true);
 
       if (existing) {
-        // Check if already assigned to this project
         const alreadyAssigned = await checkAlreadyAssigned(
           contractor.contractorProjectId,
           existing.id
@@ -258,7 +241,6 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
         }
       }
     } catch (error) {
-      // ✅ Now we're using the error
       console.error("Error checking email:", error);
       setError("Failed to check email. Please try again.");
     } finally {
@@ -266,7 +248,6 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
     }
   };
 
-  // Check if subcontractor is already assigned to project
   const checkAlreadyAssigned = async (
     projectId: string,
     subcontractorId: string
@@ -305,15 +286,12 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
       if (existingSubcontractor) {
         subcontractorId = existingSubcontractor.id;
 
-        // link them to the project
         await api.post(
           `/subcontractors/${existingSubcontractor.id}/projects/${contractor.contractorProjectId}`
         );
 
         setSuccess("Adding existing subcontractor to your project...");
       } else {
-        console.log("Creating new subcontractor account...");
-
         if (!contractor.firstName.trim() || !contractor.lastName.trim()) {
           setError("First name and last name are required for new accounts");
           setIsSubmitting(false);
@@ -329,7 +307,8 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
           first_name: contractor.firstName.trim(),
           last_name: contractor.lastName.trim(),
           company_name: contractor.companyName.trim() || undefined,
-          trade_specialty: contractor.tradeSpecialty || undefined,
+          // Ensure empty string is converted to undefined
+          trade_specialty: contractor.tradeSpecialty || undefined, 
           phone: contractor.contractorPhone.trim() || undefined,
           project_id: contractor.contractorProjectId,
         };
@@ -343,9 +322,7 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
         subcontractorId = createdSubcontractor.id;
         isNewAccount = true;
 
-        // Send welcome email (only for new accounts)
         try {
-          console.log("Sending welcome email...");
           await api.post(
             `/subcontractors/${subcontractorId}/send-welcome-email`
           );
@@ -368,20 +345,27 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
     } catch (error: any) {
       console.error("Error processing subcontractor:", error);
 
-      // Handle "Already Assigned" errors specifically
-      const errorMessage = error.response?.data?.detail || error.message;
+      // Safe error extraction handling generic 500s or complex 422s
+      let errorMessage = "Failed to process request";
+      
+      if (error.response?.data?.detail) {
+        const detail = error.response.data.detail;
+        if (typeof detail === 'string') {
+          errorMessage = detail;
+        } else if (Array.isArray(detail)) {
+          // Flatten Pydantic validation errors
+          errorMessage = detail.map((err: any) => err.msg).join(", ");
+        } else {
+          errorMessage = JSON.stringify(detail);
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
 
-      if (
-        typeof errorMessage === "string" &&
-        errorMessage.includes("already assigned")
-      ) {
+      if (errorMessage.toLowerCase().includes("already assigned")) {
         setError("This subcontractor is already assigned to this project.");
       } else {
-        setError(
-          typeof errorMessage === "string"
-            ? errorMessage
-            : "Failed to process request"
-        );
+        setError(errorMessage);
       }
     } finally {
       setIsSubmitting(false);
@@ -522,7 +506,6 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
             {/* Show additional fields only for new accounts */}
             {emailChecked && !existingSubcontractor && (
               <>
-                {/* Divider */}
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center">
                     <span className="w-full border-t" />
@@ -534,7 +517,6 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
                   </div>
                 </div>
 
-                {/* First Name - Required for new accounts */}
                 <div className="space-y-2">
                   <Label htmlFor="firstName">
                     First Name <span className="text-red-500">*</span>
@@ -550,7 +532,6 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
                   />
                 </div>
 
-                {/* Last Name - Required for new accounts */}
                 <div className="space-y-2">
                   <Label htmlFor="lastName">
                     Last Name <span className="text-red-500">*</span>
@@ -566,7 +547,6 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
                   />
                 </div>
 
-                {/* Phone */}
                 <div className="space-y-2">
                   <Label htmlFor="contractorPhone">Phone Number</Label>
                   <Input
@@ -580,7 +560,6 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
                   />
                 </div>
 
-                {/* Company Name */}
                 <div className="space-y-2">
                   <Label htmlFor="companyName">Company Name</Label>
                   <Input
@@ -593,7 +572,6 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
                   />
                 </div>
 
-                {/* Trade Specialty */}
                 <div className="space-y-2">
                   <Label htmlFor="tradeSpecialty">Trade Specialty</Label>
                   <Select
