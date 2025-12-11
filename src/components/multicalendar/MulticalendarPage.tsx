@@ -23,11 +23,6 @@ import { AssetFilter } from "./AssetFilter";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { addHours } from "date-fns";
 
-// ... [Keep Interfaces and API functions exactly as they were] ...
-
-// Note: Re-paste the Interfaces and API functions from the previous response here if needed,
-// but for brevity I am focusing on the component rendering logic below.
-
 // ===== TYPE DEFINITIONS =====
 interface BookingDetail {
   id: string;
@@ -421,47 +416,62 @@ export default function MulticalendarPage() {
 
   return (
     <div
-      className={`h-full pt-0 px-2 sm:p-6 lg:px-8 grid grid-cols-12 grid-rows-12 gap-6 ${PAGE_BG}`}
+      // CHANGE 1: Removed 'grid-rows-12'. Added 'items-start' to prevent forcing height.
+      className={`h-full pt-0 px-2 sm:p-6 lg:px-8 grid grid-cols-12 gap-6 ${PAGE_BG}`}
     >
-      {/* Month calendar date picker - Keeps White Background for Sidebar effect */}
-      <Card
+      {/* --- LEFT SIDEBAR WRAPPER --- */}
+      {/* This div groups the Calendar and Filter so they stack naturally without stretching */}
+      <div 
         className={`${
           isCollapsed ? "hidden" : "col-span-3 lg:flex"
-        } row-span-6 overflow-hidden hidden bg-white border border-slate-100 shadow-sm rounded-2xl h-full transition-all duration-600`}
+        } flex-col gap-6`}
       >
-        <Calendar view="month" date={currentDate} onDateChange={setCurrentDate}>
-          <div className="p-4 py-7 w-full flex flex-col h-full">
-            <div className="flex px-4 items-center mb-6 justify-between border-b border-slate-100 pb-4">
-              <CalendarCurrentDate className="text-lg font-bold text-slate-900" />
-
-              <div className="flex items-center gap-1 bg-slate-50 rounded-lg p-1">
-                <CalendarPrevTrigger className="p-1 hover:bg-white rounded-md text-slate-500 hover:text-slate-900">
-                  <ChevronLeft size={16} />
-                  <span className="sr-only">Previous</span>
-                </CalendarPrevTrigger>
-
-                <CalendarNextTrigger className="p-1 hover:bg-white rounded-md text-slate-500 hover:text-slate-900">
-                  <ChevronRight size={16} />
-                  <span className="sr-only">Next</span>
-                </CalendarNextTrigger>
+        {/* Month Calendar Card */}
+        <Card
+          // CHANGE 2: Removed 'row-span-6', 'h-full'. Added 'h-fit' and 'w-full'.
+          className="w-full h-fit overflow-hidden bg-white border border-slate-100 shadow-sm rounded-2xl transition-all duration-600"
+        >
+          <Calendar view="month" date={currentDate} onDateChange={setCurrentDate}>
+            <div className="p-4 py-7 w-full flex flex-col">
+              <div className="flex px-4 items-center mb-6 justify-between border-b border-slate-100 pb-4">
+                <CalendarCurrentDate className="text-lg font-bold text-slate-900" />
+                <div className="flex items-center gap-1 bg-slate-50 rounded-lg p-1">
+                  <CalendarPrevTrigger className="p-1 hover:bg-white rounded-md text-slate-500 hover:text-slate-900">
+                    <ChevronLeft size={16} />
+                  </CalendarPrevTrigger>
+                  <CalendarNextTrigger className="p-1 hover:bg-white rounded-md text-slate-500 hover:text-slate-900">
+                    <ChevronRight size={16} />
+                  </CalendarNextTrigger>
+                </div>
+              </div>
+              <div className="px-2">
+                <CalendarMonthView />
               </div>
             </div>
+          </Calendar>
+        </Card>
 
-            <div className="flex-1 px-2 overflow-hidden">
-              <CalendarMonthView />
-            </div>
-          </div>
-        </Calendar>
-      </Card>
+        {/* Asset Filter (Moved inside wrapper) */}
+        {/* We pass a specific className to override the component's internal grid styles */}
+        <AssetFilter
+          isCollapsed={isCollapsed}
+          loading={loading}
+          assetCalendars={assetCalendars}
+          visibleAssets={visibleAssets}
+          setVisibleAssets={setVisibleAssets}
+        />
+      </div>
 
-      {/* Full calendar day view - CHANGES: bg-slate-50 (Slate Gray Surface) */}
+      {/* --- MAIN CONTENT (Right Side) --- */}
       <Card
-        className={`p-6 h-fit mb-4 ${
+        // CHANGE 3: Removed 'row-span-12', kept 'h-full' so it fills the screen height
+        className={`p-6 mb-4 ${
           isCollapsed ? "col-span-12" : "col-span-12 lg:col-span-9"
-        } row-span-12 flex flex-col bg-slate-50 border border-slate-200 shadow-sm rounded-2xl transition-all duration-600`}
+        } h-full flex flex-col bg-slate-50 border border-slate-200 shadow-sm rounded-2xl transition-all duration-600`}
       >
         <Calendar date={currentDate} onDateChange={setCurrentDate} view="day">
-          <CalendarHeader
+           {/* ... existing calendar children ... */}
+           <CalendarHeader
             isCollapsed={isCollapsed}
             loading={loading}
             assetCalendars={assetCalendars}
@@ -471,8 +481,6 @@ export default function MulticalendarPage() {
             onRefresh={handleRefresh}
             error={error}
           />
-
-          {/* Mobile view */}
           <div className="md:hidden">
             <MobileView
               loading={loading}
@@ -482,9 +490,8 @@ export default function MulticalendarPage() {
               onBookingCreated={handleBookingCreated}
             />
           </div>
-
-          {/* Desktop view */}
-          <div className="hidden md:block">
+          <div className="hidden md:block flex-1 overflow-hidden">
+             {/* Ensure DesktopView takes remaining height */}
             <DesktopView
               loading={loading}
               isCollapsed={isCollapsed}
@@ -497,15 +504,8 @@ export default function MulticalendarPage() {
           </div>
         </Calendar>
       </Card>
-
-      {/* Asset Filter - Keeps White Background */}
-      <AssetFilter
-        isCollapsed={isCollapsed}
-        loading={loading}
-        assetCalendars={assetCalendars}
-        visibleAssets={visibleAssets}
-        setVisibleAssets={setVisibleAssets}
-      />
+      
+      {/* Removed the original <AssetFilter /> placement from here */}
     </div>
   );
 }

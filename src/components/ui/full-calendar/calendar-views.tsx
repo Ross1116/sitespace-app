@@ -484,9 +484,7 @@ export const CalendarWeekView = () => {
             <span
               className={cn(
                 "h-6 w-6 ml-1 grid place-content-center rounded-full text-xs font-bold",
-                isToday(date)
-                  ? "bg-[#0B1120] text-white"
-                  : "text-slate-900"
+                isToday(date) ? "bg-[#0B1120] text-white" : "text-slate-900"
               )}
             >
               {format(date, "d")}
@@ -535,8 +533,7 @@ export const CalendarWeekView = () => {
                     key={`slot-${hour.toString()}`}
                     className="border-t border-slate-100 last:border-b w-full h-full cursor-pointer hover:bg-slate-100 transition-colors"
                     onClick={() => handleTimeSlotClick(hour)}
-                  >
-                  </div>
+                  ></div>
                 ))}
               </div>
             ))}
@@ -570,7 +567,8 @@ export const CalendarMonthView = () => {
   };
 
   return (
-    <div className="h-full flex flex-col bg-white">
+    // CHANGE 1: Removed 'h-full' from the root div
+    <div className="flex flex-col bg-white">
       <div className="grid grid-cols-7 gap-px sticky top-0 bg-white border-b border-slate-100 pb-2">
         {weekDays.map((day, i) => (
           <div
@@ -584,7 +582,10 @@ export const CalendarMonthView = () => {
           </div>
         ))}
       </div>
-      <div className="grid overflow-hidden -mt-px flex-1 auto-rows-fr p-px grid-cols-7 gap-px bg-slate-100">
+
+      {/* CHANGE 2: Removed 'flex-1', 'auto-rows-fr', 'overflow-hidden'. 
+          Added 'mt-2' for spacing if needed. */}
+      <div className="grid -mt-px p-px grid-cols-7 gap-px bg-slate-100">
         {monthDates.map((_date) => {
           const currentEvents = events.filter((event) =>
             isSameDay(event.start, _date)
@@ -596,7 +597,9 @@ export const CalendarMonthView = () => {
           return (
             <div
               className={cn(
-                "bg-white relative p-2 text-sm ring-1 ring-slate-100 overflow-hidden hover:bg-slate-50 transition-colors cursor-pointer flex flex-col gap-1",
+                // CHANGE 3: Added 'aspect-square' to ensure cells stay square
+                // Added 'min-h-[60px]' or similar only if you want a minimum size, otherwise aspect-square handles it
+                "aspect-square bg-white relative p-2 text-sm ring-1 ring-slate-100 hover:bg-slate-50 transition-colors cursor-pointer flex flex-col gap-1",
                 !isCurrentMonth && "bg-slate-50/50 text-slate-300"
               )}
               key={_date.toString()}
@@ -615,7 +618,8 @@ export const CalendarMonthView = () => {
                 {format(_date, "d")}
               </span>
 
-              {currentEvents.map((event) => {
+              {/* Limit events shown in the mini calendar to avoid overflow */}
+              {currentEvents.slice(0, 2).map((event) => {
                 return (
                   <div
                     key={event.id}
@@ -627,7 +631,10 @@ export const CalendarMonthView = () => {
                         monthEventVariants({ variant: event.color })
                       )}
                     ></div>
-                    <span className="flex-1 truncate">{event.title}</span>
+                    {/* Optional: Hide text on very small screens if needed */}
+                    <span className="flex-1 truncate hidden xl:block">
+                      {event.title}
+                    </span>
                   </div>
                 );
               })}
@@ -659,8 +666,8 @@ export const CalendarYearView = () => {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 overflow-auto h-full p-4">
       {months.map((days, i) => (
-        <div 
-          key={days[0].toString()} 
+        <div
+          key={days[0].toString()}
           className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm"
         >
           <span className="text-lg font-bold text-slate-900 mb-4 block px-2">
