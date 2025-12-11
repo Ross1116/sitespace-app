@@ -56,11 +56,13 @@ function TopNav() {
                 <NavigationMenuItem key={item.title}>
                   {item.href ? (
                     /* FIX 1: Add legacyBehavior passHref */
-                    <Link href={item.href} legacyBehavior passHref>
+                    (<Link href={item.href}>
+                      {/* @next-codemod-error This Link previously used the now removed `legacyBehavior` prop, and has a child that might not be an anchor. The codemod bailed out of lifting the child props to the Link. Check that the child component does not render an anchor, and potentially move the props manually to Link. */
+                      }
                       <NavigationMenuLink className="font-medium text-sm px-3 py-2 hover:bg-orange-200/50 rounded-md transition-colors">
                         {item.title}
                       </NavigationMenuLink>
-                    </Link>
+                    </Link>)
                   ) : (
                     <>
                       <NavigationMenuTrigger className="font-medium text-sm bg-transparent hover:bg-orange-200/50 focus:bg-orange-200/50 data-[active]:bg-orange-200/50 data-[state=open]:bg-orange-200/50 transition-colors">
@@ -87,17 +89,14 @@ function TopNav() {
                           <div className="flex flex-col text-sm h-full justify-end space-y-1">
                             {item.items?.map((subItem) => (
                               /* FIX 2: Add legacyBehavior passHref */
-                              <Link
-                                href={subItem.href}
-                                key={subItem.title}
-                                legacyBehavior
-                                passHref
-                              >
+                              (<Link href={subItem.href} key={subItem.title}>
+                                {/* @next-codemod-error This Link previously used the now removed `legacyBehavior` prop, and has a child that might not be an anchor. The codemod bailed out of lifting the child props to the Link. Check that the child component does not render an anchor, and potentially move the props manually to Link. */
+                                }
                                 <NavigationMenuLink className="flex flex-row justify-between items-center hover:bg-orange-200/50 py-2 px-3 rounded-md transition-colors">
                                   <span>{subItem.title}</span>
                                   <MoveRight className="w-4 h-4 text-muted-foreground" />
                                 </NavigationMenuLink>
-                              </Link>
+                              </Link>)
                             ))}
                           </div>
                         </div>
