@@ -356,7 +356,7 @@ export default function HomePage() {
     if (!proj || !proj.id) return;
     setShowProjectSelector(false);
     localStorage.setItem(`project_${userId}`, JSON.stringify(proj));
-    setSelectedProject(proj);
+    // setSelectedProject(proj);
     // Reload to ensure all child components and hooks (like CreateBookingForm) re-read the fresh localStorage
     window.location.reload();
   };
