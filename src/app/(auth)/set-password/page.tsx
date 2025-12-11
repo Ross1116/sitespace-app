@@ -25,9 +25,9 @@ function SetPasswordForm() {
   const [tokenValid, setTokenValid] = useState(true);
 
   // 1. Force logout on mount
-  useEffect(() => {
-    if (isAuthenticated) logout();
-  }, [isAuthenticated, logout]);
+  // useEffect(() => {
+  //   if (isAuthenticated) logout();
+  // }, [isAuthenticated, logout]);
 
   // 2. Validate Token Presence
   useEffect(() => {
