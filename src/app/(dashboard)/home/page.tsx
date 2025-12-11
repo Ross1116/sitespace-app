@@ -63,6 +63,19 @@ interface Booking {
   asset?: { id: string; name: string };
 }
 
+interface UserProfile {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  company_name: string | null;
+  trade_specialty: string | null;
+  phone: string | null;
+  is_active: boolean;
+  role: string;
+  user_type: string;
+}
+
 // --- Color Palette ---
 const PALETTE = {
   bg: "bg-[hsl(20,60%,99%)]",
@@ -132,6 +145,7 @@ const groupBookingsByMonth = (bookings: Booking[]) => {
 export default function HomePage() {
   const { user } = useAuth();
 
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   // Data States
   const [projects, setProjects] = useState<any[]>([]);
   const [selectedProject, setSelectedProject] = useState<any | null>(null);
@@ -208,6 +222,10 @@ export default function HomePage() {
 
   const fetchSubcontractors = useCallback(async () => {
     if (!userId || !selectedProject) return;
+    if (user?.role === "subcontractor") {
+      setSubcontractorCount(0);
+      return;
+    }
     try {
       const projectId = selectedProject.id || selectedProject.project_id;
       const isAdmin = user?.role === "admin";
@@ -257,6 +275,19 @@ export default function HomePage() {
   );
 
   // --- Effects ---
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await api.get<UserProfile>("/auth/me");
+        setProfile(response.data);
+      } catch (error) {
+        console.error("Failed to fetch user profile", error);
+      }
+    };
+
+    fetchProfile();
+  }, []);
+
   useEffect(() => {
     if (!user || hasInitialized.current) return;
     fetchProjects();
@@ -327,29 +358,50 @@ export default function HomePage() {
           <div className="w-1.5 h-10 rounded-full bg-gradient-to-b from-slate-200 to-slate-50" />
           <div className="flex flex-col">
             <p className="text-sm text-slate-500">Welcome back,</p>
-            <p className="text-lg md:text-xl font-semibold text-slate-900">
-              {user?.first_name ? `${user.first_name} 👋` : `${user?.email} 👋`}
+
+            {/* 1. Name: Tries 'profile' first, falls back to 'user' context */}
+            <p className="text-lg md:text-xl font-semibold text-slate-900 capitalize">
+              {profile?.first_name
+                ? `${profile.first_name} 👋`
+                : user?.first_name
+                ? `${user.first_name} 👋`
+                : "User 👋"}
             </p>
-            <p className="text-xs text-slate-400 mt-1">
-              Here’s what’s happening in your workspace today.
-            </p>
+
+            {/* 2. Role & Company: Uses the new API data */}
+            <div className="flex items-center gap-2 mt-1">
+              {/* Role Badge */}
+              <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-500 px-2 py-0.5 rounded">
+                {profile?.role || user?.role || "Member"}
+              </span>
+
+              {/* Company Name (only shows if it exists) */}
+              {profile?.company_name && (
+                <>
+                  <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                  <span className="text-xs text-slate-500 font-medium truncate max-w-[150px] sm:max-w-xs">
+                    {profile.company_name}
+                  </span>
+                </>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Profile (compact card) */}
         <div className="flex items-center gap-3 pl-4 border-l border-slate-100">
-          <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 font-semibold border border-slate-200">
-            {user?.first_name?.charAt(0) || "U"}
+          <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 font-bold border border-slate-200 shadow-sm text-sm">
+            {profile?.first_name?.charAt(0) || user?.email?.charAt(0) || "U"}
           </div>
 
           <div className="hidden sm:flex flex-col leading-tight max-w-xs">
-            <p className="text-sm font-medium text-slate-900">
-              {user?.first_name && user?.last_name
-                ? `${user.first_name} ${user.last_name}`
-                : "Unknown User"}
+            <p className="text-sm font-bold text-slate-900 truncate">
+              {profile?.first_name
+                ? `${profile.first_name} ${profile.last_name}`
+                : "Loading..."}
             </p>
             <p className="text-xs text-slate-500 truncate">
-              {user?.email || "No email available"}
+              {profile?.email || user?.email}
             </p>
           </div>
         </div>
