@@ -318,7 +318,7 @@ export default function HomePage() {
 
   return (
     <div
-      className={`min-h-screen ${PALETTE.bg} p-2 sm:p-4 lg:p-6 space-y-8 font-sans text-slate-800`}
+      className={`min-h-screen ${PALETTE.bg} p-2 sm:p-4 lg:p-6 space-y-4 font-sans text-slate-800`}
     >
       {/* --- HEADER --- */}
       <div className="w-full max-w-screen mx-auto flex items-center justify-between gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-100">

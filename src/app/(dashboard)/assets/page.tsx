@@ -4,7 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { 
   X, Plus, PencilIcon, TrashIcon, Search, Box, MapPin, 
-  User, Calendar, Clock, Tag, Briefcase, FileText, Info
+  User, Calendar, Clock, Tag, Briefcase, FileText, Info,
+  Wrench
 } from "lucide-react";
 import api from "@/lib/api";
 import { useAuth } from "@/app/context/AuthContext";
@@ -18,14 +19,14 @@ interface AssetFromBackend {
   id: string;
   asset_code: string;
   name: string;
-  asset_type: string;
+  type?: string | null;
   description?: string;
   status: "available" | "in_use" | "maintenance" | "retired";
   project_id?: string;
   created_at: string;
   updated_at: string;
-  location?: string;
-  poc?: string;
+  location?: string; 
+  poc?: string; 
   usage_instructions?: string;
   maintenance_start_date?: string;
   maintenance_end_date?: string;
@@ -42,11 +43,13 @@ interface AssetListResponse {
 interface Asset {
   assetKey: string;
   assetTitle: string;
-  assetLocation: string;
+  assetDescription: string;
   assetType: string;
   assetStatus: string;
+  assetLastUpdated: string;
   assetPoc: string;
   assetProject: string;
+  assetLocation: string;
   maintanenceStartdt: string;
   maintanenceEnddt: string;
   usageInstructions: string;
@@ -61,17 +64,21 @@ interface Project {
 
 // ===== HELPER FUNCTIONS =====
 const transformBackendAsset = (backendAsset: AssetFromBackend): Asset => {
+  const descriptionText = backendAsset.description || backendAsset.usage_instructions || "No description provided";
+  
   return {
     assetKey: backendAsset.id,
     assetTitle: backendAsset.name,
-    assetLocation: backendAsset.location || backendAsset.description || "",
-    assetType: backendAsset.asset_type,
+    assetDescription: descriptionText,
+    assetType: backendAsset.type || "General",
     assetStatus: capitalizeStatus(backendAsset.status),
+    assetLastUpdated: backendAsset.updated_at,
     assetPoc: backendAsset.poc || "Unassigned",
     assetProject: backendAsset.project_id || "",
+    assetLocation: backendAsset.location || "",
     maintanenceStartdt: backendAsset.maintenance_start_date || "",
     maintanenceEnddt: backendAsset.maintenance_end_date || "",
-    usageInstructions: backendAsset.usage_instructions || backendAsset.description || "",
+    usageInstructions: backendAsset.usage_instructions || "",
     assetCode: backendAsset.asset_code,
     _originalData: backendAsset,
   };
@@ -87,56 +94,45 @@ const capitalizeStatus = (status: string): string => {
   return statusMap[status] || status;
 };
 
+// ✅ UPDATED: Added 'sidebarClassName' for high-contrast visibility on dark backgrounds
 const formatStatusForDisplay = (status: string): {
   label: string;
-  className: string;
+  className: string; // For Table (Light bg)
+  sidebarClassName: string; // For Sidebar (Dark bg)
   dotColor: string;
-  bgColor: string;
 } => {
-  const statusConfig: Record<string, { label: string; className: string; dotColor: string; bgColor: string }> = {
+  const statusConfig: Record<string, { label: string; className: string; sidebarClassName: string; dotColor: string }> = {
     Operational: {
       label: "Operational",
       className: "text-emerald-700 border-emerald-200 bg-emerald-50",
+      sidebarClassName: "text-emerald-300 bg-emerald-500/20 border-emerald-500/30",
       dotColor: "bg-emerald-500",
-      bgColor: "bg-emerald-50"
     },
     "In Use": {
       label: "In Use",
       className: "text-blue-700 border-blue-200 bg-blue-50",
+      sidebarClassName: "text-blue-300 bg-blue-500/20 border-blue-500/30",
       dotColor: "bg-blue-500",
-      bgColor: "bg-blue-50"
     },
     Maintenance: {
       label: "Maintenance",
       className: "text-amber-700 border-amber-200 bg-amber-50",
+      sidebarClassName: "text-amber-300 bg-amber-500/20 border-amber-500/30",
       dotColor: "bg-amber-500",
-      bgColor: "bg-amber-50"
     },
     Retired: {
       label: "Retired",
       className: "text-red-700 border-red-200 bg-red-50",
+      sidebarClassName: "text-red-300 bg-red-500/20 border-red-500/30",
       dotColor: "bg-red-500",
-      bgColor: "bg-red-50"
     },
   };
 
   return statusConfig[status] || {
     label: status,
     className: "text-slate-700 border-slate-200 bg-slate-50",
+    sidebarClassName: "text-slate-300 bg-slate-500/20 border-slate-500/30",
     dotColor: "bg-slate-500",
-    bgColor: "bg-slate-50"
-  };
-};
-
-const formatMaintenanceDate = (start: string, end: string) => {
-  if (!start || !end) return null;
-  const s = parseISO(start);
-  const e = parseISO(end);
-  if (!isValid(s) || !isValid(e)) return null;
-  
-  return {
-    text: `${format(s, "MMM d")} - ${format(e, "MMM d, yyyy")}`,
-    isActive: new Date() >= s && new Date() <= e
   };
 };
 
@@ -157,6 +153,8 @@ export default function AssetsTable() {
   const { user } = useAuth();
   const userId = user?.id;
   const initialLoadComplete = useRef(false);
+
+  const STORAGE_KEY = `assets_v2_${userId}`;
 
   // Load project from localStorage
   useEffect(() => {
@@ -195,11 +193,11 @@ export default function AssetsTable() {
       setAssets(transformedAssets);
       setTotalAssets(total);
 
-      localStorage.setItem(`assets_${userId}`, JSON.stringify(transformedAssets));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(transformedAssets));
       initialLoadComplete.current = true;
     } catch (error: any) {
       console.error("Error fetching assets:", error);
-      const cachedAssets = localStorage.getItem(`assets_${userId}`);
+      const cachedAssets = localStorage.getItem(STORAGE_KEY);
       if (cachedAssets) {
         try {
           setAssets(JSON.parse(cachedAssets));
@@ -212,8 +210,8 @@ export default function AssetsTable() {
 
   useEffect(() => {
     if (!user || hasFetched.current || !project) return;
-    const storageKey = `assets_${userId}`;
-    const cachedAssets = localStorage.getItem(storageKey);
+    
+    const cachedAssets = localStorage.getItem(STORAGE_KEY);
 
     if (cachedAssets) {
       try {
@@ -223,7 +221,7 @@ export default function AssetsTable() {
           setLoading(false);
         }
       } catch (error) {
-        localStorage.removeItem(storageKey);
+        localStorage.removeItem(STORAGE_KEY);
       }
     }
 
@@ -243,7 +241,8 @@ export default function AssetsTable() {
 
   const filteredAssets = assets.filter(asset => 
     asset.assetTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    asset.assetCode.toLowerCase().includes(searchTerm.toLowerCase())
+    asset.assetCode.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    asset.assetType.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handlePageChange = (pageNumber: number) => {
@@ -277,12 +276,12 @@ export default function AssetsTable() {
     }
   };
 
-  const handleUpdateAsset = (updatedAsset: Asset) => {
+  const handleUpdateAsset = (updatedAsset: any) => {
     setAssets((prevAssets) =>
-      prevAssets.map((a) => (a.assetKey === updatedAsset.assetKey ? updatedAsset : a))
+      prevAssets.map((a) => (a.assetKey === updatedAsset.assetKey ? { ...a, ...updatedAsset } : a))
     );
     if (selectedAsset?.assetKey === updatedAsset.assetKey) {
-      setSelectedAsset(updatedAsset);
+      setSelectedAsset({ ...selectedAsset, ...updatedAsset });
     }
     fetchAssets(true);
   };
@@ -305,7 +304,6 @@ export default function AssetsTable() {
                     </div>
 
                     <div className="flex flex-col sm:flex-row items-center gap-4 w-full xl:w-auto">
-                        
                         {/* Stats Cards */}
                         <div className="flex gap-3 w-full sm:w-auto">
                             <div className="bg-[#0B1120] text-white rounded-xl px-5 py-2 flex flex-col items-center justify-center min-w-[110px] shadow-md shadow-slate-900/10">
@@ -332,7 +330,7 @@ export default function AssetsTable() {
                 <div className="mb-4 relative max-w-sm">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <Input 
-                        placeholder="Search by name or code..." 
+                        placeholder="Search by name, code, or type..." 
                         className="pl-10 bg-slate-50 border-transparent focus:bg-white transition-all rounded-xl h-10 text-sm"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -342,10 +340,10 @@ export default function AssetsTable() {
                 {/* Table Header */}
                 <div className="hidden sm:grid grid-cols-12 gap-4 bg-gradient-to-r from-[#0f2a4a] to-[#0B1120] text-white py-3.5 px-6 rounded-xl text-sm font-semibold shadow-md shadow-slate-200 mb-4">
                     <div className="col-span-3 pl-2">Asset Name</div>
+                    <div className="col-span-2">Type</div>
                     <div className="col-span-2">Status</div>
-                    <div className="col-span-2">Location</div>
-                    <div className="col-span-3">Maintenance Schedule</div>
-                    <div className="col-span-1">Contact</div>
+                    <div className="col-span-3">Description</div>
+                    <div className="col-span-1">Last Updated</div>
                     <div className="col-span-1 text-center">Action</div>
                 </div>
 
@@ -364,8 +362,11 @@ export default function AssetsTable() {
                         filteredAssets.map((asset) => {
                             const isSelected = selectedAsset?.assetKey === asset.assetKey;
                             const statusDisplay = formatStatusForDisplay(asset.assetStatus);
-                            const maintenance = formatMaintenanceDate(asset.maintanenceStartdt, asset.maintanenceEnddt);
                             
+                            const updatedDate = asset.assetLastUpdated 
+                                ? format(parseISO(asset.assetLastUpdated), "MMM d, yyyy")
+                                : "N/A";
+
                             return (
                                 <div 
                                     key={asset.assetKey}
@@ -393,8 +394,15 @@ export default function AssetsTable() {
                                             <span className="text-[10px] font-mono text-slate-400">{asset.assetCode}</span>
                                         </div>
                                     </div>
+
+                                    {/* 2. Type */}
+                                    <div className="col-span-2 text-slate-600 text-xs sm:text-sm font-medium flex items-center gap-2">
+                                        <span className="sm:hidden text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Type</span>
+                                        <Wrench size={14} className="text-slate-400 hidden sm:block" />
+                                        <span className="truncate capitalize">{asset.assetType}</span>
+                                    </div>
                                     
-                                    {/* 2. Status */}
+                                    {/* 3. Status */}
                                     <div className="col-span-2">
                                         <span className="sm:hidden text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Status</span>
                                         <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border ${statusDisplay.className}`}>
@@ -402,31 +410,22 @@ export default function AssetsTable() {
                                             {statusDisplay.label}
                                         </div>
                                     </div>
-
-                                    {/* 3. Location */}
-                                    <div className="col-span-2 text-slate-600 text-xs sm:text-sm font-medium flex items-center gap-2">
-                                        <span className="sm:hidden text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Location</span>
-                                        <MapPin size={14} className="text-slate-400 hidden sm:block" />
-                                        <span className="truncate">{asset.assetLocation || "—"}</span>
-                                    </div>
                                     
-                                    {/* 4. Maintenance */}
+                                    {/* 4. Description */}
                                     <div className="col-span-3 text-xs sm:text-sm font-medium">
-                                        <span className="sm:hidden text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Maintenance</span>
-                                        {maintenance ? (
-                                            <div className={`flex items-center gap-2 ${maintenance.isActive ? 'text-amber-700 font-semibold' : 'text-slate-500'}`}>
-                                                <Calendar size={14} className="shrink-0" />
-                                                <span className="truncate">{maintenance.text}</span>
-                                            </div>
-                                        ) : (
-                                            <span className="text-slate-400 text-xs">—</span>
-                                        )}
+                                        <span className="sm:hidden text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Description</span>
+                                        <span className="text-slate-500 truncate block max-w-full" title={asset.assetDescription}>
+                                            {asset.assetDescription}
+                                        </span>
                                     </div>
 
-                                    {/* 5. Contact */}
+                                    {/* 5. Last Updated */}
                                     <div className="col-span-1 text-slate-500 text-xs sm:text-sm font-medium truncate">
-                                        <span className="sm:hidden text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Contact</span>
-                                        {asset.assetPoc === "Unassigned" ? <span className="text-slate-300 text-xs italic">Empty</span> : asset.assetPoc}
+                                        <span className="sm:hidden text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Updated</span>
+                                        <span className="flex items-center gap-1">
+                                            <Clock size={12} className="hidden sm:inline" />
+                                            {updatedDate}
+                                        </span>
                                     </div>
                                     
                                     {/* 6. Actions */}
@@ -499,7 +498,8 @@ export default function AssetsTable() {
                                 <div className="h-10 w-10 rounded-lg bg-white/10 flex items-center justify-center border border-white/20">
                                     <Box size={20} />
                                 </div>
-                                <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border ${formatStatusForDisplay(selectedAsset.assetStatus).bgColor} bg-opacity-20 border-white/10 text-white`}>
+                                {/* ✅ UPDATED: Uses specific 'sidebarClassName' for legibility on dark header */}
+                                <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border ${formatStatusForDisplay(selectedAsset.assetStatus).sidebarClassName}`}>
                                     <div className={`h-1.5 w-1.5 rounded-full ${formatStatusForDisplay(selectedAsset.assetStatus).dotColor}`} />
                                     {selectedAsset.assetStatus}
                                 </div>
@@ -545,69 +545,37 @@ export default function AssetsTable() {
                             </div>
                         </div>
 
-                        {/* 2. Logistics */}
-                        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Logistics & Contact</h3>
-                            <div className="grid grid-cols-1 gap-4">
-                                <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
-                                    <MapPin className="h-5 w-5 text-slate-500 mt-0.5" />
-                                    <div>
-                                        <p className="text-[10px] text-slate-500 font-bold uppercase mb-0.5">Location</p>
-                                        <p className="text-sm font-semibold text-slate-900">{selectedAsset.assetLocation || "Not specified"}</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
-                                    <User className="h-5 w-5 text-slate-500 mt-0.5" />
-                                    <div>
-                                        <p className="text-[10px] text-slate-500 font-bold uppercase mb-0.5">Point of Contact</p>
-                                        <p className="text-sm font-semibold text-slate-900">{selectedAsset.assetPoc}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* 3. Status & Maintenance */}
-                        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Status & Health</h3>
-                            <div className="space-y-4">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-sm font-medium text-slate-500">Current Status</span>
-                                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${formatStatusForDisplay(selectedAsset.assetStatus).className}`}>
-                                        {selectedAsset.assetStatus}
-                                    </span>
-                                </div>
-                                
-                                {selectedAsset.maintanenceStartdt && selectedAsset.maintanenceEnddt ? (
-                                    <div className="bg-amber-50 rounded-lg p-3 border border-amber-100">
-                                        <div className="flex items-center gap-2 mb-2 text-amber-800 font-semibold text-xs uppercase tracking-wide">
-                                            <Clock size={14} /> Scheduled Maintenance
-                                        </div>
-                                        <div className="flex justify-between items-center text-sm">
-                                            <span className="text-slate-600">Start: <strong>{format(new Date(selectedAsset.maintanenceStartdt), "MMM d, yyyy")}</strong></span>
-                                            <span className="text-slate-400 mx-2">→</span>
-                                            <span className="text-slate-600">End: <strong>{format(new Date(selectedAsset.maintanenceEnddt), "MMM d, yyyy")}</strong></span>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="p-3 bg-slate-50 rounded-lg text-center text-xs text-slate-400 italic">
-                                        No maintenance scheduled
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* 4. Instructions */}
+                        {/* 2. Description */}
                         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
                             <div className="flex items-center gap-2 mb-2 border-b border-slate-100 pb-2">
                                 <FileText className="h-4 w-4 text-slate-400" />
-                                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Usage Instructions</h3>
+                                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Description</h3>
                             </div>
                             <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">
-                                {selectedAsset.usageInstructions || "No additional instructions provided."}
+                                {selectedAsset.assetDescription}
                             </p>
                         </div>
 
-                        {/* 5. Audit Timestamps */}
+                        {/* 3. Status & Dates */}
+                        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Logistics</h3>
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm font-medium text-slate-500">Last Updated</span>
+                                    <span className="text-sm font-semibold text-slate-900">
+                                      {selectedAsset.assetLastUpdated 
+                                        ? format(parseISO(selectedAsset.assetLastUpdated), "PPP p")
+                                        : "N/A"}
+                                    </span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm font-medium text-slate-500">Contact</span>
+                                    <span className="text-sm font-semibold text-slate-900">{selectedAsset.assetPoc}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 4. Audit Timestamps */}
                         {selectedAsset._originalData && (
                             <div className="text-center space-y-1 py-2">
                                 <p className="text-[10px] text-slate-400">
