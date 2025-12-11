@@ -47,6 +47,7 @@ type CreateBookingForm = {
   defaultAssetName?: string;
 };
 
+// ✅ UPDATED: Added 'purpose' to match backend schema
 interface BookingCreateRequest {
   project_id?: string;
   subcontractor_id?: string;
@@ -55,6 +56,7 @@ interface BookingCreateRequest {
   start_time: string;
   end_time: string;
   notes?: string;
+  purpose?: string; 
 }
 
 interface BookingDetail {
@@ -68,6 +70,7 @@ interface BookingDetail {
   end_time: string;
   status: string;
   notes?: string;
+  purpose?: string; // ✅ Added purpose
   created_at: string;
   updated_at: string;
   [key: string]: any;
@@ -150,7 +153,7 @@ export function CreateBookingForm({
     }
   }, [userId]);
 
-  // Load assets from localStorage - FIXED MAPPING HERE
+  // Load assets from localStorage
   useEffect(() => {
     const assetString = localStorage.getItem(`assets_${userId}`);
     if (!assetString) {
@@ -162,12 +165,10 @@ export function CreateBookingForm({
 
     try {
       const parsedAssets = JSON.parse(assetString);
-
-      // ✅ FIX: Map backend fields (id, name) to frontend fields (assetKey, assetTitle)
       const normalizedAssets = parsedAssets.map((a: any) => ({
         ...a,
-        assetKey: a.id || a.assetKey, // Use 'id' from backend as 'assetKey'
-        assetTitle: a.name || a.assetTitle, // Use 'name' from backend as 'assetTitle'
+        assetKey: a.id || a.assetKey, 
+        assetTitle: a.name || a.assetTitle, 
       }));
 
       setAssets(normalizedAssets);
@@ -179,7 +180,7 @@ export function CreateBookingForm({
     }
   }, [userId]);
 
-  // Replace the existing useEffect that loads subcontractors with this block
+  // Load subcontractors
   useEffect(() => {
     const loadSubcontractors = async () => {
       if (!project?.id || !isManager) {
@@ -188,23 +189,18 @@ export function CreateBookingForm({
 
       setLoadingSubcontractors(true);
       try {
-        // New endpoint format provided by you
         const response = await api.get(
           `/subcontractors/my-subcontractors`,
           {
             params: {
               skip: 0,
-              limit: 100, // fetch up to 100; adjust if you want paging
+              limit: 100, 
               is_active: true,
               project_id: project.id,
             },
           }
         );
 
-        // Response shape: could be an array or paginated object. Try common shapes:
-        // 1) response.data -> array
-        // 2) response.data.subcontractors -> array
-        // 3) response.data.data -> array
         let subsData: any[] = [];
 
         if (Array.isArray(response.data)) {
@@ -217,10 +213,8 @@ export function CreateBookingForm({
           response.data.records &&
           Array.isArray(response.data.records)
         ) {
-          // sometimes railway/python backends use 'records'
           subsData = response.data.records;
         } else {
-          // fallback: try to find array anywhere in payload
           const values = Object.values(response.data || {});
           const arr = values.find((v) => Array.isArray(v));
           if (arr) subsData = arr;
@@ -258,12 +252,11 @@ export function CreateBookingForm({
             sub.contractorTrade ||
             sub.role ||
             "",
-          raw: sub, // keep raw payload for debugging if needed
+          raw: sub,
         }));
 
         setSubcontractors(normalizedSubs);
 
-        // cache for fallback if API later fails
         try {
           localStorage.setItem(
             `subcontractors_${userId}`,
@@ -274,45 +267,18 @@ export function CreateBookingForm({
         }
       } catch (error: any) {
         console.error("Error loading subcontractors:", error);
-
         // Fallback: try cached subcontractors
         const cachedSubs = localStorage.getItem(`subcontractors_${userId}`);
         if (cachedSubs) {
           try {
             const parsedSubs = JSON.parse(cachedSubs);
             const normalizedCached = parsedSubs.map((sub: any) => ({
-              id:
-                sub.id ||
-                sub.subcontractor_id ||
-                sub.subcontractorKey ||
-                sub.uuid ||
-                sub.key,
-              first_name:
-                sub.first_name ||
-                sub.firstName ||
-                (typeof sub.name === "string" ? sub.name.split(" ")[0] : "") ||
-                "",
-              last_name:
-                sub.last_name ||
-                sub.lastName ||
-                (typeof sub.name === "string"
-                  ? sub.name.split(" ").slice(1).join(" ")
-                  : "") ||
-                "",
-              email:
-                sub.email || sub.contractorEmail || sub.contact_email || "",
-              company_name:
-                sub.company_name ||
-                sub.companyName ||
-                sub.contractorCompany ||
-                sub.employer ||
-                "",
-              trade_specialty:
-                sub.trade_specialty ||
-                sub.tradeSpecialty ||
-                sub.contractorTrade ||
-                sub.role ||
-                "",
+              id: sub.id || sub.subcontractor_id || sub.uuid,
+              first_name: sub.first_name || "",
+              last_name: sub.last_name || "",
+              email: sub.email || "",
+              company_name: sub.company_name || "",
+              trade_specialty: sub.trade_specialty || "",
               raw: sub,
             }));
             setSubcontractors(normalizedCached);
@@ -389,7 +355,6 @@ export function CreateBookingForm({
       setEndHour(endTime.getHours().toString().padStart(2, "0"));
       setEndMinute(endTime.getMinutes().toString().padStart(2, "0"));
 
-      // <-- NEW: ensure the booking modal's date picker uses the clicked date
       setSelectedDate(new Date(startTime));
 
       setCustomStartTime(startTime);
@@ -477,7 +442,6 @@ export function CreateBookingForm({
     try {
       setIsSubmitting(true);
 
-      // Format date and times for backend
       const bookingDate = format(selectedDate, "yyyy-MM-dd");
       const startTimeFormatted = format(customStartTime, "HH:mm:ss");
       const endTimeFormatted = format(customEndTime, "HH:mm:ss");
@@ -490,7 +454,9 @@ export function CreateBookingForm({
           booking_date: bookingDate,
           start_time: startTimeFormatted,
           end_time: endTimeFormatted,
-          notes: description || title,
+          // ✅ FIXED: Map Title to 'purpose' and Description to 'notes'
+          purpose: title,      
+          notes: description, 
           subcontractor_id: selectedSubcontractor || undefined,
         };
 
@@ -505,15 +471,13 @@ export function CreateBookingForm({
 
       if (isManager && Array.isArray(createdBookings)) {
         for (const b of createdBookings) {
-          // If backend already returned confirmed, keep it.
-          // Otherwise, upgrade pending/undefined -> confirmed so UI shows correct state instantly.
           if (!b.status || b.status === "pending") {
             b.status = "confirmed";
           }
         }
       }
 
-      // --- Append raw created bookings to cache so local storage shape matches API fetch ---
+      // Update Local Cache to reflect new structure
       try {
         const storageKey = `bookings_v5_${userId}`;
         const existingRaw = (() => {
@@ -525,13 +489,14 @@ export function CreateBookingForm({
           }
         })();
 
+        // Append new bookings to local cache
         const newCache = [...existingRaw, ...createdBookings];
         localStorage.setItem(storageKey, JSON.stringify(newCache));
       } catch (e) {
         console.error("Failed to update local booking cache:", e);
       }
 
-      // Transform to calendar events (include _originalData for parity)
+      // Update Calendar Events
       const events = createdBookings.map((booking) => {
         const returnedAssetId =
           booking.asset?.id ||
@@ -568,7 +533,8 @@ export function CreateBookingForm({
           assetName: assetTitle,
           bookedAssets: [assetTitle],
           bookingKey: booking.id,
-          bookingTitle: title,
+          // ✅ FIXED: Update event object to match page.tsx logic
+          bookingTitle: booking.purpose || title,
           bookingDescription: booking.notes || description || "",
           bookingNotes: booking.notes || "",
           bookingTimeDt: booking.booking_date,
@@ -988,7 +954,7 @@ export function CreateBookingForm({
                               ]);
                               setSelectedAssetIds([
                                 ...selectedAssetIds,
-                                asset.assetKey, // Ensure using correct ID
+                                asset.assetKey,
                               ]);
                             } else {
                               setSelectedAssets(

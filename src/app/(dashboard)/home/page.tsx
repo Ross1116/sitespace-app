@@ -48,7 +48,6 @@ interface Booking {
   created_at: string;
   updated_at: string;
   project?: { id: string; name: string };
-  // Updated interfaces to match backend structure more closely for name construction
   manager?: {
     id: string;
     first_name: string;
@@ -355,7 +354,7 @@ export default function HomePage() {
           </div>
         </div>
       </div>
-      {/* --- MAIN CARD: contains the rest of the dashboard so it reads as one panel --- */}
+      {/* --- MAIN CARD --- */}
       <div className="w-full max-w-screen mx-auto bg-white rounded-2xl shadow-sm border border-slate-100 p-6 space-y-6">
         {/* --- PROJECT TITLE & SWITCHER --- */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 relative z-20">
@@ -571,18 +570,24 @@ export default function HomePage() {
                           ? "text-orange-600"
                           : "text-blue-600";
 
-                        // Title logic (fallback to assignee)
+                        // ✅ FIXED: Title Logic to respect Purpose > Notes
                         let displayTitle = "";
-                        if (booking.title && booking.title.trim() !== "")
-                          displayTitle = booking.title;
-                        else if (
-                          booking.purpose &&
-                          booking.purpose.trim() !== ""
-                        )
+                        if (booking.purpose && booking.purpose.trim() !== "") {
                           displayTitle = booking.purpose;
-                        else if (booking.notes && booking.notes.trim() !== "")
+                        } else if (
+                          booking.notes &&
+                          booking.notes.trim() !== ""
+                        ) {
                           displayTitle = booking.notes;
-                        else displayTitle = `Booking for ${assignee}`;
+                        } else {
+                          displayTitle = `Booking for ${assignee}`;
+                        }
+
+                        // Optional: Description Logic (if you wanted to show it)
+                        // let displayDescription = "";
+                        // if (booking.notes && booking.notes.trim() !== "" && booking.notes !== displayTitle) {
+                        //   displayDescription = booking.notes;
+                        // }
 
                         return (
                           <div

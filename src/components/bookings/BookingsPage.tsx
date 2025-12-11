@@ -11,7 +11,6 @@ import { CreateBookingForm } from "@/components/forms/CreateBookingForm";
 import { Input } from "@/components/ui/input";
 
 // ===== TYPE DEFINITIONS & HELPERS =====
-// (Kept exactly as per your logic to ensure data integrity)
 
 interface BookingDetail {
   id: string;
@@ -25,7 +24,6 @@ interface BookingDetail {
   status: string;
   notes?: string;
   purpose?: string;
-  title?: string;
   asset?: { id: string; name: string; asset_code: string; };
   project?: { id: string; name: string; };
   [key: string]: any;
@@ -63,6 +61,7 @@ const calculateDuration = (startTime: string, endTime: string): number => {
   return end - start;
 };
 
+// ✅ FIXED: Logic adapted for schema with no 'title' field
 const transformBookingToLegacyFormat = (booking: BookingDetail) => {
   const raw = booking._originalData || booking;
   const cleanStart = (raw.start_time || "00:00").split(':').slice(0, 2).join(':');
@@ -93,23 +92,32 @@ const transformBookingToLegacyFormat = (booking: BookingDetail) => {
       else assetName = `Asset ${assetId.slice(0, 6)}...`;
   }
 
+  // --- TITLE & DESCRIPTION LOGIC ---
   let finalTitle = "";
   let finalDescription = "No description provided";
-  const rawTitle = raw.title;
-  const rawPurpose = raw.purpose;
-  const rawNotes = raw.notes;
+  
+  const rawPurpose = raw.purpose; // Often used as Title
+  const rawNotes = raw.notes;     // Often used as Description, or Title fallback
 
-  if (rawTitle && rawTitle.trim() !== "") {
-      finalTitle = rawTitle;
-      finalDescription = rawNotes || rawPurpose || "No description provided";
-  } else if (rawPurpose && rawPurpose.trim() !== "") {
+  // 1. Determine Title
+  if (rawPurpose && rawPurpose.trim() !== "") {
       finalTitle = rawPurpose;
-      finalDescription = rawNotes || "No description provided";
   } else if (rawNotes && rawNotes.trim() !== "") {
+      // If purpose is missing, promote Notes to Title
       finalTitle = rawNotes;
-      finalDescription = "No description provided";
   } else {
       finalTitle = `Booking for ${bookedFor}`;
+  }
+
+  // 2. Determine Description
+  if (rawNotes && rawNotes.trim() !== "") {
+      if (finalTitle === rawNotes) {
+        // If we used Notes as the Title, don't repeat it in Description
+        finalDescription = "No additional details";
+      } else {
+        finalDescription = rawNotes;
+      }
+  } else {
       finalDescription = "No description provided";
   }
 
@@ -117,7 +125,7 @@ const transformBookingToLegacyFormat = (booking: BookingDetail) => {
     bookingKey: raw.id,
     bookingTitle: finalTitle,
     bookingDescription: finalDescription,
-    bookingNotes: "", 
+    bookingNotes: rawNotes || "", 
     projectName: raw.project?.name || "", 
     bookingTimeDt: raw.booking_date,
     bookingStartTime: cleanStart, 

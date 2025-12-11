@@ -56,18 +56,6 @@ let hasLoggedDiagnostic = false;
 export function convertBookingToCalendarEvent(booking: any): CalendarEvent {
   const raw = booking._originalData || booking;
 
-  // DIAGNOSTIC (runs once)
-  if (!hasLoggedDiagnostic && raw.asset_id) {
-    console.log("🔍 [DIAGNOSTIC] Checking first asset...");
-    if (raw.asset) console.log("✅ API is sending 'asset' object:", raw.asset);
-    else
-      console.error(
-        "❌ API missing 'asset' object. Only found asset_id:",
-        raw.asset_id
-      );
-    hasLoggedDiagnostic = true;
-  }
-
   // --- ASSET EXTRACTION ---
   let assetId = "unknown";
   let assetName = "Unknown Asset";
@@ -92,32 +80,48 @@ export function convertBookingToCalendarEvent(booking: any): CalendarEvent {
     else assetName = `Asset ${String(assetId).slice(0, 6)}...`;
   }
 
-  // --- TITLE SELECTION (robust) ---
-  const titleCandidates = [
-    booking.bookingTitle,
-    booking.title,
-    raw.title,
-    raw.booking_title,
-    raw.item_title,
-    raw.booking_name,
-    raw.name,
-    raw.notes,
-    raw.description,
-    raw.display_name,
-    raw.booking_name,
-    raw.notes,
-    raw.project?.display_name,
-    raw.project?.title,
-    raw.project?.name,
-  ];
+  // --- MANAGER / SUBCONTRACTOR NAMES ---
+  const managerName = raw.manager?.first_name || "Manager";
+  const subName =
+    raw.subcontractor?.company_name || raw.subcontractor?.first_name || "";
+  const bookedFor = raw.subcontractor_id ? subName : managerName;
 
-  const baseTitle =
-    titleCandidates.find((v) => typeof v === "string" && v.trim().length > 0) ||
-    "Booking";
+  // --- TITLE & DESCRIPTION LOGIC (Matches BookingsPage) ---
+  const rawPurpose = raw.purpose;
+  const rawNotes = raw.notes;
+  let baseTitle = "";
+  let baseDescription = "No description provided";
 
+  // 1. Determine Title: Purpose > Notes > Fallback
+  if (rawPurpose && typeof rawPurpose === "string" && rawPurpose.trim() !== "") {
+    baseTitle = rawPurpose;
+  } else if (rawNotes && typeof rawNotes === "string" && rawNotes.trim() !== "") {
+    baseTitle = rawNotes;
+  } else {
+    baseTitle = `Booking for ${bookedFor}`;
+  }
+
+  // 2. Determine Description: Notes > (Purpose if unused) > Fallback
+  if (rawNotes && typeof rawNotes === "string" && rawNotes.trim() !== "") {
+    // If we used notes as title, don't repeat in desc unless distinct
+    if (baseTitle === rawNotes) {
+       baseDescription = "No additional details";
+    } else {
+       baseDescription = rawNotes;
+    }
+  } else if (
+    rawPurpose &&
+    typeof rawPurpose === "string" &&
+    rawPurpose.trim() !== "" &&
+    baseTitle !== rawPurpose
+  ) {
+    baseDescription = rawPurpose;
+  }
+
+  // Append Asset Name to title for Calendar View context (optional, usually helpful in grids)
   const finalTitle = assetName ? `${baseTitle} - ${assetName}` : baseTitle;
 
-  // --- START / END TIMES (tolerant)
+  // --- START / END TIMES (tolerant) ---
   const start =
     booking.start ||
     raw.start ||
@@ -134,7 +138,7 @@ export function convertBookingToCalendarEvent(booking: any): CalendarEvent {
       : null) ||
     new Date(new Date(start).getTime() + 60 * 60 * 1000); // fallback 1 hour
 
-  // --- STATUS & COLOR
+  // --- STATUS & COLOR ---
   const status =
     booking.status || raw.status || raw.booking_status || "pending";
   const statusColorMap: Record<string, any> = {
@@ -143,15 +147,17 @@ export function convertBookingToCalendarEvent(booking: any): CalendarEvent {
     in_progress: "blue",
     completed: "purple",
     cancelled: "pink",
+    denied: "red", // Added denied
   };
   let color = statusColorMap[status] || "default";
-  const notes = booking.bookingNotes || booking.description || raw.notes || "";
+
+  // Emergency override
   if (
-    notes &&
-    typeof notes === "string" &&
-    notes.toLowerCase().includes("emergency")
-  )
+    (rawNotes && rawNotes.toLowerCase().includes("emergency")) ||
+    (rawPurpose && rawPurpose.toLowerCase().includes("emergency"))
+  ) {
     color = "purple";
+  }
 
   return {
     id:
@@ -161,17 +167,20 @@ export function convertBookingToCalendarEvent(booking: any): CalendarEvent {
     start,
     end,
     title: finalTitle,
-    description: raw.notes || booking.bookingDescription || "",
+    description: baseDescription,
     color,
     bookingKey: booking.id || raw.id,
+    
+    // Normalized Fields
     bookingTitle: baseTitle,
-    bookingDescription: raw.notes || "",
-    bookingNotes: raw.notes || "",
+    bookingDescription: baseDescription,
+    bookingNotes: rawNotes || "",
+    
     bookingTimeDt: raw.booking_date || raw.date || "",
     bookingStartTime: raw.start_time || "",
     bookingEndTime: raw.end_time || "",
     bookingStatus: status,
-    bookingFor: raw.manager?.first_name || "Manager",
+    bookingFor: bookedFor,
 
     assetId,
     assetName,

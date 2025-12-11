@@ -25,7 +25,7 @@ import { addHours } from "date-fns";
 
 // ... [Keep Interfaces and API functions exactly as they were] ...
 
-// Note: Re-paste the Interfaces and API functions from the previous response here if needed, 
+// Note: Re-paste the Interfaces and API functions from the previous response here if needed,
 // but for brevity I am focusing on the component rendering logic below.
 
 // ===== TYPE DEFINITIONS =====
@@ -247,10 +247,12 @@ export default function MulticalendarPage() {
     newEvents: Partial<CalendarEvent>[] | Partial<CalendarEvent>
   ) => {
     const arr = Array.isArray(newEvents) ? newEvents : [newEvents];
+
     const normalized = arr.map((e, idx) => {
       const ev = e as any;
       const original = ev._originalData || ev.bookingData || ev;
 
+      // 1. Asset Logic
       const assetId = String(
         ev.assetId || ev.asset_id || original?.asset_id || ""
       ).trim();
@@ -261,14 +263,50 @@ export default function MulticalendarPage() {
         original?.asset_name ||
         (assetId ? `Asset ${String(assetId).slice(0, 6)}` : "Unknown Asset");
 
+      // 2. Title / Description Logic (Consistent with Helpers)
+      const rawPurpose = original?.purpose || ev.purpose || "";
+      const rawNotes = original?.notes || ev.notes || ev.description || "";
+
+      let baseTitle = "Booking";
+      let baseDescription = "No description provided";
+
+      if (rawPurpose && rawPurpose.trim() !== "") {
+        baseTitle = rawPurpose;
+      } else if (rawNotes && rawNotes.trim() !== "") {
+        baseTitle = rawNotes;
+      }
+
+      if (rawNotes && rawNotes.trim() !== "") {
+        if (baseTitle !== rawNotes) baseDescription = rawNotes;
+        else baseDescription = "No additional details";
+      }
+
+      // 3. Construct Event
       return {
-        id: ev.id || `${Math.random().toString(36).slice(2, 9)}-${Date.now()}-${idx}`,
-        start: ev.start || (original && parseDatesafe(original)?.start) || new Date(),
-        end: ev.end || (original && parseDatesafe(original)?.end) || addHours(ev.start || new Date(), 1),
-        title: ev.title || original?.notes || "Booking",
-        description: ev.description || original?.notes || "",
-        color: ev.color || "yellow",
+        id:
+          ev.id ||
+          `${Math.random().toString(36).slice(2, 9)}-${Date.now()}-${idx}`,
+        start:
+          ev.start ||
+          (original && parseDatesafe(original)?.start) ||
+          new Date(),
+        end:
+          ev.end ||
+          (original && parseDatesafe(original)?.end) ||
+          addHours(ev.start || new Date(), 1),
+
+        // UI Properties
+        title: `${baseTitle} - ${assetName}`,
+        description: baseDescription,
+        color:
+          ev.color || (original?.status === "confirmed" ? "green" : "yellow"),
+
+        // Data Properties
+        bookingTitle: baseTitle,
+        bookingDescription: baseDescription,
+        bookingNotes: rawNotes,
         bookingStatus: ev.bookingStatus || original?.status || "pending",
+
         assetId,
         assetName,
         bookedAssets: ev.bookedAssets || (assetName ? [assetName] : []),
@@ -300,7 +338,6 @@ export default function MulticalendarPage() {
       }
     } catch (e) {}
   };
-
   const handleRefresh = () => {
     hasFetched.current = false;
     fetchData(false);
@@ -357,7 +394,12 @@ export default function MulticalendarPage() {
     events: [],
   };
 
-  if (error && !loading && bookings.length === 0 && availableAssets.length === 0) {
+  if (
+    error &&
+    !loading &&
+    bookings.length === 0 &&
+    availableAssets.length === 0
+  ) {
     return (
       <div className="h-screen bg-[hsl(20,60%,99%)] flex items-center justify-center p-6">
         <Card className="p-6 max-w-md border-red-200 shadow-md">
@@ -378,7 +420,9 @@ export default function MulticalendarPage() {
   const PAGE_BG = "bg-[hsl(20,60%,99%)]";
 
   return (
-    <div className={`h-full pt-0 px-2 sm:p-6 lg:px-8 grid grid-cols-12 grid-rows-12 gap-6 ${PAGE_BG}`}>
+    <div
+      className={`h-full pt-0 px-2 sm:p-6 lg:px-8 grid grid-cols-12 grid-rows-12 gap-6 ${PAGE_BG}`}
+    >
       {/* Month calendar date picker - Keeps White Background for Sidebar effect */}
       <Card
         className={`${
