@@ -4,7 +4,11 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/app/context/AuthContext";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Loader2, LayoutGrid } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -12,18 +16,11 @@ export default function Login() {
   const [rememberMe, setRememberMe] = useState(false);
   const [localError, setLocalError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [touched, setTouched] = useState({ email: false, password: false });
-  const [showPassword, setShowPassword] = useState(false);``
+  const [showPassword, setShowPassword] = useState(false);
 
-  const { login, isAuthenticated, error: authError, clearError } = useAuth();
+  const { login, error: authError, clearError } = useAuth();
   const router = useRouter();
 
-  // // Redirect if already authenticated
-  // useEffect(() => {
-  //   if (isAuthenticated) router.replace("/home");
-  // }, [isAuthenticated, router]);
-
-  // Load remembered email
   useEffect(() => {
     const savedEmail = localStorage.getItem("rememberedEmail");
     if (savedEmail) {
@@ -32,20 +29,9 @@ export default function Login() {
     }
   }, []);
 
-  // Sync auth errors with local error
   useEffect(() => {
     if (authError) setLocalError(authError);
   }, [authError]);
-
-  const validateField = (field: string, value: string) => {
-    if (field === "email" && touched.email && !value.trim()) {
-      return "Email is required";
-    }
-    if (field === "password" && touched.password && value.length < 6) {
-      return "Password must be at least 6 characters";
-    }
-    return "";
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,7 +40,6 @@ export default function Login() {
 
     if (!email.trim() || !password.trim()) {
       setLocalError("Please enter both email and password");
-      setTouched({ email: true, password: true });
       return;
     }
 
@@ -62,271 +47,134 @@ export default function Login() {
 
     try {
       await login(email, password);
-
-      if (rememberMe) {
-        localStorage.setItem("rememberedEmail", email);
-      } else {
-        localStorage.removeItem("rememberedEmail");
-      }
+      if (rememberMe) localStorage.setItem("rememberedEmail", email);
+      else localStorage.removeItem("rememberedEmail");
     } catch (err: any) {
-      console.error("Login error:", err);
-      const errorMessage =
-        err?.message || authError || "Something went wrong. Please try again";
-
-      if (
-        errorMessage.includes("401") ||
-        errorMessage.toLowerCase().includes("invalid") ||
-        errorMessage.toLowerCase().includes("failed")
-      ) {
-        setLocalError("Invalid email or password");
-      } else if (errorMessage.includes("429")) {
-        setLocalError("Too many attempts. Please try again later");
-      } else if (
-        errorMessage.toLowerCase().includes("network") ||
-        errorMessage.toLowerCase().includes("connect")
-      ) {
-        setLocalError(
-          "Connection error. Please check your internet and try again"
-        );
-      } else {
-        setLocalError(errorMessage);
-      }
+      setLocalError(err?.message || "Invalid email or password");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const Logo = () => (
-    <svg viewBox="0 0 100 100" className="w-24 h-24 text-white">
-      <text x="50" y="75" fontSize="80" textAnchor="middle" fill="currentColor">
-        *
-      </text>
-    </svg>
-  );
-
-  const displayError = localError || authError;
-
   return (
-    <div className="flex flex-col md:flex-row min-h-screen w-full">
-      {/* Left Side */}
-      <div className="hidden md:flex md:w-1/2 bg-amber-700 px-32 py-16 flex-col justify-between relative">
-        <div className="z-10 mx-auto">
-          <div className="my-12">
-            <Logo />
+    <div className="flex min-h-screen w-full bg-slate-50 font-sans">
+      {/* Left Side - Navy Theme */}
+      <div className="hidden lg:flex w-1/2 bg-[#0B1120] relative flex-col justify-between p-16 text-white overflow-hidden">
+        {/* Background Curves */}
+        <div className="absolute inset-0 opacity-10 pointer-events-none">
+          <svg className="h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <path d="M0 100 C 20 0 50 0 100 100 Z" fill="white" />
+          </svg>
+        </div>
+
+        <div className="z-10">
+          <div className="flex items-center gap-3 mb-12">
+            <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center text-[#0B1120]">
+              <LayoutGrid size={24} />
+            </div>
+            <span className="text-2xl font-bold tracking-tight">Sitespace</span>
           </div>
 
-          <h1 className="text-7xl font-bold text-white mb-12">
-            Hello
-            <br className="mb-4" />
-            Sitespacer!<span className="text-7xl">👋</span>
+          <h1 className="text-6xl font-bold leading-tight mb-6">
+            Welcome back <br /> to the Demo.
           </h1>
-
-          <p className="text-gray-300 text-xl max-w-8/12">
-            {/* Skip repetitive and manual scheduling. Get highly productive through
-            automation and save tons of time! */}
+          
+          <p className="text-slate-400 text-xl max-w-lg leading-relaxed">
+            Experience the future of construction logistics. Log in to access the booking calendar and asset management tools.
           </p>
         </div>
 
-        <div className="text-white/70 text-sm">
-          © 2025 Sitespace. All rights reserved.
-        </div>
-
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <svg
-            className="absolute inset-0 w-full h-full opacity-10"
-            preserveAspectRatio="none"
-          >
-            <pattern
-              id="curves"
-              x="0"
-              y="0"
-              width="100"
-              height="100"
-              patternUnits="userSpaceOnUse"
-            >
-              <path
-                d="M0 50 Q 25 25, 50 50 T 100 50"
-                stroke="white"
-                strokeWidth="2"
-                fill="none"
-              />
-              <path
-                d="M0 25 Q 25 0, 50 25 T 100 25"
-                stroke="white"
-                strokeWidth="1.5"
-                fill="none"
-              />
-              <path
-                d="M0 75 Q 25 50, 50 75 T 100 75"
-                stroke="white"
-                strokeWidth="1.5"
-                fill="none"
-              />
-            </pattern>
-            <rect width="100%" height="100%" fill="url(#curves)" />
-          </svg>
+        <div className="z-10 flex justify-between items-end text-sm text-slate-500">
+          <p>© 2025 Sitespace Demo.</p>
+          <p>v2.4.0-beta</p>
         </div>
       </div>
 
-      {/* Right Side */}
-      <div className="w-full md:w-1/2 bg-orange-50 flex items-center justify-center min-h-screen md:min-h-0 md:p-16">
-        <div className="max-w-md w-full px-6 py-12 md:p-0">
-          <h2 className="text-4xl md:text-5xl font-bold mb-8 md:mb-16">
-            Sitespace
-          </h2>
+      {/* Right Side - Login Form */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12">
+        <div className="w-full max-w-md space-y-8">
+          
+          <div className="text-center lg:text-left">
+            <h2 className="text-3xl font-bold text-slate-900">Sign in</h2>
+            <p className="text-slate-500 mt-2">Access your dashboard</p>
+          </div>
 
-          <h3 className="text-2xl md:text-3xl font-bold mb-2">Welcome Back!</h3>
-
-          <p className="text-gray-600 mb-8">
-            Don&apos;t have an account?{" "}
-            <Link
-              href="/register"
-              className="text-blue-600 font-medium hover:underline"
-            >
-              Create a new account now
-            </Link>
-            .
-          </p>
-
-          {displayError && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 text-sm animate-shake">
-              <strong className="font-bold">Error: </strong>
-              <span>{displayError}</span>
+          {(localError || authError) && (
+            <div className="bg-red-50 border border-red-100 text-red-600 px-4 py-3 rounded-lg text-sm font-medium animate-in slide-in-from-top-2">
+              {localError || authError}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <input
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-slate-700 font-semibold">Email</Label>
+              <Input
                 id="email"
-                name="email"
                 type="email"
-                autoComplete="email"
-                required
+                placeholder="demo@sitespace.com"
                 value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  setLocalError("");
-                  clearError();
-                }}
-                onBlur={() => setTouched((prev) => ({ ...prev, email: true }))}
-                placeholder="Email"
-                className="w-full p-3 border-b border-gray-300 focus:border-blue-500 focus:outline-none bg-gray-100 rounded-lg transition-colors"
-                disabled={isLoading}
-              />
-              {touched.email && validateField("email", email) && (
-                <p className="text-red-500 text-xs mt-1">
-                  {validateField("email", email)}
-                </p>
-              )}
-            </div>
-
-            <div className="relative">
-              <input
-                id="password"
-                name="password"
-                type={showPassword ? "text" : "password"}
-                autoComplete="current-password"
+                onChange={(e) => setEmail(e.target.value)}
                 required
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  setLocalError("");
-                  clearError();
-                }}
-                onBlur={() =>
-                  setTouched((prev) => ({ ...prev, password: true }))
-                }
-                placeholder="Password"
-                className="w-full p-3 pr-12 border-b border-gray-300 focus:border-blue-500 focus:outline-none bg-gray-100 rounded-lg transition-colors"
                 disabled={isLoading}
+                className="h-12 border-slate-200 focus-visible:ring-[#0B1120] bg-white"
               />
-
-              {/* Toggle Button */}
-              <button
-                type="button"
-                onClick={() => setShowPassword((prev) => !prev)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                tabIndex={-1}
-              >
-                {showPassword ? (
-                  <EyeOff size={20} strokeWidth={2} />
-                ) : (
-                  <Eye size={20} strokeWidth={2} />
-                )}
-              </button>
-
-              {touched.password && validateField("password", password) && (
-                <p className="text-red-500 text-xs mt-1">
-                  {validateField("password", password)}
-                </p>
-              )}
             </div>
 
-            <div className="flex items-center justify-between pt-2">
-              <label className="flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <Label htmlFor="password" className="text-slate-700 font-semibold">Password</Label>
+                <Link href="/forgot-password" className="text-xs font-semibold text-[#0B1120] hover:underline">
+                  Forgot password?
+                </Link>
+              </div>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={isLoading}
+                  className="h-12 pr-10 border-slate-200 focus-visible:ring-[#0B1120] bg-white"
                 />
-                <span className="text-sm text-gray-600">Remember me</span>
-              </label>
-              <Link
-                href="/forgot-password"
-                className="text-sm text-blue-600 hover:underline"
-              >
-                Forgot password?
-              </Link>
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
-            <div className="pt-4">
-              <button
-                type="submit"
-                className={`w-full py-3 px-4 bg-black text-white font-medium rounded relative transition-opacity ${
-                  isLoading
-                    ? "opacity-70 cursor-not-allowed"
-                    : "hover:opacity-90"
-                }`}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <span className="opacity-0">Login Now</span>
-                    <span className="absolute inset-0 flex items-center justify-center">
-                      <svg
-                        className="animate-spin h-5 w-5 text-white"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        ></circle>
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        ></path>
-                      </svg>
-                    </span>
-                  </>
-                ) : (
-                  "Login Now"
-                )}
-              </button>
+            <div className="flex items-center space-x-2 pt-2">
+              <Checkbox 
+                id="remember" 
+                checked={rememberMe} 
+                onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                className="border-slate-300 data-[state=checked]:bg-[#0B1120] data-[state=checked]:border-[#0B1120]"
+              />
+              <label htmlFor="remember" className="text-sm text-slate-600 font-medium cursor-pointer">
+                Remember me for 30 days
+              </label>
             </div>
+
+            <Button
+              type="submit"
+              className="w-full h-12 bg-[#0B1120] hover:bg-[#1a253a] text-white font-bold text-base transition-all shadow-lg shadow-slate-900/10"
+              disabled={isLoading}
+            >
+              {isLoading ? <Loader2 className="animate-spin h-5 w-5" /> : "Sign In"}
+            </Button>
           </form>
 
-          <div className="md:hidden text-center text-gray-500 text-xs mt-8">
-            © 2025 Sitespace. All rights reserved.
-          </div>
+          <p className="text-center text-sm text-slate-500">
+            Don&apos;t have an account?{" "}
+            <Link href="/register" className="font-bold text-[#0B1120] hover:underline">
+              Create one here
+            </Link>
+          </p>
         </div>
       </div>
     </div>
