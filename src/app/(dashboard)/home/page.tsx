@@ -168,6 +168,10 @@ export default function HomePage() {
     selectedProject?.id || selectedProject?.project_id || "all";
   const bookingsCacheKey = `home_bookings_${userId}_${currentProjId}`;
   const projectsListCacheKey = `home_projects_list_${userId}`;
+  
+  // ✅ NEW: Keys for CreateBookingForm consumption
+  const assetsCacheKey = `assets_${userId}`; 
+  const subcontractorsCacheKey = `subcontractors_${userId}`;
 
   // --- API Calls ---
 
@@ -206,6 +210,7 @@ export default function HomePage() {
     }
   }, [userId, user?.role, projectsListCacheKey]);
 
+  // ✅ UPDATED: Fetch Assets and save to localStorage for CreateBookingForm
   const fetchAssets = useCallback(async () => {
     if (!userId || !selectedProject) return;
     try {
@@ -215,11 +220,18 @@ export default function HomePage() {
       });
       const assetData = response.data?.assets || [];
       setAssetCount(response.data?.total || assetData.length);
+      
+      // Save to localStorage so CreateBookingForm can read it
+      localStorage.setItem(assetsCacheKey, JSON.stringify(assetData));
     } catch (error) {
+      console.error("Error fetching assets", error);
       setAssetCount(0);
+      // Optional: Clear cache on error to prevent stale data usage
+      // localStorage.removeItem(assetsCacheKey); 
     }
-  }, [selectedProject, userId]);
+  }, [selectedProject, userId, assetsCacheKey]);
 
+  // ✅ UPDATED: Fetch Subcontractors and save to localStorage for fallback in CreateBookingForm
   const fetchSubcontractors = useCallback(async () => {
     if (!userId || !selectedProject) return;
     if (user?.role === "subcontractor") {
@@ -234,17 +246,42 @@ export default function HomePage() {
         : "/subcontractors/my-subcontractors";
 
       const response = await api.get(endpoint, {
-        params: { project_id: projectId, limit: 1, is_active: true },
+        params: { project_id: projectId, limit: 100, is_active: true },
       });
 
-      const total =
-        response.data?.total ??
-        (Array.isArray(response.data) ? response.data.length : 0);
+      // Normalize response handling for count and data
+      let subData = [];
+      let total = 0;
+
+      if (Array.isArray(response.data)) {
+        subData = response.data;
+        total = subData.length;
+      } else if (response.data?.subcontractors) {
+        subData = response.data.subcontractors;
+        total = response.data.total || subData.length;
+      } else if (response.data?.data) {
+        subData = response.data.data;
+        total = subData.length;
+      } else {
+        // Fallback for paginated/nested responses
+         const values = Object.values(response.data || {});
+         const arr = values.find((v) => Array.isArray(v));
+         if (arr && Array.isArray(arr)) {
+           subData = arr;
+           total = arr.length;
+         }
+      }
+
       setSubcontractorCount(total);
+      
+      // Save to localStorage so CreateBookingForm can use it as cache
+      localStorage.setItem(subcontractorsCacheKey, JSON.stringify(subData));
+
     } catch (error) {
+      console.error("Error fetching subcontractors", error);
       setSubcontractorCount(0);
     }
-  }, [selectedProject, userId, user?.role]);
+  }, [selectedProject, userId, user?.role, subcontractorsCacheKey]);
 
   const fetchBookings = useCallback(
     async (isBackground = false) => {
@@ -294,6 +331,7 @@ export default function HomePage() {
     hasInitialized.current = true;
   }, [user, fetchProjects]);
 
+  // When selectedProject changes, fetch related data and update localStorage
   useEffect(() => {
     if (!selectedProject) return;
     fetchAssets();
@@ -319,6 +357,7 @@ export default function HomePage() {
     setShowProjectSelector(false);
     localStorage.setItem(`project_${userId}`, JSON.stringify(proj));
     setSelectedProject(proj);
+    // Reload to ensure all child components and hooks (like CreateBookingForm) re-read the fresh localStorage
     window.location.reload();
   };
 
@@ -359,7 +398,6 @@ export default function HomePage() {
           <div className="flex flex-col">
             <p className="text-sm text-slate-500">Welcome back,</p>
 
-            {/* 1. Name: Tries 'profile' first, falls back to 'user' context */}
             <p className="text-lg md:text-xl font-semibold text-slate-900 capitalize">
               {profile?.first_name
                 ? `${profile.first_name} 👋`
@@ -368,14 +406,11 @@ export default function HomePage() {
                 : "User 👋"}
             </p>
 
-            {/* 2. Role & Company: Uses the new API data */}
             <div className="flex items-center gap-2 mt-1">
-              {/* Role Badge */}
               <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-500 px-2 py-0.5 rounded">
                 {profile?.role || user?.role || "Member"}
               </span>
 
-              {/* Company Name (only shows if it exists) */}
               {profile?.company_name && (
                 <>
                   <span className="w-1 h-1 rounded-full bg-slate-300"></span>
@@ -622,7 +657,7 @@ export default function HomePage() {
                           ? "text-orange-600"
                           : "text-blue-600";
 
-                        // ✅ FIXED: Title Logic to respect Purpose > Notes
+                        // Title Logic
                         let displayTitle = "";
                         if (booking.purpose && booking.purpose.trim() !== "") {
                           displayTitle = booking.purpose;
@@ -634,12 +669,6 @@ export default function HomePage() {
                         } else {
                           displayTitle = `Booking for ${assignee}`;
                         }
-
-                        // Optional: Description Logic (if you wanted to show it)
-                        // let displayDescription = "";
-                        // if (booking.notes && booking.notes.trim() !== "" && booking.notes !== displayTitle) {
-                        //   displayDescription = booking.notes;
-                        // }
 
                         return (
                           <div
