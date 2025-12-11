@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState } from "react"; 
 import { Clock, HardHat, Briefcase, MapPin } from "lucide-react";
 import { formatDate, formatTime, isToday } from '@/lib/bookingHelpers';
 import BookingCardDropdown from './BookingCardDropdown';
