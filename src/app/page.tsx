@@ -5,60 +5,66 @@ import { ValuePropIllustration } from "@/components/landing/ValueSection";
 import { siteContent } from "@/lib/landingData";
 import TestimonialCard from "@/components/landing/TestimonialCard";
 import PricingCard from "@/components/landing/PricingCard";
-// import { Feature } from "@/components/ui/hero/feature";
-// import { Testimonials } from "@/components/ui/testimonials";
-// import { testimonials } from "@/lib/data";
 import { TopNav } from "@/components/TopNav";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, ChevronRight } from "lucide-react";
+import { ArrowRight, CheckCircle2 } from "lucide-react";
 import Footer from "@/components/landing/Footer";
 
 export default function HomePage() {
-  const { valueProp, testimonials, pricing, finalCta } = siteContent
+  const { valueProp, testimonials, pricing, finalCta } = siteContent;
+  
   return (
-    <div>
+    <div className="bg-slate-50 min-h-screen font-sans text-slate-900">
       <TopNav />
+      
+      {/* Hero Section */}
       <Hero />
+      
+      {/* Features Grid */}
       <FeatureGrid />
+      
+      {/* Product Demo */}
       <ProductDemo />
 
-      <section
-        className="py-20 bg-white dark:bg-slate-950 overflow-hidden transition-colors duration-300"
-        id="solutions"
-      >
+      {/* Solutions / Value Prop Section */}
+      <section className="py-24 bg-white border-y border-slate-100" id="solutions">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div className="order-2 lg:order-1">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+            <div className="order-2 lg:order-1 relative">
+              <div className="absolute -inset-4 bg-gradient-to-r from-slate-100 to-slate-50 rounded-[2rem] -z-10 transform -rotate-2" />
               <ValuePropIllustration />
             </div>
+            
             <div className="order-1 lg:order-2">
-              <Badge className="mb-4 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900 border-none">
+              <Badge className="mb-6 bg-slate-100 text-slate-800 hover:bg-slate-200 border-none px-3 py-1 text-sm font-medium">
                 {valueProp.badge}
               </Badge>
-              <h2 className="text-3xl font-bold text-slate-900 dark:text-white sm:text-4xl mb-6">
+              <h2 className="text-4xl font-bold text-slate-900 mb-6 tracking-tight">
                 {valueProp.heading}
               </h2>
-              <p className="text-xl text-slate-600 dark:text-slate-300 mb-8">{valueProp.subheading}</p>
+              <p className="text-lg text-slate-600 mb-10 leading-relaxed">
+                {valueProp.subheading}
+              </p>
 
-              <div className="space-y-6">
+              <div className="space-y-8">
                 {valueProp.points.map((point, index) => (
-                  <div key={index} className="flex items-start">
+                  <div key={index} className="flex items-start group">
                     <div className="flex-shrink-0 mt-1">
-                      <div className="h-6 w-6 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
-                        <ChevronRight className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      <div className="h-8 w-8 rounded-lg bg-[#0B1120] flex items-center justify-center text-white shadow-lg shadow-slate-900/10 group-hover:scale-110 transition-transform">
+                        <CheckCircle2 size={16} />
                       </div>
                     </div>
-                    <div className="ml-4">
-                      <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{point.title}</h3>
-                      <p className="text-slate-600 dark:text-slate-400">{point.description}</p>
+                    <div className="ml-5">
+                      <h3 className="text-lg font-bold text-slate-900 mb-1">{point.title}</h3>
+                      <p className="text-slate-600">{point.description}</p>
                     </div>
                   </div>
                 ))}
               </div>
 
-              <div className="mt-10">
-                <Button size="lg" className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white">
+              <div className="mt-12">
+                <Button size="lg" className="bg-[#0B1120] hover:bg-[#1a253a] text-white h-12 px-8 text-base font-bold shadow-xl shadow-slate-900/10">
                   {valueProp.cta} <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </div>
@@ -67,83 +73,83 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="py-20 bg-blue-50/70 dark:bg-slate-950 transition-colors duration-300">
+      {/* Testimonials */}
+      <section className="py-24 bg-slate-50">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl mx-auto text-center mb-16">
-            <Badge className="mb-4 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900 border-none">
+            <Badge className="mb-4 bg-white text-slate-800 border border-slate-200 shadow-sm">
               {testimonials.badge}
             </Badge>
-            <h2 className="text-3xl font-bold text-slate-900 dark:text-white sm:text-4xl mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">
               {testimonials.heading}
             </h2>
-            <p className="text-xl text-slate-600 dark:text-slate-300">{testimonials.subheading}</p>
+            <p className="text-lg text-slate-600">
+              {testimonials.subheading}
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {testimonials.items.map((testimonial, index) => (
               <TestimonialCard
                 key={index}
-                quote={testimonial.quote}
-                author={testimonial.author}
-                role={testimonial.role}
-                company={testimonial.company}
-                rating={testimonial.rating}
+                {...testimonial}
               />
             ))}
           </div>
         </div>
       </section>
 
-      <section className="py-20 bg-slate-50 dark:bg-slate-900 transition-colors duration-300" id="pricing">
+      {/* Pricing */}
+      <section className="py-24 bg-white border-t border-slate-100" id="pricing">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl mx-auto text-center mb-16">
-            <Badge className="mb-4 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900 border-none">
+            <Badge className="mb-4 bg-[#0B1120] text-white hover:bg-[#0B1120]">
               {pricing.badge}
             </Badge>
-            <h2 className="text-3xl font-bold text-slate-900 dark:text-white sm:text-4xl mb-4">{pricing.heading}</h2>
-            <p className="text-xl text-slate-600 dark:text-slate-300">{pricing.subheading}</p>
+            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">
+              {pricing.heading}
+            </h2>
+            <p className="text-lg text-slate-600">
+              {pricing.subheading}
+            </p>
           </div>
 
-          {/* Pricing section */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
             {pricing.plans.map((plan, index) => (
               <PricingCard
                 key={index}
-                title={plan.title}
-                price={plan.price}
-                description={plan.description}
-                features={plan.features}
-                buttonText={plan.buttonText}
-                popular={plan.popular}
+                {...plan}
               />
             ))}
           </div>
         </div>
       </section>
 
-      {/* <div className="container mx-auto">
-        <Feature />
-      </div>
-      <div className="container pb-20 mx-auto">
-        <Testimonials testimonials={testimonials} />
-      </div> */}
-      <section className="py-20 bg-gradient-to-r from-blue-900 to-blue-950 dark:from-blue-900 dark:to-blue-950 relative overflow-hidden">
-        <div className="absolute inset-0 z-0 bg-[url('/static/images/grid-pattern.png')] bg-center opacity-10"></div>
-        <div className="absolute top-0 right-0 w-96 h-96 bg-orange-500 rounded-full filter blur-3xl opacity-20 -translate-y-1/2 translate-x-1/3"></div>
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-300 rounded-full filter blur-3xl opacity-20 translate-y-1/2 -translate-x-1/3"></div>
-
-        <div className="container relative z-10 mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-4xl mx-auto text-center">
-            <h2 className="text-3xl font-bold text-white sm:text-4xl mb-6">{finalCta.heading}</h2>
-            <p className="text-xl text-blue-100 mb-10">{finalCta.subheading}</p>
+      {/* Final CTA */}
+      <section className="py-24 bg-[#0B1120] relative overflow-hidden">
+        {/* Abstract Background Shapes */}
+        <div className="absolute inset-0 opacity-10 pointer-events-none">
+            <svg className="h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                <path d="M0 100 C 20 0 50 0 100 100 Z" fill="white" />
+            </svg>
+        </div>
+        
+        <div className="container relative z-10 mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <div className="max-w-3xl mx-auto">
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 tracking-tight">
+              {finalCta.heading}
+            </h2>
+            <p className="text-xl text-slate-300 mb-10 leading-relaxed">
+              {finalCta.subheading}
+            </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white">
-                {finalCta.primaryCta} <ArrowRight className="ml-2 h-4 w-4" />
+              <Button size="lg" className="bg-white text-[#0B1120] hover:bg-slate-100 h-14 px-8 text-lg font-bold shadow-2xl">
+                {finalCta.primaryCta} <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
               <Button
                 size="lg"
                 variant="outline"
-                className="border-slate-300 text-slate-700 dark:border-slate-700 dark:text-slate-300"
+                className="border-slate-700 text-white hover:bg-white/10 hover:text-white h-14 px-8 text-lg bg-transparent"
               >
                 {finalCta.secondaryCta}
               </Button>

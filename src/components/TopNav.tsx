@@ -46,8 +46,7 @@ function TopNav() {
   const [isOpen, setOpen] = useState(false);
 
   return (
-    // Header: Uses orange theme, backdrop blur. Added a subtle bottom border.
-    <header className="w-full z-40 top-0 left-0 fixed bg-orange-100/30 backdrop-blur-md border-b border-orange-200/40">
+    <header className="w-full z-40 top-0 left-0 fixed bg-teal-gradient/30 backdrop-blur-md border-b border-orange-200/40">
       <div className="container relative mx-auto min-h-20 flex flex-row justify-between items-center px-4 sm:px-6 lg:px-8 lg:grid lg:grid-cols-3 lg:gap-4">
         {/* Desktop Left Navigation */}
         <div className="hidden lg:flex justify-start items-center gap-2 md:gap-4 lg:col-start-1">
@@ -56,7 +55,8 @@ function TopNav() {
               {navigationItems.map((item) => (
                 <NavigationMenuItem key={item.title}>
                   {item.href ? (
-                    <Link href={item.href}>
+                    /* FIX 1: Add legacyBehavior passHref */
+                    <Link href={item.href} legacyBehavior passHref>
                       <NavigationMenuLink className="font-medium text-sm px-3 py-2 hover:bg-orange-200/50 rounded-md transition-colors">
                         {item.title}
                       </NavigationMenuLink>
@@ -86,7 +86,13 @@ function TopNav() {
 
                           <div className="flex flex-col text-sm h-full justify-end space-y-1">
                             {item.items?.map((subItem) => (
-                              <Link href={subItem.href} key={subItem.title}>
+                              /* FIX 2: Add legacyBehavior passHref */
+                              <Link
+                                href={subItem.href}
+                                key={subItem.title}
+                                legacyBehavior
+                                passHref
+                              >
                                 <NavigationMenuLink className="flex flex-row justify-between items-center hover:bg-orange-200/50 py-2 px-3 rounded-md transition-colors">
                                   <span>{subItem.title}</span>
                                   <MoveRight className="w-4 h-4 text-muted-foreground" />

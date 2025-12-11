@@ -36,6 +36,7 @@ export default function ForgotPassword() {
       
       {/* Left Side - Visual Panel */}
       <div className="hidden lg:flex w-1/2 bg-[#0B1120] relative flex-col justify-between p-16 text-white overflow-hidden">
+        {/* Background Graphic */}
         <div className="absolute inset-0 opacity-10 pointer-events-none">
            <svg className="h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
              <path d="M0 100 C 40 0 60 0 100 100 Z" fill="white" />
@@ -69,8 +70,8 @@ export default function ForgotPassword() {
         <div className="w-full max-w-md space-y-8">
           
           <div>
-            <Link href="/login" className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-[#0B1120] transition-colors mb-8">
-              <ArrowLeft className="w-4 h-4 mr-2" /> Back to Login
+            <Link href="/login" className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-[#0B1120] transition-colors mb-8 group">
+              <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" /> Back to Login
             </Link>
             <h2 className="text-3xl font-bold text-slate-900">Forgot Password?</h2>
             <p className="text-slate-500 mt-2">Enter your email for reset instructions.</p>
@@ -101,16 +102,21 @@ export default function ForgotPassword() {
                 onChange={(e) => setEmail(e.target.value)} 
                 required 
                 disabled={status.type === 'loading' || status.type === 'success'} 
-                className="h-12 border-slate-200 focus-visible:ring-[#0B1120] text-base" 
+                className="h-12 border-slate-200 focus-visible:ring-[#0B1120] rounded-xl text-base" 
               />
             </div>
 
             <Button 
               type="submit" 
-              className="w-full h-12 bg-[#0B1120] hover:bg-[#1a253a] text-white font-bold text-base shadow-lg shadow-slate-900/10 transition-all" 
+              className="w-full h-12 bg-[#0B1120] hover:bg-[#1a253a] text-white font-bold text-base rounded-xl shadow-lg shadow-slate-900/10 transition-all disabled:opacity-70" 
               disabled={status.type === 'loading' || status.type === 'success'}
             >
-              {status.type === 'loading' ? <Loader2 className="animate-spin h-5 w-5" /> : "Send Reset Link"}
+              {status.type === 'loading' ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="animate-spin h-5 w-5" /> 
+                  <span>Sending...</span>
+                </div>
+              ) : "Send Reset Link"}
             </Button>
           </form>
         </div>
