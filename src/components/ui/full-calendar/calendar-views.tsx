@@ -55,7 +55,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import api from "@/lib/api";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, Ban, Loader2 } from "lucide-react";
 
 const EARLIEST_START_HOUR = 6; // 6:00 AM
 const LATEST_END_HOUR = 20; // 8:00 PM
@@ -63,14 +63,17 @@ const LATEST_END_HOUR = 20; // 8:00 PM
 const DraggableEventWrapper = ({
   event,
   children,
+  disabled,
 }: {
   event: CalendarEvent;
   children: React.ReactNode;
+  disabled?: boolean;
 }) => {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: event.id,
       data: event,
+      disabled: disabled, // Pass disabled state to dnd-kit
     });
 
   const style: React.CSSProperties = {
@@ -80,6 +83,7 @@ const DraggableEventWrapper = ({
     position: "relative",
     height: "100%",
     touchAction: "none",
+    cursor: disabled ? "not-allowed" : "grab", // Visual cue
   };
 
   return (
@@ -101,6 +105,14 @@ export const CalendarDayView = ({
   ) => void;
 }) => {
   const { events, date, setEvents } = useCalendar();
+
+  // --- 1. CHECK MAINTENANCE STATUS ---
+  // Adjust the string match based on exactly how your API returns the status
+  const assetStatus = assetCalendar?.asset?.status?.toLowerCase() || "";
+  const isMaintenance =
+    assetStatus.includes("maintenance") ||
+    assetStatus.includes("broken") ||
+    assetStatus.includes("repair");
 
   // States
   const [isBookingFormOpen, setIsBookingFormOpen] = useState(false);
@@ -135,11 +147,12 @@ export const CalendarDayView = ({
 
   // --- DRAG LOGIC ---
   const handleDragEnd = (e: DragEndEvent) => {
+    // Double check to prevent dragging if maintenance (UI should prevent this, but good safety)
+    if (isMaintenance) return;
+
     const { active, delta } = e;
     const PIXELS_PER_HOUR = 48;
     const rawMinutesMoved = (delta.y / PIXELS_PER_HOUR) * 60;
-
-    // Snap to 30 minute increments
     const SNAP_INCREMENT = 30;
     const snappedMinutes =
       Math.round(rawMinutesMoved / SNAP_INCREMENT) * SNAP_INCREMENT;
@@ -147,21 +160,17 @@ export const CalendarDayView = ({
     if (snappedMinutes === 0) return;
 
     const eventData = active.data.current as CalendarEvent;
-
     const oldStart = new Date(eventData.start);
     const oldEnd = new Date(eventData.end);
-
     const newStart = addMinutes(oldStart, snappedMinutes);
     const newEnd = addMinutes(oldEnd, snappedMinutes);
 
-    // --- VALIDATION LOGIC ---
+    // Validation
+    if (!isSameDay(newStart, oldStart)) return;
+
     const startHour = newStart.getHours() + newStart.getMinutes() / 60;
     const endHour = newEnd.getHours() + newEnd.getMinutes() / 60;
 
-    // 1. Prevent dragging to a different day
-    if (!isSameDay(newStart, oldStart)) return;
-
-    // 2. Prevent Starting before 6:00 AM
     if (startHour < EARLIEST_START_HOUR) {
       setValidationError({
         title: "Time Limit Reached",
@@ -169,8 +178,6 @@ export const CalendarDayView = ({
       });
       return;
     }
-
-    // 3. Prevent Ending after 8:00 PM
     if (endHour > LATEST_END_HOUR) {
       setValidationError({
         title: "Time Limit Reached",
@@ -209,7 +216,6 @@ export const CalendarDayView = ({
     } catch (error) {
       console.error("Failed to reschedule", error);
       setEvents(originalEvents);
-      // Fallback alert for API errors specifically
       alert("Failed to reschedule.");
     } finally {
       setIsRescheduling(false);
@@ -221,14 +227,16 @@ export const CalendarDayView = ({
     onActionComplete?.();
   };
 
-  // Grid Logic
   const hours = [...Array(14)].map((_, i) => {
     const hourDate = new Date(date);
-    hourDate.setHours(i + 6, 0, 0, 0); // 6 AM start
+    hourDate.setHours(i + 6, 0, 0, 0);
     return hourDate;
   });
 
   const handleTimeSlotClick = (hour: Date) => {
+    // --- 2. DISABLE CLICK ON MAINTENANCE ---
+    if (isMaintenance) return;
+
     const startTime = new Date(hour);
     const endTime = addHours(startTime, 1);
     setSelectedTimeSlot({
@@ -255,8 +263,24 @@ export const CalendarDayView = ({
         onDragEnd={handleDragEnd}
         modifiers={[restrictToVerticalAxis]}
       >
-        <div className="flex flex-col h-full bg-white rounded-lg shadow-sm overflow-hidden border border-slate-100">
-          <div className="flex flex-1 relative overflow-y-auto overflow-x-hidden custom-scrollbar">
+        <div className="flex flex-col h-full bg-white rounded-lg shadow-sm overflow-hidden border border-slate-100 relative">
+          {/* --- 3. MAINTENANCE OVERLAY / VISUALS --- */}
+          {isMaintenance && (
+            <div className="absolute inset-0 z-40 bg-slate-50/60 pointer-events-none flex items-center justify-center">
+              <div className="bg-white/90 border border-slate-200 shadow-sm px-4 py-2 rounded-full flex items-center gap-2 text-slate-500">
+                <Ban className="h-4 w-4 text-red-400" />
+                <span className="text-xs font-bold uppercase tracking-wide">
+                  Asset Under Maintenance
+                </span>
+              </div>
+            </div>
+          )}
+
+          <div
+            className={`flex flex-1 relative overflow-y-auto overflow-x-hidden custom-scrollbar ${
+              isMaintenance ? "bg-slate-50/50" : ""
+            }`}
+          >
             {/* Sidebar Hours */}
             <div className="w-14 flex-shrink-0 border-r border-slate-100 bg-slate-50 flex flex-col">
               {hours.map((hour) => (
@@ -284,12 +308,23 @@ export const CalendarDayView = ({
                 {hours.map((hour, index) => (
                   <div
                     key={hour.toString()}
-                    className={`relative border-t border-slate-100 h-12 flex-none ${
-                      index % 2 === 0 ? "bg-white" : "bg-slate-50/30"
-                    }`}
+                    className={`
+                        relative border-t border-slate-100 h-12 flex-none 
+                        ${
+                          isMaintenance
+                            ? "bg-[linear-gradient(45deg,transparent_25%,rgba(0,0,0,0.02)_25%,rgba(0,0,0,0.02)_50%,transparent_50%,transparent_75%,rgba(0,0,0,0.02)_75%,rgba(0,0,0,0.02)_100%)] bg-[length:20px_20px]"
+                            : index % 2 === 0
+                            ? "bg-white"
+                            : "bg-slate-50/30"
+                        }
+                    `}
                   >
                     <div
-                      className="absolute inset-0 w-full h-full cursor-pointer hover:bg-slate-100/60 transition-colors"
+                      className={`absolute inset-0 w-full h-full transition-colors ${
+                        isMaintenance
+                          ? "cursor-not-allowed"
+                          : "cursor-pointer hover:bg-slate-100/60"
+                      }`}
                       onClick={() => handleTimeSlotClick(hour)}
                       style={{
                         pointerEvents: hourHasEvents[hour.toString()]
@@ -302,6 +337,7 @@ export const CalendarDayView = ({
                     <EventGroupSideBySide
                       hour={hour}
                       events={events || []}
+                      isDisabled={isMaintenance} // Pass disabled prop
                       onEventClick={(id) => setViewingEventId(id)}
                     />
                   </div>
@@ -310,7 +346,7 @@ export const CalendarDayView = ({
             </div>
           </div>
 
-          {isBookingFormOpen && (
+          {isBookingFormOpen && !isMaintenance && (
             <CreateBookingForm
               isOpen={isBookingFormOpen}
               onClose={() => setIsBookingFormOpen(false)}
@@ -327,7 +363,7 @@ export const CalendarDayView = ({
         </div>
       </DndContext>
 
-      {/* --- VALIDATION ERROR DIALOG --- */}
+      {/* Validation Error Dialog */}
       <AlertDialog
         open={!!validationError}
         onOpenChange={() => setValidationError(null)}
@@ -353,7 +389,7 @@ export const CalendarDayView = ({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* --- DRAG CONFIRMATION DIALOG --- */}
+      {/* Drag Confirmation Modal */}
       <AlertDialog
         open={!!pendingReschedule}
         onOpenChange={(open) =>
@@ -403,7 +439,7 @@ export const CalendarDayView = ({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* --- DETAILS DIALOG --- */}
+      {/* Details Dialog */}
       <BookingDetailsDialog
         isOpen={!!viewingEventId}
         bookingId={viewingEventId}
@@ -836,10 +872,12 @@ export const EventGroup = ({
 const EventGroupSideBySide = ({
   hour,
   events,
+  isDisabled,
   onEventClick,
 }: {
   hour: Date;
   events: CalendarEvent[];
+  isDisabled?: boolean;
   onEventClick: (id: string) => void;
 }) => {
   const eventsInHour = events.filter((event) => isSameHour(event.start, hour));
@@ -870,18 +908,23 @@ const EventGroupSideBySide = ({
               zIndex: 10,
             }}
           >
-            <DraggableEventWrapper event={event}>
+            {/* 4. Pass isDisabled to wrapper to disable drag */}
+            <DraggableEventWrapper event={event} disabled={isDisabled}>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div
                       className={cn(
                         dayEventVariants({ variant: event.color }),
-                        "w-full h-full cursor-pointer hover:shadow-md transition-all"
+                        "w-full h-full hover:shadow-md transition-all",
+                        isDisabled
+                          ? "cursor-not-allowed opacity-75 grayscale"
+                          : "cursor-pointer"
                       )}
                       onClick={(e) => {
                         e.stopPropagation();
-                        // Ensure we grab the backend ID (bookingKey) if available, else standard ID
+                        // We ALLOW clicking to view details even in maintenance (to see what the booking is)
+                        // But editing/rescheduling is disabled via the dialog's logic if needed (or here)
                         onEventClick(event.bookingKey || event.id);
                       }}
                     >
