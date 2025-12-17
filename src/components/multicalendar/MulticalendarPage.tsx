@@ -14,7 +14,6 @@ import api from "@/lib/api";
 import {
   CalendarEvent,
   AssetCalendar,
-  convertBookingToCalendarEvent,
 } from "@/lib/multicalendarHelpers";
 import { CalendarHeader } from "./CalendarHeader";
 import { MobileView } from "./MobileView";
@@ -23,42 +22,50 @@ import { AssetFilter } from "./AssetFilter";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { addHours } from "date-fns";
 
-// ===== TYPE DEFINITIONS =====
-interface BookingDetail {
+// ===== 1. UPDATED INTERFACES (MATCHING YOUR JSON) =====
+
+interface ApiAsset {
   id: string;
-  project_id?: string;
-  manager_id: string;
-  subcontractor_id?: string;
-  asset_id: string;
+  asset_code: string;
+  name: string;
+  type: string | null;
+  status: string;
+}
+
+interface ApiBooking {
+  id: string;
   booking_date: string;
   start_time: string;
   end_time: string;
   status: string;
-  notes?: string;
-  asset?: {
-    id: string;
-    name: string;
-    asset_code: string;
-  };
-  [key: string]: any;
+  purpose: string | null;
+  notes: string | null;
+  
+  // IDs
+  project_id?: string;
+  manager_id: string;
+  subcontractor_id: string | null;
+  asset_id: string;
+
+  // Nested Objects
+  project?: any;
+  manager?: any;
+  subcontractor?: any;
+  asset?: ApiAsset;
+
+  // Timestamps
+  created_at?: string;
+  updated_at?: string;
 }
 
-interface Asset {
-  id: string;
-  name: string;
-  asset_code?: string;
-  status?: string;
+interface CalendarDayResponse {
+  date: string;
+  bookings: ApiBooking[];
 }
 
 interface AssetListResponse {
-  assets: Asset[];
+  assets: ApiAsset[];
   total: number;
-}
-
-interface CalendarDayView {
-  date: string;
-  bookings: BookingDetail[];
-  booking_count?: number;
 }
 
 // ===== API FUNCTIONS =====
@@ -67,8 +74,8 @@ const bookingsApi = {
     dateFrom: string,
     dateTo: string,
     projectId?: string
-  ): Promise<CalendarDayView[]> => {
-    const response = await api.get<CalendarDayView[]>("/bookings/calendar", {
+  ): Promise<CalendarDayResponse[]> => {
+    const response = await api.get<CalendarDayResponse[]>("/bookings/calendar", {
       params: {
         date_from: dateFrom,
         date_to: dateTo,
@@ -80,7 +87,7 @@ const bookingsApi = {
 };
 
 const assetsApi = {
-  getProjectAssets: async (projectId: string): Promise<Asset[]> => {
+  getProjectAssets: async (projectId: string): Promise<ApiAsset[]> => {
     try {
       const response = await api.get<AssetListResponse>("/assets/", {
         params: {
@@ -104,7 +111,7 @@ export default function MulticalendarPage() {
 
   // Data States
   const [bookings, setBookings] = useState<CalendarEvent[]>([]);
-  const [availableAssets, setAvailableAssets] = useState<Asset[]>([]);
+  const [availableAssets, setAvailableAssets] = useState<ApiAsset[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -132,6 +139,48 @@ export default function MulticalendarPage() {
     }
   };
 
+  // ===== 2. HELPER: PROCESS JSON TO EVENT =====
+  const processBookingToEvent = (b: ApiBooking): CalendarEvent => {
+    const startDate = new Date(`${b.booking_date}T${b.start_time}`);
+    const endDate = new Date(`${b.booking_date}T${b.end_time}`);
+
+    const status = b.status?.toLowerCase() || "pending";
+    let color = "yellow";
+    if (status === "confirmed") color = "green";
+    if (status === "completed") color = "blue";
+    if (status === "cancelled" || status === "denied") color = "pink";
+
+    let title = "Booking";
+    if (b.purpose && b.purpose.trim() !== "") title = b.purpose;
+    else if (b.notes && b.notes.trim() !== "") title = b.notes;
+
+    const assetName = b.asset?.name || "Unknown Asset";
+    const assetCode = b.asset?.asset_code || "";
+
+    return {
+      id: b.id,
+      start: startDate,
+      end: endDate,
+      title: title,
+      description: b.notes || "",
+      color: color as any,
+
+      // Custom fields for Drag/Drop & Details
+      bookingKey: b.id,
+      bookingStatus: status,
+      bookingTitle: title,
+      bookingNotes: b.notes,
+      
+      assetId: b.asset_id,
+      assetName: assetName,
+      assetCode: assetCode,
+      
+      // Pass the Full Original Object so the Details Dialog works!
+      _originalData: b, 
+    } as CalendarEvent;
+  };
+
+  // ===== 3. FETCH DATA LOGIC =====
   const fetchData = async (isBackground = false) => {
     if (!user) {
       setLoading(false);
@@ -163,15 +212,14 @@ export default function MulticalendarPage() {
         dateTo.toISOString().split("T")[0],
         project.id
       );
-
-      const allBookings: BookingDetail[] = calendarData.flatMap(
+      const allBookings: ApiBooking[] = calendarData.flatMap(
         (dayData) => dayData.bookings || []
       );
 
       localStorage.setItem(storageKey, JSON.stringify(allBookings));
 
       const transformedBookings: CalendarEvent[] = allBookings.map(
-        convertBookingToCalendarEvent
+        processBookingToEvent
       );
 
       setBookings(transformedBookings);
@@ -194,7 +242,8 @@ export default function MulticalendarPage() {
       try {
         const parsedData = JSON.parse(cachedBookings);
         if (Array.isArray(parsedData) && parsedData.length > 0) {
-          const transformed = parsedData.map(convertBookingToCalendarEvent);
+          // Use our new processor on cached data too
+          const transformed = parsedData.map(processBookingToEvent);
           setBookings(transformed);
           foundCache = true;
         }
@@ -221,118 +270,29 @@ export default function MulticalendarPage() {
     fetchData(true);
   };
 
-  function parseDatesafe(original: any) {
-    if (!original) return {};
-    try {
-      const start =
-        original.booking_date && original.start_time
-          ? new Date(`${original.booking_date}T${original.start_time}`)
-          : original.start || null;
-      const end =
-        original.booking_date && original.end_time
-          ? new Date(`${original.booking_date}T${original.end_time}`)
-          : original.end || null;
-      return { start, end };
-    } catch {
-      return {};
-    }
-  }
-
+  // Keep for potential internal updates from child components
   const handleBookingCreated = (
     newEvents: Partial<CalendarEvent>[] | Partial<CalendarEvent>
   ) => {
     const arr = Array.isArray(newEvents) ? newEvents : [newEvents];
-
-    const normalized = arr.map((e, idx) => {
-      const ev = e as any;
-      const original = ev._originalData || ev.bookingData || ev;
-
-      // 1. Asset Logic
-      const assetId = String(
-        ev.assetId || ev.asset_id || original?.asset_id || ""
-      ).trim();
-      const assetName =
-        ev.assetName ||
-        ev.asset_name ||
-        original?.asset?.name ||
-        original?.asset_name ||
-        (assetId ? `Asset ${String(assetId).slice(0, 6)}` : "Unknown Asset");
-
-      // 2. Title / Description Logic (Consistent with Helpers)
-      const rawPurpose = original?.purpose || ev.purpose || "";
-      const rawNotes = original?.notes || ev.notes || ev.description || "";
-
-      let baseTitle = "Booking";
-      let baseDescription = "No description provided";
-
-      if (rawPurpose && rawPurpose.trim() !== "") {
-        baseTitle = rawPurpose;
-      } else if (rawNotes && rawNotes.trim() !== "") {
-        baseTitle = rawNotes;
-      }
-
-      if (rawNotes && rawNotes.trim() !== "") {
-        if (baseTitle !== rawNotes) baseDescription = rawNotes;
-        else baseDescription = "No additional details";
-      }
-
-      // 3. Construct Event
-      return {
-        id:
-          ev.id ||
-          `${Math.random().toString(36).slice(2, 9)}-${Date.now()}-${idx}`,
-        start:
-          ev.start ||
-          (original && parseDatesafe(original)?.start) ||
-          new Date(),
-        end:
-          ev.end ||
-          (original && parseDatesafe(original)?.end) ||
-          addHours(ev.start || new Date(), 1),
-
-        // UI Properties
-        title: `${baseTitle} - ${assetName}`,
-        description: baseDescription,
-        color:
-          ev.color || (original?.status === "confirmed" ? "green" : "yellow"),
-
-        // Data Properties
-        bookingTitle: baseTitle,
-        bookingDescription: baseDescription,
-        bookingNotes: rawNotes,
-        bookingStatus: ev.bookingStatus || original?.status || "pending",
-
-        assetId,
-        assetName,
-        bookedAssets: ev.bookedAssets || (assetName ? [assetName] : []),
-        _originalData: original,
+    
+    // Convert partials to full events using simple defaults, 
+    // real data comes on next fetch
+    const normalized = arr.map((ev: any, idx) => ({
         ...ev,
-      } as CalendarEvent;
-    });
+        id: ev.id || `temp-${Date.now()}-${idx}`,
+        start: ev.start || new Date(),
+        end: ev.end || addHours(new Date(), 1),
+        title: ev.title || "New Booking",
+        bookingStatus: "pending",
+        assetId: ev.assetId || "",
+        bookedAssets: ev.bookedAssets || []
+    } as CalendarEvent));
 
-    setBookings((prev) => {
-      const existingIds = new Set(prev.map((p) => p.id));
-      const toAdd = normalized.filter((n) => !existingIds.has(n.id));
-      const next = [...prev, ...toAdd];
-      return next;
-    });
-
-    try {
-      const firstAssetId = normalized.find((n) => n.assetId)?.assetId;
-      if (firstAssetId) {
-        const idx = assetCalendars.findIndex(
-          (ac) => String(ac.id) === String(firstAssetId)
-        );
-        if (idx !== -1 && !visibleAssets.includes(idx)) {
-          setVisibleAssets((prev) => {
-            const copy = Array.from(prev);
-            copy.unshift(idx);
-            return copy.slice(0, 6);
-          });
-        }
-      }
-    } catch (e) {}
+    setBookings((prev) => [...prev, ...normalized]);
+    handleActionComplete(); // Trigger refresh to get real data
   };
+
   const handleRefresh = () => {
     hasFetched.current = false;
     fetchData(false);
@@ -342,15 +302,17 @@ export default function MulticalendarPage() {
     if (availableAssets.length === 0 && bookings.length > 0) {
       const groups: Record<string, AssetCalendar> = {};
       bookings.forEach((b) => {
-        if (!groups[b.assetId]) {
-          groups[b.assetId] = {
-            id: b.assetId,
-            name: b.assetName,
+        // Safe access to assetId
+        const aId = b.assetId || "unknown"; 
+        if (!groups[aId]) {
+          groups[aId] = {
+            id: aId,
+            name: b.assetName || "Unknown",
             events: [],
-            asset: { id: b.assetId, name: b.assetName },
+            asset: (b as any)._originalData?.asset || { id: aId, name: b.assetName },
           };
         }
-        groups[b.assetId].events.push(b);
+        groups[aId].events.push(b);
       });
       return Object.values(groups).sort((a, b) => a.name.localeCompare(b.name));
     }
@@ -411,7 +373,6 @@ export default function MulticalendarPage() {
     );
   }
 
-  // --- Background color from the Home Palette ---
   const PAGE_BG = "bg-[hsl(20,60%,99%)]";
 
   return (
@@ -419,7 +380,6 @@ export default function MulticalendarPage() {
       className={`h-full pt-0 px-2 sm:p-6 lg:px-8 grid grid-cols-12 gap-6 ${PAGE_BG}`}
     >
       {/* --- LEFT SIDEBAR WRAPPER --- */}
-      {/* This div groups the Calendar and Filter so they stack naturally without stretching */}
       <div
         className={`${
           isCollapsed ? "hidden" : "hidden lg:flex col-span-3"
@@ -453,8 +413,7 @@ export default function MulticalendarPage() {
           </Calendar>
         </Card>
 
-        {/* Asset Filter (Moved inside wrapper) */}
-        {/* We pass a specific className to override the component's internal grid styles */}
+        {/* Asset Filter */}
         <AssetFilter
           isCollapsed={isCollapsed}
           loading={loading}
@@ -491,7 +450,7 @@ export default function MulticalendarPage() {
             />
           </div>
           <div className="hidden md:block flex-1 overflow-hidden">
-            {/* Ensure DesktopView takes remaining height */}
+            {/* Desktop View with Maintenance Logic built-in */}
             <DesktopView
               loading={loading}
               isCollapsed={isCollapsed}

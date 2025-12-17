@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { 
   X, Plus, PencilIcon, TrashIcon, Search, Box, MapPin, 
   User, Calendar, Clock, Tag, Briefcase, FileText, Info,
-  Wrench
+  Wrench, AlertTriangle
 } from "lucide-react";
 import api from "@/lib/api";
 import { useAuth } from "@/app/context/AuthContext";
@@ -28,6 +28,7 @@ interface AssetFromBackend {
   location?: string; 
   poc?: string; 
   usage_instructions?: string;
+  // Make sure your backend serializer includes these fields
   maintenance_start_date?: string;
   maintenance_end_date?: string;
 }
@@ -76,6 +77,7 @@ const transformBackendAsset = (backendAsset: AssetFromBackend): Asset => {
     assetPoc: backendAsset.poc || "Unassigned",
     assetProject: backendAsset.project_id || "",
     assetLocation: backendAsset.location || "",
+    // Mapping backend snake_case to frontend camelCase
     maintanenceStartdt: backendAsset.maintenance_start_date || "",
     maintanenceEnddt: backendAsset.maintenance_end_date || "",
     usageInstructions: backendAsset.usage_instructions || "",
@@ -94,11 +96,10 @@ const capitalizeStatus = (status: string): string => {
   return statusMap[status] || status;
 };
 
-// ✅ UPDATED: Added 'sidebarClassName' for high-contrast visibility on dark backgrounds
 const formatStatusForDisplay = (status: string): {
   label: string;
-  className: string; // For Table (Light bg)
-  sidebarClassName: string; // For Sidebar (Dark bg)
+  className: string; 
+  sidebarClassName: string; 
   dotColor: string;
 } => {
   const statusConfig: Record<string, { label: string; className: string; sidebarClassName: string; dotColor: string }> = {
@@ -136,6 +137,16 @@ const formatStatusForDisplay = (status: string): {
   };
 };
 
+// Helper to safely format ISO dates
+const safeFormatDate = (dateString?: string) => {
+  if (!dateString) return "N/A";
+  try {
+    return format(parseISO(dateString), "PPP");
+  } catch (e) {
+    return dateString;
+  }
+};
+
 export default function AssetsTable() {
   const [loading, setLoading] = useState(true);
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -156,7 +167,6 @@ export default function AssetsTable() {
 
   const STORAGE_KEY = `assets_v2_${userId}`;
 
-  // Load project from localStorage
   useEffect(() => {
     const projectString = localStorage.getItem(`project_${userId}`);
     if (!projectString) return;
@@ -169,7 +179,6 @@ export default function AssetsTable() {
     }
   }, [userId]);
 
-  // Fetch assets
   const fetchAssets = async (forceRefresh = false) => {
     try {
       if (!user || (initialLoadComplete.current && !forceRefresh)) return;
@@ -235,7 +244,6 @@ export default function AssetsTable() {
     }
   }, [currentPage]);
 
-  // Derived state
   const totalPages = Math.ceil(totalAssets / itemsPerPage);
   const maintenanceCount = assets.filter(a => a.assetStatus === "Maintenance").length;
 
@@ -293,7 +301,6 @@ export default function AssetsTable() {
         {/* --- Main Content Card --- */}
         <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-1 min-h-[85vh] flex flex-col relative overflow-hidden">
             
-            {/* Inner Padding Container */}
             <div className="p-6 flex-1 flex flex-col">
                 
                 {/* Header Area */}
@@ -316,7 +323,6 @@ export default function AssetsTable() {
                             </div>
                         </div>
 
-                        {/* Add Button */}
                         <Button 
                             onClick={() => setIsAssetFormOpen(true)} 
                             className="bg-[#0B1120] hover:bg-[#1a253a] text-white rounded-lg px-6 py-5 h-auto text-sm font-bold shadow-md shadow-slate-900/10 w-full sm:w-auto"
@@ -498,7 +504,6 @@ export default function AssetsTable() {
                                 <div className="h-10 w-10 rounded-lg bg-white/10 flex items-center justify-center border border-white/20">
                                     <Box size={20} />
                                 </div>
-                                {/* ✅ UPDATED: Uses specific 'sidebarClassName' for legibility on dark header */}
                                 <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border ${formatStatusForDisplay(selectedAsset.assetStatus).sidebarClassName}`}>
                                     <div className={`h-1.5 w-1.5 rounded-full ${formatStatusForDisplay(selectedAsset.assetStatus).dotColor}`} />
                                     {selectedAsset.assetStatus}
@@ -556,16 +561,45 @@ export default function AssetsTable() {
                             </p>
                         </div>
 
-                        {/* 3. Status & Dates */}
+                        {/* 3. Maintenance Schedule (NEW SECTION) */}
+                        {/* Only shows if status is Maintenance OR if dates exist */}
+                        {(selectedAsset.assetStatus === "Maintenance" || selectedAsset.maintanenceStartdt || selectedAsset.maintanenceEnddt) && (
+                            <div className="bg-white p-5 rounded-xl border border-amber-200 shadow-sm bg-amber-50/30">
+                                <div className="flex items-center gap-2 mb-4 border-b border-amber-100 pb-2">
+                                    <AlertTriangle className="h-4 w-4 text-amber-500" />
+                                    <h3 className="text-xs font-bold text-amber-600 uppercase tracking-wider">Maintenance Schedule</h3>
+                                </div>
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <Calendar className="h-4 w-4 text-amber-400" />
+                                            <span className="text-sm font-medium text-slate-500">Start Date</span>
+                                        </div>
+                                        <span className="text-sm font-semibold text-slate-900">
+                                            {safeFormatDate(selectedAsset.maintanenceStartdt)}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <Calendar className="h-4 w-4 text-amber-400" />
+                                            <span className="text-sm font-medium text-slate-500">End Date</span>
+                                        </div>
+                                        <span className="text-sm font-semibold text-slate-900">
+                                            {safeFormatDate(selectedAsset.maintanenceEnddt)}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 4. Logistics */}
                         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
                             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Logistics</h3>
                             <div className="space-y-4">
                                 <div className="flex items-center justify-between">
                                     <span className="text-sm font-medium text-slate-500">Last Updated</span>
                                     <span className="text-sm font-semibold text-slate-900">
-                                      {selectedAsset.assetLastUpdated 
-                                        ? format(parseISO(selectedAsset.assetLastUpdated), "PPP p")
-                                        : "N/A"}
+                                      {safeFormatDate(selectedAsset.assetLastUpdated)}
                                     </span>
                                 </div>
                                 <div className="flex items-center justify-between">
@@ -575,14 +609,14 @@ export default function AssetsTable() {
                             </div>
                         </div>
 
-                        {/* 4. Audit Timestamps */}
+                        {/* 5. Audit Timestamps */}
                         {selectedAsset._originalData && (
                             <div className="text-center space-y-1 py-2">
                                 <p className="text-[10px] text-slate-400">
-                                    Created: {format(new Date(selectedAsset._originalData.created_at), "PPP p")}
+                                    Created: {safeFormatDate(selectedAsset._originalData.created_at)}
                                 </p>
                                 <p className="text-[10px] text-slate-400">
-                                    Last Updated: {format(new Date(selectedAsset._originalData.updated_at), "PPP p")}
+                                    Last Updated: {safeFormatDate(selectedAsset._originalData.updated_at)}
                                 </p>
                             </div>
                         )}

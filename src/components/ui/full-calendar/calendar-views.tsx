@@ -106,15 +106,33 @@ export const CalendarDayView = ({
 }) => {
   const { events, date, setEvents } = useCalendar();
 
-  // --- 1. CHECK MAINTENANCE STATUS ---
-  // Adjust the string match based on exactly how your API returns the status
-  const assetStatus = assetCalendar?.asset?.status?.toLowerCase() || "";
-  const isMaintenance =
-    assetStatus.includes("maintenance") ||
-    assetStatus.includes("broken") ||
-    assetStatus.includes("repair");
+  // --- 1. MAINTENANCE LOGIC ---
+  const asset = assetCalendar?.asset;
 
-  // States
+  const isSlotInMaintenance = (slotDate: Date) => {
+    if (!asset) return false;
+
+    const status = asset.status?.toLowerCase() || "";
+    const isMaintenanceStatus =
+      status.includes("maintenance") ||
+      status.includes("broken") ||
+      status.includes("repair");
+
+    if (!isMaintenanceStatus) return false;
+
+    // If no dates provided but status is maintenance, block everything
+    if (!asset.maintenance_start || !asset.maintenance_end) {
+      return true;
+    }
+
+    const start = new Date(asset.maintenance_start);
+    const end = new Date(asset.maintenance_end);
+
+    // Check overlap
+    return slotDate >= start && slotDate < end;
+  };
+
+  // --- STATES ---
   const [isBookingFormOpen, setIsBookingFormOpen] = useState(false);
   const [viewingEventId, setViewingEventId] = useState<string | null>(null);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<{
@@ -127,7 +145,6 @@ export const CalendarDayView = ({
     assetName: assetCalendar?.name,
   });
 
-  // Drag States
   const [pendingReschedule, setPendingReschedule] = useState<{
     event: CalendarEvent;
     newStart: Date;
@@ -139,7 +156,6 @@ export const CalendarDayView = ({
   } | null>(null);
   const [isRescheduling, setIsRescheduling] = useState(false);
 
-  // Drag Sensors
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor)
@@ -147,9 +163,6 @@ export const CalendarDayView = ({
 
   // --- DRAG LOGIC ---
   const handleDragEnd = (e: DragEndEvent) => {
-    // Double check to prevent dragging if maintenance (UI should prevent this, but good safety)
-    if (isMaintenance) return;
-
     const { active, delta } = e;
     const PIXELS_PER_HOUR = 48;
     const rawMinutesMoved = (delta.y / PIXELS_PER_HOUR) * 60;
@@ -165,23 +178,35 @@ export const CalendarDayView = ({
     const newStart = addMinutes(oldStart, snappedMinutes);
     const newEnd = addMinutes(oldEnd, snappedMinutes);
 
-    // Validation
     if (!isSameDay(newStart, oldStart)) return;
 
+    // Time Boundaries
     const startHour = newStart.getHours() + newStart.getMinutes() / 60;
     const endHour = newEnd.getHours() + newEnd.getMinutes() / 60;
 
     if (startHour < EARLIEST_START_HOUR) {
       setValidationError({
-        title: "Time Limit Reached",
+        title: "Time Limit",
         message: "Bookings cannot start before 6:00 AM.",
       });
       return;
     }
     if (endHour > LATEST_END_HOUR) {
       setValidationError({
-        title: "Time Limit Reached",
+        title: "Time Limit",
         message: "Bookings cannot end after 8:00 PM.",
+      });
+      return;
+    }
+
+    // Maintenance Check
+    if (
+      isSlotInMaintenance(newStart) ||
+      isSlotInMaintenance(addMinutes(newEnd, -1))
+    ) {
+      setValidationError({
+        title: "Asset Unavailable",
+        message: "You cannot move a booking into a maintenance period.",
       });
       return;
     }
@@ -189,13 +214,11 @@ export const CalendarDayView = ({
     setPendingReschedule({ event: eventData, newStart, newEnd });
   };
 
-  // API Update Logic
   const confirmReschedule = async () => {
     if (!pendingReschedule) return;
     setIsRescheduling(true);
     const { event, newStart, newEnd } = pendingReschedule;
     const originalEvents = [...events];
-
     const updatedEvents = events.map((ev) =>
       ev.id === event.id ? { ...ev, start: newStart, end: newEnd } : ev
     );
@@ -227,15 +250,15 @@ export const CalendarDayView = ({
     onActionComplete?.();
   };
 
+  // --- GRID RENDER LOGIC ---
   const hours = [...Array(14)].map((_, i) => {
     const hourDate = new Date(date);
-    hourDate.setHours(i + 6, 0, 0, 0);
+    hourDate.setHours(i + 6, 0, 0, 0); // Start at 6 AM
     return hourDate;
   });
 
   const handleTimeSlotClick = (hour: Date) => {
-    // --- 2. DISABLE CLICK ON MAINTENANCE ---
-    if (isMaintenance) return;
+    if (isSlotInMaintenance(hour)) return;
 
     const startTime = new Date(hour);
     const endTime = addHours(startTime, 1);
@@ -264,23 +287,7 @@ export const CalendarDayView = ({
         modifiers={[restrictToVerticalAxis]}
       >
         <div className="flex flex-col h-full bg-white rounded-lg shadow-sm overflow-hidden border border-slate-100 relative">
-          {/* --- 3. MAINTENANCE OVERLAY / VISUALS --- */}
-          {isMaintenance && (
-            <div className="absolute inset-0 z-40 bg-slate-50/60 pointer-events-none flex items-center justify-center">
-              <div className="bg-white/90 border border-slate-200 shadow-sm px-4 py-2 rounded-full flex items-center gap-2 text-slate-500">
-                <Ban className="h-4 w-4 text-red-400" />
-                <span className="text-xs font-bold uppercase tracking-wide">
-                  Asset Under Maintenance
-                </span>
-              </div>
-            </div>
-          )}
-
-          <div
-            className={`flex flex-1 relative overflow-y-auto overflow-x-hidden custom-scrollbar ${
-              isMaintenance ? "bg-slate-50/50" : ""
-            }`}
-          >
+          <div className="flex flex-1 relative overflow-y-auto overflow-x-hidden custom-scrollbar">
             {/* Sidebar Hours */}
             <div className="w-14 flex-shrink-0 border-r border-slate-100 bg-slate-50 flex flex-col">
               {hours.map((hour) => (
@@ -305,48 +312,63 @@ export const CalendarDayView = ({
               )}
 
               <div className="flex flex-col w-full h-full">
-                {hours.map((hour, index) => (
-                  <div
-                    key={hour.toString()}
-                    className={`
-                        relative border-t border-slate-100 h-12 flex-none 
-                        ${
-                          isMaintenance
-                            ? "bg-[linear-gradient(45deg,transparent_25%,rgba(0,0,0,0.02)_25%,rgba(0,0,0,0.02)_50%,transparent_50%,transparent_75%,rgba(0,0,0,0.02)_75%,rgba(0,0,0,0.02)_100%)] bg-[length:20px_20px]"
-                            : index % 2 === 0
-                            ? "bg-white"
-                            : "bg-slate-50/30"
-                        }
-                    `}
-                  >
-                    <div
-                      className={`absolute inset-0 w-full h-full transition-colors ${
-                        isMaintenance
-                          ? "cursor-not-allowed"
-                          : "cursor-pointer hover:bg-slate-100/60"
-                      }`}
-                      onClick={() => handleTimeSlotClick(hour)}
-                      style={{
-                        pointerEvents: hourHasEvents[hour.toString()]
-                          ? "none"
-                          : "auto",
-                      }}
-                    />
-                    <div className="absolute w-full border-t border-slate-100 border-dashed top-1/2 pointer-events-none"></div>
+                {hours.map((hour, index) => {
+                  const underMaintenance = isSlotInMaintenance(hour);
 
-                    <EventGroupSideBySide
-                      hour={hour}
-                      events={events || []}
-                      isDisabled={isMaintenance} // Pass disabled prop
-                      onEventClick={(id) => setViewingEventId(id)}
-                    />
-                  </div>
-                ))}
+                  return (
+                    <div
+                      key={hour.toString()}
+                      className={`
+                            relative border-t border-slate-100 h-12 flex-none 
+                            ${
+                              underMaintenance
+                                ? "bg-[linear-gradient(45deg,transparent_25%,rgba(0,0,0,0.04)_25%,rgba(0,0,0,0.04)_50%,transparent_50%,transparent_75%,rgba(0,0,0,0.04)_75%,rgba(0,0,0,0.04)_100%)] bg-[length:16px_16px] bg-slate-50"
+                                : index % 2 === 0
+                                ? "bg-white"
+                                : "bg-slate-50/30"
+                            }
+                        `}
+                    >
+                      {/* Interactive Layer */}
+                      <div
+                        className={`absolute inset-0 w-full h-full transition-colors 
+                                ${
+                                  underMaintenance
+                                    ? "cursor-not-allowed z-30"
+                                    : "cursor-pointer hover:bg-slate-100/60"
+                                }`}
+                        onClick={() => handleTimeSlotClick(hour)}
+                        style={{
+                          pointerEvents: hourHasEvents[hour.toString()]
+                            ? "none"
+                            : "auto",
+                        }}
+                      >
+                        {underMaintenance && (
+                          <div className="h-full flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                            <span className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1 bg-white/80 px-2 py-0.5 rounded-full">
+                              <Ban size={10} /> Maintenance
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="absolute w-full border-t border-slate-100 border-dashed top-1/2 pointer-events-none"></div>
+
+                      <EventGroupSideBySide
+                        hour={hour}
+                        events={events || []}
+                        isDisabled={underMaintenance}
+                        onEventClick={(id) => setViewingEventId(id)}
+                      />
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
 
-          {isBookingFormOpen && !isMaintenance && (
+          {isBookingFormOpen && (
             <CreateBookingForm
               isOpen={isBookingFormOpen}
               onClose={() => setIsBookingFormOpen(false)}
