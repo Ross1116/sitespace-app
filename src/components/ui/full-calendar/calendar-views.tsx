@@ -10,6 +10,7 @@ import {
 import {
   addDays,
   addHours,
+  addMinutes,
   differenceInMinutes,
   format,
   getMonth,
@@ -20,6 +21,16 @@ import {
   setMonth,
   startOfWeek,
 } from "date-fns";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useState, useMemo } from "react";
 import {
   useCalendar,
@@ -32,6 +43,48 @@ import { TimeTable } from "./calendar-utils";
 import { AssetCalendar } from "./calendar-context";
 import { CreateBookingForm } from "@/components/forms/CreateBookingForm";
 import { useAuth } from "@/app/context/AuthContext";
+import {
+  DndContext,
+  DragEndEvent,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  useDraggable,
+} from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
+import api from "@/lib/api";
+import { Loader2 } from "lucide-react";
+
+const DraggableEventWrapper = ({
+  event,
+  children,
+}: {
+  event: CalendarEvent;
+  children: React.ReactNode;
+}) => {
+  const { attributes, listeners, setNodeRef, transform, isDragging } =
+    useDraggable({
+      id: event.id,
+      data: event,
+    });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Translate.toString(transform),
+    zIndex: isDragging ? 50 : undefined,
+    opacity: isDragging ? 0.8 : 1,
+    position: "relative",
+    height: "100%",
+    touchAction: "none",
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} {...listeners} {...attributes}>
+      {children}
+    </div>
+  );
+};
 
 export const CalendarDayView = ({
   assetCalendar,
@@ -45,7 +98,9 @@ export const CalendarDayView = ({
   ) => void;
 }) => {
   const { user } = useAuth();
-  const { view, events, date, setEvents, onEventClick } = useCalendar();
+  const { events, date, setEvents, onEventClick } = useCalendar();
+
+  // State for Booking Form
   const [isBookingFormOpen, setIsBookingFormOpen] = useState(false);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<{
     start: Date | null;
@@ -57,8 +112,100 @@ export const CalendarDayView = ({
     assetName: assetCalendar?.name,
   });
 
-  if (view !== "day") return null;
+  // State for Reschedule Confirmation
+  const [pendingReschedule, setPendingReschedule] = useState<{
+    event: CalendarEvent;
+    newStart: Date;
+    newEnd: Date;
+  } | null>(null);
+  const [isRescheduling, setIsRescheduling] = useState(false);
 
+  // --- DND SENSORS ---
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(TouchSensor)
+  );
+
+  // --- HANDLE DRAG END ---
+  const handleDragEnd = (e: DragEndEvent) => {
+    const { active, delta } = e;
+
+    // Grid Metrics
+    const PIXELS_PER_HOUR = 48;
+    const rawMinutesMoved = (delta.y / PIXELS_PER_HOUR) * 60;
+
+    // Snap to 30 Minute Increments
+    const SNAP_INCREMENT = 30;
+    const snappedMinutes =
+      Math.round(rawMinutesMoved / SNAP_INCREMENT) * SNAP_INCREMENT;
+
+    if (snappedMinutes === 0) return;
+
+    const eventData = active.data.current as CalendarEvent;
+
+    // Calculate New Times
+    const oldStart = new Date(eventData.start);
+    const oldEnd = new Date(eventData.end);
+
+    const newStart = addMinutes(oldStart, snappedMinutes);
+    const newEnd = addMinutes(oldEnd, snappedMinutes);
+
+    // Open Confirmation Dialog
+    setPendingReschedule({
+      event: eventData,
+      newStart,
+      newEnd,
+    });
+  };
+
+  // --- EXECUTE API UPDATE ---
+  const confirmReschedule = async () => {
+    if (!pendingReschedule) return;
+
+    setIsRescheduling(true);
+    const { event, newStart, newEnd } = pendingReschedule;
+    const originalEvents = [...events];
+
+    // Optimistic UI Update
+    const updatedEvents = events.map((ev) => {
+      if (ev.id === event.id) {
+        return { ...ev, start: newStart, end: newEnd };
+      }
+      return ev;
+    });
+    setEvents(updatedEvents);
+
+    try {
+      const bookingId = event.bookingKey || event.id;
+      const originalPayload = event._originalData || {};
+
+      const payload = {
+        booking_date: format(newStart, "yyyy-MM-dd"),
+        start_time: format(newStart, "HH:mm:ss"),
+        end_time: format(newEnd, "HH:mm:ss"),
+        purpose: originalPayload.purpose || event.bookingTitle || "Rescheduled",
+        notes: originalPayload.notes || event.bookingNotes || "",
+      };
+
+      await api.put(`/bookings/${bookingId}`, payload);
+
+      onActionComplete?.();
+      setPendingReschedule(null);
+    } catch (error) {
+      console.error("Failed to reschedule", error);
+      setEvents(originalEvents);
+      alert("Failed to reschedule. Please try again.");
+    } finally {
+      setIsRescheduling(false);
+      setPendingReschedule(null);
+    }
+  };
+
+  // --- RENDER HELPERS ---
   const hours = [...Array(14)].map((_, i) => {
     const hourDate = new Date(date);
     hourDate.setHours(i + 6, 0, 0, 0);
@@ -68,7 +215,6 @@ export const CalendarDayView = ({
   const handleTimeSlotClick = (hour: Date) => {
     const startTime = new Date(hour);
     const endTime = addHours(startTime, 1);
-
     setSelectedTimeSlot({
       start: startTime,
       end: endTime,
@@ -80,200 +226,7 @@ export const CalendarDayView = ({
   const handleSaveEvent = (
     newEvent: Partial<CalendarEvent> | Partial<CalendarEvent>[]
   ) => {
-    console.log("Save event worked");
-    if (!setEvents || !events) return;
-
-    // Helper to convert incoming partial event -> full CalendarEvent keeping booking meta
-    const toCompleteEvent = (
-      evt: Partial<CalendarEvent>,
-      idx = 0
-    ): CalendarEvent => {
-      const start = (evt.start || new Date()) as Date;
-      const end = (evt.end as Date) || addHours(start, 1);
-
-      // attempt to preserve booking metadata if provided
-      const bookingData =
-        (evt as any).bookingData || (evt as any).booking || null;
-      const bookingStatus =
-        (evt as any).bookingStatus ||
-        bookingData?.status ||
-        (evt as any).status ||
-        "pending";
-      const bookingKey =
-        (evt as any).bookingKey ||
-        bookingData?.id ||
-        evt.id ||
-        `${Math.random().toString(36).substring(2, 11)}-${Date.now()}-${idx}`;
-
-      const assetId =
-        (evt as any).assetId ||
-        bookingData?.asset_id ||
-        (evt as any).asset_id ||
-        assetCalendar?.id ||
-        "unknown";
-      const assetName =
-        (evt as any).assetName ||
-        bookingData?.asset_name ||
-        (evt as any).asset_name ||
-        assetCalendar?.name ||
-        `Asset ${String(assetId).slice(0, 6)}...`;
-
-      return {
-        id: evt.id || bookingKey,
-        start,
-        end,
-        title:
-          (evt.title as string) ||
-          `${(evt as any).bookingTitle || "Booking"} - ${assetName}`,
-        description:
-          (evt.description as string) || (evt as any).bookingDescription || "",
-        color:
-          (evt as any).color ||
-          (bookingStatus === "confirmed" ? "green" : "yellow"),
-        // booking-specific fields
-        bookingKey: bookingKey,
-        bookingTitle:
-          (evt as any).bookingTitle || (evt.title as string) || "Booking",
-        bookingDescription:
-          (evt as any).bookingDescription || (evt as any).description || "",
-        bookingNotes: (evt as any).bookingNotes || bookingData?.notes || "",
-        bookingTimeDt:
-          (evt as any).bookingTimeDt || bookingData?.booking_date || "",
-        bookingStartTime:
-          (evt as any).bookingStartTime || bookingData?.start_time || "",
-        bookingEndTime:
-          (evt as any).bookingEndTime || bookingData?.end_time || "",
-        bookingStatus: bookingStatus,
-        bookingFor: (evt as any).bookingFor || bookingData?.manager || "",
-        assetId,
-        assetName,
-        assetCode: (evt as any).assetCode || bookingData?.asset_code || "",
-        assetType: (evt as any).assetType || bookingData?.asset_type || "",
-        bookedAssets:
-          (evt as any).bookedAssets || (assetName ? [assetName] : []),
-        status: bookingStatus,
-        managerId: bookingData?.manager_id || (evt as any).managerId,
-        managerName:
-          bookingData?.manager?.first_name || (evt as any).managerName,
-        subcontractorId:
-          bookingData?.subcontractor_id || (evt as any).subcontractorId,
-        subcontractorName:
-          bookingData?.subcontractor?.company_name ||
-          (evt as any).subcontractorName,
-        projectId: bookingData?.project_id || (evt as any).projectId,
-        projectName: bookingData?.project?.name || (evt as any).projectName,
-        projectLocation:
-          bookingData?.project?.location || (evt as any).projectLocation,
-        _originalData: bookingData || (evt as any)._originalData || null,
-      } as CalendarEvent;
-    };
-
-    const incomingArray = Array.isArray(newEvent) ? newEvent : [newEvent];
-
-    const completeEvents = incomingArray
-      .filter((ev) => ev.start && ev.title)
-      .map((ev, idx) => {
-        const e = ev as any;
-
-        const start = e.start as Date;
-        const original = e._originalData || e.bookingData || null;
-
-        // === asset resolution (most important) ===
-        const assetId = String(
-          e.assetId ||
-            e.asset_id ||
-            original?.asset_id ||
-            assetCalendar?.id ||
-            ""
-        ).trim();
-        const assetName =
-          e.assetName ||
-          e.asset_name ||
-          original?.asset?.name ||
-          original?.asset_name ||
-          assetCalendar?.name ||
-          "";
-
-        // === status/color ===
-        let bookingStatus = (
-          e.bookingStatus ||
-          e.booking_status ||
-          original?.status ||
-          original?.booking_status ||
-          "pending"
-        )
-          .toString()
-          .toLowerCase();
-        if (!bookingStatus || bookingStatus === "pending") {
-          if (user?.role === "manager" || user?.role === "admin") {
-            bookingStatus = "confirmed";
-          }
-        }
-
-        const color =
-          e.color || (bookingStatus === "confirmed" ? "green" : "yellow");
-
-        return {
-          id:
-            e.id ||
-            e.bookingKey ||
-            original?.id ||
-            `${Math.random().toString(36).slice(2, 9)}-${Date.now()}-${idx}`,
-          start,
-          end: e.end || addHours(start, 1),
-          title: e.title as string,
-          description: e.description || e.bookingDescription || "",
-          color,
-          // preserved booking fields (safe access)
-          bookingKey: e.bookingKey || original?.id || null,
-          bookingTitle: e.bookingTitle || e.title || original?.title || "",
-          bookingDescription:
-            e.bookingDescription || e.description || original?.notes || "",
-          bookingNotes: e.bookingNotes || original?.notes || "",
-          bookingTimeDt: e.bookingTimeDt || original?.booking_date || "",
-          bookingStartTime: e.bookingStartTime || original?.start_time || "",
-          bookingEndTime: e.bookingEndTime || original?.end_time || "",
-          bookingStatus,
-          assetId,
-          assetName,
-          assetCode:
-            e.assetCode ||
-            original?.asset?.asset_code ||
-            original?.asset_code ||
-            "",
-          assetType: e.assetType || original?.assetType || "",
-          bookedAssets:
-            e.bookedAssets ||
-            (assetName ? [assetName] : []) ||
-            (original?.asset
-              ? [
-                  original.asset.name ||
-                    original.asset.asset_code ||
-                    original.asset.id,
-                ]
-              : []),
-          status: e.status || bookingStatus,
-          managerId: e.managerId || original?.manager_id || null,
-          subcontractorId:
-            e.subcontractorId || original?.subcontractor_id || null,
-          projectId: e.projectId || original?.project_id || null,
-          projectName:
-            e.projectName ||
-            original?.project?.name ||
-            original?.project_name ||
-            "",
-          _originalData: original,
-        } as CalendarEvent;
-      });
-
-    setEvents([...events, ...completeEvents]);
-
-    // notify parent page so it can update global bookings + localStorage / assetCalendars
-    onBookingCreated?.(completeEvents);
-
-    if (onEventClick && completeEvents.length > 0) {
-      onEventClick(completeEvents[completeEvents.length - 1]);
-    }
+    onBookingCreated?.(newEvent);
     onActionComplete?.();
   };
 
@@ -288,79 +241,145 @@ export const CalendarDayView = ({
   const isCurrentDay = isSameDay(date, new Date());
 
   return (
-    <div className="flex flex-col h-full bg-white rounded-lg shadow-sm overflow-hidden border border-slate-100">
-      <div className="flex flex-1 relative overflow-y-auto overflow-x-hidden custom-scrollbar">
-        {/* Sidebar Hours */}
-        <div className="w-14 flex-shrink-0 border-r border-slate-100 bg-slate-50 flex flex-col">
-          {hours.map((hour) => (
-            <div
-              key={hour.toString()}
-              className="h-12 flex-none flex items-start justify-end pr-2 pt-0.5 text-xs text-slate-400 font-medium border-t border-slate-100"
-            >
-              {format(hour, "h a")}
-            </div>
-          ))}
-        </div>
-
-        {/* Calendar Grid */}
-        <div className="flex-1 relative">
-          {/* Current Time Indicator - Changed from Red to Navy */}
-          {isCurrentDay && currentHour >= 6 && currentHour < 20 && (
-            <div
-              className="absolute w-full border-t-2 border-[#0B1120] z-20"
-              style={{
-                top: `${(currentHour - 6) * 48}px`,
-              }}
-            >
-              <div className="absolute -left-1.5 -top-1.5 w-3 h-3 rounded-full bg-[#0B1120]"></div>
-            </div>
-          )}
-
-          <div className="flex flex-col w-full h-full">
-            {hours.map((hour, index) => (
-              <div
-                key={hour.toString()}
-                className={`relative border-t border-slate-100 h-12 flex-none ${
-                  index % 2 === 0 ? "bg-white" : "bg-slate-50/30"
-                } ${
-                  isCurrentDay && hour.getHours() === currentHour
-                    ? "bg-blue-50/5"
-                    : ""
-                }`}
-              >
-                {/* Clickable Area - changed hover from blue to slate */}
+    <>
+      <DndContext
+        sensors={sensors}
+        onDragEnd={handleDragEnd}
+        modifiers={[restrictToVerticalAxis]}
+      >
+        <div className="flex flex-col h-full bg-white rounded-lg shadow-sm overflow-hidden border border-slate-100">
+          <div className="flex flex-1 relative overflow-y-auto overflow-x-hidden custom-scrollbar">
+            {/* Sidebar Hours */}
+            <div className="w-14 flex-shrink-0 border-r border-slate-100 bg-slate-50 flex flex-col">
+              {hours.map((hour) => (
                 <div
-                  className="absolute inset-0 w-full h-full cursor-pointer hover:bg-slate-100/60 transition-colors"
-                  onClick={() => handleTimeSlotClick(hour)}
-                  style={{
-                    pointerEvents: hourHasEvents[hour.toString()]
-                      ? "none"
-                      : "auto",
-                  }}
-                />
+                  key={hour.toString()}
+                  className="h-12 flex-none flex items-start justify-end pr-2 pt-0.5 text-xs text-slate-400 font-medium border-t border-slate-100"
+                >
+                  {format(hour, "h a")}
+                </div>
+              ))}
+            </div>
 
-                {/* Half hour marker */}
-                <div className="absolute w-full border-t border-slate-100 border-dashed top-1/2 pointer-events-none"></div>
+            {/* Calendar Grid */}
+            <div className="flex-1 relative">
+              {isCurrentDay && currentHour >= 6 && currentHour < 20 && (
+                <div
+                  className="absolute w-full border-t-2 border-[#0B1120] z-20 pointer-events-none"
+                  style={{ top: `${(currentHour - 6) * 48}px` }}
+                >
+                  <div className="absolute -left-1.5 -top-1.5 w-3 h-3 rounded-full bg-[#0B1120]"></div>
+                </div>
+              )}
 
-                <EventGroupSideBySide hour={hour} events={events || []} />
+              <div className="flex flex-col w-full h-full">
+                {hours.map((hour, index) => (
+                  <div
+                    key={hour.toString()}
+                    className={`relative border-t border-slate-100 h-12 flex-none ${
+                      index % 2 === 0 ? "bg-white" : "bg-slate-50/30"
+                    } ${
+                      isCurrentDay && hour.getHours() === currentHour
+                        ? "bg-blue-50/5"
+                        : ""
+                    }`}
+                  >
+                    <div
+                      className="absolute inset-0 w-full h-full cursor-pointer hover:bg-slate-100/60 transition-colors"
+                      onClick={() => handleTimeSlotClick(hour)}
+                      style={{
+                        pointerEvents: hourHasEvents[hour.toString()]
+                          ? "none"
+                          : "auto",
+                      }}
+                    />
+                    <div className="absolute w-full border-t border-slate-100 border-dashed top-1/2 pointer-events-none"></div>
+
+                    <EventGroupSideBySide hour={hour} events={events || []} />
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
           </div>
-        </div>
-      </div>
 
-      {isBookingFormOpen && (
-        <CreateBookingForm
-          isOpen={isBookingFormOpen}
-          onClose={() => setIsBookingFormOpen(false)}
-          startTime={selectedTimeSlot.start}
-          endTime={selectedTimeSlot.end}
-          defaultAsset={assetCalendar?.id}
-          defaultAssetName={assetCalendar?.name}
-          onSave={handleSaveEvent}
-        />
-      )}
-    </div>
+          {isBookingFormOpen && (
+            <CreateBookingForm
+              isOpen={isBookingFormOpen}
+              onClose={() => setIsBookingFormOpen(false)}
+              startTime={selectedTimeSlot.start}
+              endTime={selectedTimeSlot.end}
+              defaultAsset={assetCalendar?.id}
+              defaultAssetName={assetCalendar?.name}
+              onSave={handleSaveEvent}
+            />
+          )}
+        </div>
+      </DndContext>
+
+      {/* --- CONFIRMATION DIALOG --- */}
+      <AlertDialog
+        open={!!pendingReschedule}
+        onOpenChange={(open) =>
+          !open && !isRescheduling && setPendingReschedule(null)
+        }
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reschedule Booking</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to reschedule{" "}
+              <strong>{pendingReschedule?.event.title}</strong>?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          {/* MOVED DIV OUTSIDE OF DESCRIPTION TO FIX NESTING ERROR */}
+          <div className="flex items-center gap-4 text-sm my-2 bg-slate-50 p-3 rounded-md border border-slate-100">
+            <div className="flex flex-col">
+              <span className="text-xs text-slate-400 uppercase font-bold">
+                Current
+              </span>
+              <span className="font-medium text-slate-700 line-through">
+                {pendingReschedule?.event.start &&
+                  format(pendingReschedule.event.start, "h:mm a")}
+              </span>
+            </div>
+            <div className="text-slate-400">→</div>
+            <div className="flex flex-col">
+              <span className="text-xs text-[#0B1120] uppercase font-bold">
+                New Time
+              </span>
+              <span className="font-bold text-[#0B1120]">
+                {pendingReschedule?.newStart &&
+                  format(pendingReschedule.newStart, "h:mm a")}
+              </span>
+            </div>
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isRescheduling}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                confirmReschedule();
+              }}
+              disabled={isRescheduling}
+              className="bg-[#0B1120] text-white hover:bg-[#0B1120]/90"
+            >
+              {isRescheduling ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Confirm Change"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };
 
@@ -790,67 +809,82 @@ const EventGroupSideBySide = ({ hour, events }: EventGroupSideBySideProps) => {
   if (eventsInHour.length === 0) return null;
 
   const eventCount = eventsInHour.length;
+  // Calculate width - if strict 100% is needed per column logic, keep it dynamic
   const widthPercent = Math.max(25, 100 / eventCount);
 
   return (
-    <div className="absolute inset-0 flex w-full h-full">
+    <div className="absolute inset-0 flex w-full h-full pointer-events-none">
       {eventsInHour.map((event) => {
         const minutesOffset = event.start.getMinutes();
         const durationMinutes = differenceInMinutes(event.end, event.start);
         const hoursSpan = Math.ceil(durationMinutes / 60);
+
+        // CSS positioning logic
         const topPercent = (minutesOffset / 60) * 100;
-        const heightPercent = Math.min((durationMinutes / 60) * 100, 100);
-        const zIndex = Math.floor(durationMinutes / 15);
+
+        // Calculate height logic (handling multi-hour span visual)
+        // If it spans multiple hours, we need to calculate percentage based on 1 hour slot (h-12)
+        // Note: Dragging multi-hour events visually across the grid boundaries
+        // using just absolute/relative in a single cell is tricky.
+        // However, dnd-kit transform handles the visual movement perfectly.
+        const heightVal =
+          hoursSpan > 1
+            ? `${100 - topPercent + (hoursSpan - 1) * 100}%`
+            : `${Math.max((durationMinutes / 60) * 100, 10)}%`;
 
         return (
-          <TooltipProvider key={event.id}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div
-                  className={cn(
-                    dayEventVariants({ variant: event.color }),
-                    "absolute cursor-pointer overflow-hidden text-xs min-h-[24px] shadow-sm hover:z-50 hover:shadow-md transition-all hover:scale-[1.02]"
-                  )}
-                  style={{
-                    top: `${topPercent}%`,
-                    height:
-                      hoursSpan > 1
-                        ? `${100 - topPercent + (hoursSpan - 1) * 100}%`
-                        : `${Math.max(heightPercent, 10)}%`,
-                    width: `${widthPercent}%`,
-                    left: `${eventsInHour.indexOf(event) * widthPercent}%`,
-                    zIndex: zIndex,
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onEventClick?.(event);
-                  }}
-                >
-                  <div className="font-bold truncate">{event.title}</div>
-                  {durationMinutes >= 20 && (
-                    <div className="text-[10px] opacity-80 mt-0.5 font-medium">
-                      {format(event.start, "h:mm a")} -{" "}
-                      {format(event.end, "h:mm a")}
+          <div
+            key={event.id}
+            className="absolute pointer-events-auto"
+            style={{
+              top: `${topPercent}%`,
+              height: heightVal,
+              width: `${widthPercent}%`,
+              left: `${eventsInHour.indexOf(event) * widthPercent}%`,
+              zIndex: 10, // Ensure it sits above grid lines
+            }}
+          >
+            <DraggableEventWrapper event={event}>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div
+                      className={cn(
+                        dayEventVariants({ variant: event.color }),
+                        "w-full h-full cursor-grab active:cursor-grabbing overflow-hidden text-xs min-h-[24px] shadow-sm hover:z-50 hover:shadow-md transition-all hover:scale-[1.02]"
+                      )}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEventClick?.(event);
+                      }}
+                    >
+                      <div className="font-bold truncate">{event.title}</div>
+                      {durationMinutes >= 20 && (
+                        <div className="text-[10px] opacity-80 mt-0.5 font-medium">
+                          {format(event.start, "h:mm a")} -{" "}
+                          {format(event.end, "h:mm a")}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              </TooltipTrigger>
-              <TooltipContent className="bg-[#0B1120] text-white border-slate-700">
-                <div>
-                  <div className="font-bold">{event.title}</div>
-                  <div className="text-xs text-slate-300">
-                    {format(event.start, "h:mm a")} -{" "}
-                    {format(event.end, "h:mm a")}
-                  </div>
-                  {event.description && (
-                    <div className="mt-1 text-xs text-slate-400 max-w-[300px]">
-                      {event.description}
+                  </TooltipTrigger>
+                  <TooltipContent className="bg-[#0B1120] text-white border-slate-700 z-[1000]">
+                    <div>
+                      <div className="font-bold">{event.title}</div>
+                      <div className="text-xs text-slate-300">
+                        {format(event.start, "h:mm a")} -{" "}
+                        {format(event.end, "h:mm a")}
+                      </div>
+                      {event.description && (
+                        <div className="mt-1 text-xs text-slate-400 max-w-[300px]">
+                          {event.description}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </DraggableEventWrapper>
+          </div>
         );
       })}
     </div>

@@ -421,9 +421,9 @@ export default function MulticalendarPage() {
     >
       {/* --- LEFT SIDEBAR WRAPPER --- */}
       {/* This div groups the Calendar and Filter so they stack naturally without stretching */}
-      <div 
+      <div
         className={`${
-          isCollapsed ? "hidden" : "col-span-3 lg:flex"
+          isCollapsed ? "hidden" : "hidden lg:flex col-span-3"
         } flex-col gap-6`}
       >
         {/* Month Calendar Card */}
@@ -431,7 +431,11 @@ export default function MulticalendarPage() {
           // CHANGE 2: Removed 'row-span-6', 'h-full'. Added 'h-fit' and 'w-full'.
           className="w-full h-fit overflow-hidden bg-white border border-slate-100 shadow-sm rounded-2xl transition-all duration-600"
         >
-          <Calendar view="month" date={currentDate} onDateChange={setCurrentDate}>
+          <Calendar
+            view="month"
+            date={currentDate}
+            onDateChange={setCurrentDate}
+          >
             <div className="p-4 py-7 w-full flex flex-col">
               <div className="flex px-4 items-center mb-6 justify-between border-b border-slate-100 pb-4">
                 <CalendarCurrentDate className="text-lg font-bold text-slate-900" />
@@ -470,8 +474,8 @@ export default function MulticalendarPage() {
         } h-full flex flex-col bg-slate-50 border border-slate-200 shadow-sm rounded-2xl transition-all duration-600`}
       >
         <Calendar date={currentDate} onDateChange={setCurrentDate} view="day">
-           {/* ... existing calendar children ... */}
-           <CalendarHeader
+          {/* ... existing calendar children ... */}
+          <CalendarHeader
             isCollapsed={isCollapsed}
             loading={loading}
             assetCalendars={assetCalendars}
@@ -491,7 +495,7 @@ export default function MulticalendarPage() {
             />
           </div>
           <div className="hidden md:block flex-1 overflow-hidden">
-             {/* Ensure DesktopView takes remaining height */}
+            {/* Ensure DesktopView takes remaining height */}
             <DesktopView
               loading={loading}
               isCollapsed={isCollapsed}
@@ -504,7 +508,7 @@ export default function MulticalendarPage() {
           </div>
         </Calendar>
       </Card>
-      
+
       {/* Removed the original <AssetFilter /> placement from here */}
     </div>
   );
