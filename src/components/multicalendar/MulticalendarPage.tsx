@@ -416,7 +416,6 @@ export default function MulticalendarPage() {
 
   return (
     <div
-      // CHANGE 1: Removed 'grid-rows-12'. Added 'items-start' to prevent forcing height.
       className={`h-full pt-0 px-2 sm:p-6 lg:px-8 grid grid-cols-12 gap-6 ${PAGE_BG}`}
     >
       {/* --- LEFT SIDEBAR WRAPPER --- */}
@@ -428,7 +427,6 @@ export default function MulticalendarPage() {
       >
         {/* Month Calendar Card */}
         <Card
-          // CHANGE 2: Removed 'row-span-6', 'h-full'. Added 'h-fit' and 'w-full'.
           className="w-full h-fit overflow-hidden bg-white border border-slate-100 shadow-sm rounded-2xl transition-all duration-600"
         >
           <Calendar
@@ -468,13 +466,11 @@ export default function MulticalendarPage() {
 
       {/* --- MAIN CONTENT (Right Side) --- */}
       <Card
-        // CHANGE 3: Removed 'row-span-12', kept 'h-full' so it fills the screen height
         className={`p-6 mb-4 ${
           isCollapsed ? "col-span-12" : "col-span-12 lg:col-span-9"
         } h-full flex flex-col bg-slate-50 border border-slate-200 shadow-sm rounded-2xl transition-all duration-600`}
       >
         <Calendar date={currentDate} onDateChange={setCurrentDate} view="day">
-          {/* ... existing calendar children ... */}
           <CalendarHeader
             isCollapsed={isCollapsed}
             loading={loading}
@@ -508,8 +504,6 @@ export default function MulticalendarPage() {
           </div>
         </Calendar>
       </Card>
-
-      {/* Removed the original <AssetFilter /> placement from here */}
     </div>
   );
 }

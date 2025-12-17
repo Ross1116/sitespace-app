@@ -31,7 +31,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useState, useMemo } from "react";
+import { useState, useMemo, SetStateAction } from "react";
 import {
   useCalendar,
   dayEventVariants,
@@ -42,7 +42,7 @@ import { getDaysInMonth, generateWeekdays } from "./calendar-helpers";
 import { TimeTable } from "./calendar-utils";
 import { AssetCalendar } from "./calendar-context";
 import { CreateBookingForm } from "@/components/forms/CreateBookingForm";
-import { useAuth } from "@/app/context/AuthContext";
+import { BookingDetailsDialog } from "@/components/multicalendar/BookingDetailDialog";
 import {
   DndContext,
   DragEndEvent,
@@ -55,7 +55,10 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import api from "@/lib/api";
-import { Loader2 } from "lucide-react";
+import { AlertCircle, Loader2 } from "lucide-react";
+
+const EARLIEST_START_HOUR = 6; // 6:00 AM
+const LATEST_END_HOUR = 20; // 8:00 PM
 
 const DraggableEventWrapper = ({
   event,
@@ -97,11 +100,11 @@ export const CalendarDayView = ({
     events: Partial<CalendarEvent>[] | Partial<CalendarEvent>
   ) => void;
 }) => {
-  const { user } = useAuth();
-  const { events, date, setEvents, onEventClick } = useCalendar();
+  const { events, date, setEvents } = useCalendar();
 
-  // State for Booking Form
+  // States
   const [isBookingFormOpen, setIsBookingFormOpen] = useState(false);
+  const [viewingEventId, setViewingEventId] = useState<string | null>(null);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<{
     start: Date | null;
     end: Date | null;
@@ -112,33 +115,31 @@ export const CalendarDayView = ({
     assetName: assetCalendar?.name,
   });
 
-  // State for Reschedule Confirmation
+  // Drag States
   const [pendingReschedule, setPendingReschedule] = useState<{
     event: CalendarEvent;
     newStart: Date;
     newEnd: Date;
   } | null>(null);
+  const [validationError, setValidationError] = useState<{
+    title: string;
+    message: string;
+  } | null>(null);
   const [isRescheduling, setIsRescheduling] = useState(false);
 
-  // --- DND SENSORS ---
+  // Drag Sensors
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor)
   );
 
-  // --- HANDLE DRAG END ---
+  // --- DRAG LOGIC ---
   const handleDragEnd = (e: DragEndEvent) => {
     const { active, delta } = e;
-
-    // Grid Metrics
     const PIXELS_PER_HOUR = 48;
     const rawMinutesMoved = (delta.y / PIXELS_PER_HOUR) * 60;
 
-    // Snap to 30 Minute Increments
+    // Snap to 30 minute increments
     const SNAP_INCREMENT = 30;
     const snappedMinutes =
       Math.round(rawMinutesMoved / SNAP_INCREMENT) * SNAP_INCREMENT;
@@ -147,42 +148,55 @@ export const CalendarDayView = ({
 
     const eventData = active.data.current as CalendarEvent;
 
-    // Calculate New Times
     const oldStart = new Date(eventData.start);
     const oldEnd = new Date(eventData.end);
 
     const newStart = addMinutes(oldStart, snappedMinutes);
     const newEnd = addMinutes(oldEnd, snappedMinutes);
 
-    // Open Confirmation Dialog
-    setPendingReschedule({
-      event: eventData,
-      newStart,
-      newEnd,
-    });
+    // --- VALIDATION LOGIC ---
+    const startHour = newStart.getHours() + newStart.getMinutes() / 60;
+    const endHour = newEnd.getHours() + newEnd.getMinutes() / 60;
+
+    // 1. Prevent dragging to a different day
+    if (!isSameDay(newStart, oldStart)) return;
+
+    // 2. Prevent Starting before 6:00 AM
+    if (startHour < EARLIEST_START_HOUR) {
+      setValidationError({
+        title: "Time Limit Reached",
+        message: "Bookings cannot start before 6:00 AM.",
+      });
+      return;
+    }
+
+    // 3. Prevent Ending after 8:00 PM
+    if (endHour > LATEST_END_HOUR) {
+      setValidationError({
+        title: "Time Limit Reached",
+        message: "Bookings cannot end after 8:00 PM.",
+      });
+      return;
+    }
+
+    setPendingReschedule({ event: eventData, newStart, newEnd });
   };
 
-  // --- EXECUTE API UPDATE ---
+  // API Update Logic
   const confirmReschedule = async () => {
     if (!pendingReschedule) return;
-
     setIsRescheduling(true);
     const { event, newStart, newEnd } = pendingReschedule;
     const originalEvents = [...events];
 
-    // Optimistic UI Update
-    const updatedEvents = events.map((ev) => {
-      if (ev.id === event.id) {
-        return { ...ev, start: newStart, end: newEnd };
-      }
-      return ev;
-    });
+    const updatedEvents = events.map((ev) =>
+      ev.id === event.id ? { ...ev, start: newStart, end: newEnd } : ev
+    );
     setEvents(updatedEvents);
 
     try {
       const bookingId = event.bookingKey || event.id;
       const originalPayload = event._originalData || {};
-
       const payload = {
         booking_date: format(newStart, "yyyy-MM-dd"),
         start_time: format(newStart, "HH:mm:ss"),
@@ -190,25 +204,27 @@ export const CalendarDayView = ({
         purpose: originalPayload.purpose || event.bookingTitle || "Rescheduled",
         notes: originalPayload.notes || event.bookingNotes || "",
       };
-
       await api.put(`/bookings/${bookingId}`, payload);
-
       onActionComplete?.();
-      setPendingReschedule(null);
     } catch (error) {
       console.error("Failed to reschedule", error);
       setEvents(originalEvents);
-      alert("Failed to reschedule. Please try again.");
+      // Fallback alert for API errors specifically
+      alert("Failed to reschedule.");
     } finally {
       setIsRescheduling(false);
       setPendingReschedule(null);
     }
   };
 
-  // --- RENDER HELPERS ---
+  const handleActionRefresh = () => {
+    onActionComplete?.();
+  };
+
+  // Grid Logic
   const hours = [...Array(14)].map((_, i) => {
     const hourDate = new Date(date);
-    hourDate.setHours(i + 6, 0, 0, 0);
+    hourDate.setHours(i + 6, 0, 0, 0); // 6 AM start
     return hourDate;
   });
 
@@ -223,22 +239,14 @@ export const CalendarDayView = ({
     setIsBookingFormOpen(true);
   };
 
-  const handleSaveEvent = (
-    newEvent: Partial<CalendarEvent> | Partial<CalendarEvent>[]
-  ) => {
-    onBookingCreated?.(newEvent);
-    onActionComplete?.();
-  };
-
+  const currentHour = new Date().getHours();
+  const isCurrentDay = isSameDay(date, new Date());
   const hourHasEvents = hours.reduce((acc, hour) => {
     acc[hour.toString()] = (events || []).some((event) =>
       isSameHour(event.start, hour)
     );
     return acc;
   }, {} as Record<string, boolean>);
-
-  const currentHour = new Date().getHours();
-  const isCurrentDay = isSameDay(date, new Date());
 
   return (
     <>
@@ -278,10 +286,6 @@ export const CalendarDayView = ({
                     key={hour.toString()}
                     className={`relative border-t border-slate-100 h-12 flex-none ${
                       index % 2 === 0 ? "bg-white" : "bg-slate-50/30"
-                    } ${
-                      isCurrentDay && hour.getHours() === currentHour
-                        ? "bg-blue-50/5"
-                        : ""
                     }`}
                   >
                     <div
@@ -295,7 +299,11 @@ export const CalendarDayView = ({
                     />
                     <div className="absolute w-full border-t border-slate-100 border-dashed top-1/2 pointer-events-none"></div>
 
-                    <EventGroupSideBySide hour={hour} events={events || []} />
+                    <EventGroupSideBySide
+                      hour={hour}
+                      events={events || []}
+                      onEventClick={(id) => setViewingEventId(id)}
+                    />
                   </div>
                 ))}
               </div>
@@ -310,13 +318,42 @@ export const CalendarDayView = ({
               endTime={selectedTimeSlot.end}
               defaultAsset={assetCalendar?.id}
               defaultAssetName={assetCalendar?.name}
-              onSave={handleSaveEvent}
+              onSave={(newEvent) => {
+                onBookingCreated?.(newEvent);
+                onActionComplete?.();
+              }}
             />
           )}
         </div>
       </DndContext>
 
-      {/* --- CONFIRMATION DIALOG --- */}
+      {/* --- VALIDATION ERROR DIALOG --- */}
+      <AlertDialog
+        open={!!validationError}
+        onOpenChange={() => setValidationError(null)}
+      >
+        <AlertDialogContent className="bg-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertCircle className="h-5 w-5" />
+              {validationError?.title}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {validationError?.message}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction
+              onClick={() => setValidationError(null)}
+              className="bg-[#0B1120] text-white"
+            >
+              Okay
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* --- DRAG CONFIRMATION DIALOG --- */}
       <AlertDialog
         open={!!pendingReschedule}
         onOpenChange={(open) =>
@@ -331,30 +368,17 @@ export const CalendarDayView = ({
               <strong>{pendingReschedule?.event.title}</strong>?
             </AlertDialogDescription>
           </AlertDialogHeader>
-
-          {/* MOVED DIV OUTSIDE OF DESCRIPTION TO FIX NESTING ERROR */}
           <div className="flex items-center gap-4 text-sm my-2 bg-slate-50 p-3 rounded-md border border-slate-100">
-            <div className="flex flex-col">
-              <span className="text-xs text-slate-400 uppercase font-bold">
-                Current
-              </span>
-              <span className="font-medium text-slate-700 line-through">
-                {pendingReschedule?.event.start &&
-                  format(pendingReschedule.event.start, "h:mm a")}
-              </span>
-            </div>
-            <div className="text-slate-400">→</div>
-            <div className="flex flex-col">
-              <span className="text-xs text-[#0B1120] uppercase font-bold">
-                New Time
-              </span>
-              <span className="font-bold text-[#0B1120]">
-                {pendingReschedule?.newStart &&
-                  format(pendingReschedule.newStart, "h:mm a")}
-              </span>
-            </div>
+            <span className="font-medium text-slate-700 line-through">
+              {pendingReschedule?.event.start &&
+                format(pendingReschedule.event.start, "h:mm a")}
+            </span>
+            <span className="text-slate-400">→</span>
+            <span className="font-bold text-[#0B1120]">
+              {pendingReschedule?.newStart &&
+                format(pendingReschedule.newStart, "h:mm a")}
+            </span>
           </div>
-
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isRescheduling}>
               Cancel
@@ -365,12 +389,11 @@ export const CalendarDayView = ({
                 confirmReschedule();
               }}
               disabled={isRescheduling}
-              className="bg-[#0B1120] text-white hover:bg-[#0B1120]/90"
+              className="bg-[#0B1120] text-white"
             >
               {isRescheduling ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...
                 </>
               ) : (
                 "Confirm Change"
@@ -379,6 +402,14 @@ export const CalendarDayView = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* --- DETAILS DIALOG --- */}
+      <BookingDetailsDialog
+        isOpen={!!viewingEventId}
+        bookingId={viewingEventId}
+        onClose={() => setViewingEventId(null)}
+        onActionComplete={handleActionRefresh}
+      />
     </>
   );
 };
@@ -797,39 +828,34 @@ export const EventGroup = ({
   );
 };
 
-type EventGroupSideBySideProps = {
+// type EventGroupSideBySideProps = {
+//   hour: Date;
+//   events: CalendarEvent[];
+// };
+
+const EventGroupSideBySide = ({
+  hour,
+  events,
+  onEventClick,
+}: {
   hour: Date;
   events: CalendarEvent[];
-};
-
-const EventGroupSideBySide = ({ hour, events }: EventGroupSideBySideProps) => {
-  const { onEventClick } = useCalendar();
+  onEventClick: (id: string) => void;
+}) => {
   const eventsInHour = events.filter((event) => isSameHour(event.start, hour));
-
   if (eventsInHour.length === 0) return null;
 
-  const eventCount = eventsInHour.length;
-  // Calculate width - if strict 100% is needed per column logic, keep it dynamic
-  const widthPercent = Math.max(25, 100 / eventCount);
+  const widthPercent = Math.max(25, 100 / eventsInHour.length);
 
   return (
     <div className="absolute inset-0 flex w-full h-full pointer-events-none">
-      {eventsInHour.map((event) => {
+      {eventsInHour.map((event, index) => {
         const minutesOffset = event.start.getMinutes();
         const durationMinutes = differenceInMinutes(event.end, event.start);
         const hoursSpan = Math.ceil(durationMinutes / 60);
-
-        // CSS positioning logic
-        const topPercent = (minutesOffset / 60) * 100;
-
-        // Calculate height logic (handling multi-hour span visual)
-        // If it spans multiple hours, we need to calculate percentage based on 1 hour slot (h-12)
-        // Note: Dragging multi-hour events visually across the grid boundaries
-        // using just absolute/relative in a single cell is tricky.
-        // However, dnd-kit transform handles the visual movement perfectly.
         const heightVal =
           hoursSpan > 1
-            ? `${100 - topPercent + (hoursSpan - 1) * 100}%`
+            ? `${100 - (minutesOffset / 60) * 100 + (hoursSpan - 1) * 100}%`
             : `${Math.max((durationMinutes / 60) * 100, 10)}%`;
 
         return (
@@ -837,11 +863,11 @@ const EventGroupSideBySide = ({ hour, events }: EventGroupSideBySideProps) => {
             key={event.id}
             className="absolute pointer-events-auto"
             style={{
-              top: `${topPercent}%`,
+              top: `${(minutesOffset / 60) * 100}%`,
               height: heightVal,
               width: `${widthPercent}%`,
-              left: `${eventsInHour.indexOf(event) * widthPercent}%`,
-              zIndex: 10, // Ensure it sits above grid lines
+              left: `${index * widthPercent}%`,
+              zIndex: 10,
             }}
           >
             <DraggableEventWrapper event={event}>
@@ -851,11 +877,12 @@ const EventGroupSideBySide = ({ hour, events }: EventGroupSideBySideProps) => {
                     <div
                       className={cn(
                         dayEventVariants({ variant: event.color }),
-                        "w-full h-full cursor-grab active:cursor-grabbing overflow-hidden text-xs min-h-[24px] shadow-sm hover:z-50 hover:shadow-md transition-all hover:scale-[1.02]"
+                        "w-full h-full cursor-pointer hover:shadow-md transition-all"
                       )}
                       onClick={(e) => {
                         e.stopPropagation();
-                        onEventClick?.(event);
+                        // Ensure we grab the backend ID (bookingKey) if available, else standard ID
+                        onEventClick(event.bookingKey || event.id);
                       }}
                     >
                       <div className="font-bold truncate">{event.title}</div>
@@ -874,11 +901,6 @@ const EventGroupSideBySide = ({ hour, events }: EventGroupSideBySideProps) => {
                         {format(event.start, "h:mm a")} -{" "}
                         {format(event.end, "h:mm a")}
                       </div>
-                      {event.description && (
-                        <div className="mt-1 text-xs text-slate-400 max-w-[300px]">
-                          {event.description}
-                        </div>
-                      )}
                     </div>
                   </TooltipContent>
                 </Tooltip>
