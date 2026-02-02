@@ -29,14 +29,20 @@ export default function BookingList({
     if (!bookings) return [];
 
     const filtered = bookings.filter((booking) => {
+      // Ensure status is lowercase for comparison
       const status = (booking.bookingStatus || "").toLowerCase();
-      const endDt = booking.bookingEnd ? new Date(booking.bookingEnd) : new Date();
+      const endDt = booking.bookingEnd
+        ? new Date(booking.bookingEnd)
+        : new Date();
       const now = new Date();
 
       if (activeTab === "Upcoming") {
+        // FIX: Compare against lowercase "cancelled" and "denied"
         return endDt >= now && status !== "cancelled" && status !== "denied";
       }
       if (activeTab === "All") return true;
+
+      // Compare specific status (e.g. "Pending" -> "pending")
       return status === activeTab.toLowerCase();
     });
 
@@ -54,7 +60,9 @@ export default function BookingList({
       return;
     }
     const now = new Date();
-    const todayIndex = processedBookings.findIndex((b) => new Date(b.bookingStart) >= now);
+    const todayIndex = processedBookings.findIndex(
+      (b) => new Date(b.bookingStart) >= now,
+    );
 
     if (todayIndex !== -1) {
       const targetPage = Math.floor(todayIndex / ITEMS_PER_PAGE) + 1;
@@ -69,7 +77,10 @@ export default function BookingList({
   const totalItems = processedBookings.length;
   const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const paginatedBookings = processedBookings.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  const paginatedBookings = processedBookings.slice(
+    startIndex,
+    startIndex + ITEMS_PER_PAGE,
+  );
 
   // 4. GROUPING
   const groupedBookings = useMemo(() => {
@@ -84,7 +95,10 @@ export default function BookingList({
     return (
       <div className="space-y-3">
         {Array.from({ length: 4 }).map((_, index) => (
-          <div key={index} className="h-24 bg-slate-50 rounded-xl animate-pulse border border-slate-100" />
+          <div
+            key={index}
+            className="h-24 bg-slate-50 rounded-xl animate-pulse border border-slate-100"
+          />
         ))}
       </div>
     );
@@ -158,7 +172,8 @@ export default function BookingList({
           </Button>
 
           <span className="text-xs font-bold text-slate-500">
-             Page <span className="text-slate-900">{currentPage}</span> of <span className="text-slate-900">{totalPages}</span>
+            Page <span className="text-slate-900">{currentPage}</span> of{" "}
+            <span className="text-slate-900">{totalPages}</span>
           </span>
 
           <Button

@@ -43,16 +43,37 @@ const SideNav = () => {
 
   const topMenuItems: MenuItem[] = [
     { icon: Home, label: "Home", href: "/home", visible: [] },
-    { icon: Calendar, label: "Live Calendar", href: "/multicalendar", visible: [] },
-    { icon: Users, label: "Subcontractor", href: "/subcontractors", visible: ["admin", "manager"] },
-    { icon: HardHat, label: "Assets", href: "/assets", visible: ["admin", "manager"] },
+    {
+      icon: Calendar,
+      label: "Live Calendar",
+      href: "/multicalendar",
+      visible: [],
+    },
+    {
+      icon: Users,
+      label: "Subcontractor",
+      href: "/subcontractors",
+      visible: ["admin", "manager"],
+    },
+    {
+      icon: HardHat,
+      label: "Assets",
+      href: "/assets",
+      visible: ["admin", "manager"],
+    },
     { icon: CalendarRange, label: "Bookings", href: "/bookings", visible: [] },
     // { icon: Megaphone, label: "Announcements", href: "/announcements", visible: [] },
   ];
 
   const bottomMenuItems: MenuItem[] = [
     { icon: Settings, label: "Settings", href: "#", visible: [] },
-    { icon: LogOut, label: "Logout", href: "#", visible: [], onClick: handleLogout },
+    {
+      icon: LogOut,
+      label: "Logout",
+      href: "#",
+      visible: [],
+      onClick: handleLogout,
+    },
   ];
 
   const hasPermission = (item: MenuItem): boolean => {
@@ -105,11 +126,12 @@ const SideNav = () => {
 
         <span
           className={`ml-4 text-sm font-medium tracking-wide whitespace-nowrap transition-all duration-300 ease-in-out
-            ${isMobile 
-                ? "opacity-100 translate-x-0" 
-                : isExpanded 
-                    ? "opacity-100 translate-x-0" 
-                    : "opacity-0 -translate-x-2 pointer-events-none"
+            ${
+              isMobile
+                ? "opacity-100 translate-x-0"
+                : isExpanded
+                  ? "opacity-100 translate-x-0"
+                  : "opacity-0 -translate-x-2 pointer-events-none"
             }
           `}
         >
@@ -135,7 +157,10 @@ const SideNav = () => {
         - mr-4: Creates the margin to the right of the nav (16px)
         - flex-shrink-0: Ensures it doesn't get squished
       */}
-      <div className="hidden md:block w-20 ml-4 flex-shrink-0 h-screen" aria-hidden="true" />
+      <div
+        className="hidden md:block w-20 ml-4 flex-shrink-0 h-screen"
+        aria-hidden="true"
+      />
 
       {/* 2. MOBILE TOGGLE */}
       <button
@@ -152,31 +177,47 @@ const SideNav = () => {
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)} />
+        <div
+          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
         <div className="relative w-72 h-full bg-navy border-r border-white/10 flex flex-col shadow-2xl">
           <div className="h-24 flex items-center px-6 border-b border-white/5">
-             <Image src="/full-logo-dark.svg" alt="Logo" width={140} height={40} className="object-contain" priority />
+            <Image
+              src="/full-logo-dark.svg"
+              alt="Logo"
+              width={140}
+              height={40}
+              className="object-contain"
+              priority
+            />
           </div>
           <div className="py-6 flex-1 overflow-y-auto">
             {user && (
               <div className="mb-6 px-6 pb-4 border-b border-white/10">
-                <p className="text-white font-semibold">{user.first_name} {user.last_name}</p>
+                <p className="text-white font-semibold">
+                  {user.first_name} {user.last_name}
+                </p>
                 <p className="text-xs text-gray-400 capitalize">{user.role}</p>
               </div>
             )}
             <div className="space-y-1">
-              {topMenuItems.filter(hasPermission).map(item => renderNavItem(item, true))}
+              {topMenuItems
+                .filter(hasPermission)
+                .map((item) => renderNavItem(item, true))}
             </div>
           </div>
           <div className="py-4 border-t border-white/10 bg-navy-light/30">
-            {bottomMenuItems.filter(hasPermission).map(item => renderNavItem(item, true))}
+            {bottomMenuItems
+              .filter(hasPermission)
+              .map((item) => renderNavItem(item, true))}
           </div>
         </div>
       </div>
 
       {/* 4. DESKTOP FLOATING SIDEBAR */}
       <aside
-        className={`fixed left-4 top-4 bottom-4 hidden md:flex flex-col bg-navy rounded-2xl border border-white/5 shadow-2xl transition-[width] duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1.0)] z-50 overflow-hidden
+        className={`fixed left-4 top-4 bottom-4 hidden md:flex flex-col bg-navy rounded-2xl border border-white/5 shadow-2xl transition-[width] duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1.0)] z-100 overflow-hidden
           ${isExpanded ? "w-64" : "w-20"}
         `}
         onMouseEnter={() => setIsExpanded(true)}
@@ -184,39 +225,47 @@ const SideNav = () => {
       >
         {/* LOGO AREA */}
         <div className="h-24 flex items-center flex-shrink-0 pl-6 mb-2">
-            <div className="relative w-full h-10 flex items-center">
-                {/* Collapsed Icon */}
-                <div className={`absolute left-0 top-1/2 -translate-y-1/2 transition-opacity duration-300 ${isExpanded ? 'opacity-0' : 'opacity-100'}`}>
-                    <Image 
-                        src="/icon.svg" 
-                        alt="Icon" 
-                        width={32} 
-                        height={32} 
-                        className="object-contain"
-                    />
-                </div>
-                {/* Full Logo */}
-                <div className={`absolute left-0 top-1/2 -translate-y-1/2 transition-opacity duration-300 ${isExpanded ? 'opacity-100 delay-75' : 'opacity-0'}`}>
-                    <Image 
-                        src="/full-logo-dark.svg" 
-                        alt="SiteSpace" 
-                        width={140} 
-                        height={40} 
-                        className="object-contain"
-                        priority
-                    />
-                </div>
+          <div className="relative w-full h-10 flex items-center">
+            {/* Collapsed Icon */}
+            <div
+              className={`absolute left-0 top-1/2 -translate-y-1/2 transition-opacity duration-300 ${isExpanded ? "opacity-0" : "opacity-100"}`}
+            >
+              <Image
+                src="/icon.svg"
+                alt="Icon"
+                width={32}
+                height={32}
+                className="object-contain"
+              />
             </div>
+            {/* Full Logo */}
+            <div
+              className={`absolute left-0 top-1/2 -translate-y-1/2 transition-opacity duration-300 ${isExpanded ? "opacity-100 delay-75" : "opacity-0"}`}
+            >
+              <Image
+                src="/full-logo-dark.svg"
+                alt="SiteSpace"
+                width={140}
+                height={40}
+                className="object-contain"
+                priority
+              />
+            </div>
+          </div>
         </div>
 
         {/* ITEMS */}
         <div className="flex-1 py-2 overflow-y-auto overflow-x-hidden custom-scrollbar flex flex-col gap-1">
-          {topMenuItems.filter(hasPermission).map((item) => renderNavItem(item))}
+          {topMenuItems
+            .filter(hasPermission)
+            .map((item) => renderNavItem(item))}
         </div>
 
         {/* FOOTER */}
         <div className="py-4 border-t border-white/5 bg-navy-light/20 flex-shrink-0">
-          {bottomMenuItems.filter(hasPermission).map((item) => renderNavItem(item))}
+          {bottomMenuItems
+            .filter(hasPermission)
+            .map((item) => renderNavItem(item))}
         </div>
       </aside>
     </>

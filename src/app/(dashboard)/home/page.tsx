@@ -168,9 +168,9 @@ export default function HomePage() {
     selectedProject?.id || selectedProject?.project_id || "all";
   const bookingsCacheKey = `home_bookings_${userId}_${currentProjId}`;
   const projectsListCacheKey = `home_projects_list_${userId}`;
-  
+
   // ✅ NEW: Keys for CreateBookingForm consumption
-  const assetsCacheKey = `assets_${userId}`; 
+  const assetsCacheKey = `assets_${userId}`;
   const subcontractorsCacheKey = `subcontractors_${userId}`;
 
   // --- API Calls ---
@@ -220,14 +220,14 @@ export default function HomePage() {
       });
       const assetData = response.data?.assets || [];
       setAssetCount(response.data?.total || assetData.length);
-      
+
       // Save to localStorage so CreateBookingForm can read it
       localStorage.setItem(assetsCacheKey, JSON.stringify(assetData));
     } catch (error) {
       console.error("Error fetching assets", error);
       setAssetCount(0);
       // Optional: Clear cache on error to prevent stale data usage
-      // localStorage.removeItem(assetsCacheKey); 
+      // localStorage.removeItem(assetsCacheKey);
     }
   }, [selectedProject, userId, assetsCacheKey]);
 
@@ -264,19 +264,18 @@ export default function HomePage() {
         total = subData.length;
       } else {
         // Fallback for paginated/nested responses
-         const values = Object.values(response.data || {});
-         const arr = values.find((v) => Array.isArray(v));
-         if (arr && Array.isArray(arr)) {
-           subData = arr;
-           total = arr.length;
-         }
+        const values = Object.values(response.data || {});
+        const arr = values.find((v) => Array.isArray(v));
+        if (arr && Array.isArray(arr)) {
+          subData = arr;
+          total = arr.length;
+        }
       }
 
       setSubcontractorCount(total);
-      
+
       // Save to localStorage so CreateBookingForm can use it as cache
       localStorage.setItem(subcontractorsCacheKey, JSON.stringify(subData));
-
     } catch (error) {
       console.error("Error fetching subcontractors", error);
       setSubcontractorCount(0);
@@ -308,7 +307,7 @@ export default function HomePage() {
         setLoadingBookings(false);
       }
     },
-    [selectedProject, userId, bookingsCacheKey]
+    [selectedProject, userId, bookingsCacheKey],
   );
 
   // --- Effects ---
@@ -370,7 +369,7 @@ export default function HomePage() {
     .sort(
       (a, b) =>
         combineDateAndTime(a.booking_date, a.start_time).getTime() -
-        combineDateAndTime(b.booking_date, b.start_time).getTime()
+        combineDateAndTime(b.booking_date, b.start_time).getTime(),
     )
     .slice(0, 5);
 
@@ -383,7 +382,7 @@ export default function HomePage() {
   }).length;
 
   const pendingBookingsCount = upcomingBookings.filter(
-    (b) => b.status === "pending"
+    (b) => b.status === "pending",
   ).length;
 
   return (
@@ -402,8 +401,8 @@ export default function HomePage() {
               {profile?.first_name
                 ? `${profile.first_name} 👋`
                 : user?.first_name
-                ? `${user.first_name} 👋`
-                : "User 👋"}
+                  ? `${user.first_name} 👋`
+                  : "User 👋"}
             </p>
 
             <div className="flex items-center gap-2 mt-1">
@@ -477,7 +476,7 @@ export default function HomePage() {
             </Button>
 
             {showProjectSelector && (
-              <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-slate-100 z-50 overflow-hidden ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-200">
+              <div className="absolute left-0 sm:left-auto sm:right-0 mt-2 w-[calc(100vw-40px)] sm:w-80 bg-white rounded-xl shadow-2xl border border-slate-100 z-50 overflow-hidden ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-200 max-w-[320px]">
                 <div className="p-3 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
                   <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                     Available Projects
@@ -486,7 +485,6 @@ export default function HomePage() {
                     {projects.length}
                   </span>
                 </div>
-
                 <div className="max-h-[300px] overflow-y-auto p-2 space-y-1 custom-scrollbar">
                   {projects.length === 0 ? (
                     <div className="text-center py-4 text-sm text-slate-400">
@@ -618,16 +616,16 @@ export default function HomePage() {
                       {groupedBookings[month].map((booking) => {
                         const startObj = combineDateAndTime(
                           booking.booking_date,
-                          booking.start_time
+                          booking.start_time,
                         );
                         const endObj = combineDateAndTime(
                           booking.booking_date,
-                          booking.end_time
+                          booking.end_time,
                         );
                         const timeRange = formatTimeRange(startObj, endObj);
 
                         const { day, dayOfWeek } = formatDate(
-                          booking.booking_date
+                          booking.booking_date,
                         );
                         const isBookingToday = isToday(startObj);
                         const status = booking.status.toLowerCase();
@@ -682,8 +680,8 @@ export default function HomePage() {
                                   isBookingToday
                                     ? "text-orange-500"
                                     : status === "pending"
-                                    ? "text-yellow-500"
-                                    : "text-slate-500"
+                                      ? "text-yellow-500"
+                                      : "text-slate-500"
                                 }`}
                               >
                                 {dayOfWeek}
@@ -693,8 +691,8 @@ export default function HomePage() {
                                   isBookingToday
                                     ? "text-orange-600"
                                     : status === "pending"
-                                    ? "text-yellow-500"
-                                    : "text-slate-800"
+                                      ? "text-yellow-500"
+                                      : "text-slate-800"
                                 }`}
                               >
                                 {String(day).padStart(2, "0")}
@@ -712,11 +710,11 @@ export default function HomePage() {
                                     status === "confirmed"
                                       ? "bg-green-100 text-green-700"
                                       : status === "pending"
-                                      ? "bg-orange-100 text-orange-700"
-                                      : status === "denied" ||
-                                        status === "cancelled"
-                                      ? "bg-red-100 text-red-700"
-                                      : "bg-slate-100 text-slate-700"
+                                        ? "bg-orange-100 text-orange-700"
+                                        : status === "denied" ||
+                                            status === "cancelled"
+                                          ? "bg-red-100 text-red-700"
+                                          : "bg-slate-100 text-slate-700"
                                   }`}
                                 >
                                   {booking.status}
