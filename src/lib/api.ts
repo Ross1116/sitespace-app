@@ -1,91 +1,162 @@
-import axios from 'axios';
+// lib/api.ts
+import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
-// Create axios instance with default timeout and include credentials (cookies)
+const AUTH_STORAGE_KEY = "auth_state";
+
+// Get token from sessionStorage
+const getAccessToken = (): string | null => {
+  if (typeof window === "undefined") return null;
+  try {
+    const data = sessionStorage.getItem(AUTH_STORAGE_KEY);
+    return data ? JSON.parse(data).accessToken : null;
+  } catch {
+    return null;
+  }
+};
+
+const getRefreshToken = (): string | null => {
+  if (typeof window === "undefined") return null;
+  try {
+    const data = sessionStorage.getItem(AUTH_STORAGE_KEY);
+    return data ? JSON.parse(data).refreshToken : null;
+  } catch {
+    return null;
+  }
+};
+
+const updateTokens = (accessToken: string, refreshToken: string): void => {
+  if (typeof window === "undefined") return;
+  try {
+    const data = sessionStorage.getItem(AUTH_STORAGE_KEY);
+    if (data) {
+      const parsed = JSON.parse(data);
+      parsed.accessToken = accessToken;
+      parsed.refreshToken = refreshToken;
+      sessionStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(parsed));
+    }
+  } catch {
+    // Ignore
+  }
+};
+
+const clearAuth = (): void => {
+  if (typeof window === "undefined") return;
+  sessionStorage.removeItem(AUTH_STORAGE_KEY);
+};
+
+// Create axios instance
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
-  timeout: 10000, // 10 seconds timeout
-  withCredentials: true, // <-- critical: send cookies / include cross-site credentials
+  timeout: 15000,
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
 
-// Request interceptor to add auth token
+// Request interceptor
 api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('accessToken');
+  (config: InternalAxiosRequestConfig) => {
+    const token = getAccessToken();
     if (token) {
-      config.headers = config.headers || {};
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
-// Response interceptor for handling token expiration and timeouts
+// Response interceptor with token refresh
+let isRefreshing = false;
+let failedQueue: Array<{
+  resolve: (token: string) => void;
+  reject: (error: any) => void;
+}> = [];
+
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token!);
+    }
+  });
+  failedQueue = [];
+};
+
 api.interceptors.response.use(
   (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
+  async (error: AxiosError) => {
+    const originalRequest = error.config as InternalAxiosRequestConfig & {
+      _retry?: boolean;
+    };
 
-    // Handle server timeout / network
-    if (error.code === 'ECONNABORTED' || !error.response) {
-      console.error('Server connection timeout or server down');
-      alert('Server connection timeout or server down');
-      return Promise.reject(new Error('Server is unreachable. Please try again later.'));
+    // Network error or timeout
+    if (!error.response) {
+      const message =
+        error.code === "ECONNABORTED"
+          ? "Request timed out. Please try again."
+          : "Unable to connect to server. Please check your connection.";
+      return Promise.reject(new Error(message));
     }
 
-    // Handle 401 Unauthorized errors (expired token)
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Handle 401 - Unauthorized
+    if (error.response.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        // Queue this request until refresh completes
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        }).then((token) => {
+          originalRequest.headers.Authorization = `Bearer ${token}`;
+          return api(originalRequest);
+        });
+      }
+
       originalRequest._retry = true;
+      isRefreshing = true;
 
-      const refreshToken = localStorage.getItem('refreshToken');
+      const refreshToken = getRefreshToken();
 
-      // If you rely solely on cookies for session, you might not have a refreshToken.
-      // In that case, skip refresh flow and redirect to login.
       if (!refreshToken) {
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
+        clearAuth();
+        window.location.href = "/login";
         return Promise.reject(error);
       }
 
       try {
-        // Use the same instance so withCredentials is applied
-        const res = await api.post('/auth/refresh', {
-          refresh_token: refreshToken,
-        });
+        const response = await axios.post(
+          `${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`,
+          { refresh_token: refreshToken },
+        );
 
-        const { access_token, refresh_token } = res.data;
+        const { access_token, refresh_token } = response.data;
 
-        // Update tokens in localStorage
-        localStorage.setItem('accessToken', access_token);
-        localStorage.setItem('refreshToken', refresh_token);
+        updateTokens(access_token, refresh_token);
+        processQueue(null, access_token);
 
-        // Retry original request with new token
         originalRequest.headers.Authorization = `Bearer ${access_token}`;
         return api(originalRequest);
       } catch (refreshError) {
-        console.error('Token refresh failed:', refreshError);
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
+        processQueue(refreshError, null);
+        clearAuth();
+        window.location.href = "/login";
         return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
       }
     }
 
     return Promise.reject(error);
-  }
+  },
 );
 
-// Helper function to check if the server is available
-export const checkServerHealth = async () => {
+export default api;
+
+// Health check utility
+export const checkServerHealth = async (): Promise<boolean> => {
   try {
-    await api.get('/health', { timeout: 5000 });
+    await api.get("/health", { timeout: 5000 });
     return true;
-  } catch (error) {
-    console.log(error);
+  } catch {
     return false;
   }
 };
-
-export default api;

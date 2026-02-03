@@ -2,10 +2,23 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { 
-  X, Plus, PencilIcon, TrashIcon, Search, Box, MapPin, 
-  User, Calendar, Clock, Tag, Briefcase, FileText, Info,
-  Wrench, AlertTriangle
+import {
+  X,
+  Plus,
+  PencilIcon,
+  TrashIcon,
+  Search,
+  Box,
+  MapPin,
+  User,
+  Calendar,
+  Clock,
+  Tag,
+  Briefcase,
+  FileText,
+  Info,
+  Wrench,
+  AlertTriangle,
 } from "lucide-react";
 import api from "@/lib/api";
 import { useAuth } from "@/app/context/AuthContext";
@@ -25,8 +38,8 @@ interface AssetFromBackend {
   project_id?: string;
   created_at: string;
   updated_at: string;
-  location?: string; 
-  poc?: string; 
+  location?: string;
+  poc?: string;
   usage_instructions?: string;
   // Make sure your backend serializer includes these fields
   maintenance_start_date?: string;
@@ -65,8 +78,11 @@ interface Project {
 
 // ===== HELPER FUNCTIONS =====
 const transformBackendAsset = (backendAsset: AssetFromBackend): Asset => {
-  const descriptionText = backendAsset.description || backendAsset.usage_instructions || "No description provided";
-  
+  const descriptionText =
+    backendAsset.description ||
+    backendAsset.usage_instructions ||
+    "No description provided";
+
   return {
     assetKey: backendAsset.id,
     assetTitle: backendAsset.name,
@@ -96,17 +112,28 @@ const capitalizeStatus = (status: string): string => {
   return statusMap[status] || status;
 };
 
-const formatStatusForDisplay = (status: string): {
+const formatStatusForDisplay = (
+  status: string,
+): {
   label: string;
-  className: string; 
-  sidebarClassName: string; 
+  className: string;
+  sidebarClassName: string;
   dotColor: string;
 } => {
-  const statusConfig: Record<string, { label: string; className: string; sidebarClassName: string; dotColor: string }> = {
+  const statusConfig: Record<
+    string,
+    {
+      label: string;
+      className: string;
+      sidebarClassName: string;
+      dotColor: string;
+    }
+  > = {
     Operational: {
       label: "Operational",
       className: "text-emerald-700 border-emerald-200 bg-emerald-50",
-      sidebarClassName: "text-emerald-300 bg-emerald-500/20 border-emerald-500/30",
+      sidebarClassName:
+        "text-emerald-300 bg-emerald-500/20 border-emerald-500/30",
       dotColor: "bg-emerald-500",
     },
     "In Use": {
@@ -129,12 +156,14 @@ const formatStatusForDisplay = (status: string): {
     },
   };
 
-  return statusConfig[status] || {
-    label: status,
-    className: "text-slate-700 border-slate-200 bg-slate-50",
-    sidebarClassName: "text-slate-300 bg-slate-500/20 border-slate-500/30",
-    dotColor: "bg-slate-500",
-  };
+  return (
+    statusConfig[status] || {
+      label: status,
+      className: "text-slate-700 border-slate-200 bg-slate-50",
+      sidebarClassName: "text-slate-300 bg-slate-500/20 border-slate-500/30",
+      dotColor: "bg-slate-500",
+    }
+  );
 };
 
 // Helper to safely format ISO dates
@@ -155,7 +184,8 @@ export default function AssetsTable() {
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isAssetFormOpen, setIsAssetFormOpen] = useState(false);
-  const [selectedAssetForUpdate, setSelectedAssetForUpdate] = useState<Asset | null>(null);
+  const [selectedAssetForUpdate, setSelectedAssetForUpdate] =
+    useState<Asset | null>(null);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [totalAssets, setTotalAssets] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
@@ -198,7 +228,7 @@ export default function AssetsTable() {
       const total = response.data?.total || 0;
 
       const transformedAssets = assetsData.map(transformBackendAsset);
-      
+
       setAssets(transformedAssets);
       setTotalAssets(total);
 
@@ -219,7 +249,7 @@ export default function AssetsTable() {
 
   useEffect(() => {
     if (!user || hasFetched.current || !project) return;
-    
+
     const cachedAssets = localStorage.getItem(STORAGE_KEY);
 
     if (cachedAssets) {
@@ -245,12 +275,15 @@ export default function AssetsTable() {
   }, [currentPage]);
 
   const totalPages = Math.ceil(totalAssets / itemsPerPage);
-  const maintenanceCount = assets.filter(a => a.assetStatus === "Maintenance").length;
+  const maintenanceCount = assets.filter(
+    (a) => a.assetStatus === "Maintenance",
+  ).length;
 
-  const filteredAssets = assets.filter(asset => 
-    asset.assetTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    asset.assetCode.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    asset.assetType.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredAssets = assets.filter(
+    (asset) =>
+      asset.assetTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      asset.assetCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      asset.assetType.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   const handlePageChange = (pageNumber: number) => {
@@ -286,7 +319,9 @@ export default function AssetsTable() {
 
   const handleUpdateAsset = (updatedAsset: any) => {
     setAssets((prevAssets) =>
-      prevAssets.map((a) => (a.assetKey === updatedAsset.assetKey ? { ...a, ...updatedAsset } : a))
+      prevAssets.map((a) =>
+        a.assetKey === updatedAsset.assetKey ? { ...a, ...updatedAsset } : a,
+      ),
     );
     if (selectedAsset?.assetKey === updatedAsset.assetKey) {
       setSelectedAsset({ ...selectedAsset, ...updatedAsset });
@@ -297,87 +332,101 @@ export default function AssetsTable() {
   return (
     <div className="min-h-screen bg-[hsl(20,60%,99%)] p-4 sm:p-6 lg:p-8 font-sans">
       <div className="max-w-screen mx-auto space-y-6">
-        
         {/* --- Main Content Card --- */}
         <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-1 min-h-[85vh] flex flex-col relative overflow-hidden">
-            
-            <div className="p-6 flex-1 flex flex-col">
-                
-                {/* Header Area */}
-                <div className="flex flex-col xl:flex-row justify-between items-end mb-8 gap-6">
-                    <div>
-                        <h1 className="text-2xl font-extrabold text-slate-900">Assets</h1>
-                        <p className="text-slate-500 text-sm mt-1 font-medium">Track and manage site equipment</p>
-                    </div>
+          <div className="p-6 flex-1 flex flex-col">
+            {/* Header Area */}
+            <div className="flex flex-col xl:flex-row justify-between items-end mb-8 gap-6">
+              <div>
+                <h1 className="text-2xl font-extrabold text-slate-900">
+                  Assets
+                </h1>
+                <p className="text-slate-500 text-sm mt-1 font-medium">
+                  Track and manage site equipment
+                </p>
+              </div>
 
-                    <div className="flex flex-col sm:flex-row items-center gap-4 w-full xl:w-auto">
-                        {/* Stats Cards */}
-                        <div className="flex gap-3 w-full sm:w-auto">
-                            <div className="bg-[#0B1120] text-white rounded-xl px-5 py-2 flex flex-col items-center justify-center min-w-[110px] shadow-md shadow-slate-900/10">
-                                <span className="text-2xl font-bold leading-none">{totalAssets}</span>
-                                <span className="text-[10px] font-medium opacity-80 uppercase tracking-wide">Total Assets</span>
-                            </div>
-                            <div className="bg-[#D94E09] text-white rounded-xl px-5 py-2 flex flex-col items-center justify-center min-w-[110px] shadow-md shadow-orange-900/10">
-                                <span className="text-2xl font-bold leading-none">{maintenanceCount}</span>
-                                <span className="text-[10px] font-medium opacity-90 uppercase tracking-wide">Maintenance</span>
-                            </div>
-                        </div>
-
-                        <Button 
-                            onClick={() => setIsAssetFormOpen(true)} 
-                            className="bg-[#0B1120] hover:bg-[#1a253a] text-white rounded-lg px-6 py-5 h-auto text-sm font-bold shadow-md shadow-slate-900/10 w-full sm:w-auto"
-                        >
-                            <Plus className="mr-2 h-4 w-4 stroke-[3]" /> Add Asset
-                        </Button>
-                    </div>
+              <div className="flex flex-col sm:flex-row items-center gap-4 w-full xl:w-auto">
+                {/* Stats Cards */}
+                <div className="flex gap-3 w-full sm:w-auto">
+                  <div className="bg-[#0B1120] text-white rounded-xl px-5 py-2 flex flex-col items-center justify-center min-w-[110px] shadow-md shadow-slate-900/10">
+                    <span className="text-2xl font-bold leading-none">
+                      {totalAssets}
+                    </span>
+                    <span className="text-[10px] font-medium opacity-80 uppercase tracking-wide">
+                      Total Assets
+                    </span>
+                  </div>
+                  <div className="bg-[#D94E09] text-white rounded-xl px-5 py-2 flex flex-col items-center justify-center min-w-[110px] shadow-md shadow-orange-900/10">
+                    <span className="text-2xl font-bold leading-none">
+                      {maintenanceCount}
+                    </span>
+                    <span className="text-[10px] font-medium opacity-90 uppercase tracking-wide">
+                      Maintenance
+                    </span>
+                  </div>
                 </div>
 
-                {/* Search Bar */}
-                <div className="mb-4 relative max-w-sm">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                    <Input 
-                        placeholder="Search by name, code, or type..." 
-                        className="pl-10 bg-slate-50 border-transparent focus:bg-white transition-all rounded-xl h-10 text-sm"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
+                <Button
+                  onClick={() => setIsAssetFormOpen(true)}
+                  className="bg-[#0B1120] hover:bg-[#1a253a] text-white rounded-lg px-6 py-5 h-auto text-sm font-bold shadow-md shadow-slate-900/10 w-full sm:w-auto"
+                >
+                  <Plus className="mr-2 h-4 w-4 stroke-[3]" /> Add Asset
+                </Button>
+              </div>
+            </div>
+
+            {/* Search Bar */}
+            <div className="mb-4 relative max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Input
+                placeholder="Search by name, code, or type..."
+                className="pl-10 bg-slate-50 border-transparent focus:bg-white transition-all rounded-xl h-10 text-sm"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+
+            {/* Table Header */}
+            <div className="hidden sm:grid grid-cols-12 gap-4 bg-gradient-to-r from-[#0f2a4a] to-[#0B1120] text-white py-3.5 px-6 rounded-xl text-sm font-semibold shadow-md shadow-slate-200 mb-4">
+              <div className="col-span-3 pl-2">Asset Name</div>
+              <div className="col-span-2">Type</div>
+              <div className="col-span-2">Status</div>
+              <div className="col-span-3">Description</div>
+              <div className="col-span-1">Last Updated</div>
+              <div className="col-span-1 text-center">Action</div>
+            </div>
+
+            {/* Rows Area */}
+            <div className="space-y-3 flex-1">
+              {loading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-16 bg-slate-50 rounded-xl animate-pulse w-full border border-slate-100"
+                  />
+                ))
+              ) : filteredAssets.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-64 text-slate-400 border-2 border-dashed border-slate-100 rounded-2xl bg-slate-50/50">
+                  <Box className="h-10 w-10 mb-2 opacity-50" />
+                  <p>No assets found.</p>
                 </div>
+              ) : (
+                filteredAssets.map((asset) => {
+                  const isSelected = selectedAsset?.assetKey === asset.assetKey;
+                  const statusDisplay = formatStatusForDisplay(
+                    asset.assetStatus,
+                  );
 
-                {/* Table Header */}
-                <div className="hidden sm:grid grid-cols-12 gap-4 bg-gradient-to-r from-[#0f2a4a] to-[#0B1120] text-white py-3.5 px-6 rounded-xl text-sm font-semibold shadow-md shadow-slate-200 mb-4">
-                    <div className="col-span-3 pl-2">Asset Name</div>
-                    <div className="col-span-2">Type</div>
-                    <div className="col-span-2">Status</div>
-                    <div className="col-span-3">Description</div>
-                    <div className="col-span-1">Last Updated</div>
-                    <div className="col-span-1 text-center">Action</div>
-                </div>
+                  const updatedDate = asset.assetLastUpdated
+                    ? format(parseISO(asset.assetLastUpdated), "MMM d, yyyy")
+                    : "N/A";
 
-                {/* Rows Area */}
-                <div className="space-y-3 flex-1">
-                    {loading ? (
-                        Array.from({ length: 5 }).map((_, i) => (
-                             <div key={i} className="h-16 bg-slate-50 rounded-xl animate-pulse w-full border border-slate-100" />
-                        ))
-                    ) : filteredAssets.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-64 text-slate-400 border-2 border-dashed border-slate-100 rounded-2xl bg-slate-50/50">
-                            <Box className="h-10 w-10 mb-2 opacity-50" />
-                            <p>No assets found.</p>
-                        </div>
-                    ) : (
-                        filteredAssets.map((asset) => {
-                            const isSelected = selectedAsset?.assetKey === asset.assetKey;
-                            const statusDisplay = formatStatusForDisplay(asset.assetStatus);
-                            
-                            const updatedDate = asset.assetLastUpdated 
-                                ? format(parseISO(asset.assetLastUpdated), "MMM d, yyyy")
-                                : "N/A";
-
-                            return (
-                                <div 
-                                    key={asset.assetKey}
-                                    onClick={() => handleAssetClick(asset)}
-                                    className={`
+                  return (
+                    <div
+                      key={asset.assetKey}
+                      onClick={() => handleAssetClick(asset)}
+                      className={`
                                         group relative
                                         bg-white rounded-xl p-3 sm:px-6 sm:py-3.5 
                                         border border-slate-200
@@ -389,258 +438,336 @@ export default function AssetsTable() {
                                         
                                         ${isSelected ? "bg-slate-50 border-slate-300" : ""}
                                     `}
-                                >
-                                    {/* 1. Asset Name + Code */}
-                                    <div className="col-span-3 flex items-center gap-3 overflow-hidden">
-                                        <div className="h-9 w-9 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500 shrink-0">
-                                            <Box size={16} />
-                                        </div>
-                                        <div className="flex flex-col truncate">
-                                            <span className="font-semibold text-slate-800 text-sm truncate" title={asset.assetTitle}>{asset.assetTitle}</span>
-                                            <span className="text-[10px] font-mono text-slate-400">{asset.assetCode}</span>
-                                        </div>
-                                    </div>
+                    >
+                      {/* 1. Asset Name + Code */}
+                      <div className="col-span-3 flex items-center gap-3 overflow-hidden">
+                        <div className="h-9 w-9 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500 shrink-0">
+                          <Box size={16} />
+                        </div>
+                        <div className="flex flex-col truncate">
+                          <span
+                            className="font-semibold text-slate-800 text-sm truncate"
+                            title={asset.assetTitle}
+                          >
+                            {asset.assetTitle}
+                          </span>
+                          <span className="text-[10px] font-mono text-slate-400">
+                            {asset.assetCode}
+                          </span>
+                        </div>
+                      </div>
 
-                                    {/* 2. Type */}
-                                    <div className="col-span-2 text-slate-600 text-xs sm:text-sm font-medium flex items-center gap-2">
-                                        <span className="sm:hidden text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Type</span>
-                                        <Wrench size={14} className="text-slate-400 hidden sm:block" />
-                                        <span className="truncate capitalize">{asset.assetType}</span>
-                                    </div>
-                                    
-                                    {/* 3. Status */}
-                                    <div className="col-span-2">
-                                        <span className="sm:hidden text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Status</span>
-                                        <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border ${statusDisplay.className}`}>
-                                            <div className={`h-1.5 w-1.5 rounded-full ${statusDisplay.dotColor}`} />
-                                            {statusDisplay.label}
-                                        </div>
-                                    </div>
-                                    
-                                    {/* 4. Description */}
-                                    <div className="col-span-3 text-xs sm:text-sm font-medium">
-                                        <span className="sm:hidden text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Description</span>
-                                        <span className="text-slate-500 truncate block max-w-full" title={asset.assetDescription}>
-                                            {asset.assetDescription}
-                                        </span>
-                                    </div>
-
-                                    {/* 5. Last Updated */}
-                                    <div className="col-span-1 text-slate-500 text-xs sm:text-sm font-medium truncate">
-                                        <span className="sm:hidden text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Updated</span>
-                                        <span className="flex items-center gap-1">
-                                            <Clock size={12} className="hidden sm:inline" />
-                                            {updatedDate}
-                                        </span>
-                                    </div>
-                                    
-                                    {/* 6. Actions */}
-                                    <div className="col-span-1 flex justify-start sm:justify-center gap-2">
-                                         <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-7 w-7 p-0 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-900"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setSelectedAssetForUpdate(asset);
-                                                setIsUpdateModalOpen(true);
-                                            }}
-                                        >
-                                            <PencilIcon size={14} />
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-7 w-7 p-0 rounded-full hover:bg-red-50 text-slate-400 hover:text-red-600"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleDeleteAsset(asset.assetKey);
-                                            }}
-                                        >
-                                            <TrashIcon size={14} />
-                                        </Button>
-                                    </div>
-                                </div>
-                            );
-                        })
-                    )}
-                </div>
-
-                {/* Pagination */}
-                {totalAssets > 0 && (
-                    <div className="mt-auto pt-6 flex justify-center items-center gap-6">
-                        <Button 
-                            onClick={() => handlePageChange(currentPage - 1)}
-                            disabled={currentPage === 1}
-                            className="bg-[#0B1120] text-white hover:bg-[#1a253a] disabled:bg-slate-200 disabled:text-slate-400 rounded-full h-10 px-6 text-xs font-bold tracking-wide"
-                        >
-                            Previous
-                        </Button>
-                        
-                        <span className="text-sm font-semibold text-slate-500">
-                             Page <span className="text-slate-900">{currentPage}</span> of <span className="text-slate-900">{totalPages || 1}</span>
+                      {/* 2. Type */}
+                      <div className="col-span-2 text-slate-600 text-xs sm:text-sm font-medium flex items-center gap-2">
+                        <span className="sm:hidden text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
+                          Type
                         </span>
+                        <Wrench
+                          size={14}
+                          className="text-slate-400 hidden sm:block"
+                        />
+                        <span className="truncate capitalize">
+                          {asset.assetType}
+                        </span>
+                      </div>
 
-                        <Button 
-                             onClick={() => handlePageChange(currentPage + 1)}
-                             disabled={currentPage >= totalPages}
-                             className="bg-[#0B1120] text-white hover:bg-[#1a253a] disabled:bg-slate-200 disabled:text-slate-400 rounded-full h-10 px-6 text-xs font-bold tracking-wide"
+                      {/* 3. Status */}
+                      <div className="col-span-2">
+                        <span className="sm:hidden text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                          Status
+                        </span>
+                        <div
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border ${statusDisplay.className}`}
                         >
-                            Next
+                          <div
+                            className={`h-1.5 w-1.5 rounded-full ${statusDisplay.dotColor}`}
+                          />
+                          {statusDisplay.label}
+                        </div>
+                      </div>
+
+                      {/* 4. Description */}
+                      <div className="col-span-3 text-xs sm:text-sm font-medium">
+                        <span className="sm:hidden text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
+                          Description
+                        </span>
+                        <span
+                          className="text-slate-500 truncate block max-w-full"
+                          title={asset.assetDescription}
+                        >
+                          {asset.assetDescription}
+                        </span>
+                      </div>
+
+                      {/* 5. Last Updated */}
+                      <div className="col-span-1 text-slate-500 text-xs sm:text-sm font-medium truncate">
+                        <span className="sm:hidden text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
+                          Updated
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Clock size={12} className="hidden sm:inline" />
+                          {updatedDate}
+                        </span>
+                      </div>
+
+                      {/* 6. Actions */}
+                      <div className="col-span-1 flex justify-start sm:justify-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-900"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedAssetForUpdate(asset);
+                            setIsUpdateModalOpen(true);
+                          }}
+                        >
+                          <PencilIcon size={14} />
                         </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0 rounded-full hover:bg-red-50 text-slate-400 hover:text-red-600"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteAsset(asset.assetKey);
+                          }}
+                        >
+                          <TrashIcon size={14} />
+                        </Button>
+                      </div>
                     </div>
-                )}
+                  );
+                })
+              )}
             </div>
+
+            {/* Pagination */}
+            {totalAssets > 0 && (
+              <div className="mt-auto pt-6 flex justify-center items-center gap-6">
+                <Button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="bg-[#0B1120] text-white hover:bg-[#1a253a] disabled:bg-slate-200 disabled:text-slate-400 rounded-full h-10 px-6 text-xs font-bold tracking-wide"
+                >
+                  Previous
+                </Button>
+
+                <span className="text-sm font-semibold text-slate-500">
+                  Page <span className="text-slate-900">{currentPage}</span> of{" "}
+                  <span className="text-slate-900">{totalPages || 1}</span>
+                </span>
+
+                <Button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage >= totalPages}
+                  className="bg-[#0B1120] text-white hover:bg-[#1a253a] disabled:bg-slate-200 disabled:text-slate-400 rounded-full h-10 px-6 text-xs font-bold tracking-wide"
+                >
+                  Next
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* --- Sidebar Detail View --- */}
-        <div className={`fixed inset-y-0 right-0 w-full sm:w-[480px] bg-white shadow-2xl transform transition-transform duration-300 ease-in-out z-50 ${sidebarOpen ? "translate-x-0" : "translate-x-full"}`}>
-            {selectedAsset && (
-                <div className="h-full flex flex-col">
-                    {/* Header */}
-                    <div className="p-8 bg-[#0B1120] text-white flex justify-between items-start">
-                         <div className="flex-1 pr-4">
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="h-10 w-10 rounded-lg bg-white/10 flex items-center justify-center border border-white/20">
-                                    <Box size={20} />
-                                </div>
-                                <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border ${formatStatusForDisplay(selectedAsset.assetStatus).sidebarClassName}`}>
-                                    <div className={`h-1.5 w-1.5 rounded-full ${formatStatusForDisplay(selectedAsset.assetStatus).dotColor}`} />
-                                    {selectedAsset.assetStatus}
-                                </div>
-                            </div>
-                            <h2 className="text-xl font-bold leading-tight">{selectedAsset.assetTitle}</h2>
-                            <div className="flex items-center gap-2 mt-1">
-                                <span className="text-slate-300 text-sm font-mono opacity-80">{selectedAsset.assetCode}</span>
-                            </div>
-                         </div>
-                         <Button onClick={() => setSidebarOpen(false)} variant="ghost" className="text-white hover:bg-white/10 rounded-full h-8 w-8 p-0">
-                            <X size={20} />
-                         </Button>
+        <div
+          className={`fixed inset-y-0 right-0 w-full sm:w-[480px] bg-white shadow-2xl transform transition-transform duration-300 ease-in-out z-50 ${sidebarOpen ? "translate-x-0" : "translate-x-full"}`}
+        >
+          {selectedAsset && (
+            <div className="h-full flex flex-col">
+              {/* Header */}
+              <div className="p-8 bg-[#0B1120] text-white flex justify-between items-start">
+                <div className="flex-1 pr-4">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="h-10 w-10 rounded-lg bg-white/10 flex items-center justify-center border border-white/20">
+                      <Box size={20} />
                     </div>
-
-                    {/* Scrollable Content */}
-                    <div className="flex-1 p-8 overflow-y-auto bg-slate-50 space-y-6">
-                        
-                        {/* 1. Identity Overview */}
-                        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Asset Identity</h3>
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <Briefcase className="h-4 w-4 text-slate-400" />
-                                        <span className="text-sm font-medium text-slate-500">Project</span>
-                                    </div>
-                                    <span className="text-sm font-semibold text-slate-900">{project?.text || "Unknown"}</span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <Tag className="h-4 w-4 text-slate-400" />
-                                        <span className="text-sm font-medium text-slate-500">Asset Type</span>
-                                    </div>
-                                    <span className="text-sm font-semibold text-slate-900">{selectedAsset.assetType}</span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <Info className="h-4 w-4 text-slate-400" />
-                                        <span className="text-sm font-medium text-slate-500">Code/Serial</span>
-                                    </div>
-                                    <span className="text-sm font-mono text-slate-900 bg-slate-100 px-2 py-0.5 rounded">{selectedAsset.assetCode}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* 2. Description */}
-                        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                            <div className="flex items-center gap-2 mb-2 border-b border-slate-100 pb-2">
-                                <FileText className="h-4 w-4 text-slate-400" />
-                                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Description</h3>
-                            </div>
-                            <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">
-                                {selectedAsset.assetDescription}
-                            </p>
-                        </div>
-
-                        {/* 3. Maintenance Schedule (NEW SECTION) */}
-                        {/* Only shows if status is Maintenance OR if dates exist */}
-                        {(selectedAsset.assetStatus === "Maintenance" || selectedAsset.maintanenceStartdt || selectedAsset.maintanenceEnddt) && (
-                            <div className="bg-white p-5 rounded-xl border border-amber-200 shadow-sm bg-amber-50/30">
-                                <div className="flex items-center gap-2 mb-4 border-b border-amber-100 pb-2">
-                                    <AlertTriangle className="h-4 w-4 text-amber-500" />
-                                    <h3 className="text-xs font-bold text-amber-600 uppercase tracking-wider">Maintenance Schedule</h3>
-                                </div>
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <Calendar className="h-4 w-4 text-amber-400" />
-                                            <span className="text-sm font-medium text-slate-500">Start Date</span>
-                                        </div>
-                                        <span className="text-sm font-semibold text-slate-900">
-                                            {safeFormatDate(selectedAsset.maintanenceStartdt)}
-                                        </span>
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <Calendar className="h-4 w-4 text-amber-400" />
-                                            <span className="text-sm font-medium text-slate-500">End Date</span>
-                                        </div>
-                                        <span className="text-sm font-semibold text-slate-900">
-                                            {safeFormatDate(selectedAsset.maintanenceEnddt)}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* 4. Logistics */}
-                        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Logistics</h3>
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm font-medium text-slate-500">Last Updated</span>
-                                    <span className="text-sm font-semibold text-slate-900">
-                                      {safeFormatDate(selectedAsset.assetLastUpdated)}
-                                    </span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm font-medium text-slate-500">Contact</span>
-                                    <span className="text-sm font-semibold text-slate-900">{selectedAsset.assetPoc}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* 5. Audit Timestamps */}
-                        {selectedAsset._originalData && (
-                            <div className="text-center space-y-1 py-2">
-                                <p className="text-[10px] text-slate-400">
-                                    Created: {safeFormatDate(selectedAsset._originalData.created_at)}
-                                </p>
-                                <p className="text-[10px] text-slate-400">
-                                    Last Updated: {safeFormatDate(selectedAsset._originalData.updated_at)}
-                                </p>
-                            </div>
-                        )}
+                    <div
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border ${formatStatusForDisplay(selectedAsset.assetStatus).sidebarClassName}`}
+                    >
+                      <div
+                        className={`h-1.5 w-1.5 rounded-full ${formatStatusForDisplay(selectedAsset.assetStatus).dotColor}`}
+                      />
+                      {selectedAsset.assetStatus}
                     </div>
-
-                    {/* Footer Actions */}
-                    <div className="p-4 bg-white border-t border-slate-100 flex gap-3">
-                        <Button 
-                            className="flex-1 bg-[#0B1120] text-white hover:bg-[#1a253a]"
-                            onClick={() => {
-                                setSelectedAssetForUpdate(selectedAsset);
-                                setIsUpdateModalOpen(true);
-                            }}
-                        >
-                            Edit Details
-                        </Button>
-                    </div>
+                  </div>
+                  <h2 className="text-xl font-bold leading-tight">
+                    {selectedAsset.assetTitle}
+                  </h2>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-slate-300 text-sm font-mono opacity-80">
+                      {selectedAsset.assetCode}
+                    </span>
+                  </div>
                 </div>
-            )}
+                <Button
+                  onClick={() => setSidebarOpen(false)}
+                  variant="ghost"
+                  className="text-white hover:bg-white/10 rounded-full h-8 w-8 p-0"
+                >
+                  <X size={20} />
+                </Button>
+              </div>
+
+              {/* Scrollable Content */}
+              <div className="flex-1 p-8 overflow-y-auto bg-slate-50 space-y-6">
+                {/* 1. Identity Overview */}
+                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">
+                    Asset Identity
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Briefcase className="h-4 w-4 text-slate-400" />
+                        <span className="text-sm font-medium text-slate-500">
+                          Project
+                        </span>
+                      </div>
+                      <span className="text-sm font-semibold text-slate-900">
+                        {project?.text || "Unknown"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Tag className="h-4 w-4 text-slate-400" />
+                        <span className="text-sm font-medium text-slate-500">
+                          Asset Type
+                        </span>
+                      </div>
+                      <span className="text-sm font-semibold text-slate-900">
+                        {selectedAsset.assetType}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Info className="h-4 w-4 text-slate-400" />
+                        <span className="text-sm font-medium text-slate-500">
+                          Code/Serial
+                        </span>
+                      </div>
+                      <span className="text-sm font-mono text-slate-900 bg-slate-100 px-2 py-0.5 rounded">
+                        {selectedAsset.assetCode}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Description */}
+                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                  <div className="flex items-center gap-2 mb-2 border-b border-slate-100 pb-2">
+                    <FileText className="h-4 w-4 text-slate-400" />
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                      Description
+                    </h3>
+                  </div>
+                  <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">
+                    {selectedAsset.assetDescription}
+                  </p>
+                </div>
+
+                {/* 3. Maintenance Schedule (NEW SECTION) */}
+                {/* Only shows if status is Maintenance OR if dates exist */}
+                {(selectedAsset.assetStatus === "Maintenance" ||
+                  selectedAsset.maintanenceStartdt ||
+                  selectedAsset.maintanenceEnddt) && (
+                  <div className="p-5 rounded-xl border border-amber-200 shadow-sm bg-amber-50/30">
+                    <div className="flex items-center gap-2 mb-4 border-b border-amber-100 pb-2">
+                      <AlertTriangle className="h-4 w-4 text-amber-500" />
+                      <h3 className="text-xs font-bold text-amber-600 uppercase tracking-wider">
+                        Maintenance Schedule
+                      </h3>
+                    </div>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Calendar className="h-4 w-4 text-amber-400" />
+                          <span className="text-sm font-medium text-slate-500">
+                            Start Date
+                          </span>
+                        </div>
+                        <span className="text-sm font-semibold text-slate-900">
+                          {safeFormatDate(selectedAsset.maintanenceStartdt)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Calendar className="h-4 w-4 text-amber-400" />
+                          <span className="text-sm font-medium text-slate-500">
+                            End Date
+                          </span>
+                        </div>
+                        <span className="text-sm font-semibold text-slate-900">
+                          {safeFormatDate(selectedAsset.maintanenceEnddt)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 4. Logistics */}
+                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">
+                    Logistics
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-slate-500">
+                        Last Updated
+                      </span>
+                      <span className="text-sm font-semibold text-slate-900">
+                        {safeFormatDate(selectedAsset.assetLastUpdated)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-slate-500">
+                        Contact
+                      </span>
+                      <span className="text-sm font-semibold text-slate-900">
+                        {selectedAsset.assetPoc}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 5. Audit Timestamps */}
+                {selectedAsset._originalData && (
+                  <div className="text-center space-y-1 py-2">
+                    <p className="text-[10px] text-slate-400">
+                      Created:{" "}
+                      {safeFormatDate(selectedAsset._originalData.created_at)}
+                    </p>
+                    <p className="text-[10px] text-slate-400">
+                      Last Updated:{" "}
+                      {safeFormatDate(selectedAsset._originalData.updated_at)}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer Actions */}
+              <div className="p-4 bg-white border-t border-slate-100 flex gap-3">
+                <Button
+                  className="flex-1 bg-[#0B1120] text-white hover:bg-[#1a253a]"
+                  onClick={() => {
+                    setSelectedAssetForUpdate(selectedAsset);
+                    setIsUpdateModalOpen(true);
+                  }}
+                >
+                  Edit Details
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Sidebar Overlay */}
         {sidebarOpen && (
-            <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 transition-opacity" onClick={() => setSidebarOpen(false)} />
+          <div
+            className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 transition-opacity"
+            onClick={() => setSidebarOpen(false)}
+          />
         )}
 
         {/* Create Modal */}
