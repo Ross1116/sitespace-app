@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { SetStateAction, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import {
   X,
   Plus,
@@ -10,9 +10,6 @@ import {
   Phone,
   Briefcase,
   User,
-  Calendar,
-  CheckCircle,
-  XCircle,
   Clock,
 } from "lucide-react";
 import SubFormModal from "@/components/forms/InviteSubForm";
@@ -20,8 +17,8 @@ import { useAuth } from "@/app/context/AuthContext";
 import api from "@/lib/api";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
+import { useSmartRefresh } from "@/lib/useSmartRefresh";
 
-// ===== TYPE DEFINITIONS =====
 interface SubcontractorFromBackend {
   id: string;
   email: string;
@@ -54,9 +51,8 @@ interface Contractor {
   _originalData?: SubcontractorFromBackend;
 }
 
-// ===== HELPER FUNCTIONS =====
 const transformBackendSubcontractor = (
-  backendSub: SubcontractorFromBackend
+  backendSub: SubcontractorFromBackend,
 ): Contractor => {
   return {
     contractorKey: backendSub.id,
@@ -70,159 +66,179 @@ const transformBackendSubcontractor = (
   };
 };
 
-export default function Page() {
+export default function SubcontractorsPage() {
   const [currentPage, setCurrentPage] = useState(1);
-  const [subcontractors, setSubs] = useState<Contractor[]>([]);
+  const [allSubs, setAllSubs] = useState<Contractor[]>([]);
   const [selectedContractor, setSelectedContractor] =
     useState<Contractor | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isSubFormOpen, setIsSubFormOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [totalSubs, setTotalSubs] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedProject, setSelectedProject] = useState<any | null>(null);
+
   const itemsPerPage = 7;
   const { user } = useAuth();
   const userId = user?.id;
-  const hasFetched = useRef(false);
-
-  const [selectedProject, setSelectedProject] = useState<any | null>(null);
-
-  const readProjectFromStorage = (): any | null => {
-    try {
-      if (!userId) return null;
-      const raw =
-        typeof window !== "undefined"
-          ? localStorage.getItem(`project_${userId}`)
-          : null;
-      if (!raw) return null;
-      return JSON.parse(raw);
-    } catch (e) {
-      return null;
-    }
-  };
 
   const getProjectId = (proj: any | null): string | number | null => {
     if (!proj) return null;
     return proj.id ?? proj.project_id ?? null;
   };
 
+  const projectIdForCache = getProjectId(selectedProject);
+  const cacheKey = `subcontractors_${userId}_project_${projectIdForCache ?? "all"}`;
+
+  // Load project from localStorage
   useEffect(() => {
     if (!userId) return;
-    const proj = readProjectFromStorage();
-    setSelectedProject(proj ?? null);
-    hasFetched.current = false;
-    setCurrentPage(1);
-  }, [userId]);
-
-  useEffect(() => {
-    const handler = (e: StorageEvent) => {
-      if (!userId) return;
-      if (e.key === `project_${userId}`) {
-        try {
-          const newVal = e.newValue ? JSON.parse(e.newValue) : null;
-          setSelectedProject(newVal);
-          hasFetched.current = false;
-          setCurrentPage(1);
-        } catch {
-          setSelectedProject(null);
-        }
-      }
-    };
-    if (typeof window !== "undefined") {
-      window.addEventListener("storage", handler);
-      return () => window.removeEventListener("storage", handler);
+    try {
+      const raw = localStorage.getItem(`project_${userId}`);
+      if (raw) setSelectedProject(JSON.parse(raw));
+    } catch {
+      setSelectedProject(null);
     }
   }, [userId]);
 
-  const projectIdForCache = getProjectId(selectedProject);
-  const cacheKey = `subcontractors_${userId}_project_${
-    projectIdForCache ?? "all"
-  }`;
+  // Listen for project changes in other tabs
+  useEffect(() => {
+    const handler = (e: StorageEvent) => {
+      if (!userId || e.key !== `project_${userId}`) return;
+      try {
+        const newVal = e.newValue ? JSON.parse(e.newValue) : null;
+        setSelectedProject(newVal);
+        setCurrentPage(1);
+      } catch {
+        setSelectedProject(null);
+      }
+    };
+    window.addEventListener("storage", handler);
+    return () => window.removeEventListener("storage", handler);
+  }, [userId]);
 
-  const fetchSubs = async (forceRefresh = false) => {
-    try {
-      if (!user || (hasFetched.current && !forceRefresh)) return;
+  const fetchSubs = useCallback(
+    async (isBackground = false) => {
+      if (!user) return;
 
       if (user.role === "subcontractor") {
         setLoading(false);
-        setSubs([]);
+        setAllSubs([]);
         return;
       }
 
-      setLoading(true);
+      if (!isBackground) setLoading(true);
       setError(null);
 
-      const isAdmin = user?.role === "admin";
-      const endpoint = isAdmin
-        ? "/subcontractors/"
-        : "/subcontractors/my-subcontractors";
-
-      const params: Record<string, any> = {
-        skip: (currentPage - 1) * itemsPerPage,
-        limit: itemsPerPage,
-        is_active: true,
-      };
-
-      const projectId = getProjectId(selectedProject);
-      if (projectId !== null && projectId !== undefined && projectId !== "") {
-        params.project_id = projectId;
-      }
-
-      const response = await api.get<SubcontractorListResponse>(endpoint, {
-        params,
-      });
-      const subsData = response.data?.subcontractors || [];
-      const total = response.data?.total ?? subsData.length ?? 0;
-      const transformedSubs = subsData.map(transformBackendSubcontractor);
-
-      setSubs(transformedSubs);
-      setTotalSubs(total);
-
       try {
-        localStorage.setItem(cacheKey, JSON.stringify(transformedSubs));
-      } catch (e) {}
+        const isAdmin = user?.role === "admin";
+        const endpoint = isAdmin
+          ? "/subcontractors/"
+          : "/subcontractors/my-subcontractors";
 
-      hasFetched.current = true;
-    } catch (err: any) {
-      const errMsg =
-        err?.response?.data?.detail || "Failed to fetch subcontractors";
-      setError(errMsg);
-      try {
-        const cached =
-          typeof window !== "undefined" ? localStorage.getItem(cacheKey) : null;
-        if (cached) setSubs(JSON.parse(cached));
-      } catch (e) {}
-    } finally {
-      setLoading(false);
-    }
-  };
+        const params: Record<string, any> = {
+          skip: 0,
+          limit: 1000, // Fetch all for client-side search
+          is_active: true,
+        };
 
-  useEffect(() => {
-    if (!user) return;
-    try {
-      const cached =
-        typeof window !== "undefined" ? localStorage.getItem(cacheKey) : null;
-      if (cached) {
-        setSubs(JSON.parse(cached));
+        const projectId = getProjectId(selectedProject);
+        if (projectId) params.project_id = projectId;
+
+        const response = await api.get<SubcontractorListResponse>(endpoint, {
+          params,
+        });
+        const subsData = response.data?.subcontractors || [];
+        const transformedSubs = subsData.map(transformBackendSubcontractor);
+
+        setAllSubs(transformedSubs);
+        localStorage.setItem(
+          cacheKey,
+          JSON.stringify({
+            subs: transformedSubs,
+            timestamp: Date.now(),
+          }),
+        );
+      } catch (err: any) {
+        const errMsg =
+          err?.response?.data?.detail || "Failed to fetch subcontractors";
+        setError(errMsg);
+
+        // Try to load from cache on error
+        try {
+          const cached = localStorage.getItem(cacheKey);
+          if (cached) {
+            const { subs } = JSON.parse(cached);
+            setAllSubs(subs);
+          }
+        } catch {}
+      } finally {
         setLoading(false);
       }
-    } catch (e) {}
-    fetchSubs();
-  }, [user, cacheKey]);
+    },
+    [user, selectedProject, cacheKey],
+  );
 
-  useEffect(() => {
-    if (hasFetched.current) fetchSubs(true);
-  }, [currentPage]);
+  const { refresh } = useSmartRefresh({
+    onRefresh: () => fetchSubs(true),
+    intervalMs: 5 * 60 * 1000,
+    refreshOnFocus: true,
+    refreshOnReconnect: true,
+  });
 
+  // Initial load with cache
   useEffect(() => {
     if (!user) return;
-    hasFetched.current = false;
+
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const { subs } = JSON.parse(cached);
+        setAllSubs(subs);
+        setLoading(false);
+      }
+    } catch {}
+
+    fetchSubs();
+  }, [user, cacheKey, fetchSubs]);
+
+  // Refetch when project changes
+  useEffect(() => {
+    if (!user) return;
     setCurrentPage(1);
     fetchSubs(true);
-  }, [selectedProject]);
+  }, [selectedProject, user, fetchSubs]);
 
-  const handlePageChange = (pageNumber: SetStateAction<number>) => {
+  // Reset page when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
+  // Client-side filtering
+  const filteredSubs = useMemo(() => {
+    if (!allSubs || allSubs.length === 0) return [];
+    if (!searchTerm.trim()) return allSubs;
+
+    const term = searchTerm.toLowerCase();
+    return allSubs.filter(
+      (sub) =>
+        sub.contractorName.toLowerCase().includes(term) ||
+        sub.contractorCompany.toLowerCase().includes(term) ||
+        sub.contractorTrade.toLowerCase().includes(term) ||
+        sub.contractorEmail.toLowerCase().includes(term),
+    );
+  }, [allSubs, searchTerm]);
+
+  // Client-side pagination
+  const paginatedSubs = useMemo(() => {
+    if (!filteredSubs || filteredSubs.length === 0) return [];
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredSubs.slice(start, start + itemsPerPage);
+  }, [filteredSubs, currentPage, itemsPerPage]);
+
+  const totalPages = Math.ceil((filteredSubs?.length || 0) / itemsPerPage);
+
+  const handlePageChange = (pageNumber: number) => {
     setCurrentPage(pageNumber);
   };
 
@@ -231,32 +247,18 @@ export default function Page() {
     setSidebarOpen(true);
   };
 
-  const handleSaveSubs = () => {
+  const handleSaveSubs = async () => {
     setIsSubFormOpen(false);
-    hasFetched.current = false;
     setCurrentPage(1);
-    fetchSubs(true);
+    await refresh();
   };
-
-  // Filter based on search
-  const filteredSubs = subcontractors.filter(
-    (sub) =>
-      sub.contractorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sub.contractorCompany.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sub.contractorTrade.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sub.contractorEmail.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const totalPages = Math.ceil(totalSubs / itemsPerPage);
 
   return (
     <div className="min-h-screen bg-[hsl(20,60%,99%)] p-4 sm:p-6 lg:p-8 font-sans">
       <div className="max-w-screen mx-auto space-y-6">
-        {/* --- Main Content Card --- */}
         <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-1 min-h-[85vh] flex flex-col relative overflow-hidden">
-          {/* Inner Padding Container */}
           <div className="p-6 flex-1 flex flex-col">
-            {/* Header Title Area */}
+            {/* Header */}
             <div className="flex justify-between items-end mb-6">
               <div>
                 <h1 className="text-2xl font-extrabold text-slate-900">
@@ -276,7 +278,7 @@ export default function Page() {
               )}
             </div>
 
-            {/* Search Bar (Added) */}
+            {/* Search */}
             <div className="mb-4 relative max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
@@ -285,9 +287,14 @@ export default function Page() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
+              {searchTerm && (
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
+                  {filteredSubs.length} results
+                </span>
+              )}
             </div>
 
-            {/* Table Header - Dark Navy Gradient Pill */}
+            {/* Table Header */}
             <div className="hidden sm:grid grid-cols-12 gap-4 bg-gradient-to-r from-[#0f2a4a] to-[#0B1120] text-white py-3.5 px-6 rounded-xl text-sm font-semibold shadow-md shadow-slate-200 mb-4">
               <div className="col-span-3">Name</div>
               <div className="col-span-2">Company</div>
@@ -297,7 +304,7 @@ export default function Page() {
               <div className="col-span-1 text-center">Status</div>
             </div>
 
-            {/* Rows Area */}
+            {/* Rows */}
             <div className="space-y-3 flex-1">
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
@@ -318,13 +325,17 @@ export default function Page() {
                     Retry
                   </Button>
                 </div>
-              ) : filteredSubs.length === 0 ? (
+              ) : paginatedSubs.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-64 text-slate-400 border-2 border-dashed border-slate-100 rounded-2xl bg-slate-50/50">
                   <User className="h-10 w-10 mb-2 opacity-50" />
-                  <p>No subcontractors found matching your criteria.</p>
+                  <p>
+                    {searchTerm
+                      ? "No subcontractors match your search."
+                      : "No subcontractors found."}
+                  </p>
                 </div>
               ) : (
-                filteredSubs.map((sub) => {
+                paginatedSubs.map((sub) => {
                   const isSelected =
                     selectedContractor?.contractorKey === sub.contractorKey;
 
@@ -333,23 +344,14 @@ export default function Page() {
                       key={sub.contractorKey}
                       onClick={() => handleCardClick(sub)}
                       className={`
-                                        group relative
-                                        bg-white rounded-xl p-3 sm:px-6 sm:py-3.5 
-                                        border border-slate-200
-                                        grid grid-cols-1 sm:grid-cols-12 gap-2 sm:gap-4 items-center
-                                        shadow-[0_2px_8px_rgba(0,0,0,0.02)] 
-                                        
-                                        hover:shadow-lg hover:-translate-y-0.5 hover:border-slate-300
-                                        transition-all duration-200 cursor-pointer 
-                                        
-                                        ${
-                                          isSelected
-                                            ? "bg-slate-50 border-slate-300"
-                                            : ""
-                                        }
-                                    `}
+                        group relative bg-white rounded-xl p-3 sm:px-6 sm:py-3.5 
+                        border border-slate-200 grid grid-cols-1 sm:grid-cols-12 
+                        gap-2 sm:gap-4 items-center shadow-[0_2px_8px_rgba(0,0,0,0.02)] 
+                        hover:shadow-lg hover:-translate-y-0.5 hover:border-slate-300
+                        transition-all duration-200 cursor-pointer 
+                        ${isSelected ? "bg-slate-50 border-slate-300" : ""}
+                      `}
                     >
-                      {/* Mobile Label/Value Structure */}
                       <div className="col-span-3 font-semibold text-slate-800 text-sm flex items-center gap-3">
                         <div className="h-8 w-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500 text-xs font-bold shrink-0">
                           {sub.contractorName.charAt(0)}
@@ -405,8 +407,8 @@ export default function Page() {
               )}
             </div>
 
-            {/* Pagination - Bottom Center */}
-            {totalSubs > 0 && (
+            {/* Pagination */}
+            {filteredSubs.length > 0 && (
               <div className="mt-auto pt-6 flex justify-center items-center gap-6">
                 <Button
                   onClick={() => handlePageChange(currentPage - 1)}
@@ -433,7 +435,7 @@ export default function Page() {
           </div>
         </div>
 
-        {/* --- Sidebar Detail View (Redesigned) --- */}
+        {/* Sidebar */}
         <div
           className={`fixed inset-y-0 right-0 w-full sm:w-[480px] bg-white shadow-2xl transform transition-transform duration-300 ease-in-out z-50 ${
             sidebarOpen ? "translate-x-0" : "translate-x-full"
@@ -441,7 +443,6 @@ export default function Page() {
         >
           {selectedContractor && (
             <div className="h-full flex flex-col">
-              {/* Header */}
               <div className="p-8 bg-[#0B1120] text-white flex justify-between items-start">
                 <div className="flex-1 pr-4">
                   <div className="flex items-center gap-4 mb-4">
@@ -467,9 +468,8 @@ export default function Page() {
                 </Button>
               </div>
 
-              {/* Scrollable Content */}
               <div className="flex-1 p-8 overflow-y-auto bg-slate-50 space-y-6">
-                {/* 1. Account Status */}
+                {/* Account Status */}
                 <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
                   <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">
                     Account Status
@@ -495,7 +495,7 @@ export default function Page() {
                   </div>
                 </div>
 
-                {/* 2. Contact Information */}
+                {/* Contact Information */}
                 <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
                   <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">
                     Contact Details
@@ -526,7 +526,7 @@ export default function Page() {
                   </div>
                 </div>
 
-                {/* 3. Business Info */}
+                {/* Business Info */}
                 <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
                   <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">
                     Business Profile
@@ -557,7 +557,7 @@ export default function Page() {
                   </div>
                 </div>
 
-                {/* 4. Timestamps (Audit) */}
+                {/* Timestamps */}
                 {selectedContractor._originalData && (
                   <div className="text-center space-y-1 py-4 pt-2 border-t border-slate-200 mt-4">
                     <p className="text-[10px] text-slate-400 flex items-center justify-center gap-1">
@@ -565,7 +565,7 @@ export default function Page() {
                       Created:{" "}
                       {format(
                         new Date(selectedContractor._originalData.created_at),
-                        "PPP p"
+                        "PPP p",
                       )}
                     </p>
                   </div>
@@ -575,7 +575,6 @@ export default function Page() {
           )}
         </div>
 
-        {/* Sidebar Overlay */}
         {sidebarOpen && (
           <div
             className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 transition-opacity"
@@ -583,7 +582,6 @@ export default function Page() {
           />
         )}
 
-        {/* Invite Modal */}
         {isSubFormOpen && (
           <SubFormModal
             isOpen={isSubFormOpen}

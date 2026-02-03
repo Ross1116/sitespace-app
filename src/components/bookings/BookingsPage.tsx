@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import api from "@/lib/api";
 import { useAuth } from "@/app/context/AuthContext";
 import BookingList from "./BookingList";
@@ -9,8 +9,7 @@ import { addHours, startOfHour } from "date-fns";
 import { Plus, Search } from "lucide-react";
 import { CreateBookingForm } from "@/components/forms/CreateBookingForm";
 import { Input } from "@/components/ui/input";
-
-// ===== TYPE DEFINITIONS & HELPERS =====
+import { useSmartRefresh } from "@/lib/useSmartRefresh";
 
 interface BookingDetail {
   id: string;
@@ -101,14 +100,12 @@ const transformBookingToLegacyFormat = (booking: BookingDetail) => {
     else assetName = `Asset ${assetId.slice(0, 6)}...`;
   }
 
-  // --- TITLE & DESCRIPTION LOGIC ---
   let finalTitle = "";
   let finalDescription = "No description provided";
 
   const rawPurpose = raw.purpose;
   const rawNotes = raw.notes;
 
-  // Determine Title
   if (rawPurpose && rawPurpose.trim() !== "") {
     finalTitle = rawPurpose;
   } else if (rawNotes && rawNotes.trim() !== "") {
@@ -117,7 +114,6 @@ const transformBookingToLegacyFormat = (booking: BookingDetail) => {
     finalTitle = `Booking for ${bookedFor}`;
   }
 
-  // Determine Description
   if (rawNotes && rawNotes.trim() !== "") {
     if (finalTitle === rawNotes) {
       finalDescription = "No additional details";
@@ -128,7 +124,6 @@ const transformBookingToLegacyFormat = (booking: BookingDetail) => {
     finalDescription = "No description provided";
   }
 
-  // FIX: Force status to lowercase so filtering works correctly
   const normalizedStatus = (raw.status || "pending").toLowerCase();
 
   return {
@@ -145,7 +140,7 @@ const transformBookingToLegacyFormat = (booking: BookingDetail) => {
     bookingStart: startDateObj,
     bookingEnd: endDateObj,
     bookingDurationMins: duration,
-    bookingStatus: normalizedStatus, // e.g. "pending", "confirmed"
+    bookingStatus: normalizedStatus,
     bookingFor: bookedFor || "Unknown",
     bookedAssets: [assetName],
     assetId: assetId,
@@ -159,14 +154,13 @@ const transformBookingToLegacyFormat = (booking: BookingDetail) => {
 
 export default function BookingsPage() {
   const [activeTab, setActiveTab] = useState("Upcoming");
-  const [bookings, setBookings] = useState<any[]>([]);
+  const [allBookings, setAllBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isBookingFormOpen, setIsBookingFormOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const { user } = useAuth();
-  const hasFetched = useRef(false);
-  const userId = user?.id;
 
+  const { user } = useAuth();
+  const userId = user?.id;
   const storageKey = `bookings_v5_${userId}`;
   const projectStorageKey = `project_${userId}`;
 
@@ -181,73 +175,90 @@ export default function BookingsPage() {
     return validBookings.map(transformBookingToLegacyFormat);
   };
 
-  const fetchBookings = async (isBackground = false) => {
-    if (!user) return;
-    if (!isBackground && bookings.length === 0) setLoading(true);
+  const fetchBookings = useCallback(
+    async (isBackground = false) => {
+      if (!user) return;
 
-    const projectString = localStorage.getItem(projectStorageKey);
-    if (!projectString) {
-      // Redirect if no project selected
-      if (typeof window !== "undefined") window.location.href = "/home";
-      return;
-    }
+      const projectString = localStorage.getItem(projectStorageKey);
+      if (!projectString) {
+        if (typeof window !== "undefined") window.location.href = "/home";
+        return;
+      }
 
-    try {
-      if (!isBackground) console.log("Fetching fresh bookings...");
-      const project = JSON.parse(projectString);
-      const response = await api.get<BookingListResponse>("/bookings/", {
-        params: { project_id: project.id, limit: 1000, skip: 0 },
-      });
+      if (!isBackground && allBookings.length === 0) setLoading(true);
 
-      const rawBookings = response.data?.bookings || [];
-      localStorage.setItem(storageKey, JSON.stringify(rawBookings));
-      const uiBookings = processRawBookings(rawBookings);
-      setBookings(uiBookings);
-      hasFetched.current = true;
-    } catch (error: any) {
-      console.error("Error fetching bookings:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+      try {
+        const project = JSON.parse(projectString);
+        const response = await api.get<BookingListResponse>("/bookings/", {
+          params: { project_id: project.id, limit: 1000, skip: 0 },
+        });
+
+        const rawBookings = response.data?.bookings || [];
+        localStorage.setItem(
+          storageKey,
+          JSON.stringify({
+            bookings: rawBookings,
+            timestamp: Date.now(),
+          }),
+        );
+        const uiBookings = processRawBookings(rawBookings);
+        setAllBookings(uiBookings);
+      } catch (error: any) {
+        console.error("Error fetching bookings:", error);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [user, storageKey, projectStorageKey, allBookings.length],
+  );
+
+  const { refresh } = useSmartRefresh({
+    onRefresh: () => fetchBookings(true),
+    intervalMs: 5 * 60 * 1000,
+    refreshOnFocus: true,
+    refreshOnReconnect: true,
+  });
 
   useEffect(() => {
     if (!user) return;
-    let hasCache = false;
+
     const cachedData = localStorage.getItem(storageKey);
     if (cachedData) {
       try {
-        const parsedData = JSON.parse(cachedData);
-        if (Array.isArray(parsedData) && parsedData.length > 0) {
-          const uiBookings = processRawBookings(parsedData);
-          setBookings(uiBookings);
+        const { bookings } = JSON.parse(cachedData);
+        if (Array.isArray(bookings) && bookings.length > 0) {
+          const uiBookings = processRawBookings(bookings);
+          setAllBookings(uiBookings);
           setLoading(false);
-          hasCache = true;
         }
       } catch {
         localStorage.removeItem(storageKey);
       }
     }
-    if (!hasFetched.current) fetchBookings(hasCache);
-    const interval = setInterval(() => fetchBookings(true), 300000);
-    return () => clearInterval(interval);
-  }, [user]);
 
-  const handleActionComplete = () => fetchBookings(true);
-  const handleOnClickButton = () => setIsBookingFormOpen(true);
-  const handleSaveBooking = () => {
+    fetchBookings();
+  }, [user, storageKey, fetchBookings]);
+
+  const handleSaveBooking = async () => {
     setIsBookingFormOpen(false);
-    fetchBookings(true);
+    await refresh();
   };
 
-  const filteredBookings = bookings.filter(
-    (b) =>
-      b.bookingTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      b.assetName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      b.bookingFor.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  // Client-side filtering
+  const filteredBookings = useMemo(() => {
+    if (!allBookings || allBookings.length === 0) return [];
+    if (!searchTerm.trim()) return allBookings;
 
-  const pendingCount = bookings.filter(
+    const term = searchTerm.toLowerCase();
+    return allBookings.filter(
+      (b) =>
+        b.bookingTitle.toLowerCase().includes(term) ||
+        b.assetName.toLowerCase().includes(term) ||
+        b.bookingFor.toLowerCase().includes(term),
+    );
+  }, [allBookings, searchTerm]);
+
+  const pendingCount = allBookings.filter(
     (b) => b.bookingStatus === "pending",
   ).length;
 
@@ -256,6 +267,7 @@ export default function BookingsPage() {
       <div className="max-w-screen mx-auto space-y-6">
         <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-1 min-h-[85vh] flex flex-col relative overflow-hidden">
           <div className="p-6 flex-1 flex flex-col">
+            {/* Header */}
             <div className="flex flex-col xl:flex-row justify-between items-end mb-8 gap-6">
               <div>
                 <h1 className="text-2xl font-extrabold text-slate-900">
@@ -270,7 +282,7 @@ export default function BookingsPage() {
                 <div className="flex gap-3 w-full sm:w-auto">
                   <div className="bg-[#0B1120] text-white rounded-xl px-5 py-2 flex flex-col items-center justify-center min-w-[110px] shadow-md shadow-slate-900/10">
                     <span className="text-2xl font-bold leading-none">
-                      {bookings.length}
+                      {allBookings.length}
                     </span>
                     <span className="text-[10px] font-medium opacity-80 uppercase tracking-wide">
                       Total
@@ -287,7 +299,7 @@ export default function BookingsPage() {
                 </div>
 
                 <Button
-                  onClick={handleOnClickButton}
+                  onClick={() => setIsBookingFormOpen(true)}
                   className="bg-[#0B1120] hover:bg-[#1a253a] text-white rounded-lg px-6 py-5 h-auto text-sm font-bold shadow-md shadow-slate-900/10 w-full sm:w-auto"
                 >
                   <Plus className="mr-2 h-4 w-4 stroke-[3]" /> New Booking
@@ -295,6 +307,7 @@ export default function BookingsPage() {
               </div>
             </div>
 
+            {/* Search & Tabs */}
             <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
               <div className="relative w-full md:max-w-xs">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -304,6 +317,11 @@ export default function BookingsPage() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
+                {searchTerm && (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
+                    {filteredBookings.length} results
+                  </span>
+                )}
               </div>
 
               <div className="flex overflow-x-auto pb-2 md:pb-0 w-full md:w-auto no-scrollbar gap-2">
@@ -320,13 +338,13 @@ export default function BookingsPage() {
                     key={tab}
                     onClick={() => setActiveTab(tab)}
                     className={`
-                                    px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap
-                                    ${
-                                      activeTab === tab
-                                        ? "bg-[#0B1120] text-white shadow-md shadow-slate-900/10"
-                                        : "bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-                                    }
-                                `}
+                      px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap
+                      ${
+                        activeTab === tab
+                          ? "bg-[#0B1120] text-white shadow-md shadow-slate-900/10"
+                          : "bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                      }
+                    `}
                   >
                     {tab}
                   </button>
@@ -334,12 +352,13 @@ export default function BookingsPage() {
               </div>
             </div>
 
+            {/* Booking List */}
             <div className="flex-1">
               <BookingList
                 bookings={filteredBookings}
                 activeTab={activeTab}
                 loading={loading}
-                onActionComplete={handleActionComplete}
+                onActionComplete={refresh}
               />
             </div>
           </div>

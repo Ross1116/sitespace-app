@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
   X,
@@ -9,9 +9,7 @@ import {
   TrashIcon,
   Search,
   Box,
-  MapPin,
   User,
-  Calendar,
   Clock,
   Tag,
   Briefcase,
@@ -19,15 +17,16 @@ import {
   Info,
   Wrench,
   AlertTriangle,
+  Calendar,
 } from "lucide-react";
 import api from "@/lib/api";
 import { useAuth } from "@/app/context/AuthContext";
 import CreateAssetForm from "@/components/forms/CreateAssetForm";
 import UpdateAssetModal from "@/components/forms/UpdateAssetForm";
-import { format, isValid, parseISO } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { Input } from "@/components/ui/input";
+import { useSmartRefresh } from "@/lib/useSmartRefresh";
 
-// ===== TYPE DEFINITIONS =====
 interface AssetFromBackend {
   id: string;
   asset_code: string;
@@ -41,7 +40,6 @@ interface AssetFromBackend {
   location?: string;
   poc?: string;
   usage_instructions?: string;
-  // Make sure your backend serializer includes these fields
   maintenance_start_date?: string;
   maintenance_end_date?: string;
 }
@@ -76,7 +74,6 @@ interface Project {
   text: string;
 }
 
-// ===== HELPER FUNCTIONS =====
 const transformBackendAsset = (backendAsset: AssetFromBackend): Asset => {
   const descriptionText =
     backendAsset.description ||
@@ -93,7 +90,6 @@ const transformBackendAsset = (backendAsset: AssetFromBackend): Asset => {
     assetPoc: backendAsset.poc || "Unassigned",
     assetProject: backendAsset.project_id || "",
     assetLocation: backendAsset.location || "",
-    // Mapping backend snake_case to frontend camelCase
     maintanenceStartdt: backendAsset.maintenance_start_date || "",
     maintanenceEnddt: backendAsset.maintenance_end_date || "",
     usageInstructions: backendAsset.usage_instructions || "",
@@ -112,14 +108,7 @@ const capitalizeStatus = (status: string): string => {
   return statusMap[status] || status;
 };
 
-const formatStatusForDisplay = (
-  status: string,
-): {
-  label: string;
-  className: string;
-  sidebarClassName: string;
-  dotColor: string;
-} => {
+const formatStatusForDisplay = (status: string) => {
   const statusConfig: Record<
     string,
     {
@@ -166,19 +155,18 @@ const formatStatusForDisplay = (
   );
 };
 
-// Helper to safely format ISO dates
 const safeFormatDate = (dateString?: string) => {
   if (!dateString) return "N/A";
   try {
     return format(parseISO(dateString), "PPP");
-  } catch (e) {
+  } catch {
     return dateString;
   }
 };
 
 export default function AssetsTable() {
   const [loading, setLoading] = useState(true);
-  const [assets, setAssets] = useState<Asset[]>([]);
+  const [allAssets, setAllAssets] = useState<Asset[]>([]);
   const [project, setProject] = useState<Project>();
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
@@ -187,14 +175,11 @@ export default function AssetsTable() {
   const [selectedAssetForUpdate, setSelectedAssetForUpdate] =
     useState<Asset | null>(null);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
-  const [totalAssets, setTotalAssets] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
+
   const itemsPerPage = 7;
-  const hasFetched = useRef(false);
   const { user } = useAuth();
   const userId = user?.id;
-  const initialLoadComplete = useRef(false);
-
   const STORAGE_KEY = `assets_v2_${userId}`;
 
   useEffect(() => {
@@ -202,89 +187,112 @@ export default function AssetsTable() {
     if (!projectString) return;
 
     try {
-      const parsedProject = JSON.parse(projectString);
-      setProject(parsedProject);
+      setProject(JSON.parse(projectString));
     } catch (error) {
       console.log("Error parsing project:", error);
     }
   }, [userId]);
 
-  const fetchAssets = async (forceRefresh = false) => {
-    try {
-      if (!user || (initialLoadComplete.current && !forceRefresh)) return;
-      if (!project) return;
+  const fetchAssets = useCallback(
+    async (isBackground = false) => {
+      if (!user || !project) return;
 
-      setLoading(true);
+      if (!isBackground) setLoading(true);
 
-      const response = await api.get<AssetListResponse>("/assets/", {
-        params: {
-          project_id: project.id,
-          skip: (currentPage - 1) * itemsPerPage,
-          limit: itemsPerPage,
-        },
-      });
-
-      const assetsData = response.data?.assets || [];
-      const total = response.data?.total || 0;
-
-      const transformedAssets = assetsData.map(transformBackendAsset);
-
-      setAssets(transformedAssets);
-      setTotalAssets(total);
-
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(transformedAssets));
-      initialLoadComplete.current = true;
-    } catch (error: any) {
-      console.error("Error fetching assets:", error);
-      const cachedAssets = localStorage.getItem(STORAGE_KEY);
-      if (cachedAssets) {
-        try {
-          setAssets(JSON.parse(cachedAssets));
-        } catch (e) {}
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!user || hasFetched.current || !project) return;
-
-    const cachedAssets = localStorage.getItem(STORAGE_KEY);
-
-    if (cachedAssets) {
       try {
-        const parsedAssets = JSON.parse(cachedAssets);
-        if (Array.isArray(parsedAssets)) {
-          setAssets(parsedAssets);
+        const response = await api.get<AssetListResponse>("/assets/", {
+          params: {
+            project_id: project.id,
+            skip: 0,
+            limit: 100, // Fetch all for client-side search
+          },
+        });
+
+        const assetsData = response.data?.assets || [];
+        const transformedAssets = assetsData.map(transformBackendAsset);
+
+        setAllAssets(transformedAssets);
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({
+            assets: transformedAssets,
+            timestamp: Date.now(),
+          }),
+        );
+      } catch (error: any) {
+        console.error("Error fetching assets:", error);
+        const cached = localStorage.getItem(STORAGE_KEY);
+        if (cached) {
+          try {
+            const { assets } = JSON.parse(cached);
+            setAllAssets(assets);
+          } catch {}
+        }
+      } finally {
+        setLoading(false);
+      }
+    },
+    [user, project, STORAGE_KEY],
+  );
+
+  // Smart refresh: on focus, on reconnect, every 5 mins
+  const { refresh } = useSmartRefresh({
+    onRefresh: () => fetchAssets(true),
+    intervalMs: 5 * 60 * 1000,
+    refreshOnFocus: true,
+    refreshOnReconnect: true,
+  });
+
+  // Initial load with cache
+  useEffect(() => {
+    if (!user || !project) return;
+
+    const cached = localStorage.getItem(STORAGE_KEY);
+    if (cached) {
+      try {
+        const { assets } = JSON.parse(cached);
+        if (Array.isArray(assets)) {
+          setAllAssets(assets);
           setLoading(false);
         }
-      } catch (error) {
+      } catch {
         localStorage.removeItem(STORAGE_KEY);
       }
     }
 
     fetchAssets();
-    hasFetched.current = true;
-  }, [user, project]);
+  }, [user, project, STORAGE_KEY, fetchAssets]);
 
+  // Reset page when search changes
   useEffect(() => {
-    if (initialLoadComplete.current && project) {
-      fetchAssets(true);
-    }
-  }, [currentPage]);
+    setCurrentPage(1);
+  }, [searchTerm]);
 
-  const totalPages = Math.ceil(totalAssets / itemsPerPage);
-  const maintenanceCount = assets.filter(
+  // Client-side filtering
+  const filteredAssets = useMemo(() => {
+    if (!allAssets || allAssets.length === 0) return [];
+    if (!searchTerm.trim()) return allAssets;
+
+    const term = searchTerm.toLowerCase();
+    return allAssets.filter(
+      (asset) =>
+        asset.assetTitle.toLowerCase().includes(term) ||
+        asset.assetCode.toLowerCase().includes(term) ||
+        asset.assetType.toLowerCase().includes(term),
+    );
+  }, [allAssets, searchTerm]);
+
+  const paginatedAssets = useMemo(() => {
+    if (!filteredAssets || filteredAssets.length === 0) return [];
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredAssets.slice(start, start + itemsPerPage);
+  }, [filteredAssets, currentPage, itemsPerPage]);
+
+  const totalPages = Math.ceil((filteredAssets?.length || 0) / itemsPerPage);
+
+  const maintenanceCount = (allAssets ?? []).filter(
     (a) => a.assetStatus === "Maintenance",
   ).length;
-
-  const filteredAssets = assets.filter(
-    (asset) =>
-      asset.assetTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      asset.assetCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      asset.assetType.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
 
   const handlePageChange = (pageNumber: number) => {
     setCurrentPage(pageNumber);
@@ -299,10 +307,10 @@ export default function AssetsTable() {
     setSidebarOpen(false);
   };
 
-  const handleSaveAssets = () => {
+  const handleSaveAssets = async () => {
     setIsAssetFormOpen(false);
     setCurrentPage(1);
-    fetchAssets(true);
+    await refresh();
   };
 
   const handleDeleteAsset = async (assetKey: string) => {
@@ -311,14 +319,14 @@ export default function AssetsTable() {
     try {
       await api.delete(`/assets/${assetKey}`);
       if (selectedAsset?.assetKey === assetKey) closeSidebar();
-      fetchAssets(true);
+      await refresh();
     } catch (error: any) {
       alert(error.response?.data?.detail || "Failed to delete asset");
     }
   };
 
-  const handleUpdateAsset = (updatedAsset: any) => {
-    setAssets((prevAssets) =>
+  const handleUpdateAsset = async (updatedAsset: any) => {
+    setAllAssets((prevAssets) =>
       prevAssets.map((a) =>
         a.assetKey === updatedAsset.assetKey ? { ...a, ...updatedAsset } : a,
       ),
@@ -326,16 +334,15 @@ export default function AssetsTable() {
     if (selectedAsset?.assetKey === updatedAsset.assetKey) {
       setSelectedAsset({ ...selectedAsset, ...updatedAsset });
     }
-    fetchAssets(true);
+    await refresh();
   };
 
   return (
     <div className="min-h-screen bg-[hsl(20,60%,99%)] p-4 sm:p-6 lg:p-8 font-sans">
       <div className="max-w-screen mx-auto space-y-6">
-        {/* --- Main Content Card --- */}
         <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-1 min-h-[85vh] flex flex-col relative overflow-hidden">
           <div className="p-6 flex-1 flex flex-col">
-            {/* Header Area */}
+            {/* Header */}
             <div className="flex flex-col xl:flex-row justify-between items-end mb-8 gap-6">
               <div>
                 <h1 className="text-2xl font-extrabold text-slate-900">
@@ -347,11 +354,10 @@ export default function AssetsTable() {
               </div>
 
               <div className="flex flex-col sm:flex-row items-center gap-4 w-full xl:w-auto">
-                {/* Stats Cards */}
                 <div className="flex gap-3 w-full sm:w-auto">
                   <div className="bg-[#0B1120] text-white rounded-xl px-5 py-2 flex flex-col items-center justify-center min-w-[110px] shadow-md shadow-slate-900/10">
                     <span className="text-2xl font-bold leading-none">
-                      {totalAssets}
+                      {allAssets?.length ?? 0}
                     </span>
                     <span className="text-[10px] font-medium opacity-80 uppercase tracking-wide">
                       Total Assets
@@ -376,7 +382,7 @@ export default function AssetsTable() {
               </div>
             </div>
 
-            {/* Search Bar */}
+            {/* Search */}
             <div className="mb-4 relative max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
@@ -385,6 +391,11 @@ export default function AssetsTable() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
+              {searchTerm && (
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
+                  {filteredAssets.length} results
+                </span>
+              )}
             </div>
 
             {/* Table Header */}
@@ -397,7 +408,7 @@ export default function AssetsTable() {
               <div className="col-span-1 text-center">Action</div>
             </div>
 
-            {/* Rows Area */}
+            {/* Rows */}
             <div className="space-y-3 flex-1">
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
@@ -406,18 +417,21 @@ export default function AssetsTable() {
                     className="h-16 bg-slate-50 rounded-xl animate-pulse w-full border border-slate-100"
                   />
                 ))
-              ) : filteredAssets.length === 0 ? (
+              ) : paginatedAssets.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-64 text-slate-400 border-2 border-dashed border-slate-100 rounded-2xl bg-slate-50/50">
                   <Box className="h-10 w-10 mb-2 opacity-50" />
-                  <p>No assets found.</p>
+                  <p>
+                    {searchTerm
+                      ? "No assets match your search."
+                      : "No assets found."}
+                  </p>
                 </div>
               ) : (
-                filteredAssets.map((asset) => {
+                paginatedAssets.map((asset) => {
                   const isSelected = selectedAsset?.assetKey === asset.assetKey;
                   const statusDisplay = formatStatusForDisplay(
                     asset.assetStatus,
                   );
-
                   const updatedDate = asset.assetLastUpdated
                     ? format(parseISO(asset.assetLastUpdated), "MMM d, yyyy")
                     : "N/A";
@@ -427,19 +441,14 @@ export default function AssetsTable() {
                       key={asset.assetKey}
                       onClick={() => handleAssetClick(asset)}
                       className={`
-                                        group relative
-                                        bg-white rounded-xl p-3 sm:px-6 sm:py-3.5 
-                                        border border-slate-200
-                                        grid grid-cols-1 sm:grid-cols-12 gap-2 sm:gap-4 items-center
-                                        shadow-[0_2px_8px_rgba(0,0,0,0.02)] 
-                                        
-                                        hover:shadow-lg hover:-translate-y-0.5 hover:border-slate-300
-                                        transition-all duration-200 cursor-pointer 
-                                        
-                                        ${isSelected ? "bg-slate-50 border-slate-300" : ""}
-                                    `}
+                        group relative bg-white rounded-xl p-3 sm:px-6 sm:py-3.5 
+                        border border-slate-200 grid grid-cols-1 sm:grid-cols-12 
+                        gap-2 sm:gap-4 items-center shadow-[0_2px_8px_rgba(0,0,0,0.02)] 
+                        hover:shadow-lg hover:-translate-y-0.5 hover:border-slate-300
+                        transition-all duration-200 cursor-pointer 
+                        ${isSelected ? "bg-slate-50 border-slate-300" : ""}
+                      `}
                     >
-                      {/* 1. Asset Name + Code */}
                       <div className="col-span-3 flex items-center gap-3 overflow-hidden">
                         <div className="h-9 w-9 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500 shrink-0">
                           <Box size={16} />
@@ -457,7 +466,6 @@ export default function AssetsTable() {
                         </div>
                       </div>
 
-                      {/* 2. Type */}
                       <div className="col-span-2 text-slate-600 text-xs sm:text-sm font-medium flex items-center gap-2">
                         <span className="sm:hidden text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
                           Type
@@ -471,7 +479,6 @@ export default function AssetsTable() {
                         </span>
                       </div>
 
-                      {/* 3. Status */}
                       <div className="col-span-2">
                         <span className="sm:hidden text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
                           Status
@@ -486,7 +493,6 @@ export default function AssetsTable() {
                         </div>
                       </div>
 
-                      {/* 4. Description */}
                       <div className="col-span-3 text-xs sm:text-sm font-medium">
                         <span className="sm:hidden text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
                           Description
@@ -499,7 +505,6 @@ export default function AssetsTable() {
                         </span>
                       </div>
 
-                      {/* 5. Last Updated */}
                       <div className="col-span-1 text-slate-500 text-xs sm:text-sm font-medium truncate">
                         <span className="sm:hidden text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
                           Updated
@@ -510,7 +515,6 @@ export default function AssetsTable() {
                         </span>
                       </div>
 
-                      {/* 6. Actions */}
                       <div className="col-span-1 flex justify-start sm:justify-center gap-2">
                         <Button
                           variant="ghost"
@@ -543,7 +547,7 @@ export default function AssetsTable() {
             </div>
 
             {/* Pagination */}
-            {totalAssets > 0 && (
+            {filteredAssets.length > 0 && (
               <div className="mt-auto pt-6 flex justify-center items-center gap-6">
                 <Button
                   onClick={() => handlePageChange(currentPage - 1)}
@@ -570,13 +574,12 @@ export default function AssetsTable() {
           </div>
         </div>
 
-        {/* --- Sidebar Detail View --- */}
+        {/* Sidebar */}
         <div
           className={`fixed inset-y-0 right-0 w-full sm:w-[480px] bg-white shadow-2xl transform transition-transform duration-300 ease-in-out z-50 ${sidebarOpen ? "translate-x-0" : "translate-x-full"}`}
         >
           {selectedAsset && (
             <div className="h-full flex flex-col">
-              {/* Header */}
               <div className="p-8 bg-[#0B1120] text-white flex justify-between items-start">
                 <div className="flex-1 pr-4">
                   <div className="flex items-center gap-3 mb-4">
@@ -610,9 +613,7 @@ export default function AssetsTable() {
                 </Button>
               </div>
 
-              {/* Scrollable Content */}
               <div className="flex-1 p-8 overflow-y-auto bg-slate-50 space-y-6">
-                {/* 1. Identity Overview */}
                 <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
                   <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">
                     Asset Identity
@@ -654,7 +655,6 @@ export default function AssetsTable() {
                   </div>
                 </div>
 
-                {/* 2. Description */}
                 <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
                   <div className="flex items-center gap-2 mb-2 border-b border-slate-100 pb-2">
                     <FileText className="h-4 w-4 text-slate-400" />
@@ -667,8 +667,6 @@ export default function AssetsTable() {
                   </p>
                 </div>
 
-                {/* 3. Maintenance Schedule (NEW SECTION) */}
-                {/* Only shows if status is Maintenance OR if dates exist */}
                 {(selectedAsset.assetStatus === "Maintenance" ||
                   selectedAsset.maintanenceStartdt ||
                   selectedAsset.maintanenceEnddt) && (
@@ -706,7 +704,6 @@ export default function AssetsTable() {
                   </div>
                 )}
 
-                {/* 4. Logistics */}
                 <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
                   <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">
                     Logistics
@@ -731,7 +728,6 @@ export default function AssetsTable() {
                   </div>
                 </div>
 
-                {/* 5. Audit Timestamps */}
                 {selectedAsset._originalData && (
                   <div className="text-center space-y-1 py-2">
                     <p className="text-[10px] text-slate-400">
@@ -746,7 +742,6 @@ export default function AssetsTable() {
                 )}
               </div>
 
-              {/* Footer Actions */}
               <div className="p-4 bg-white border-t border-slate-100 flex gap-3">
                 <Button
                   className="flex-1 bg-[#0B1120] text-white hover:bg-[#1a253a]"
@@ -762,7 +757,6 @@ export default function AssetsTable() {
           )}
         </div>
 
-        {/* Sidebar Overlay */}
         {sidebarOpen && (
           <div
             className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 transition-opacity"
@@ -770,7 +764,6 @@ export default function AssetsTable() {
           />
         )}
 
-        {/* Create Modal */}
         {isAssetFormOpen && (
           <CreateAssetForm
             isOpen={isAssetFormOpen}
@@ -779,7 +772,6 @@ export default function AssetsTable() {
           />
         )}
 
-        {/* Update Modal */}
         {selectedAssetForUpdate && (
           <UpdateAssetModal
             isOpen={isUpdateModalOpen}
