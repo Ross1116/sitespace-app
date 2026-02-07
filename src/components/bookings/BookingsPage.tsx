@@ -185,7 +185,7 @@ export default function BookingsPage() {
         return;
       }
 
-      if (!isBackground && allBookings.length === 0) setLoading(true);
+      if (!isBackground) setLoading(true);
 
       try {
         const project = JSON.parse(projectString);
@@ -209,7 +209,7 @@ export default function BookingsPage() {
         setLoading(false);
       }
     },
-    [user, storageKey, projectStorageKey, allBookings.length],
+    [user, storageKey, projectStorageKey],
   );
 
   const { refresh } = useSmartRefresh({
@@ -240,9 +240,15 @@ export default function BookingsPage() {
   }, [user, storageKey, fetchBookings]);
 
   const handleSaveBooking = async () => {
-    setIsBookingFormOpen(false);
+    // setIsBookingFormOpen(false);
     await refresh();
   };
+
+  const handleFormClose = useCallback(() => {
+    setIsBookingFormOpen(false);
+    // Small delay to ensure backend has processed the booking
+    setTimeout(() => refresh(), 300);
+  }, [refresh]);
 
   // Client-side filtering
   const filteredBookings = useMemo(() => {
@@ -364,15 +370,15 @@ export default function BookingsPage() {
           </div>
         </div>
 
-        {isBookingFormOpen && (
-          <CreateBookingForm
-            isOpen={isBookingFormOpen}
-            onClose={() => setIsBookingFormOpen(false)}
-            startTime={nextHour}
-            endTime={endHour}
-            onSave={handleSaveBooking}
-          />
-        )}
+        {/* {isBookingFormOpen && ( */}
+        <CreateBookingForm
+          isOpen={isBookingFormOpen}
+          onClose={handleFormClose}
+          startTime={nextHour}
+          endTime={endHour}
+          onSave={handleSaveBooking}
+        />
+        {/* )} */}
       </div>
     </div>
   );

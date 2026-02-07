@@ -66,7 +66,7 @@ interface AssetUpdateRequest {
 
 // ===== HELPER FUNCTIONS =====
 const mapFrontendStatusToBackend = (
-  status: string
+  status: string,
 ): "available" | "in_use" | "maintenance" | "retired" => {
   const statusMap: Record<
     string,
@@ -170,7 +170,7 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
   }, [userId]);
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
     setAsset((prev) => ({ ...prev, [name]: value }));
@@ -230,7 +230,7 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
       // Use new backend endpoint
       const response = await api.put(
         `/assets/${asset.assetKey}`,
-        updateRequest
+        updateRequest,
       );
 
       console.log("Asset updated successfully:", response.data);
@@ -246,9 +246,7 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
         assetPoc: response.data.poc || "",
         assetStatus: mapBackendStatusToFrontend(response.data.status),
         usageInstructions:
-          response.data.usage_instructions ||
-          response.data.description ||
-          "",
+          response.data.usage_instructions || response.data.description || "",
         assetProject: response.data.project_id || projectId, // ✅ Always a string
         assetCode: response.data.asset_code,
         _originalData: response.data,
@@ -412,7 +410,7 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
                     "px-4 py-2 rounded-md transition text-sm",
                     asset.assetStatus === "Operational"
                       ? "bg-green-100 text-green-800 font-medium border-2 border-green-500"
-                      : "bg-gray-100 hover:bg-gray-200 border-2 border-transparent"
+                      : "bg-gray-100 hover:bg-gray-200 border-2 border-transparent",
                   )}
                   onClick={() => handleStatusChange("Operational")}
                 >
@@ -424,7 +422,7 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
                     "px-4 py-2 rounded-md transition text-sm",
                     asset.assetStatus === "In Use"
                       ? "bg-blue-100 text-blue-800 font-medium border-2 border-blue-500"
-                      : "bg-gray-100 hover:bg-gray-200 border-2 border-transparent"
+                      : "bg-gray-100 hover:bg-gray-200 border-2 border-transparent",
                   )}
                   onClick={() => handleStatusChange("In Use")}
                 >
@@ -436,7 +434,7 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
                     "px-4 py-2 rounded-md transition text-sm",
                     asset.assetStatus === "Maintenance"
                       ? "bg-yellow-100 text-yellow-800 font-medium border-2 border-yellow-500"
-                      : "bg-gray-100 hover:bg-gray-200 border-2 border-transparent"
+                      : "bg-gray-100 hover:bg-gray-200 border-2 border-transparent",
                   )}
                   onClick={() => handleStatusChange("Maintenance")}
                 >
@@ -449,7 +447,7 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
                     asset.assetStatus === "Out of Service" ||
                       asset.assetStatus === "Retired"
                       ? "bg-red-100 text-red-800 font-medium border-2 border-red-500"
-                      : "bg-gray-100 hover:bg-gray-200 border-2 border-transparent"
+                      : "bg-gray-100 hover:bg-gray-200 border-2 border-transparent",
                   )}
                   onClick={() => handleStatusChange("Out of Service")}
                 >
@@ -471,7 +469,7 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
             </div>
 
             {/* Project (Read-only) */}
-            <div className="space-y-2">
+            {/* <div className="space-y-2">
               <Label htmlFor="projectName">Project</Label>
               <Input
                 id="projectName"
@@ -482,7 +480,7 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
               <span className="text-xs text-gray-500">
                 Project cannot be changed from here
               </span>
-            </div>
+            </div> */}
 
             {/* Usage Instructions */}
             <div className="space-y-2 md:col-span-2">

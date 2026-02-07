@@ -33,6 +33,15 @@ import {
 } from "@/components/ui/popover";
 import { Label } from "../ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // ===== TYPE DEFINITIONS =====
 type CreateBookingForm = {
@@ -47,7 +56,6 @@ type CreateBookingForm = {
   defaultAssetName?: string;
 };
 
-// ✅ UPDATED: Added 'purpose' to match backend schema
 interface BookingCreateRequest {
   project_id?: string;
   subcontractor_id?: string;
@@ -56,7 +64,7 @@ interface BookingCreateRequest {
   start_time: string;
   end_time: string;
   notes?: string;
-  purpose?: string; 
+  purpose?: string;
 }
 
 interface BookingDetail {
@@ -70,7 +78,7 @@ interface BookingDetail {
   end_time: string;
   status: string;
   notes?: string;
-  purpose?: string; // ✅ Added purpose
+  purpose?: string;
   created_at: string;
   updated_at: string;
   [key: string]: any;
@@ -106,7 +114,7 @@ export function CreateBookingForm({
   const userId = user?.id;
 
   const [customStartTime, setCustomStartTime] = useState<Date | null>(
-    startTime
+    startTime,
   );
   const [customEndTime, setCustomEndTime] = useState<Date | null>(null);
 
@@ -126,6 +134,18 @@ export function CreateBookingForm({
 
   const isManager = user?.role === "manager" || user?.role === "admin";
   const isSubcontractor = user?.role === "subcontractor";
+
+  const [successAlert, setSuccessAlert] = useState<{
+    isOpen: boolean;
+    isConfirmed: boolean;
+    count: number;
+  }>({ isOpen: false, isConfirmed: false, count: 0 });
+
+  const handleSuccessDismiss = () => {
+    setSuccessAlert({ isOpen: false, isConfirmed: false, count: 0 });
+    resetForm();
+    onClose();
+  };
 
   const handleDurationChange = (newDuration: string) => {
     setDuration(newDuration);
@@ -167,8 +187,8 @@ export function CreateBookingForm({
       const parsedAssets = JSON.parse(assetString);
       const normalizedAssets = parsedAssets.map((a: any) => ({
         ...a,
-        assetKey: a.id || a.assetKey, 
-        assetTitle: a.name || a.assetTitle, 
+        assetKey: a.id || a.assetKey,
+        assetTitle: a.name || a.assetTitle,
       }));
 
       setAssets(normalizedAssets);
@@ -189,17 +209,14 @@ export function CreateBookingForm({
 
       setLoadingSubcontractors(true);
       try {
-        const response = await api.get(
-          `/subcontractors/my-subcontractors`,
-          {
-            params: {
-              skip: 0,
-              limit: 100, 
-              is_active: true,
-              project_id: project.id,
-            },
-          }
-        );
+        const response = await api.get(`/subcontractors/my-subcontractors`, {
+          params: {
+            skip: 0,
+            limit: 100,
+            is_active: true,
+            project_id: project.id,
+          },
+        });
 
         let subsData: any[] = [];
 
@@ -260,7 +277,7 @@ export function CreateBookingForm({
         try {
           localStorage.setItem(
             `subcontractors_${userId}`,
-            JSON.stringify(subsData)
+            JSON.stringify(subsData),
           );
         } catch (e) {
           // ignore storage errors
@@ -308,7 +325,7 @@ export function CreateBookingForm({
     if (defaultAssetName && assets.length > 0 && selectedAssets.length === 0) {
       const assetNameWithoutPrefix = defaultAssetName.replace(
         /^[A-Z]\d{3}-/,
-        ""
+        "",
       );
 
       const matchingAsset = assets.find((asset) => {
@@ -455,14 +472,14 @@ export function CreateBookingForm({
           start_time: startTimeFormatted,
           end_time: endTimeFormatted,
           // ✅ FIXED: Map Title to 'purpose' and Description to 'notes'
-          purpose: title,      
-          notes: description, 
+          purpose: title,
+          notes: description,
           subcontractor_id: selectedSubcontractor || undefined,
         };
 
         const response = await api.post<BookingDetail>(
           "/bookings/",
-          bookingData
+          bookingData,
         );
         return response.data;
       });
@@ -477,21 +494,31 @@ export function CreateBookingForm({
         }
       }
 
-      // Update Local Cache to reflect new structure
+      // Cache new bookings in localStorage
       try {
         const storageKey = `bookings_v5_${userId}`;
         const existingRaw = (() => {
           try {
             const s = localStorage.getItem(storageKey);
-            return s ? JSON.parse(s) : [];
+            if (!s) return [];
+            const parsed = JSON.parse(s);
+            if (Array.isArray(parsed)) return parsed;
+            if (parsed?.bookings && Array.isArray(parsed.bookings))
+              return parsed.bookings;
+            return [];
           } catch {
             return [];
           }
         })();
 
-        // Append new bookings to local cache
         const newCache = [...existingRaw, ...createdBookings];
-        localStorage.setItem(storageKey, JSON.stringify(newCache));
+        localStorage.setItem(
+          storageKey,
+          JSON.stringify({
+            bookings: newCache,
+            timestamp: Date.now(),
+          }),
+        );
       } catch (e) {
         console.error("Failed to update local booking cache:", e);
       }
@@ -507,7 +534,7 @@ export function CreateBookingForm({
         const assetTitle =
           booking.asset?.name ||
           assets.find(
-            (a) => a.assetKey === booking.asset_id || a.id === booking.asset_id
+            (a) => a.assetKey === booking.asset_id || a.id === booking.asset_id,
           )?.assetTitle ||
           booking.asset_name ||
           booking.assetTitle ||
@@ -516,10 +543,10 @@ export function CreateBookingForm({
           booking.asset_id;
 
         const startDateTime = new Date(
-          `${booking.booking_date}T${booking.start_time}`
+          `${booking.booking_date}T${booking.start_time}`,
         );
         const endDateTime = new Date(
-          `${booking.booking_date}T${booking.end_time}`
+          `${booking.booking_date}T${booking.end_time}`,
         );
 
         return {
@@ -553,14 +580,12 @@ export function CreateBookingForm({
       onSave(events);
 
       const firstBooking = createdBookings[0];
-      alert(
-        firstBooking.status === "confirmed"
-          ? "Booking(s) confirmed!"
-          : "Booking(s) submitted for approval!"
-      );
-
-      resetForm();
-      onClose();
+      const wasConfirmed = firstBooking.status === "confirmed";
+      setSuccessAlert({
+        isOpen: true,
+        isConfirmed: wasConfirmed,
+        count: createdBookings.length,
+      });
     } catch (error: any) {
       console.error("Error creating bookings:", error);
       const errorMessage =
@@ -590,462 +615,501 @@ export function CreateBookingForm({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-full max-w-md mx-auto rounded-xl p-3 sm:p-6 bg-white shadow-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader className="mb-4">
-          <DialogTitle className="text-lg sm:text-xl font-semibold">
-            Book Time Slot
-          </DialogTitle>
-        </DialogHeader>
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="w-full max-w-md mx-auto rounded-xl p-3 sm:p-6 bg-white shadow-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="mb-4">
+            <DialogTitle className="text-lg sm:text-xl font-semibold">
+              Book Time Slot
+            </DialogTitle>
+          </DialogHeader>
 
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded text-sm mb-4">
-            {error}
-          </div>
-        )}
-
-        {assetError && (
-          <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-3 py-2 rounded text-sm mb-4 flex items-start gap-2">
-            <span className="text-yellow-600 mt-0.5">⚠️</span>
-            <div>
-              <strong className="font-semibold">Asset Loading Error:</strong>
-              <p className="text-xs mt-1">
-                Unable to load assets. Please refresh the page or contact
-                support.
-              </p>
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded text-sm mb-4">
+              {error}
             </div>
-          </div>
-        )}
-
-        <Alert
-          className={
-            isManager
-              ? "bg-green-50 border-green-200"
-              : "bg-blue-50 border-blue-200"
-          }
-        >
-          {isManager ? (
-            <CheckCircle className="h-4 w-4 text-green-600" />
-          ) : (
-            <Info className="h-4 w-4 text-blue-600" />
           )}
-          <AlertDescription
+
+          {assetError && (
+            <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-3 py-2 rounded text-sm mb-4 flex items-start gap-2">
+              <span className="text-yellow-600 mt-0.5">⚠️</span>
+              <div>
+                <strong className="font-semibold">Asset Loading Error:</strong>
+                <p className="text-xs mt-1">
+                  Unable to load assets. Please refresh the page or contact
+                  support.
+                </p>
+              </div>
+            </div>
+          )}
+
+          <Alert
             className={
-              isManager ? "text-green-700 text-xs" : "text-blue-700 text-xs"
+              isManager
+                ? "bg-green-50 border-green-200"
+                : "bg-blue-50 border-blue-200"
             }
           >
             {isManager ? (
-              <>
-                <strong>Manager Booking:</strong> Your booking will be
-                automatically confirmed.
-              </>
+              <CheckCircle className="h-4 w-4 text-green-600" />
             ) : (
-              <>
-                <strong>Subcontractor Booking:</strong> Your booking will be
-                pending until approved by a manager.
-              </>
+              <Info className="h-4 w-4 text-blue-600" />
             )}
-          </AlertDescription>
-        </Alert>
-
-        <div className="space-y-6 mt-4">
-          {/* Basic Info */}
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="title">
-                Booking Title <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Enter title"
-                className="h-9"
-                disabled={isSubmitting}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Add more details..."
-                rows={3}
-                className="resize-none text-sm"
-                disabled={isSubmitting}
-              />
-            </div>
-          </div>
-
-          {/* Date Picker */}
-          <div className="space-y-2">
-            <Label>
-              Date <span className="text-red-500">*</span>
-            </Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="w-full h-9 justify-start text-left text-sm font-normal"
-                  disabled={isSubmitting}
-                >
-                  <CalendarIcon className="w-4 h-4 mr-2" />
-                  {selectedDate ? format(selectedDate, "PPP") : "Select date"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="p-0">
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={(date) => date && setSelectedDate(date)}
-                  initialFocus
-                  disabled={(date) =>
-                    date < new Date(new Date().setHours(0, 0, 0, 0))
-                  }
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-
-          {/* Time Selectors */}
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>
-                Start Time <span className="text-red-500">*</span>
-              </Label>
-              <div className="flex items-center gap-2">
-                <Select
-                  value={startHour}
-                  onValueChange={handleStartHourChange}
-                  disabled={isSubmitting}
-                >
-                  <SelectTrigger className="h-9 w-full text-sm">
-                    <SelectValue placeholder="Hour" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 24 }).map((_, i) => {
-                      const val = i.toString().padStart(2, "0");
-                      return (
-                        <SelectItem key={val} value={val} className="text-sm">
-                          {formatHour(i)}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-                <span>:</span>
-                <Select
-                  value={startMinute}
-                  onValueChange={handleStartMinuteChange}
-                  disabled={isSubmitting}
-                >
-                  <SelectTrigger className="h-9 w-full text-sm">
-                    <SelectValue placeholder="Min" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {["00", "15", "30", "45"].map((val) => (
-                      <SelectItem key={val} value={val} className="text-sm">
-                        {val}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>
-                End Time <span className="text-red-500">*</span>
-              </Label>
-              <div className="flex items-center gap-2">
-                <Select
-                  value={endHour}
-                  onValueChange={handleEndHourChange}
-                  disabled={isSubmitting}
-                >
-                  <SelectTrigger className="h-9 w-full text-sm">
-                    <SelectValue placeholder="Hour" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 24 }).map((_, i) => {
-                      const val = i.toString().padStart(2, "0");
-                      return (
-                        <SelectItem key={val} value={val} className="text-sm">
-                          {formatHour(i)}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-                <span>:</span>
-                <Select
-                  value={endMinute}
-                  onValueChange={handleEndMinuteChange}
-                  disabled={isSubmitting}
-                >
-                  <SelectTrigger className="h-9 w-full text-sm">
-                    <SelectValue placeholder="Min" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {["00", "15", "30", "45"].map((val) => (
-                      <SelectItem key={val} value={val} className="text-sm">
-                        {val}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-
-          {/* Duration */}
-          <div className="space-y-2">
-            <Label>Duration (Quick Select)</Label>
-            <Select
-              value={duration}
-              onValueChange={handleDurationChange}
-              disabled={isSubmitting}
+            <AlertDescription
+              className={
+                isManager ? "text-green-700 text-xs" : "text-blue-700 text-xs"
+              }
             >
-              <SelectTrigger className="h-9 w-full text-sm">
-                <SelectValue placeholder="Select duration" />
-              </SelectTrigger>
-              <SelectContent>
-                {[15, 30, 45, 60, 90, 120, 180, 240, 300, 360].map((val) => (
-                  <SelectItem
-                    key={val}
-                    value={val.toString()}
-                    className="text-sm"
-                  >
-                    {val >= 60
-                      ? `${val / 60} hour${val >= 120 ? "s" : ""}`
-                      : `${val} minutes`}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+              {isManager ? (
+                <>
+                  <strong>Manager Booking:</strong> Your booking will be
+                  automatically confirmed.
+                </>
+              ) : (
+                <>
+                  <strong>Subcontractor Booking:</strong> Your booking will be
+                  pending until approved by a manager.
+                </>
+              )}
+            </AlertDescription>
+          </Alert>
 
-          {/* Subcontractor Selection */}
-          {isManager && (
+          <div className="space-y-6 mt-4">
+            {/* Basic Info */}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="title">
+                  Booking Title <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Enter title"
+                  className="h-9"
+                  disabled={isSubmitting}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Add more details..."
+                  rows={3}
+                  className="resize-none text-sm"
+                  disabled={isSubmitting}
+                />
+              </div>
+            </div>
+
+            {/* Date Picker */}
             <div className="space-y-2">
               <Label>
-                Assign to Subcontractor
-                <span className="text-gray-500 text-xs ml-2">(Optional)</span>
+                Date <span className="text-red-500">*</span>
               </Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full h-9 justify-start text-left text-sm font-normal"
+                    disabled={isSubmitting}
+                  >
+                    <CalendarIcon className="w-4 h-4 mr-2" />
+                    {selectedDate ? format(selectedDate, "PPP") : "Select date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="p-0">
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={(date) => date && setSelectedDate(date)}
+                    initialFocus
+                    disabled={(date) =>
+                      date < new Date(new Date().setHours(0, 0, 0, 0))
+                    }
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Time Selectors */}
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>
+                  Start Time <span className="text-red-500">*</span>
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Select
+                    value={startHour}
+                    onValueChange={handleStartHourChange}
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger className="h-9 w-full text-sm">
+                      <SelectValue placeholder="Hour" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 24 }).map((_, i) => {
+                        const val = i.toString().padStart(2, "0");
+                        return (
+                          <SelectItem key={val} value={val} className="text-sm">
+                            {formatHour(i)}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                  <span>:</span>
+                  <Select
+                    value={startMinute}
+                    onValueChange={handleStartMinuteChange}
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger className="h-9 w-full text-sm">
+                      <SelectValue placeholder="Min" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {["00", "15", "30", "45"].map((val) => (
+                        <SelectItem key={val} value={val} className="text-sm">
+                          {val}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>
+                  End Time <span className="text-red-500">*</span>
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Select
+                    value={endHour}
+                    onValueChange={handleEndHourChange}
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger className="h-9 w-full text-sm">
+                      <SelectValue placeholder="Hour" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 24 }).map((_, i) => {
+                        const val = i.toString().padStart(2, "0");
+                        return (
+                          <SelectItem key={val} value={val} className="text-sm">
+                            {formatHour(i)}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                  <span>:</span>
+                  <Select
+                    value={endMinute}
+                    onValueChange={handleEndMinuteChange}
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger className="h-9 w-full text-sm">
+                      <SelectValue placeholder="Min" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {["00", "15", "30", "45"].map((val) => (
+                        <SelectItem key={val} value={val} className="text-sm">
+                          {val}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
+            {/* Duration */}
+            <div className="space-y-2">
+              <Label>Duration (Quick Select)</Label>
               <Select
-                value={selectedSubcontractor || "none"}
-                onValueChange={(value) => {
-                  if (value === "none") {
-                    setSelectedSubcontractor("");
-                  } else {
-                    setSelectedSubcontractor(value);
-                  }
-                }}
-                disabled={isSubmitting || loadingSubcontractors}
+                value={duration}
+                onValueChange={handleDurationChange}
+                disabled={isSubmitting}
               >
                 <SelectTrigger className="h-9 w-full text-sm">
-                  <SelectValue>
-                    {selectedSubcontractor
-                      ? (() => {
-                          const selected = subcontractors.find(
-                            (s) => s.id === selectedSubcontractor
-                          );
-                          if (!selected) return "None (Unassigned)";
-
-                          const name =
-                            `${selected.first_name} ${selected.last_name}`.trim();
-                          return name || selected.email || "Unknown";
-                        })()
-                      : "None (Unassigned)"}
-                  </SelectValue>
+                  <SelectValue placeholder="Select duration" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">
-                    <span className="font-normal">None (Unassigned)</span>
-                  </SelectItem>
-
-                  {loadingSubcontractors ? (
-                    <div className="px-2 py-1.5 text-sm text-gray-500">
-                      Loading subcontractors...
-                    </div>
-                  ) : subcontractors.length === 0 ? (
-                    <div className="px-2 py-1.5 text-sm text-gray-500">
-                      No subcontractors in this project
-                    </div>
-                  ) : (
-                    subcontractors.map((sub) => {
-                      const fullName =
-                        `${sub.first_name} ${sub.last_name}`.trim();
-                      const displayName = fullName || sub.email || "Unknown";
-
-                      return (
-                        <SelectItem key={sub.id} value={sub.id}>
-                          <div className="flex flex-col py-1">
-                            <span className="font-medium">{displayName}</span>
-                            {sub.company_name && sub.company_name !== "N/A" && (
-                              <span className="text-xs text-gray-500">
-                                {sub.company_name}
-                              </span>
-                            )}
-                          </div>
-                        </SelectItem>
-                      );
-                    })
-                  )}
+                  {[15, 30, 45, 60, 90, 120, 180, 240, 300, 360].map((val) => (
+                    <SelectItem
+                      key={val}
+                      value={val.toString()}
+                      className="text-sm"
+                    >
+                      {val >= 60
+                        ? `${val / 60} hour${val >= 120 ? "s" : ""}`
+                        : `${val} minutes`}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
-          )}
 
-          {/* Asset Selection */}
-          <div className="space-y-2">
-            <Label>
-              Select Assets <span className="text-red-500">*</span>
-            </Label>
-            {selectedAssets.length > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {selectedAssets.map((assetKey) => {
-                  const asset = assets.find((a) => a.assetKey === assetKey);
-                  return (
-                    <Badge
-                      key={assetKey}
-                      className="text-xs flex items-center gap-1"
-                    >
-                      {asset?.assetTitle || assetKey}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-4 w-4"
-                        onClick={() => removeAsset(assetKey)}
-                        disabled={isSubmitting}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </Badge>
-                  );
-                })}
+            {/* Subcontractor Selection */}
+            {isManager && (
+              <div className="space-y-2">
+                <Label>
+                  Assign to Subcontractor
+                  <span className="text-gray-500 text-xs ml-2">(Optional)</span>
+                </Label>
+                <Select
+                  value={selectedSubcontractor || "none"}
+                  onValueChange={(value) => {
+                    if (value === "none") {
+                      setSelectedSubcontractor("");
+                    } else {
+                      setSelectedSubcontractor(value);
+                    }
+                  }}
+                  disabled={isSubmitting || loadingSubcontractors}
+                >
+                  <SelectTrigger className="h-9 w-full text-sm">
+                    <SelectValue>
+                      {selectedSubcontractor
+                        ? (() => {
+                            const selected = subcontractors.find(
+                              (s) => s.id === selectedSubcontractor,
+                            );
+                            if (!selected) return "None (Unassigned)";
+
+                            const name =
+                              `${selected.first_name} ${selected.last_name}`.trim();
+                            return name || selected.email || "Unknown";
+                          })()
+                        : "None (Unassigned)"}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">
+                      <span className="font-normal">None (Unassigned)</span>
+                    </SelectItem>
+
+                    {loadingSubcontractors ? (
+                      <div className="px-2 py-1.5 text-sm text-gray-500">
+                        Loading subcontractors...
+                      </div>
+                    ) : subcontractors.length === 0 ? (
+                      <div className="px-2 py-1.5 text-sm text-gray-500">
+                        No subcontractors in this project
+                      </div>
+                    ) : (
+                      subcontractors.map((sub) => {
+                        const fullName =
+                          `${sub.first_name} ${sub.last_name}`.trim();
+                        const displayName = fullName || sub.email || "Unknown";
+
+                        return (
+                          <SelectItem key={sub.id} value={sub.id}>
+                            <div className="flex flex-col py-1">
+                              <span className="font-medium">{displayName}</span>
+                              {sub.company_name &&
+                                sub.company_name !== "N/A" && (
+                                  <span className="text-xs text-gray-500">
+                                    {sub.company_name}
+                                  </span>
+                                )}
+                            </div>
+                          </SelectItem>
+                        );
+                      })
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
             )}
-            <ScrollArea className="h-24 border rounded-md p-2">
-              <div className="space-y-2">
-                {assets.length === 0 ? (
-                  <p className="text-sm text-gray-500 text-center py-4">
-                    No assets available
-                  </p>
-                ) : (
-                  assets.map((asset) => {
-                    const isSelected = selectedAssets.includes(asset.assetKey);
-                    const isBooked = bookedAssets.includes(asset.assetKey);
-                    return (
-                      <div
-                        key={asset.assetKey}
-                        className="flex items-center space-x-2"
-                      >
-                        <Checkbox
-                          id={`asset-${asset.assetKey}`}
-                          checked={isSelected}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setSelectedAssets([
-                                ...selectedAssets,
-                                asset.assetKey,
-                              ]);
-                              setSelectedAssetIds([
-                                ...selectedAssetIds,
-                                asset.assetKey,
-                              ]);
-                            } else {
-                              setSelectedAssets(
-                                selectedAssets.filter(
-                                  (k) => k !== asset.assetKey
-                                )
-                              );
-                              setSelectedAssetIds(
-                                selectedAssetIds.filter(
-                                  (id) => id !== asset.assetKey
-                                )
-                              );
-                            }
-                          }}
-                          disabled={isSubmitting || (isBooked && !isSelected)}
-                        />
-                        <label
-                          htmlFor={`asset-${asset.assetKey}`}
-                          className={`text-sm flex-1 truncate ${
-                            isBooked && !isSelected
-                              ? "line-through text-muted-foreground"
-                              : ""
-                          }`}
-                        >
-                          {asset.assetTitle}
-                          {isBooked && !isSelected && (
-                            <span className="ml-2 text-xs text-red-500">
-                              (Booked)
-                            </span>
-                          )}
-                        </label>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </ScrollArea>
-          </div>
 
-          {/* Submit Button */}
-          <div className="pt-2 flex justify-end gap-2">
-            <Button
-              variant="outline"
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="h-10 px-4 text-sm"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={
-                !title ||
-                !customStartTime ||
-                !customEndTime ||
-                selectedAssets.length === 0 ||
-                isSubmitting
-              }
-              className="h-10 px-4 text-sm"
-            >
-              {isSubmitting ? (
-                <span className="flex items-center">
-                  <svg
-                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                  Saving...
-                </span>
-              ) : (
-                `Save Booking${selectedAssets.length > 1 ? "s" : ""}`
+            {/* Asset Selection */}
+            <div className="space-y-2">
+              <Label>
+                Select Assets <span className="text-red-500">*</span>
+              </Label>
+              {selectedAssets.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {selectedAssets.map((assetKey) => {
+                    const asset = assets.find((a) => a.assetKey === assetKey);
+                    return (
+                      <Badge
+                        key={assetKey}
+                        className="text-xs flex items-center gap-1"
+                      >
+                        {asset?.assetTitle || assetKey}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-4 w-4"
+                          onClick={() => removeAsset(assetKey)}
+                          disabled={isSubmitting}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </Badge>
+                    );
+                  })}
+                </div>
               )}
-            </Button>
+              <ScrollArea className="h-24 border rounded-md p-2">
+                <div className="space-y-2">
+                  {assets.length === 0 ? (
+                    <p className="text-sm text-gray-500 text-center py-4">
+                      No assets available
+                    </p>
+                  ) : (
+                    assets.map((asset) => {
+                      const isSelected = selectedAssets.includes(
+                        asset.assetKey,
+                      );
+                      const isBooked = bookedAssets.includes(asset.assetKey);
+                      return (
+                        <div
+                          key={asset.assetKey}
+                          className="flex items-center space-x-2"
+                        >
+                          <Checkbox
+                            id={`asset-${asset.assetKey}`}
+                            checked={isSelected}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedAssets([
+                                  ...selectedAssets,
+                                  asset.assetKey,
+                                ]);
+                                setSelectedAssetIds([
+                                  ...selectedAssetIds,
+                                  asset.assetKey,
+                                ]);
+                              } else {
+                                setSelectedAssets(
+                                  selectedAssets.filter(
+                                    (k) => k !== asset.assetKey,
+                                  ),
+                                );
+                                setSelectedAssetIds(
+                                  selectedAssetIds.filter(
+                                    (id) => id !== asset.assetKey,
+                                  ),
+                                );
+                              }
+                            }}
+                            disabled={isSubmitting || (isBooked && !isSelected)}
+                          />
+                          <label
+                            htmlFor={`asset-${asset.assetKey}`}
+                            className={`text-sm flex-1 truncate ${
+                              isBooked && !isSelected
+                                ? "line-through text-muted-foreground"
+                                : ""
+                            }`}
+                          >
+                            {asset.assetTitle}
+                            {isBooked && !isSelected && (
+                              <span className="ml-2 text-xs text-red-500">
+                                (Booked)
+                              </span>
+                            )}
+                          </label>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </ScrollArea>
+            </div>
+
+            {/* Submit Button */}
+            <div className="pt-2 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={onClose}
+                disabled={isSubmitting}
+                className="h-10 px-4 text-sm"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSubmit}
+                disabled={
+                  !title ||
+                  !customStartTime ||
+                  !customEndTime ||
+                  selectedAssets.length === 0 ||
+                  isSubmitting
+                }
+                className="h-10 px-4 text-sm"
+              >
+                {isSubmitting ? (
+                  <span className="flex items-center">
+                    <svg
+                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Saving...
+                  </span>
+                ) : (
+                  `Save Booking${selectedAssets.length > 1 ? "s" : ""}`
+                )}
+              </Button>
+            </div>
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+      <AlertDialog
+        open={successAlert.isOpen}
+        onOpenChange={(open) => {
+          if (!open) handleSuccessDismiss();
+        }}
+      >
+        <AlertDialogContent className="bg-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-emerald-600" />
+              {successAlert.isConfirmed
+                ? "Booking Confirmed"
+                : "Booking Submitted"}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-600">
+              {isManager
+                ? successAlert.count > 1
+                  ? `Your ${successAlert.count} bookings have been confirmed and added to the calendar.`
+                  : "Your booking has been confirmed and added to the calendar."
+                : successAlert.count > 1
+                  ? `Your ${successAlert.count} bookings have been submitted and are pending approval by a manager.`
+                  : "Your booking has been submitted and is pending approval by a manager."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-2">
+            <AlertDialogAction
+              onClick={handleSuccessDismiss}
+              className="bg-[#0B1120] hover:bg-[#1a253a] text-white"
+            >
+              Done
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
