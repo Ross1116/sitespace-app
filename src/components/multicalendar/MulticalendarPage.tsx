@@ -11,10 +11,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { useAuth } from "@/app/context/AuthContext";
 import api from "@/lib/api";
-import {
-  CalendarEvent,
-  AssetCalendar,
-} from "@/lib/multicalendarHelpers";
+import { CalendarEvent, AssetCalendar } from "@/lib/multicalendarHelpers";
 import { CalendarHeader } from "./CalendarHeader";
 import { MobileView } from "./MobileView";
 import { DesktopView } from "./DesktopView";
@@ -40,7 +37,7 @@ interface ApiBooking {
   status: string;
   purpose: string | null;
   notes: string | null;
-  
+
   // IDs
   project_id?: string;
   manager_id: string;
@@ -73,15 +70,18 @@ const bookingsApi = {
   getCalendarView: async (
     dateFrom: string,
     dateTo: string,
-    projectId?: string
+    projectId?: string,
   ): Promise<CalendarDayResponse[]> => {
-    const response = await api.get<CalendarDayResponse[]>("/bookings/calendar", {
-      params: {
-        date_from: dateFrom,
-        date_to: dateTo,
-        project_id: projectId,
+    const response = await api.get<CalendarDayResponse[]>(
+      "/bookings/calendar",
+      {
+        params: {
+          date_from: dateFrom,
+          date_to: dateTo,
+          project_id: projectId,
+        },
       },
-    });
+    );
     return response.data;
   },
 };
@@ -170,13 +170,13 @@ export default function MulticalendarPage() {
       bookingStatus: status,
       bookingTitle: title,
       bookingNotes: b.notes,
-      
+
       assetId: b.asset_id,
       assetName: assetName,
       assetCode: assetCode,
-      
+
       // Pass the Full Original Object so the Details Dialog works!
-      _originalData: b, 
+      _originalData: b,
     } as CalendarEvent;
   };
 
@@ -210,16 +210,22 @@ export default function MulticalendarPage() {
       const calendarData = await bookingsApi.getCalendarView(
         dateFrom.toISOString().split("T")[0],
         dateTo.toISOString().split("T")[0],
-        project.id
+        project.id,
       );
       const allBookings: ApiBooking[] = calendarData.flatMap(
-        (dayData) => dayData.bookings || []
+        (dayData) => dayData.bookings || [],
       );
 
-      localStorage.setItem(storageKey, JSON.stringify(allBookings));
+      const activeBookings = allBookings.filter(
+        (b) =>
+          b.status?.toLowerCase() !== "cancelled" &&
+          b.status?.toLowerCase() !== "denied",
+      );
 
-      const transformedBookings: CalendarEvent[] = allBookings.map(
-        processBookingToEvent
+      localStorage.setItem(storageKey, JSON.stringify(activeBookings));
+
+      const transformedBookings: CalendarEvent[] = activeBookings.map(
+        processBookingToEvent,
       );
 
       setBookings(transformedBookings);
@@ -242,8 +248,13 @@ export default function MulticalendarPage() {
       try {
         const parsedData = JSON.parse(cachedBookings);
         if (Array.isArray(parsedData) && parsedData.length > 0) {
-          // Use our new processor on cached data too
-          const transformed = parsedData.map(processBookingToEvent);
+          // Filter cached data
+          const filtered = parsedData.filter(
+            (b: ApiBooking) =>
+              b.status?.toLowerCase() !== "cancelled" &&
+              b.status?.toLowerCase() !== "denied",
+          );
+          const transformed = filtered.map(processBookingToEvent);
           setBookings(transformed);
           foundCache = true;
         }
@@ -272,22 +283,25 @@ export default function MulticalendarPage() {
 
   // Keep for potential internal updates from child components
   const handleBookingCreated = (
-    newEvents: Partial<CalendarEvent>[] | Partial<CalendarEvent>
+    newEvents: Partial<CalendarEvent>[] | Partial<CalendarEvent>,
   ) => {
     const arr = Array.isArray(newEvents) ? newEvents : [newEvents];
-    
-    // Convert partials to full events using simple defaults, 
+
+    // Convert partials to full events using simple defaults,
     // real data comes on next fetch
-    const normalized = arr.map((ev: any, idx) => ({
-        ...ev,
-        id: ev.id || `temp-${Date.now()}-${idx}`,
-        start: ev.start || new Date(),
-        end: ev.end || addHours(new Date(), 1),
-        title: ev.title || "New Booking",
-        bookingStatus: "pending",
-        assetId: ev.assetId || "",
-        bookedAssets: ev.bookedAssets || []
-    } as CalendarEvent));
+    const normalized = arr.map(
+      (ev: any, idx) =>
+        ({
+          ...ev,
+          id: ev.id || `temp-${Date.now()}-${idx}`,
+          start: ev.start || new Date(),
+          end: ev.end || addHours(new Date(), 1),
+          title: ev.title || "New Booking",
+          bookingStatus: "pending",
+          assetId: ev.assetId || "",
+          bookedAssets: ev.bookedAssets || [],
+        }) as CalendarEvent,
+    );
 
     setBookings((prev) => [...prev, ...normalized]);
     handleActionComplete(); // Trigger refresh to get real data
@@ -303,13 +317,16 @@ export default function MulticalendarPage() {
       const groups: Record<string, AssetCalendar> = {};
       bookings.forEach((b) => {
         // Safe access to assetId
-        const aId = b.assetId || "unknown"; 
+        const aId = b.assetId || "unknown";
         if (!groups[aId]) {
           groups[aId] = {
             id: aId,
             name: b.assetName || "Unknown",
             events: [],
-            asset: (b as any)._originalData?.asset || { id: aId, name: b.assetName },
+            asset: (b as any)._originalData?.asset || {
+              id: aId,
+              name: b.assetName,
+            },
           };
         }
         groups[aId].events.push(b);
@@ -386,9 +403,7 @@ export default function MulticalendarPage() {
         } flex-col gap-6`}
       >
         {/* Month Calendar Card */}
-        <Card
-          className="w-full h-fit overflow-hidden bg-white border border-slate-100 shadow-sm rounded-2xl transition-all duration-600"
-        >
+        <Card className="w-full h-fit overflow-hidden bg-white border border-slate-100 shadow-sm rounded-2xl transition-all duration-600">
           <Calendar
             view="month"
             date={currentDate}

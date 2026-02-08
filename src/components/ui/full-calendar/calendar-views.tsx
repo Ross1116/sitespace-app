@@ -101,7 +101,7 @@ export const CalendarDayView = ({
   assetCalendar?: AssetCalendar;
   onActionComplete?: () => void;
   onBookingCreated?: (
-    events: Partial<CalendarEvent>[] | Partial<CalendarEvent>
+    events: Partial<CalendarEvent>[] | Partial<CalendarEvent>,
   ) => void;
 }) => {
   const { events, date, setEvents } = useCalendar();
@@ -158,7 +158,7 @@ export const CalendarDayView = ({
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(TouchSensor)
+    useSensor(TouchSensor),
   );
 
   // --- DRAG LOGIC ---
@@ -220,7 +220,7 @@ export const CalendarDayView = ({
     const { event, newStart, newEnd } = pendingReschedule;
     const originalEvents = [...events];
     const updatedEvents = events.map((ev) =>
-      ev.id === event.id ? { ...ev, start: newStart, end: newEnd } : ev
+      ev.id === event.id ? { ...ev, start: newStart, end: newEnd } : ev,
     );
     setEvents(updatedEvents);
 
@@ -272,12 +272,15 @@ export const CalendarDayView = ({
 
   const currentHour = new Date().getHours();
   const isCurrentDay = isSameDay(date, new Date());
-  const hourHasEvents = hours.reduce((acc, hour) => {
-    acc[hour.toString()] = (events || []).some((event) =>
-      isSameHour(event.start, hour)
-    );
-    return acc;
-  }, {} as Record<string, boolean>);
+  const hourHasEvents = hours.reduce(
+    (acc, hour) => {
+      acc[hour.toString()] = (events || []).some((event) =>
+        isSameHour(event.start, hour),
+      );
+      return acc;
+    },
+    {} as Record<string, boolean>,
+  );
 
   return (
     <>
@@ -324,8 +327,8 @@ export const CalendarDayView = ({
                               underMaintenance
                                 ? "bg-[linear-gradient(45deg,transparent_25%,rgba(0,0,0,0.04)_25%,rgba(0,0,0,0.04)_50%,transparent_50%,transparent_75%,rgba(0,0,0,0.04)_75%,rgba(0,0,0,0.04)_100%)] bg-[length:16px_16px] bg-slate-50"
                                 : index % 2 === 0
-                                ? "bg-white"
-                                : "bg-slate-50/30"
+                                  ? "bg-white"
+                                  : "bg-slate-50/30"
                             }
                         `}
                     >
@@ -376,9 +379,11 @@ export const CalendarDayView = ({
               endTime={selectedTimeSlot.end}
               defaultAsset={assetCalendar?.id}
               defaultAssetName={assetCalendar?.name}
-              onSave={(newEvent) => {
-                onBookingCreated?.(newEvent);
-                onActionComplete?.();
+              onSave={() => {
+                // setIsBookingFormOpen(false);
+                setTimeout(() => {
+                  onActionComplete?.();
+                }, 200);
               }}
             />
           )}
@@ -524,12 +529,12 @@ export const CalendarWeekView = () => {
       "Create event at:",
       format(startTime, "h:mm a"),
       "to",
-      format(endTime, "h:mm a")
+      format(endTime, "h:mm a"),
     );
   };
 
   const handleSaveEvent = (
-    newEvent: Partial<CalendarEvent> | Partial<CalendarEvent>[]
+    newEvent: Partial<CalendarEvent> | Partial<CalendarEvent>[],
   ) => {
     if (!setEvents || !events) return;
 
@@ -585,14 +590,14 @@ export const CalendarWeekView = () => {
             key={date.toString()}
             className={cn(
               "text-center flex-1 gap-1 pb-2 text-sm text-slate-500 font-medium flex items-center justify-center",
-              [0, 6].includes(i) && "text-slate-400"
+              [0, 6].includes(i) && "text-slate-400",
             )}
           >
             {format(date, "E", { locale })}
             <span
               className={cn(
                 "h-6 w-6 ml-1 grid place-content-center rounded-full text-xs font-bold",
-                isToday(date) ? "bg-[#0B1120] text-white" : "text-slate-900"
+                isToday(date) ? "bg-[#0B1120] text-white" : "text-slate-900",
               )}
             >
               {format(date, "d")}
@@ -612,7 +617,7 @@ export const CalendarWeekView = () => {
                 <div
                   className={cn(
                     "h-full text-sm text-slate-500 border-l border-slate-100 first:border-l-0",
-                    [0, 6].includes(i) && "bg-slate-50/50"
+                    [0, 6].includes(i) && "bg-slate-50/50",
                   )}
                   key={hours[0].toString()}
                 >
@@ -633,7 +638,7 @@ export const CalendarWeekView = () => {
                 key={`clickable-${dayIndex}`}
                 className={cn(
                   "grid grid-rows-[repeat(16,1fr)] h-full border-l border-slate-100 first:border-l-0",
-                  [0, 6].includes(dayIndex) && "bg-slate-50/30"
+                  [0, 6].includes(dayIndex) && "bg-slate-50/30",
                 )}
               >
                 {hours.map((hour) => (
@@ -683,7 +688,7 @@ export const CalendarMonthView = () => {
             key={day}
             className={cn(
               "text-center text-xs font-bold uppercase tracking-wider text-slate-400",
-              [0, 6].includes(i) && "text-slate-300"
+              [0, 6].includes(i) && "text-slate-300",
             )}
           >
             {day}
@@ -696,7 +701,7 @@ export const CalendarMonthView = () => {
       <div className="grid -mt-px p-px grid-cols-7 gap-px bg-slate-100">
         {monthDates.map((_date) => {
           const currentEvents = events.filter((event) =>
-            isSameDay(event.start, _date)
+            isSameDay(event.start, _date),
           );
 
           const isSelectedDate = isSameDay(_date, date);
@@ -708,7 +713,7 @@ export const CalendarMonthView = () => {
                 // CHANGE 3: Added 'aspect-square' to ensure cells stay square
                 // Added 'min-h-[60px]' or similar only if you want a minimum size, otherwise aspect-square handles it
                 "aspect-square bg-white relative p-2 text-sm ring-1 ring-slate-100 hover:bg-slate-50 transition-colors cursor-pointer flex flex-col gap-1",
-                !isCurrentMonth && "bg-slate-50/50 text-slate-300"
+                !isCurrentMonth && "bg-slate-50/50 text-slate-300",
               )}
               key={_date.toString()}
               onClick={() => handleDateClick(_date)}
@@ -719,8 +724,8 @@ export const CalendarMonthView = () => {
                   isToday(_date)
                     ? "bg-[#0B1120] text-white font-bold"
                     : isSelectedDate && !isToday(_date)
-                    ? "bg-slate-200 text-slate-900"
-                    : "text-slate-700"
+                      ? "bg-slate-200 text-slate-900"
+                      : "text-slate-700",
                 )}
               >
                 {format(_date, "d")}
@@ -736,7 +741,7 @@ export const CalendarMonthView = () => {
                     <div
                       className={cn(
                         "shrink-0",
-                        monthEventVariants({ variant: event.color })
+                        monthEventVariants({ variant: event.color }),
                       )}
                     ></div>
                     {/* Optional: Hide text on very small screens if needed */}
@@ -801,7 +806,7 @@ export const CalendarYearView = () => {
                   key={_date.toString()}
                   className={cn(
                     !isCurrentMonth && "text-slate-200",
-                    isCurrentMonth && "text-slate-600"
+                    isCurrentMonth && "text-slate-600",
                   )}
                 >
                   <div
@@ -809,7 +814,7 @@ export const CalendarYearView = () => {
                       "aspect-square grid place-content-center size-full rounded-md",
                       isSameDay(today, _date) &&
                         isCurrentMonth &&
-                        "bg-[#0B1120] text-white font-bold"
+                        "bg-[#0B1120] text-white font-bold",
                     )}
                   >
                     {format(_date, "d")}
@@ -832,7 +837,7 @@ export const EventGroup = ({
   hour: Date;
 }) => {
   const filteredEvents = events.filter((event) =>
-    isSameHour(event.start, hour)
+    isSameHour(event.start, hour),
   );
 
   if (filteredEvents.length === 0) {
@@ -856,7 +861,7 @@ export const EventGroup = ({
                 <div
                   className={cn(
                     "absolute cursor-pointer shadow-sm hover:shadow-md transition-shadow",
-                    dayEventVariants({ variant: event.color })
+                    dayEventVariants({ variant: event.color }),
                   )}
                   style={{
                     top: `${startPosition * 100}%`,
@@ -941,7 +946,7 @@ const EventGroupSideBySide = ({
                         "w-full h-full hover:shadow-md transition-all",
                         isDisabled
                           ? "cursor-not-allowed opacity-75 grayscale"
-                          : "cursor-pointer"
+                          : "cursor-pointer",
                       )}
                       onClick={(e) => {
                         e.stopPropagation();
