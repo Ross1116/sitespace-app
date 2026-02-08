@@ -1,17 +1,12 @@
+// components/bookings/BookingList.tsx
 "use client";
 
-import {
-  useState,
-  useEffect,
-  Fragment,
-  useMemo,
-  useRef,
-  useCallback,
-} from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Calendar } from "lucide-react";
 import { groupBookings } from "@/lib/bookingHelpers";
 import BookingCardMobile from "./BookingCardMobile";
 import BookingCardDesktop from "./BookingCardDesktop";
+import BookingHistorySidebar from "./BookingHistorySidebar";
 import { Button } from "@/components/ui/button";
 
 interface BookingListProps {
@@ -33,12 +28,16 @@ export default function BookingList({
 }: BookingListProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
-  // Track which booking's dropdown is currently open (only one at a time)
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+
+  // Sidebar state
+  const [sidebarBooking, setSidebarBooking] = useState<any | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   const bookingRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const hasScrolledToHighlight = useRef(false);
 
-  // FILTER & SORT
+  // 1. FILTER & SORT
   const processedBookings = useMemo(() => {
     if (!bookings) return [];
 
@@ -53,7 +52,6 @@ export default function BookingList({
         return endDt >= now && status !== "cancelled" && status !== "denied";
       }
       if (activeTab === "All") return true;
-
       return status === activeTab.toLowerCase();
     });
 
@@ -64,7 +62,7 @@ export default function BookingList({
     });
   }, [bookings, activeTab]);
 
-  // PAGE JUMP LOGIC — prioritize highlighted booking
+  // 2. PAGE JUMP LOGIC
   useEffect(() => {
     if (processedBookings.length === 0) {
       setCurrentPage(1);
@@ -98,7 +96,7 @@ export default function BookingList({
     }
   }, [activeTab, processedBookings, highlightBookingId]);
 
-  // SCROLL TO HIGHLIGHTED BOOKING after render
+  // 3. SCROLL + AUTO-OPEN dropdown (combined)
   useEffect(() => {
     if (!highlightedId || hasScrolledToHighlight.current) return;
 
@@ -107,10 +105,7 @@ export default function BookingList({
     const scrollTimeout = setTimeout(() => {
       const el = bookingRefs.current[highlightedId];
       if (el) {
-        el.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
         hasScrolledToHighlight.current = true;
 
         if (highlightBookingId && highlightedId === highlightBookingId) {
@@ -127,40 +122,31 @@ export default function BookingList({
     };
   }, [highlightedId, currentPage, highlightBookingId]);
 
-  // GLOBAL CLICK-OUTSIDE: close any open dropdown + dismiss highlight
+  // 4. GLOBAL CLICK-OUTSIDE
   useEffect(() => {
     if (!openDropdownId && !highlightedId) return;
 
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as Node;
 
-      // Check if click is inside any modal/dialog (reschedule, delete, deny modals)
-      // These render in portals outside the card DOM
       const isInsideModal = (target as Element)?.closest?.(
         '[role="dialog"], [data-radix-portal], .fixed',
       );
       if (isInsideModal) return;
 
-      // If a dropdown is open, check if click is inside that card
       if (openDropdownId) {
         const openCardEl = bookingRefs.current[openDropdownId];
         if (openCardEl && openCardEl.contains(target)) return;
-
-        // Click was outside the open card — close dropdown
         setOpenDropdownId(null);
       }
 
-      // If highlighted, check if click is inside highlighted card
       if (highlightedId) {
         const highlightedEl = bookingRefs.current[highlightedId];
         if (highlightedEl && highlightedEl.contains(target)) return;
-
-        // Click was outside — dismiss highlight
         setHighlightedId(null);
       }
     };
 
-    // Small delay so initial render/scroll doesn't immediately dismiss
     const timer = setTimeout(() => {
       document.addEventListener("mousedown", handleClickOutside);
     }, 100);
@@ -171,12 +157,10 @@ export default function BookingList({
     };
   }, [openDropdownId, highlightedId]);
 
-  // Toggle handler — ensures only one dropdown open at a time
   const handleDropdownToggle = useCallback((bookingKey: string) => {
     setOpenDropdownId((prev) => (prev === bookingKey ? null : bookingKey));
   }, []);
 
-  // Ref setter callback
   const setBookingRef = useCallback(
     (bookingKey: string) => (el: HTMLDivElement | null) => {
       bookingRefs.current[bookingKey] = el;
@@ -184,7 +168,17 @@ export default function BookingList({
     [],
   );
 
-  // PAGINATION
+  // Open history sidebar
+  const handleOpenHistory = useCallback((booking: any) => {
+    setSidebarBooking(booking);
+    setSidebarOpen(true);
+  }, []);
+
+  const handleCloseSidebar = useCallback(() => {
+    setSidebarOpen(false);
+  }, []);
+
+  // 5. PAGINATION
   const totalItems = processedBookings.length;
   const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -193,14 +187,14 @@ export default function BookingList({
     startIndex + ITEMS_PER_PAGE,
   );
 
-  // GROUPING
+  // 6. GROUPING
   const groupedBookings = useMemo(() => {
     return groupBookings(paginatedBookings);
   }, [paginatedBookings]);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
-    setOpenDropdownId(null); // Close any open dropdown on page change
+    setOpenDropdownId(null);
   };
 
   if (loading) {
@@ -233,84 +227,94 @@ export default function BookingList({
   }
 
   return (
-    <div className="space-y-6 pb-6">
-      <div>
-        {Object.keys(groupedBookings).map((month) => {
-          const monthBookings = groupedBookings[month];
-          if (monthBookings.length === 0) return null;
+    <>
+      <div className="space-y-6 pb-6">
+        <div>
+          {Object.keys(groupedBookings).map((month) => {
+            const monthBookings = groupedBookings[month];
+            if (monthBookings.length === 0) return null;
 
-          return (
-            <div key={month} className="mb-6">
-              <div className="sticky top-0 bg-white/95 backdrop-blur-sm z-10 py-2 mb-2 border-b border-slate-50">
-                <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider pl-1">
-                  {month}
-                </h2>
-              </div>
+            return (
+              <div key={month} className="mb-6">
+                <div className="sticky top-0 bg-white/95 backdrop-blur-sm z-10 py-2 mb-2 border-b border-slate-50">
+                  <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider pl-1">
+                    {month}
+                  </h2>
+                </div>
 
-              <div className="space-y-3">
-                {monthBookings.map((booking: any) => {
-                  const isHighlighted = highlightedId === booking.bookingKey;
-                  const isDropdownOpen = openDropdownId === booking.bookingKey;
+                <div className="space-y-3">
+                  {monthBookings.map((booking: any) => {
+                    const isHighlighted = highlightedId === booking.bookingKey;
+                    const isDropdownOpen =
+                      openDropdownId === booking.bookingKey;
 
-                  return (
-                    <div
-                      key={booking.bookingKey}
-                      ref={setBookingRef(booking.bookingKey)}
-                      className={`transition-all duration-500 rounded-xl ${
-                        isHighlighted
-                          ? "ring-2 ring-blue-400 ring-offset-2 shadow-lg shadow-blue-100/50"
-                          : ""
-                      }`}
-                    >
-                      <div className="block md:hidden">
-                        <BookingCardMobile
-                          booking={booking}
-                          onActionComplete={onActionComplete}
-                          isDropdownOpen={isDropdownOpen}
-                          onDropdownToggle={handleDropdownToggle}
-                        />
+                    return (
+                      <div
+                        key={booking.bookingKey}
+                        ref={setBookingRef(booking.bookingKey)}
+                        className={`transition-all duration-500 rounded-xl ${
+                          isHighlighted
+                            ? "ring-2 ring-blue-400 ring-offset-2 shadow-lg shadow-blue-100/50"
+                            : ""
+                        }`}
+                      >
+                        <div className="block md:hidden">
+                          <BookingCardMobile
+                            booking={booking}
+                            onActionComplete={onActionComplete}
+                            isDropdownOpen={isDropdownOpen}
+                            onDropdownToggle={handleDropdownToggle}
+                            onViewHistory={handleOpenHistory}
+                          />
+                        </div>
+                        <div className="hidden md:block">
+                          <BookingCardDesktop
+                            booking={booking}
+                            onActionComplete={onActionComplete}
+                            isDropdownOpen={isDropdownOpen}
+                            onDropdownToggle={handleDropdownToggle}
+                            onViewHistory={handleOpenHistory}
+                          />
+                        </div>
                       </div>
-                      <div className="hidden md:block">
-                        <BookingCardDesktop
-                          booking={booking}
-                          onActionComplete={onActionComplete}
-                          isDropdownOpen={isDropdownOpen}
-                          onDropdownToggle={handleDropdownToggle}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
+
+        {totalPages > 1 && (
+          <div className="flex justify-center items-center gap-4 pt-4 border-t border-slate-100">
+            <Button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="bg-[#0B1120] text-white hover:bg-[#1a253a] disabled:bg-slate-200 disabled:text-slate-400 rounded-full h-9 px-6 text-xs font-bold"
+            >
+              Prev
+            </Button>
+            <span className="text-xs font-bold text-slate-500">
+              Page <span className="text-slate-900">{currentPage}</span> of{" "}
+              <span className="text-slate-900">{totalPages}</span>
+            </span>
+            <Button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="bg-[#0B1120] text-white hover:bg-[#1a253a] disabled:bg-slate-200 disabled:text-slate-400 rounded-full h-9 px-6 text-xs font-bold"
+            >
+              Next
+            </Button>
+          </div>
+        )}
       </div>
 
-      {totalPages > 1 && (
-        <div className="flex justify-center items-center gap-4 pt-4 border-t border-slate-100">
-          <Button
-            onClick={() => handlePageChange(currentPage - 1)}
-            disabled={currentPage === 1}
-            className="bg-[#0B1120] text-white hover:bg-[#1a253a] disabled:bg-slate-200 disabled:text-slate-400 rounded-full h-9 px-6 text-xs font-bold"
-          >
-            Prev
-          </Button>
-
-          <span className="text-xs font-bold text-slate-500">
-            Page <span className="text-slate-900">{currentPage}</span> of{" "}
-            <span className="text-slate-900">{totalPages}</span>
-          </span>
-
-          <Button
-            onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            className="bg-[#0B1120] text-white hover:bg-[#1a253a] disabled:bg-slate-200 disabled:text-slate-400 rounded-full h-9 px-6 text-xs font-bold"
-          >
-            Next
-          </Button>
-        </div>
-      )}
-    </div>
+      {/* History Sidebar */}
+      <BookingHistorySidebar
+        booking={sidebarBooking}
+        isOpen={sidebarOpen}
+        onClose={handleCloseSidebar}
+      />
+    </>
   );
 }

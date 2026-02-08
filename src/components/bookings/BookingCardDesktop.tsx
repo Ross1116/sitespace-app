@@ -1,6 +1,7 @@
+// components/bookings/BookingCardDesktop.tsx
 "use client";
 
-import { Clock, HardHat, Briefcase, MapPin } from "lucide-react";
+import { Clock, HardHat, Briefcase, MapPin, History } from "lucide-react";
 import { formatDate, formatTime, isToday } from "@/lib/bookingHelpers";
 import BookingCardDropdown from "./BookingCardDropdown";
 
@@ -9,6 +10,7 @@ interface BookingCardDesktopProps {
   onActionComplete?: () => void;
   isDropdownOpen: boolean;
   onDropdownToggle: (bookingKey: string) => void;
+  onViewHistory?: (booking: any) => void;
 }
 
 export default function BookingCardDesktop({
@@ -16,6 +18,7 @@ export default function BookingCardDesktop({
   onActionComplete,
   isDropdownOpen,
   onDropdownToggle,
+  onViewHistory,
 }: BookingCardDesktopProps) {
   const { day, month } = formatDate(booking.bookingTimeDt);
   const timeRange = formatTime(
@@ -116,7 +119,7 @@ export default function BookingCardDesktop({
           </p>
         </div>
 
-        {/* COL 4: STATUS & ACTION */}
+        {/* COL 4: STATUS & ACTIONS */}
         <div className="flex flex-col items-end gap-3 pl-6 border-l border-slate-100 h-full justify-center min-w-[120px]">
           <span
             className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border
@@ -134,7 +137,19 @@ export default function BookingCardDesktop({
             {status}
           </span>
 
-          <div className="relative w-full flex justify-end">
+          <div className="relative w-full flex justify-end items-center gap-1.5">
+            {/* History Button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onViewHistory?.(booking);
+              }}
+              className="h-8 w-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+              title="View history"
+            >
+              <History size={15} />
+            </button>
+
             <BookingCardDropdown
               bookingKey={booking.bookingKey}
               bookingStatus={booking.bookingStatus}

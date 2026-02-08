@@ -1,6 +1,7 @@
+// components/bookings/BookingCardMobile.tsx
 "use client";
 
-import { Clock, HardHat, Briefcase } from "lucide-react";
+import { Clock, HardHat, Briefcase, History } from "lucide-react";
 import { formatDate, formatTime, isToday } from "@/lib/bookingHelpers";
 import BookingCardDropdown from "./BookingCardDropdown";
 
@@ -9,6 +10,7 @@ interface BookingCardMobileProps {
   onActionComplete?: () => void;
   isDropdownOpen: boolean;
   onDropdownToggle: (bookingKey: string) => void;
+  onViewHistory?: (booking: any) => void;
 }
 
 export default function BookingCardMobile({
@@ -16,6 +18,7 @@ export default function BookingCardMobile({
   onActionComplete,
   isDropdownOpen,
   onDropdownToggle,
+  onViewHistory,
 }: BookingCardMobileProps) {
   const { day, dayOfWeek, date } = formatDate(booking.bookingTimeDt);
   const timeRange = formatTime(
@@ -96,8 +99,8 @@ export default function BookingCardMobile({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="flex -space-x-1">
+        <div className="flex items-center gap-1">
+          <div className="flex -space-x-1 mr-1">
             {Array.isArray(booking.bookedAssets) &&
               booking.bookedAssets
                 .slice(0, 2)
@@ -108,6 +111,19 @@ export default function BookingCardMobile({
                   />
                 ))}
           </div>
+
+          {/* History Button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onViewHistory?.(booking);
+            }}
+            className="cursor-pointer h-8 w-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            title="View history"
+          >
+            <History size={14} />
+          </button>
+
           <BookingCardDropdown
             bookingKey={booking.bookingKey}
             bookingStatus={booking.bookingStatus}
