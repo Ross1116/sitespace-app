@@ -471,7 +471,7 @@ export function CreateBookingForm({
           booking_date: bookingDate,
           start_time: startTimeFormatted,
           end_time: endTimeFormatted,
-          // ✅ FIXED: Map Title to 'purpose' and Description to 'notes'
+          //  FIXED: Map Title to 'purpose' and Description to 'notes'
           purpose: title,
           notes: description,
           subcontractor_id: selectedSubcontractor || undefined,
@@ -560,7 +560,7 @@ export function CreateBookingForm({
           assetName: assetTitle,
           bookedAssets: [assetTitle],
           bookingKey: booking.id,
-          // ✅ FIXED: Update event object to match page.tsx logic
+          //  FIXED: Update event object to match page.tsx logic
           bookingTitle: booking.purpose || title,
           bookingDescription: booking.notes || description || "",
           bookingNotes: booking.notes || "",

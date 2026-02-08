@@ -25,23 +25,30 @@ export const formatDate = (dateString: string) => {
 export const formatDateLong = (dateString: string) => {
   const date = new Date(dateString);
   const day = date.getDate();
-  const month = date.toLocaleString("default", { month: "long", year: "numeric" });
+  const month = date.toLocaleString("default", {
+    month: "long",
+    year: "numeric",
+  });
   const dayOfWeek = date.toLocaleString("default", { weekday: "short" });
   return { day, month, dayOfWeek, date };
 };
 
 export const formatTimeRange = (start: Date, end: Date) => {
   const format = (d: Date) =>
-    d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true });
+    d.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
   return `${format(start)} - ${format(end)}`;
 };
 
-// ✅ FIXED: Accepts explicit start/end times to avoid Timezone/Midnight shifting
+//  FIXED: Accepts explicit start/end times to avoid Timezone/Midnight shifting
 export const formatTime = (
-  dateString: string, 
-  durationMins: number, 
-  explicitStart?: string, 
-  explicitEnd?: string
+  dateString: string,
+  durationMins: number,
+  explicitStart?: string,
+  explicitEnd?: string,
 ) => {
   // 1. If we have explicit times (e.g. "10:00"), use them directly!
   if (explicitStart && explicitEnd) {
@@ -68,7 +75,7 @@ export const formatTime = (
   const startAmPm = startHours >= 12 ? "PM" : "AM";
   const startHours12 = startHours % 12 || 12;
   const startTime = `${String(startHours12).padStart(2, "0")}:${String(
-    startMinutes
+    startMinutes,
   ).padStart(2, "0")} ${startAmPm}`;
 
   // Calculate and format end time
@@ -78,7 +85,7 @@ export const formatTime = (
   const endAmPm = endHours >= 12 ? "PM" : "AM";
   const endHours12 = endHours % 12 || 12;
   const endTime = `${String(endHours12).padStart(2, "0")}:${String(
-    endMinutes
+    endMinutes,
   ).padStart(2, "0")} ${endAmPm}`;
 
   return `${startTime} - ${endTime}`;
@@ -86,8 +93,10 @@ export const formatTime = (
 
 export const getBookingIcon = (bookingFor: string) => {
   const target = (bookingFor || "").toLowerCase();
-  if (target.includes("equipment")) return { icon: Truck, color: "text-blue-500" };
-  if (target.includes("service")) return { icon: Wrench, color: "text-green-500" };
+  if (target.includes("equipment"))
+    return { icon: Truck, color: "text-blue-500" };
+  if (target.includes("service"))
+    return { icon: Wrench, color: "text-green-500" };
   return { icon: Settings, color: "text-orange-500" };
 };
 
@@ -105,7 +114,7 @@ export const groupBookings = (bookings: any[]) => {
     // Ensure date parsing works safely
     const dateStr = booking.bookingTimeDt || booking.booking_date;
     if (!dateStr) return acc;
-    
+
     const date = new Date(dateStr);
     const month = date.toLocaleString("default", { month: "long" });
 
@@ -124,7 +133,7 @@ export const groupBookings = (bookings: any[]) => {
       const timeB = new Date(b.bookingTimeDt).getTime();
       // Secondary sort by time if dates are equal
       if (timeA === timeB && a.bookingStartTime && b.bookingStartTime) {
-          return a.bookingStartTime.localeCompare(b.bookingStartTime);
+        return a.bookingStartTime.localeCompare(b.bookingStartTime);
       }
       return timeA - timeB;
     });
@@ -133,11 +142,16 @@ export const groupBookings = (bookings: any[]) => {
   return groupedBookings;
 };
 
-export const groupBookingsByMonth = <T extends { booking_date: string }>(bookings: T[]) => {
+export const groupBookingsByMonth = <T extends { booking_date: string }>(
+  bookings: T[],
+) => {
   const groups: Record<string, T[]> = {};
   bookings.forEach((b) => {
     const date = new Date(`${b.booking_date}T00:00:00`);
-    const month = date.toLocaleString("default", { month: "long", year: "numeric" });
+    const month = date.toLocaleString("default", {
+      month: "long",
+      year: "numeric",
+    });
     if (!groups[month]) groups[month] = [];
     groups[month].push(b);
   });

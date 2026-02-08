@@ -1,4 +1,3 @@
-// app/context/AuthContext.tsx
 "use client";
 
 import {
@@ -23,15 +22,8 @@ type User = {
   user_type?: string;
 };
 
-type AuthState = {
-  user: User | null;
-  accessToken: string | null;
-  refreshToken: string | null;
-};
-
 type AuthContextType = {
   user: User | null;
-  accessToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
@@ -39,7 +31,6 @@ type AuthContextType = {
   register: (data: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
   clearError: () => void;
-  refreshAuth: () => Promise<boolean>;
 };
 
 type RegisterData = {
@@ -50,212 +41,87 @@ type RegisterData = {
   password: string;
 };
 
-// ===== STORAGE UTILITIES =====
-const AUTH_STORAGE_KEY = "auth_state";
-
-const storage = {
-  get: (): AuthState | null => {
-    if (typeof window === "undefined") return null;
-    try {
-      const data = sessionStorage.getItem(AUTH_STORAGE_KEY);
-      return data ? JSON.parse(data) : null;
-    } catch {
-      return null;
-    }
-  },
-
-  set: (state: AuthState): void => {
-    if (typeof window === "undefined") return;
-    try {
-      sessionStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(state));
-    } catch (e) {
-      console.error("Failed to persist auth state:", e);
-    }
-  },
-
-  clear: (): void => {
-    if (typeof window === "undefined") return;
-    sessionStorage.removeItem(AUTH_STORAGE_KEY);
-    const keysToRemove: string[] = [];
-    for (let i = 0; i < sessionStorage.length; i++) {
-      const key = sessionStorage.key(i);
-      if (
-        key?.startsWith("project_") ||
-        key?.startsWith("bookings_") ||
-        key?.startsWith("assets_") ||
-        key?.startsWith("subcontractors_")
-      ) {
-        keysToRemove.push(key);
-      }
-    }
-    keysToRemove.forEach((key) => sessionStorage.removeItem(key));
-  },
-};
-
-const cookies = {
-  set: (name: string, value: string, days: number = 7): void => {
-    if (typeof document === "undefined") return;
-    const expires = new Date(Date.now() + days * 864e5).toUTCString();
-    document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax; Secure`;
-  },
-
-  remove: (name: string): void => {
-    if (typeof document === "undefined") return;
-    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
-  },
-};
-
-// ===== TOKEN UTILITIES =====
-const isTokenExpired = (token: string): boolean => {
-  try {
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    return payload.exp * 1000 < Date.now() + 60000;
-  } catch {
-    return true;
-  }
-};
-
 // ===== CONTEXT =====
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AuthState>({
-    user: null,
-    accessToken: null,
-    refreshToken: null,
-  });
-  // ✅ Separate: initial check vs. action-in-progress
+  const [user, setUser] = useState<User | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  const refreshInFlight = useRef<Promise<boolean> | null>(null);
+  const initAttempted = useRef(false);
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL;
+  // ===== Check auth status via server =====
+  const checkAuth = useCallback(async (): Promise<User | null> => {
+    try {
+      const res = await fetch("/api/auth/me", {
+        credentials: "include", // sends HTTP-only cookies
+      });
 
-  // ===== Token Refresh (stable ref, no state dependency in closure) =====
-  const attemptRefresh = useCallback(
-    async (refreshToken: string): Promise<boolean> => {
-      try {
-        const res = await fetch(`${API_URL}/auth/refresh`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ refresh_token: refreshToken }),
-        });
+      if (!res.ok) return null;
 
-        if (!res.ok) return false;
+      const userData = await res.json();
+      return {
+        id: userData.id || userData.user_id,
+        email: userData.email,
+        first_name: userData.first_name,
+        last_name: userData.last_name,
+        role: userData.role,
+        user_type: userData.user_type,
+      };
+    } catch {
+      return null;
+    }
+  }, []);
 
-        const data = await res.json();
-
-        setState((prev) => {
-          const newState: AuthState = {
-            ...prev,
-            accessToken: data.access_token,
-            refreshToken: data.refresh_token ?? prev.refreshToken,
-          };
-          storage.set(newState);
-          cookies.set("accessToken", data.access_token);
-          return newState;
-        });
-
-        return true;
-      } catch {
-        return false;
-      }
-    },
-    [API_URL],
-  );
-
-  // ===== Initialize auth state from storage =====
+  // ===== Initialize: check if we have a valid session =====
   useEffect(() => {
-    const initAuth = async () => {
-      const stored = storage.get();
+    if (initAttempted.current) return;
+    initAttempted.current = true;
 
-      if (!stored?.accessToken) {
-        setIsInitialized(true);
-        return;
-      }
-
-      if (isTokenExpired(stored.accessToken)) {
-        if (stored.refreshToken && !isTokenExpired(stored.refreshToken)) {
-          const refreshed = await attemptRefresh(stored.refreshToken);
-          if (!refreshed) {
-            storage.clear();
-            cookies.remove("accessToken");
-          }
-        } else {
-          storage.clear();
-          cookies.remove("accessToken");
-        }
-      } else {
-        setState(stored);
-        cookies.set("accessToken", stored.accessToken);
-      }
-
+    const init = async () => {
+      const userData = await checkAuth();
+      setUser(userData);
       setIsInitialized(true);
     };
 
-    initAuth();
-  }, [attemptRefresh]);
-
-  // ===== Public refresh (deduplicated) =====
-  const refreshAuth = useCallback(async (): Promise<boolean> => {
-    const currentRefresh = state.refreshToken;
-    if (!currentRefresh) return false;
-
-    // Deduplicate concurrent refresh calls
-    if (refreshInFlight.current) return refreshInFlight.current;
-
-    const promise = attemptRefresh(currentRefresh).finally(() => {
-      refreshInFlight.current = null;
-    });
-
-    refreshInFlight.current = promise;
-    return promise;
-  }, [state.refreshToken, attemptRefresh]);
+    init();
+  }, [checkAuth]);
 
   // ===== Login =====
   const login = useCallback(
     async (email: string, password: string) => {
-      // ✅ Don't touch isInitialized — only set error state
       setError(null);
 
-      const res = await fetch(`${API_URL}/auth/login`, {
+      // Call API route, not the backend directly
+      const res = await fetch("/api/auth/signin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ email, password }),
       });
 
+      const data = await res.json();
+
       if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        const message = errData.detail || "Invalid email or password";
+        const message =
+          data.message || data.detail || "Invalid email or password";
         setError(message);
         throw new Error(message);
       }
 
-      const data = await res.json();
+      //  Now fetch full profile (cookie is set by the API route)
+      const userData = await checkAuth();
 
-      const user: User = {
-        id: data.user_id,
-        email: data.email || email,
-        first_name: data.first_name,
-        last_name: data.last_name,
-        role: data.role,
-        user_type: data.user_type,
-      };
+      if (!userData) {
+        setError("Login succeeded but failed to load profile");
+        throw new Error("Profile load failed");
+      }
 
-      const newState: AuthState = {
-        user,
-        accessToken: data.access_token,
-        refreshToken: data.refresh_token,
-      };
-
-      setState(newState);
-      storage.set(newState);
-      cookies.set("accessToken", data.access_token);
-
+      setUser(userData);
       router.replace("/home");
     },
-    [API_URL, router],
+    [router, checkAuth],
   );
 
   // ===== Register =====
@@ -263,17 +129,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (data: RegisterData) => {
       setError(null);
 
-      const res = await fetch(`${API_URL}/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          first_name: data.firstName,
-          last_name: data.lastName,
-          email: data.email,
-          phone: data.phone,
-          password: data.password,
-        }),
-      });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/auth/register`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            first_name: data.firstName,
+            last_name: data.lastName,
+            email: data.email,
+            phone: data.phone,
+            password: data.password,
+          }),
+        },
+      );
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
@@ -284,63 +153,70 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       router.replace("/login?registered=true");
     },
-    [API_URL, router],
+    [router],
   );
 
   // ===== Logout =====
   const logout = useCallback(async () => {
-    const currentToken = state.accessToken;
+    // Call YOUR API route to clear HTTP-only cookies
+    await fetch("/api/auth/logout", {
+      method: "POST",
+      credentials: "include",
+    }).catch(() => {});
 
-    setState({ user: null, accessToken: null, refreshToken: null });
-    storage.clear();
-    cookies.remove("accessToken");
+    // Also tell backend to invalidate the token
+    await fetch("/api/auth/backend-logout", {
+      method: "POST",
+      credentials: "include",
+    }).catch(() => {});
 
-    if (currentToken) {
-      fetch(`${API_URL}/auth/logout`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${currentToken}`,
-        },
-      }).catch(() => {});
+    setUser(null);
+
+    // Clear any cached data from localStorage
+    if (typeof window !== "undefined") {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (
+          key?.startsWith("project_") ||
+          key?.startsWith("bookings_") ||
+          key?.startsWith("assets_") ||
+          key?.startsWith("subcontractors_") ||
+          key?.startsWith("home_")
+        ) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach((key) => localStorage.removeItem(key));
     }
 
     router.replace("/login");
-  }, [API_URL, router, state.accessToken]);
+  }, [router]);
 
   const clearError = useCallback(() => setError(null), []);
 
-  // ===== Memoized Context Value =====
   const value = useMemo<AuthContextType>(
     () => ({
-      user: state.user,
-      accessToken: state.accessToken,
-      isAuthenticated:
-        !!state.accessToken && !isTokenExpired(state.accessToken),
+      user,
+      isAuthenticated: !!user,
       isLoading: !isInitialized,
       error,
       login,
       register,
       logout,
       clearError,
-      refreshAuth,
     }),
-    [
-      state,
-      isInitialized,
-      error,
-      login,
-      register,
-      logout,
-      clearError,
-      refreshAuth,
-    ],
+    [user, isInitialized, error, login, register, logout, clearError],
   );
 
   if (!isInitialized) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="animate-spin h-8 w-8 border-4 border-slate-200 border-t-slate-800 rounded-full" role="status" aria-label="Loading" />
+        <div
+          className="animate-spin h-8 w-8 border-4 border-slate-200 border-t-slate-800 rounded-full"
+          role="status"
+          aria-label="Loading"
+        />
       </div>
     );
   }

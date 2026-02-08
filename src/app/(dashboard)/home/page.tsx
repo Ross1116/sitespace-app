@@ -122,7 +122,7 @@ export default function HomePage() {
   const bookingsCacheKey = `home_bookings_${userId}_${currentProjId}`;
   const projectsListCacheKey = `home_projects_list_${userId}`;
 
-  // ✅ NEW: Keys for CreateBookingForm consumption
+  //  NEW: Keys for CreateBookingForm consumption
   const assetsCacheKey = `assets_${userId}`;
   const subcontractorsCacheKey = `subcontractors_${userId}`;
 
@@ -163,7 +163,7 @@ export default function HomePage() {
     }
   }, [userId, user?.role, projectsListCacheKey]);
 
-  // ✅ UPDATED: Fetch Assets and save to localStorage for CreateBookingForm
+  //  UPDATED: Fetch Assets and save to localStorage for CreateBookingForm
   const fetchAssets = useCallback(async () => {
     if (!userId || !selectedProject) return;
     try {
@@ -184,7 +184,7 @@ export default function HomePage() {
     }
   }, [selectedProject, userId, assetsCacheKey]);
 
-  // ✅ UPDATED: Fetch Subcontractors and save to localStorage for fallback in CreateBookingForm
+  //  UPDATED: Fetch Subcontractors and save to localStorage for fallback in CreateBookingForm
   const fetchSubcontractors = useCallback(async () => {
     if (!userId || !selectedProject) return;
     if (user?.role === "subcontractor") {
@@ -555,7 +555,10 @@ export default function HomePage() {
             </div>
 
             {fetchError && (
-              <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2.5 rounded-lg text-sm" role="alert">
+              <div
+                className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2.5 rounded-lg text-sm"
+                role="alert"
+              >
                 {fetchError}
               </div>
             )}

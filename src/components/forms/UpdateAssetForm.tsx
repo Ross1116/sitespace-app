@@ -35,7 +35,7 @@ interface AssetModalProps {
   assetData: Asset;
 }
 
-// ✅ MUST match exactly with AssetsTable.tsx Asset interface
+//  MUST match exactly with AssetsTable.tsx Asset interface
 interface Asset {
   assetKey: string;
   assetTitle: string;
@@ -43,7 +43,7 @@ interface Asset {
   assetType: string;
   assetStatus: string;
   assetPoc: string;
-  assetProject: string; // ✅ Just string, not string | Project
+  assetProject: string; //  Just string, not string | Project
   maintanenceStartdt: string;
   maintanenceEnddt: string;
   usageInstructions: string;
@@ -107,7 +107,7 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
   const { user } = useAuth();
   const userId = user?.id;
 
-  // ✅ Initialize with all required fields (assetProject is a string)
+  //  Initialize with all required fields (assetProject is a string)
   const [asset, setAsset] = useState<Asset>({
     assetKey: "",
     assetTitle: "",
@@ -118,7 +118,7 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
     assetPoc: "",
     assetStatus: "Operational",
     usageInstructions: "",
-    assetProject: "", // ✅ Just a string
+    assetProject: "", //  Just a string
     assetCode: "",
   });
 
@@ -161,7 +161,7 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
       if (!asset.assetProject && parsedProject) {
         setAsset((prev) => ({
           ...prev,
-          assetProject: parsedProject.id, // ✅ Just the ID string
+          assetProject: parsedProject.id, //  Just the ID string
         }));
       }
     } catch (error) {
@@ -200,7 +200,7 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
     try {
       setIsSubmitting(true);
 
-      // ✅ assetProject is already a string, no need to check type
+      //  assetProject is already a string, no need to check type
       const projectId = asset.assetProject;
 
       // Build update request
@@ -235,7 +235,7 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
 
       console.log("Asset updated successfully:", response.data);
 
-      // ✅ Transform response - assetProject is always a string
+      //  Transform response - assetProject is always a string
       const updatedAsset: Asset = {
         assetKey: response.data.id,
         assetTitle: response.data.name,
@@ -247,7 +247,7 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
         assetStatus: mapBackendStatusToFrontend(response.data.status),
         usageInstructions:
           response.data.usage_instructions || response.data.description || "",
-        assetProject: response.data.project_id || projectId, // ✅ Always a string
+        assetProject: response.data.project_id || projectId, //  Always a string
         assetCode: response.data.asset_code,
         _originalData: response.data,
       };
