@@ -1,9 +1,19 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+function isTokenExpired(token: string): boolean {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return payload.exp * 1000 < Date.now();
+  } catch {
+    return true;
+  }
+}
+
 export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const token = request.cookies.get("accessToken")?.value;
+  const hasValidToken = !!token && !isTokenExpired(token);
 
   const isPublicPath = path === "/";
 
@@ -18,8 +28,8 @@ export function middleware(request: NextRequest) {
   // 2. STRICT Auth pages (Used to redirect logged-in users to Home)
   // We EXCLUDE set-password/reset-password here so users can access them even if a session exists.
   const isStrictAuthPage =
-    path === "/login" || 
-    path === "/register" || 
+    path === "/login" ||
+    path === "/register" ||
     path === "/forgot-password";
 
   // 3. Protected Routes (Dashboard, etc.)
@@ -30,13 +40,15 @@ export function middleware(request: NextRequest) {
     !path.includes("/_next") &&
     !path.includes("/favicon.ico");
 
-  // SCENARIO 1: Trying to access dashboard without a token -> Go to Login
-  if (isProtectedRoute && !token) {
-    return NextResponse.redirect(new URL("/login", request.url));
+  // SCENARIO 1: Trying to access dashboard without a valid token -> Go to Login
+  if (isProtectedRoute && !hasValidToken) {
+    const response = NextResponse.redirect(new URL("/login", request.url));
+    if (token) response.cookies.delete("accessToken");
+    return response;
   }
 
   // SCENARIO 2: Logged in user tries to go to Login/Register -> Go to Home
-  if (isStrictAuthPage && token) {
+  if (isStrictAuthPage && hasValidToken) {
     return NextResponse.redirect(new URL("/home", request.url));
   }
 
