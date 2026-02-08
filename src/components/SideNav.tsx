@@ -166,7 +166,7 @@ const SideNav = () => {
       <button
         className="fixed top-4 left-4 z-50 p-2 rounded-lg bg-navy text-white md:hidden shadow-lg border border-white/10"
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        aria-label="Toggle menu"
+        aria-label="Toggle menu" aria-expanded={isMobileMenuOpen}
       >
         {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
       </button>

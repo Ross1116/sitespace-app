@@ -34,14 +34,25 @@ const updateTokens = (accessToken: string, refreshToken: string): void => {
       parsed.refreshToken = refreshToken;
       sessionStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(parsed));
     }
+    // Also update the cookie so middleware stays in sync
+    const expires = new Date(Date.now() + 7 * 864e5).toUTCString();
+    document.cookie = `accessToken=${encodeURIComponent(accessToken)}; expires=${expires}; path=/; SameSite=Lax; Secure`;
   } catch {
-    // Ignore
+    // Ignore storage errors
   }
 };
 
 const clearAuth = (): void => {
   if (typeof window === "undefined") return;
   sessionStorage.removeItem(AUTH_STORAGE_KEY);
+  // Clear the cookie so middleware doesn't see a stale token
+  document.cookie = "accessToken=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
+};
+
+const redirectToLogin = (): void => {
+  if (typeof window === "undefined") return;
+  // Use Next.js-compatible navigation instead of window.location.href
+  window.location.replace("/login");
 };
 
 // Create axios instance
@@ -69,10 +80,10 @@ api.interceptors.request.use(
 let isRefreshing = false;
 let failedQueue: Array<{
   resolve: (token: string) => void;
-  reject: (error: any) => void;
+  reject: (error: unknown) => void;
 }> = [];
 
-const processQueue = (error: any, token: string | null = null) => {
+const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue.forEach((prom) => {
     if (error) {
       prom.reject(error);
@@ -118,7 +129,7 @@ api.interceptors.response.use(
 
       if (!refreshToken) {
         clearAuth();
-        window.location.href = "/login";
+        redirectToLogin();
         return Promise.reject(error);
       }
 
@@ -138,7 +149,7 @@ api.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError, null);
         clearAuth();
-        window.location.href = "/login";
+        redirectToLogin();
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

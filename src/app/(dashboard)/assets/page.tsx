@@ -166,6 +166,7 @@ const safeFormatDate = (dateString?: string) => {
 
 export default function AssetsTable() {
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [allAssets, setAllAssets] = useState<Asset[]>([]);
   const [project, setProject] = useState<Project>();
   const [currentPage, setCurrentPage] = useState(1);
@@ -198,6 +199,7 @@ export default function AssetsTable() {
       if (!user || !project) return;
 
       if (!isBackground) setLoading(true);
+      setFetchError(null);
 
       try {
         const response = await api.get<AssetListResponse>("/assets/", {
@@ -227,6 +229,9 @@ export default function AssetsTable() {
             const { assets } = JSON.parse(cached);
             setAllAssets(assets);
           } catch {}
+        }
+        if (!isBackground) {
+          setFetchError("Failed to load assets. Showing cached data.");
         }
       } finally {
         setLoading(false);
@@ -407,6 +412,12 @@ export default function AssetsTable() {
               <div className="col-span-1">Last Updated</div>
               <div className="col-span-1 text-center">Action</div>
             </div>
+
+            {fetchError && (
+              <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2.5 rounded-lg text-sm mb-3" role="alert">
+                {fetchError}
+              </div>
+            )}
 
             {/* Rows */}
             <div className="space-y-3 flex-1">

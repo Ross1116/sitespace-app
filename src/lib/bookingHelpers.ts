@@ -1,5 +1,18 @@
 import { Truck, Wrench, Settings } from "lucide-react";
 
+// --- Shared Date/Time Helpers ---
+
+export const combineDateAndTime = (dateStr: string, timeStr: string): Date => {
+  try {
+    if (!dateStr) return new Date();
+    const cleanDate = dateStr.split("T")[0];
+    const cleanTime = timeStr ? timeStr.split("T").pop() : "00:00:00";
+    return new Date(`${cleanDate}T${cleanTime}`);
+  } catch {
+    return new Date();
+  }
+};
+
 export const formatDate = (dateString: string) => {
   const date = new Date(dateString);
   const day = date.getDate();
@@ -7,6 +20,20 @@ export const formatDate = (dateString: string) => {
   const dayOfWeek = date.toLocaleString("default", { weekday: "short" });
 
   return { day, month, dayOfWeek, date };
+};
+
+export const formatDateLong = (dateString: string) => {
+  const date = new Date(dateString);
+  const day = date.getDate();
+  const month = date.toLocaleString("default", { month: "long", year: "numeric" });
+  const dayOfWeek = date.toLocaleString("default", { weekday: "short" });
+  return { day, month, dayOfWeek, date };
+};
+
+export const formatTimeRange = (start: Date, end: Date) => {
+  const format = (d: Date) =>
+    d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true });
+  return `${format(start)} - ${format(end)}`;
 };
 
 // ✅ FIXED: Accepts explicit start/end times to avoid Timezone/Midnight shifting
@@ -104,4 +131,15 @@ export const groupBookings = (bookings: any[]) => {
   });
 
   return groupedBookings;
+};
+
+export const groupBookingsByMonth = <T extends { booking_date: string }>(bookings: T[]) => {
+  const groups: Record<string, T[]> = {};
+  bookings.forEach((b) => {
+    const date = new Date(`${b.booking_date}T00:00:00`);
+    const month = date.toLocaleString("default", { month: "long", year: "numeric" });
+    if (!groups[month]) groups[month] = [];
+    groups[month].push(b);
+  });
+  return groups;
 };

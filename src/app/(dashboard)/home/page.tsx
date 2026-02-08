@@ -24,6 +24,13 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import api from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  combineDateAndTime,
+  formatDateLong as formatDate,
+  formatTimeRange,
+  isToday,
+  groupBookingsByMonth,
+} from "@/lib/bookingHelpers";
 
 // --- Types ---
 interface Booking {
@@ -85,62 +92,7 @@ const PALETTE = {
   teal: "bg-[#0e7c9b]",
 };
 
-// --- Helpers ---
-const combineDateAndTime = (dateStr: string, timeStr: string): Date => {
-  try {
-    if (!dateStr) return new Date();
-    const cleanDate = dateStr.split("T")[0];
-    const cleanTime = timeStr ? timeStr.split("T").pop() : "00:00:00";
-    return new Date(`${cleanDate}T${cleanTime}`);
-  } catch {
-    return new Date();
-  }
-};
-
-const formatDate = (dateString: string) => {
-  const date = new Date(dateString);
-  const day = date.getDate();
-  const month = date.toLocaleString("default", {
-    month: "long",
-    year: "numeric",
-  });
-  const dayOfWeek = date.toLocaleString("default", { weekday: "short" });
-  return { day, month, dayOfWeek, date };
-};
-
-const formatTimeRange = (start: Date, end: Date) => {
-  const format = (d: Date) =>
-    d.toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
-  return `${format(start)} - ${format(end)}`;
-};
-
-const isToday = (date: Date) => {
-  const currentDate = new Date();
-  return (
-    date.getDate() === currentDate.getDate() &&
-    date.getMonth() === currentDate.getMonth() &&
-    date.getFullYear() === currentDate.getFullYear()
-  );
-};
-
-// Grouping Logic
-const groupBookingsByMonth = (bookings: Booking[]) => {
-  const groups: Record<string, Booking[]> = {};
-  bookings.forEach((b) => {
-    const date = new Date(`${b.booking_date}T00:00:00`);
-    const month = date.toLocaleString("default", {
-      month: "long",
-      year: "numeric",
-    });
-    if (!groups[month]) groups[month] = [];
-    groups[month].push(b);
-  });
-  return groups;
-};
+// --- Helpers (imported from @/lib/bookingHelpers) ---
 
 export default function HomePage() {
   const { user } = useAuth();
@@ -157,6 +109,7 @@ export default function HomePage() {
 
   // Loading & UI States
   const [loadingBookings, setLoadingBookings] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [showProjectSelector, setShowProjectSelector] = useState(false);
 
   const hasInitialized = useRef(false);
@@ -287,6 +240,7 @@ export default function HomePage() {
       if (!userId || !selectedProject) return;
       try {
         if (!isBackground) setLoadingBookings(true);
+        setFetchError(null);
 
         const projectId = selectedProject.id || selectedProject.project_id;
         const resp = await api.get("/bookings/my/upcoming", {
@@ -303,6 +257,9 @@ export default function HomePage() {
         localStorage.setItem(bookingsCacheKey, JSON.stringify(bookingsData));
       } catch (err) {
         console.error("Error fetching bookings:", err);
+        if (!isBackground) {
+          setFetchError("Failed to load bookings. Please try again later.");
+        }
       } finally {
         setLoadingBookings(false);
       }
@@ -596,6 +553,12 @@ export default function HomePage() {
                 </Link>
               </div>
             </div>
+
+            {fetchError && (
+              <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2.5 rounded-lg text-sm" role="alert">
+                {fetchError}
+              </div>
+            )}
 
             <div className="bg-white rounded-2xl shadow-sm p-6 min-h-[400px] border border-slate-100 flex flex-col">
               {loadingBookings ? (

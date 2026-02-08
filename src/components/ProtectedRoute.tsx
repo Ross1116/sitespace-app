@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/app/context/AuthContext';
 import { useRouter } from 'next/navigation';
-import { useEffect, ReactNode, useState } from 'react';
+import { useEffect, ReactNode, useMemo } from 'react';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -10,68 +10,42 @@ interface ProtectedRouteProps {
   loadingComponent?: ReactNode;
 }
 
-export default function ProtectedRoute({ 
-  children, 
+export default function ProtectedRoute({
+  children,
   requiredRoles = [],
   loadingComponent
 }: ProtectedRouteProps) {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const router = useRouter();
-  const [isChecking, setIsChecking] = useState(true);
-  
+
+  const hasRequiredRole = useMemo(() => {
+    if (requiredRoles.length === 0) return true;
+    if (!user) return false;
+    const userRole = user.role?.toLowerCase().trim();
+    if (!userRole) return false;
+    return requiredRoles.some(role => role.toLowerCase().trim() === userRole);
+  }, [requiredRoles, user]);
+
   useEffect(() => {
-    const checkAuth = () => {
-      // Redirect to login if not authenticated
-      if (!isAuthenticated) {
-        router.push('/login');
-        return;
-      }
-      
-      // Role-based authorization check
-      if (requiredRoles.length > 0 && user) {
-        const userRole = user.role?.toLowerCase().trim();
-        
-        if (!userRole) {
-          router.push('/unauthorized');
-          return;
-        }
-        
-        const hasRequiredRole = requiredRoles.some(
-          role => role.toLowerCase().trim() === userRole
-        );
-        
-        if (!hasRequiredRole) {
-          router.push('/unauthorized');
-          return;
-        }
-      }
-      
-      setIsChecking(false);
-    };
-    
-    checkAuth();
-  }, [isAuthenticated, user, router, requiredRoles]);
-  
-  // Show loading state while checking
-  if (isChecking || !isAuthenticated) {
+    if (isLoading) return;
+
+    if (!isAuthenticated) {
+      router.replace('/login');
+      return;
+    }
+
+    if (!hasRequiredRole) {
+      router.replace('/unauthorized');
+    }
+  }, [isAuthenticated, isLoading, hasRequiredRole, router]);
+
+  if (isLoading || !isAuthenticated || !hasRequiredRole) {
     return loadingComponent || (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600" role="status" aria-label="Loading"></div>
       </div>
     );
   }
-  
-  // Don't render if role check is required but user doesn't have the role
-  if (requiredRoles.length > 0 && user) {
-    const userRole = user.role?.toLowerCase().trim();
-    const hasRequiredRole = requiredRoles.some(
-      role => role.toLowerCase().trim() === userRole
-    );
-    
-    if (!hasRequiredRole) {
-      return null;
-    }
-  }
-  
+
   return <>{children}</>;
 }

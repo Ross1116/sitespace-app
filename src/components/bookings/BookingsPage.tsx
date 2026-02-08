@@ -10,6 +10,7 @@ import { Plus, Search } from "lucide-react";
 import { CreateBookingForm } from "@/components/forms/CreateBookingForm";
 import { Input } from "@/components/ui/input";
 import { useSmartRefresh } from "@/lib/useSmartRefresh";
+import { combineDateAndTime } from "@/lib/bookingHelpers";
 
 interface BookingDetail {
   id: string;
@@ -35,17 +36,6 @@ interface BookingListResponse {
   limit: number;
   has_more: boolean;
 }
-
-const combineDateAndTime = (dateStr: string, timeStr: string): Date => {
-  try {
-    if (!dateStr) return new Date();
-    const cleanDate = dateStr.split("T")[0];
-    const cleanTime = timeStr ? timeStr.split("T").pop() : "00:00:00";
-    return new Date(`${cleanDate}T${cleanTime}`);
-  } catch {
-    return new Date();
-  }
-};
 
 const parseTimeToMinutes = (timeStr: string): number => {
   if (!timeStr) return 0;
