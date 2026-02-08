@@ -1,7 +1,7 @@
 // components/bookings/BookingHistorySidebar.tsx
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   X,
@@ -20,6 +20,7 @@ import {
   Loader2,
   ChevronDown,
   ChevronUp,
+  UserPlus,
 } from "lucide-react";
 import api from "@/lib/api";
 import { format, parseISO, formatDistanceToNow } from "date-fns";
@@ -194,6 +195,32 @@ const getRoleDisplay = (role: string) => {
   );
 };
 
+// Role labels specifically for the header (dark background)
+const headerRoleLabels: Record<string, { label: string; className: string }> = {
+  admin: {
+    label: "Admin",
+    className: "text-purple-300 bg-purple-500/20 border-purple-500/30",
+  },
+  manager: {
+    label: "Manager",
+    className: "text-blue-300 bg-blue-500/20 border-blue-500/30",
+  },
+  subcontractor: {
+    label: "Subcontractor",
+    className: "text-amber-300 bg-amber-500/20 border-amber-500/30",
+  },
+};
+
+const getHeaderRoleDisplay = (role: string) => {
+  const normalized = role.toLowerCase();
+  return (
+    headerRoleLabels[normalized] || {
+      label: role,
+      className: "text-slate-300 bg-slate-500/20 border-slate-500/30",
+    }
+  );
+};
+
 const safeFormatDate = (dateString?: string | null) => {
   if (!dateString) return "N/A";
   try {
@@ -341,14 +368,17 @@ export default function BookingHistorySidebar({
   const abortControllerRef = useRef<AbortController | null>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
 
+  // Derive who created the booking from the audit trail
+  const createdByEntry = useMemo(() => {
+    return auditTrail.find((entry) => entry.action.toLowerCase() === "created");
+  }, [auditTrail]);
+
   const fetchAuditTrail = useCallback(
     async (bookingId: string, signal?: AbortSignal) => {
       setLoading(true);
       setError(null);
 
       try {
-        // Backend route: GET /bookings/{booking_id}/audit
-        // with query params: skip (int, default 0), limit (int, default 50, max 200)
         const response = await api.get<AuditTrailResponse>(
           `/bookings/${bookingId}/audit`,
           {
@@ -358,7 +388,6 @@ export default function BookingHistorySidebar({
         );
         setAuditTrail(response.data?.history || []);
       } catch (err: any) {
-        // Don't update state if request was cancelled
         if (err?.name === "CanceledError" || signal?.aborted) {
           return;
         }
@@ -382,7 +411,6 @@ export default function BookingHistorySidebar({
   );
 
   useEffect(() => {
-    // Cancel any in-flight request when dependencies change or unmount
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
@@ -559,6 +587,44 @@ export default function BookingHistorySidebar({
                     <span>{booking.bookingFor}</span>
                   </div>
                 </div>
+
+                {/* Created by info - derived from audit trail */}
+                {loading ? (
+                  <div className="flex items-center gap-2 pt-2 border-t border-white/10">
+                    <Loader2 className="h-3 w-3 animate-spin text-slate-500" />
+                    <span className="text-[11px] text-slate-500">
+                      Loading creator info...
+                    </span>
+                  </div>
+                ) : createdByEntry ? (
+                  <div className="flex items-center gap-2 pt-2 border-t border-white/10">
+                    <UserPlus size={11} className="text-slate-400 shrink-0" />
+                    <span className="text-xs text-slate-400">
+                      Created by{" "}
+                      <span className="font-semibold text-slate-200">
+                        {createdByEntry.actor_name || "Unknown"}
+                      </span>
+                    </span>
+                    {createdByEntry.actor_role && (
+                      <span
+                        className={`text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border shrink-0 ${
+                          getHeaderRoleDisplay(createdByEntry.actor_role)
+                            .className
+                        }`}
+                      >
+                        {getHeaderRoleDisplay(createdByEntry.actor_role).label}
+                      </span>
+                    )}
+                    {createdByEntry.created_at && (
+                      <span
+                        className="text-[10px] text-slate-500 ml-auto shrink-0"
+                        title={safeFormatDate(createdByEntry.created_at)}
+                      >
+                        {safeRelativeTime(createdByEntry.created_at)}
+                      </span>
+                    )}
+                  </div>
+                ) : null}
               </div>
             </div>
 
