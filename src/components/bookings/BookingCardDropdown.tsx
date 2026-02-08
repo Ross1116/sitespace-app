@@ -61,9 +61,8 @@ export default function BookingCardDropdown({
   const updateBookingStatus = async (newStatus: BookingStatusType) => {
     setIsLoading(true);
     try {
-      // FIX: Send Uppercase to API to satisfy backend Enum
-      await api.patch(`/bookings/${bookingKey}/status`, null, {
-        params: { new_status: newStatus.toUpperCase() },
+      await api.patch(`/bookings/${bookingKey}/status`, {
+        status: newStatus.toUpperCase(),
       });
       onActionComplete?.();
     } catch (error: any) {
@@ -79,7 +78,7 @@ export default function BookingCardDropdown({
     setIsLoading(true);
     try {
       await api.delete(`/bookings/${bookingKey}`, {
-        params: { hard_delete: true },
+        data: { hard_delete: true },
       });
       onActionComplete?.();
     } catch (error: any) {
