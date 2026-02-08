@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import api from "@/lib/api";
 import { useAuth } from "@/app/context/AuthContext";
 import BookingList from "./BookingList";
@@ -154,6 +155,10 @@ export default function BookingsPage() {
   const storageKey = `bookings_v5_${userId}`;
   const projectStorageKey = `project_${userId}`;
 
+  // --- READ HIGHLIGHT PARAM ---
+  const searchParams = useSearchParams();
+  const highlightBookingId = searchParams.get("highlight");
+
   const now = new Date();
   const nextHour = startOfHour(addHours(now, 1));
   const endHour = addHours(nextHour, 1);
@@ -229,18 +234,52 @@ export default function BookingsPage() {
     fetchBookings();
   }, [user, storageKey, fetchBookings]);
 
+  // --- AUTO-SWITCH TAB when highlighting ---
+  // If we have a highlight param, switch to "All" tab so the booking is guaranteed visible
+  useEffect(() => {
+    if (highlightBookingId && allBookings.length > 0) {
+      // Find which tab the booking belongs to
+      const targetBooking = allBookings.find(
+        (b) => b.bookingKey === highlightBookingId,
+      );
+      if (targetBooking) {
+        const status = (targetBooking.bookingStatus || "").toLowerCase();
+        const endDt = targetBooking.bookingEnd
+          ? new Date(targetBooking.bookingEnd)
+          : new Date();
+        const isUpcoming =
+          endDt >= new Date() && status !== "cancelled" && status !== "denied";
+
+        // If it's in the current "Upcoming" view, keep it. Otherwise switch to "All"
+        if (activeTab === "Upcoming" && !isUpcoming) {
+          setActiveTab("All");
+        }
+        // If current tab filters it out, switch to "All"
+        if (
+          activeTab !== "Upcoming" &&
+          activeTab !== "All" &&
+          status !== activeTab.toLowerCase()
+        ) {
+          setActiveTab("All");
+        }
+      } else {
+        // Booking not found in current data, show all
+        setActiveTab("All");
+      }
+    }
+    // Only run when bookings load or highlight changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [highlightBookingId, allBookings.length]);
+
   const handleSaveBooking = async () => {
-    // setIsBookingFormOpen(false);
     await refresh();
   };
 
   const handleFormClose = useCallback(() => {
     setIsBookingFormOpen(false);
-    // Small delay to ensure backend has processed the booking
     setTimeout(() => refresh(), 300);
   }, [refresh]);
 
-  // Client-side filtering
   const filteredBookings = useMemo(() => {
     if (!allBookings || allBookings.length === 0) return [];
     if (!searchTerm.trim()) return allBookings;
@@ -348,19 +387,19 @@ export default function BookingsPage() {
               </div>
             </div>
 
-            {/* Booking List */}
+            {/* Booking List — pass highlightBookingId */}
             <div className="flex-1">
               <BookingList
                 bookings={filteredBookings}
                 activeTab={activeTab}
                 loading={loading}
                 onActionComplete={refresh}
+                highlightBookingId={highlightBookingId}
               />
             </div>
           </div>
         </div>
 
-        {/* {isBookingFormOpen && ( */}
         <CreateBookingForm
           isOpen={isBookingFormOpen}
           onClose={handleFormClose}
@@ -368,7 +407,6 @@ export default function BookingsPage() {
           endTime={endHour}
           onSave={handleSaveBooking}
         />
-        {/* )} */}
       </div>
     </div>
   );

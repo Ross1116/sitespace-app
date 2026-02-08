@@ -21,6 +21,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { useEffect, useState, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -92,22 +93,18 @@ const PALETTE = {
   teal: "bg-[#0e7c9b]",
 };
 
-// --- Helpers (imported from @/lib/bookingHelpers) ---
-
 export default function HomePage() {
   const { user } = useAuth();
+  const router = useRouter();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  // Data States
   const [projects, setProjects] = useState<any[]>([]);
   const [selectedProject, setSelectedProject] = useState<any | null>(null);
   const [upcomingBookings, setUpcomingBookings] = useState<Booking[]>([]);
 
-  // Dashboard Counters
   const [assetCount, setAssetCount] = useState<number>(0);
   const [subcontractorCount, setSubcontractorCount] = useState<number>(0);
 
-  // Loading & UI States
   const [loadingBookings, setLoadingBookings] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [showProjectSelector, setShowProjectSelector] = useState(false);
@@ -116,18 +113,22 @@ export default function HomePage() {
   const userId = user?.id;
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Cache keys
   const currentProjId =
     selectedProject?.id || selectedProject?.project_id || "all";
   const bookingsCacheKey = `home_bookings_${userId}_${currentProjId}`;
   const projectsListCacheKey = `home_projects_list_${userId}`;
-
-  //  NEW: Keys for CreateBookingForm consumption
   const assetsCacheKey = `assets_${userId}`;
   const subcontractorsCacheKey = `subcontractors_${userId}`;
 
-  // --- API Calls ---
+  // --- Navigate to bookings page with specific booking highlighted ---
+  const handleBookingClick = useCallback(
+    (bookingId: string) => {
+      router.push(`/bookings?highlight=${bookingId}`);
+    },
+    [router],
+  );
 
+  // --- API Calls ---
   const fetchProjects = useCallback(async () => {
     if (!userId) return;
     try {
@@ -163,7 +164,6 @@ export default function HomePage() {
     }
   }, [userId, user?.role, projectsListCacheKey]);
 
-  //  UPDATED: Fetch Assets and save to localStorage for CreateBookingForm
   const fetchAssets = useCallback(async () => {
     if (!userId || !selectedProject) return;
     try {
@@ -173,18 +173,13 @@ export default function HomePage() {
       });
       const assetData = response.data?.assets || [];
       setAssetCount(response.data?.total || assetData.length);
-
-      // Save to localStorage so CreateBookingForm can read it
       localStorage.setItem(assetsCacheKey, JSON.stringify(assetData));
     } catch (error) {
       console.error("Error fetching assets", error);
       setAssetCount(0);
-      // Optional: Clear cache on error to prevent stale data usage
-      // localStorage.removeItem(assetsCacheKey);
     }
   }, [selectedProject, userId, assetsCacheKey]);
 
-  //  UPDATED: Fetch Subcontractors and save to localStorage for fallback in CreateBookingForm
   const fetchSubcontractors = useCallback(async () => {
     if (!userId || !selectedProject) return;
     if (user?.role === "subcontractor") {
@@ -202,8 +197,7 @@ export default function HomePage() {
         params: { project_id: projectId, limit: 100, is_active: true },
       });
 
-      // Normalize response handling for count and data
-      let subData = [];
+      let subData: any[] = [];
       let total = 0;
 
       if (Array.isArray(response.data)) {
@@ -216,18 +210,15 @@ export default function HomePage() {
         subData = response.data.data;
         total = subData.length;
       } else {
-        // Fallback for paginated/nested responses
         const values = Object.values(response.data || {});
         const arr = values.find((v) => Array.isArray(v));
         if (arr && Array.isArray(arr)) {
-          subData = arr;
-          total = arr.length;
+          subData = arr as any[];
+          total = (arr as any[]).length;
         }
       }
 
       setSubcontractorCount(total);
-
-      // Save to localStorage so CreateBookingForm can use it as cache
       localStorage.setItem(subcontractorsCacheKey, JSON.stringify(subData));
     } catch (error) {
       console.error("Error fetching subcontractors", error);
@@ -277,7 +268,6 @@ export default function HomePage() {
         console.error("Failed to fetch user profile", error);
       }
     };
-
     fetchProfile();
   }, []);
 
@@ -287,7 +277,6 @@ export default function HomePage() {
     hasInitialized.current = true;
   }, [user, fetchProjects]);
 
-  // When selectedProject changes, fetch related data and update localStorage
   useEffect(() => {
     if (!selectedProject) return;
     fetchAssets();
@@ -312,8 +301,6 @@ export default function HomePage() {
     if (!proj || !proj.id) return;
     setShowProjectSelector(false);
     localStorage.setItem(`project_${userId}`, JSON.stringify(proj));
-    // setSelectedProject(proj);
-    // Reload to ensure all child components and hooks (like CreateBookingForm) re-read the fresh localStorage
     window.location.reload();
   };
 
@@ -348,12 +335,10 @@ export default function HomePage() {
     >
       {/* --- HEADER --- */}
       <div className="w-full max-w-screen mx-auto flex items-center justify-between gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
-        {/* Accent + Welcome */}
         <div className="flex items-center gap-4">
           <div className="w-1.5 h-10 rounded-full bg-gradient-to-b from-slate-200 to-slate-50" />
           <div className="flex flex-col">
             <p className="text-sm text-slate-500">Welcome back,</p>
-
             <p className="text-lg md:text-xl font-semibold text-slate-900 capitalize">
               {profile?.first_name
                 ? `${profile.first_name} 👋`
@@ -361,12 +346,10 @@ export default function HomePage() {
                   ? `${user.first_name} 👋`
                   : "User 👋"}
             </p>
-
             <div className="flex items-center gap-2 mt-1">
               <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-500 px-2 py-0.5 rounded">
                 {profile?.role || user?.role || "Member"}
               </span>
-
               {profile?.company_name && (
                 <>
                   <span className="w-1 h-1 rounded-full bg-slate-300"></span>
@@ -379,12 +362,10 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Profile (compact card) */}
         <div className="flex items-center gap-3 pl-4 border-l border-slate-100">
           <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 font-bold border border-slate-200 shadow-sm text-sm">
             {profile?.first_name?.charAt(0) || user?.email?.charAt(0) || "U"}
           </div>
-
           <div className="hidden sm:flex flex-col leading-tight max-w-xs">
             <p className="text-sm font-bold text-slate-900 truncate">
               {profile?.first_name
@@ -397,6 +378,7 @@ export default function HomePage() {
           </div>
         </div>
       </div>
+
       {/* --- MAIN CARD --- */}
       <div className="w-full max-w-screen mx-auto bg-white rounded-2xl shadow-sm border border-slate-100 p-6 space-y-6">
         {/* --- PROJECT TITLE & SWITCHER --- */}
@@ -417,7 +399,6 @@ export default function HomePage() {
             </p>
           </div>
 
-          {/* Dropdown Container */}
           <div className="relative" ref={dropdownRef}>
             <Button
               onClick={() => setShowProjectSelector(!showProjectSelector)}
@@ -455,11 +436,11 @@ export default function HomePage() {
                           key={proj.id}
                           onClick={() => handleProjectSelect(proj)}
                           className={`w-full text-left px-3 py-3 rounded-lg text-sm font-medium transition-all flex items-center justify-between group cursor-pointer
-                                      ${
-                                        isActive
-                                          ? "bg-[#0B1120] text-white shadow-md shadow-slate-900/10"
-                                          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                                      }`}
+                            ${
+                              isActive
+                                ? "bg-[#0B1120] text-white shadow-md shadow-slate-900/10"
+                                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                            }`}
                         >
                           <div className="flex flex-col items-start gap-0.5 overflow-hidden">
                             <span className="truncate w-full font-bold">
@@ -540,18 +521,7 @@ export default function HomePage() {
               <h2 className="text-xl font-bold text-slate-900">
                 Upcoming Bookings
               </h2>
-              <div className="flex bg-slate-200 rounded-lg p-1 gap-1">
-                <Link href="/bookings">
-                  <span className="text-xs font-bold px-4 py-1.5 bg-white rounded-md shadow-sm text-slate-900 inline-block cursor-pointer">
-                    Bookings
-                  </span>
-                </Link>
-                <Link href="/multicalendar">
-                  <span className="text-xs font-bold px-4 py-1.5 text-slate-500 inline-block cursor-pointer hover:text-slate-900">
-                    Calendar
-                  </span>
-                </Link>
-              </div>
+              <div className="flex p-1 gap-1"></div>
             </div>
 
             {fetchError && (
@@ -574,7 +544,6 @@ export default function HomePage() {
                 <div className="space-y-6">
                   {Object.keys(groupedBookings).map((month) => (
                     <div key={month} className="space-y-2">
-                      {/* Month Header */}
                       <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2 pl-1 border-b border-slate-100 pb-1">
                         {month}
                       </h3>
@@ -596,32 +565,26 @@ export default function HomePage() {
                         const isBookingToday = isToday(startObj);
                         const status = booking.status.toLowerCase();
 
-                        // --- LOGIC FROM BOOKINGS PAGE ---
-                        // 1. Manager Name
                         const managerName = booking.manager
                           ? `${booking.manager.first_name} ${booking.manager.last_name}`.trim()
                           : "Unknown Manager";
 
-                        // 2. Subcontractor Name
                         const subName =
                           booking.subcontractor?.company_name ||
                           (booking.subcontractor
                             ? `${booking.subcontractor.first_name} ${booking.subcontractor.last_name}`.trim()
                             : "");
 
-                        // 3. Assignee logic: If sub exists, it's for them. Else manager.
                         const assignee = booking.subcontractor_id
                           ? subName || "Unknown Subcontractor"
                           : managerName;
 
-                        // 4. Icon Logic
                         const isSubcontractor = !!booking.subcontractor_id;
                         const RoleIcon = isSubcontractor ? HardHat : Briefcase;
                         const iconColor = isSubcontractor
                           ? "text-orange-600"
                           : "text-blue-600";
 
-                        // Title Logic
                         let displayTitle = "";
                         if (booking.purpose && booking.purpose.trim() !== "") {
                           displayTitle = booking.purpose;
@@ -637,7 +600,16 @@ export default function HomePage() {
                         return (
                           <div
                             key={booking.id}
-                            className="bg-[#F8F9FB] rounded-xl flex overflow-hidden border border-transparent hover:border-slate-200 hover:shadow-sm transition-all group"
+                            onClick={() => handleBookingClick(booking.id)}
+                            className="bg-[#F8F9FB] rounded-xl flex overflow-hidden border border-transparent hover:border-slate-200 hover:shadow-md transition-all group cursor-pointer active:scale-[0.99]"
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                handleBookingClick(booking.id);
+                              }
+                            }}
                           >
                             {/* --- LEFT: DATE COLUMN --- */}
                             <div className="w-20 sm:w-24 flex-shrink-0 flex flex-col items-center justify-center border-r border-slate-200 bg-slate-50/50">
@@ -668,7 +640,7 @@ export default function HomePage() {
                             {/* --- RIGHT: DETAILS --- */}
                             <div className="flex-1 p-3 pl-4 flex flex-col justify-center">
                               <div className="flex justify-between items-start mb-1">
-                                <h3 className="font-bold text-slate-900 text-sm line-clamp-1">
+                                <h3 className="font-bold text-slate-900 text-sm line-clamp-1 group-hover:text-blue-900 transition-colors">
                                   {displayTitle}
                                 </h3>
                                 <span
@@ -709,6 +681,14 @@ export default function HomePage() {
                                 </span>
                               </div>
                             </div>
+
+                            {/* Arrow indicator on hover */}
+                            <div className="flex items-center pr-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <ChevronDown
+                                size={16}
+                                className="text-slate-400 -rotate-90"
+                              />
+                            </div>
                           </div>
                         );
                       })}
@@ -727,9 +707,6 @@ export default function HomePage() {
               <h2 className="text-xl font-bold text-slate-900">
                 Today&apos;s Schedule
               </h2>
-              <Button size="sm" className={`${PALETTE.darkNavy} h-8 text-xs`}>
-                <Plus className="h-3 w-3 mr-1" /> Add Task
-              </Button>
             </div>
 
             <div className="bg-white rounded-2xl shadow-sm p-6 min-h-[400px] border border-slate-100">
@@ -759,8 +736,7 @@ export default function HomePage() {
             </div>
           </div>
         </div>
-      </div>{" "}
-      {/* end MAIN CARD */}
+      </div>
     </div>
   );
 }
@@ -848,12 +824,11 @@ const SimpleCalendar = () => {
         {displayDates.map((d) => (
           <div
             key={d}
-            className={`h-8 w-8 mx-auto flex items-center justify-center rounded-lg font-medium transition-colors
-                            ${
-                              d === today
-                                ? `${PALETTE.darkNavy} text-white shadow-md`
-                                : "text-slate-600 hover:bg-slate-100 cursor-pointer"
-                            }`}
+            className={`h-8 w-8 mx-auto flex items-center justify-center rounded-lg font-medium transition-colors ${
+              d === today
+                ? `${PALETTE.darkNavy} text-white shadow-md`
+                : "text-slate-600 hover:bg-slate-100 cursor-pointer"
+            }`}
           >
             {d}
           </div>
