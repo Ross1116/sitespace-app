@@ -18,6 +18,9 @@ import {
   Wrench,
   AlertTriangle,
   Calendar,
+  ChevronUp,
+  ChevronDown,
+  ChevronsUpDown,
 } from "lucide-react";
 import api from "@/lib/api";
 import { useAuth } from "@/app/context/AuthContext";
@@ -73,6 +76,14 @@ interface Project {
   id: string;
   text: string;
 }
+
+type SortField =
+  | "assetTitle"
+  | "assetType"
+  | "assetStatus"
+  | "assetDescription"
+  | "assetLastUpdated";
+type SortDirection = "asc" | "desc";
 
 const transformBackendAsset = (backendAsset: AssetFromBackend): Asset => {
   const descriptionText =
@@ -164,6 +175,27 @@ const safeFormatDate = (dateString?: string) => {
   }
 };
 
+const SortIcon = ({
+  field,
+  currentSort,
+  currentDirection,
+}: {
+  field: SortField;
+  currentSort: SortField | null;
+  currentDirection: SortDirection;
+}) => {
+  if (currentSort !== field) {
+    return (
+      <ChevronsUpDown className="h-3 w-3 opacity-0 group-hover:opacity-40 transition-opacity" />
+    );
+  }
+  return currentDirection === "asc" ? (
+    <ChevronUp className="h-3 w-3 text-white/90" />
+  ) : (
+    <ChevronDown className="h-3 w-3 text-white/90" />
+  );
+};
+
 export default function AssetsTable() {
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -178,10 +210,51 @@ export default function AssetsTable() {
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
+  // Sort state
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+
   const itemsPerPage = 7;
   const { user } = useAuth();
   const userId = user?.id;
   const STORAGE_KEY = `assets_v2_${userId}`;
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      if (sortDirection === "asc") {
+        setSortDirection("desc");
+      } else {
+        setSortField(null);
+        setSortDirection("asc");
+      }
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+    setCurrentPage(1);
+  };
+
+  const columnHeaders: {
+    label: string;
+    field: SortField;
+    colSpan: string;
+    extraClass?: string;
+  }[] = [
+    {
+      label: "Asset Name",
+      field: "assetTitle",
+      colSpan: "col-span-3",
+      extraClass: "pl-2",
+    },
+    { label: "Type", field: "assetType", colSpan: "col-span-2" },
+    { label: "Status", field: "assetStatus", colSpan: "col-span-2" },
+    { label: "Description", field: "assetDescription", colSpan: "col-span-3" },
+    {
+      label: "Last Updated",
+      field: "assetLastUpdated",
+      colSpan: "col-span-1",
+    },
+  ];
 
   useEffect(() => {
     const projectString = localStorage.getItem(`project_${userId}`);
@@ -206,7 +279,7 @@ export default function AssetsTable() {
           params: {
             project_id: project.id,
             skip: 0,
-            limit: 100, // Fetch all for client-side search
+            limit: 100,
           },
         });
 
@@ -240,7 +313,6 @@ export default function AssetsTable() {
     [user, project, STORAGE_KEY],
   );
 
-  // Smart refresh: on focus, on reconnect, every 5 mins
   const { refresh } = useSmartRefresh({
     onRefresh: () => fetchAssets(true),
     intervalMs: 5 * 60 * 1000,
@@ -248,7 +320,6 @@ export default function AssetsTable() {
     refreshOnReconnect: true,
   });
 
-  // Initial load with cache
   useEffect(() => {
     if (!user || !project) return;
 
@@ -268,32 +339,79 @@ export default function AssetsTable() {
     fetchAssets();
   }, [user, project, STORAGE_KEY, fetchAssets]);
 
-  // Reset page when search changes
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm]);
 
-  // Client-side filtering
-  const filteredAssets = useMemo(() => {
+  // Client-side filtering + sorting
+  const filteredAndSortedAssets = useMemo(() => {
     if (!allAssets || allAssets.length === 0) return [];
-    if (!searchTerm.trim()) return allAssets;
 
-    const term = searchTerm.toLowerCase();
-    return allAssets.filter(
-      (asset) =>
-        asset.assetTitle.toLowerCase().includes(term) ||
-        asset.assetCode.toLowerCase().includes(term) ||
-        asset.assetType.toLowerCase().includes(term),
-    );
-  }, [allAssets, searchTerm]);
+    let result = [...allAssets];
+
+    // Filter
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      result = result.filter(
+        (asset) =>
+          asset.assetTitle.toLowerCase().includes(term) ||
+          asset.assetCode.toLowerCase().includes(term) ||
+          asset.assetType.toLowerCase().includes(term),
+      );
+    }
+
+    // Sort
+    if (sortField) {
+      result.sort((a, b) => {
+        let aVal: string;
+        let bVal: string;
+
+        if (sortField === "assetLastUpdated") {
+          // Date sort
+          const aDate = a.assetLastUpdated
+            ? new Date(a.assetLastUpdated).getTime()
+            : 0;
+          const bDate = b.assetLastUpdated
+            ? new Date(b.assetLastUpdated).getTime()
+            : 0;
+          return sortDirection === "asc" ? aDate - bDate : bDate - aDate;
+        }
+
+        if (sortField === "assetStatus") {
+          // Custom status order: Operational > In Use > Maintenance > Retired
+          const statusOrder: Record<string, number> = {
+            Operational: 0,
+            "In Use": 1,
+            Maintenance: 2,
+            Retired: 3,
+          };
+          const aOrder = statusOrder[a.assetStatus] ?? 99;
+          const bOrder = statusOrder[b.assetStatus] ?? 99;
+          return sortDirection === "asc" ? aOrder - bOrder : bOrder - aOrder;
+        }
+
+        aVal = (a[sortField] || "").toLowerCase();
+        bVal = (b[sortField] || "").toLowerCase();
+
+        if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;
+        if (aVal > bVal) return sortDirection === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return result;
+  }, [allAssets, searchTerm, sortField, sortDirection]);
 
   const paginatedAssets = useMemo(() => {
-    if (!filteredAssets || filteredAssets.length === 0) return [];
+    if (!filteredAndSortedAssets || filteredAndSortedAssets.length === 0)
+      return [];
     const start = (currentPage - 1) * itemsPerPage;
-    return filteredAssets.slice(start, start + itemsPerPage);
-  }, [filteredAssets, currentPage, itemsPerPage]);
+    return filteredAndSortedAssets.slice(start, start + itemsPerPage);
+  }, [filteredAndSortedAssets, currentPage, itemsPerPage]);
 
-  const totalPages = Math.ceil((filteredAssets?.length || 0) / itemsPerPage);
+  const totalPages = Math.ceil(
+    (filteredAndSortedAssets?.length || 0) / itemsPerPage,
+  );
 
   const maintenanceCount = (allAssets ?? []).filter(
     (a) => a.assetStatus === "Maintenance",
@@ -398,23 +516,44 @@ export default function AssetsTable() {
               />
               {searchTerm && (
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
-                  {filteredAssets.length} results
+                  {filteredAndSortedAssets.length} results
                 </span>
               )}
             </div>
 
-            {/* Table Header */}
-            <div className="hidden sm:grid grid-cols-12 gap-4 bg-gradient-to-r from-[#0f2a4a] to-[#0B1120] text-white py-3.5 px-6 rounded-xl text-sm font-semibold shadow-md shadow-slate-200 mb-4">
-              <div className="col-span-3 pl-2">Asset Name</div>
-              <div className="col-span-2">Type</div>
-              <div className="col-span-2">Status</div>
-              <div className="col-span-3">Description</div>
-              <div className="col-span-1">Last Updated</div>
+            {/* Table Header — Sortable */}
+            <div className="hidden sm:grid grid-cols-12 gap-4 bg-gradient-to-r from-[#0f2a4a] to-[#0B1120] text-white py-3.5 px-6 rounded-xl text-sm font-semibold shadow-md shadow-slate-200 mb-4 select-none">
+              {columnHeaders.map(({ label, field, colSpan, extraClass }) => (
+                <div
+                  key={field}
+                  className={`${colSpan} ${extraClass || ""} group flex items-center gap-1.5 cursor-pointer transition-colors hover:text-white/80`}
+                  onClick={() => handleSort(field)}
+                >
+                  <span
+                    className={`${
+                      sortField === field
+                        ? "underline underline-offset-4 decoration-2 decoration-white/60"
+                        : ""
+                    }`}
+                  >
+                    {label}
+                  </span>
+                  <SortIcon
+                    field={field}
+                    currentSort={sortField}
+                    currentDirection={sortDirection}
+                  />
+                </div>
+              ))}
+              {/* Action column — not sortable */}
               <div className="col-span-1 text-center">Action</div>
             </div>
 
             {fetchError && (
-              <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2.5 rounded-lg text-sm mb-3" role="alert">
+              <div
+                className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2.5 rounded-lg text-sm mb-3"
+                role="alert"
+              >
                 {fetchError}
               </div>
             )}
@@ -558,7 +697,7 @@ export default function AssetsTable() {
             </div>
 
             {/* Pagination */}
-            {filteredAssets.length > 0 && (
+            {filteredAndSortedAssets.length > 0 && (
               <div className="mt-auto pt-6 flex justify-center items-center gap-6">
                 <Button
                   onClick={() => handlePageChange(currentPage - 1)}

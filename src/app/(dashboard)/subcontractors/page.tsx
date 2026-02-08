@@ -11,6 +11,9 @@ import {
   Briefcase,
   User,
   Clock,
+  ChevronUp,
+  ChevronDown,
+  ChevronsUpDown,
 } from "lucide-react";
 import SubFormModal from "@/components/forms/InviteSubForm";
 import { useAuth } from "@/app/context/AuthContext";
@@ -51,6 +54,15 @@ interface Contractor {
   _originalData?: SubcontractorFromBackend;
 }
 
+type SortField =
+  | "contractorName"
+  | "contractorCompany"
+  | "contractorTrade"
+  | "contractorPhone"
+  | "contractorEmail"
+  | "isActive";
+type SortDirection = "asc" | "desc";
+
 const transformBackendSubcontractor = (
   backendSub: SubcontractorFromBackend,
 ): Contractor => {
@@ -66,6 +78,27 @@ const transformBackendSubcontractor = (
   };
 };
 
+const SortIcon = ({
+  field,
+  currentSort,
+  currentDirection,
+}: {
+  field: SortField;
+  currentSort: SortField | null;
+  currentDirection: SortDirection;
+}) => {
+  if (currentSort !== field) {
+    return (
+      <ChevronsUpDown className="h-3 w-3 opacity-0 group-hover:opacity-40 transition-opacity" />
+    );
+  }
+  return currentDirection === "asc" ? (
+    <ChevronUp className="h-3 w-3 text-white/90" />
+  ) : (
+    <ChevronDown className="h-3 w-3 text-white/90" />
+  );
+};
+
 export default function SubcontractorsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [allSubs, setAllSubs] = useState<Contractor[]>([]);
@@ -78,6 +111,10 @@ export default function SubcontractorsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedProject, setSelectedProject] = useState<any | null>(null);
 
+  // Sort state
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+
   const itemsPerPage = 7;
   const { user } = useAuth();
   const userId = user?.id;
@@ -89,6 +126,22 @@ export default function SubcontractorsPage() {
 
   const projectIdForCache = getProjectId(selectedProject);
   const cacheKey = `subcontractors_${userId}_project_${projectIdForCache ?? "all"}`;
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      // Toggle direction, then clear on third click
+      if (sortDirection === "asc") {
+        setSortDirection("desc");
+      } else {
+        setSortField(null);
+        setSortDirection("asc");
+      }
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+    setCurrentPage(1);
+  };
 
   // Load project from localStorage
   useEffect(() => {
@@ -138,7 +191,7 @@ export default function SubcontractorsPage() {
 
         const params: Record<string, any> = {
           skip: 0,
-          limit: 1000, // Fetch all for client-side search
+          limit: 1000,
           is_active: true,
         };
 
@@ -164,7 +217,6 @@ export default function SubcontractorsPage() {
           err?.response?.data?.detail || "Failed to fetch subcontractors";
         setError(errMsg);
 
-        // Try to load from cache on error
         try {
           const cached = localStorage.getItem(cacheKey);
           if (cached) {
@@ -186,7 +238,6 @@ export default function SubcontractorsPage() {
     refreshOnReconnect: true,
   });
 
-  // Initial load with cache
   useEffect(() => {
     if (!user) return;
 
@@ -202,41 +253,71 @@ export default function SubcontractorsPage() {
     fetchSubs();
   }, [user, cacheKey, fetchSubs]);
 
-  // Refetch when project changes
   useEffect(() => {
     if (!user) return;
     setCurrentPage(1);
     fetchSubs(true);
   }, [selectedProject, user, fetchSubs]);
 
-  // Reset page when search changes
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm]);
 
-  // Client-side filtering
-  const filteredSubs = useMemo(() => {
+  // Client-side filtering + sorting
+  const filteredAndSortedSubs = useMemo(() => {
     if (!allSubs || allSubs.length === 0) return [];
-    if (!searchTerm.trim()) return allSubs;
 
-    const term = searchTerm.toLowerCase();
-    return allSubs.filter(
-      (sub) =>
-        sub.contractorName.toLowerCase().includes(term) ||
-        sub.contractorCompany.toLowerCase().includes(term) ||
-        sub.contractorTrade.toLowerCase().includes(term) ||
-        sub.contractorEmail.toLowerCase().includes(term),
-    );
-  }, [allSubs, searchTerm]);
+    let result = [...allSubs];
+
+    // Filter
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      result = result.filter(
+        (sub) =>
+          sub.contractorName.toLowerCase().includes(term) ||
+          sub.contractorCompany.toLowerCase().includes(term) ||
+          sub.contractorTrade.toLowerCase().includes(term) ||
+          sub.contractorEmail.toLowerCase().includes(term),
+      );
+    }
+
+    // Sort
+    if (sortField) {
+      result.sort((a, b) => {
+        let aVal: string | boolean;
+        let bVal: string | boolean;
+
+        if (sortField === "isActive") {
+          aVal = a.isActive;
+          bVal = b.isActive;
+          // Active first when ascending
+          if (aVal === bVal) return 0;
+          if (sortDirection === "asc") return aVal ? -1 : 1;
+          return aVal ? 1 : -1;
+        }
+
+        aVal = (a[sortField] || "").toLowerCase();
+        bVal = (b[sortField] || "").toLowerCase();
+
+        if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;
+        if (aVal > bVal) return sortDirection === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return result;
+  }, [allSubs, searchTerm, sortField, sortDirection]);
 
   // Client-side pagination
   const paginatedSubs = useMemo(() => {
-    if (!filteredSubs || filteredSubs.length === 0) return [];
+    if (!filteredAndSortedSubs || filteredAndSortedSubs.length === 0) return [];
     const start = (currentPage - 1) * itemsPerPage;
-    return filteredSubs.slice(start, start + itemsPerPage);
-  }, [filteredSubs, currentPage, itemsPerPage]);
+    return filteredAndSortedSubs.slice(start, start + itemsPerPage);
+  }, [filteredAndSortedSubs, currentPage, itemsPerPage]);
 
-  const totalPages = Math.ceil((filteredSubs?.length || 0) / itemsPerPage);
+  const totalPages = Math.ceil(
+    (filteredAndSortedSubs?.length || 0) / itemsPerPage,
+  );
 
   const handlePageChange = (pageNumber: number) => {
     setCurrentPage(pageNumber);
@@ -252,6 +333,18 @@ export default function SubcontractorsPage() {
     setCurrentPage(1);
     await refresh();
   };
+
+  const columnHeaders: {
+    label: string;
+    field: SortField;
+    colSpan: string;
+  }[] = [
+    { label: "Name", field: "contractorName", colSpan: "col-span-3" },
+    { label: "Company", field: "contractorCompany", colSpan: "col-span-2" },
+    { label: "Trade", field: "contractorTrade", colSpan: "col-span-2" },
+    { label: "Phone", field: "contractorPhone", colSpan: "col-span-2" },
+    { label: "Email", field: "contractorEmail", colSpan: "col-span-2" },
+  ];
 
   return (
     <div className="min-h-screen bg-[hsl(20,60%,99%)] p-4 sm:p-6 lg:p-8 font-sans">
@@ -289,19 +382,55 @@ export default function SubcontractorsPage() {
               />
               {searchTerm && (
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
-                  {filteredSubs.length} results
+                  {filteredAndSortedSubs.length} results
                 </span>
               )}
             </div>
 
-            {/* Table Header */}
-            <div className="hidden sm:grid grid-cols-12 gap-4 bg-gradient-to-r from-[#0f2a4a] to-[#0B1120] text-white py-3.5 px-6 rounded-xl text-sm font-semibold shadow-md shadow-slate-200 mb-4">
-              <div className="col-span-3">Name</div>
-              <div className="col-span-2">Company</div>
-              <div className="col-span-2">Trade</div>
-              <div className="col-span-2">Phone</div>
-              <div className="col-span-2">Email</div>
-              <div className="col-span-1 text-center">Status</div>
+            {/* Table Header — Sortable */}
+            <div className="hidden sm:grid grid-cols-12 gap-4 bg-gradient-to-r from-[#0f2a4a] to-[#0B1120] text-white py-3.5 px-6 rounded-xl text-sm font-semibold shadow-md shadow-slate-200 mb-4 select-none">
+              {columnHeaders.map(({ label, field, colSpan }) => (
+                <div
+                  key={field}
+                  className={`${colSpan} group flex items-center gap-1.5 cursor-pointer transition-colors hover:text-white/80`}
+                  onClick={() => handleSort(field)}
+                >
+                  <span
+                    className={`${
+                      sortField === field
+                        ? "underline underline-offset-4 decoration-2 decoration-white/60"
+                        : ""
+                    }`}
+                  >
+                    {label}
+                  </span>
+                  <SortIcon
+                    field={field}
+                    currentSort={sortField}
+                    currentDirection={sortDirection}
+                  />
+                </div>
+              ))}
+              {/* Status column */}
+              <div
+                className="col-span-1 group flex items-center justify-center gap-1.5 cursor-pointer transition-colors hover:text-white/80"
+                onClick={() => handleSort("isActive")}
+              >
+                <span
+                  className={`${
+                    sortField === "isActive"
+                      ? "underline underline-offset-4 decoration-2 decoration-white/60"
+                      : ""
+                  }`}
+                >
+                  Status
+                </span>
+                <SortIcon
+                  field="isActive"
+                  currentSort={sortField}
+                  currentDirection={sortDirection}
+                />
+              </div>
             </div>
 
             {/* Rows */}
@@ -408,7 +537,7 @@ export default function SubcontractorsPage() {
             </div>
 
             {/* Pagination */}
-            {filteredSubs.length > 0 && (
+            {filteredAndSortedSubs.length > 0 && (
               <div className="mt-auto pt-6 flex justify-center items-center gap-6">
                 <Button
                   onClick={() => handlePageChange(currentPage - 1)}
