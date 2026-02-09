@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useReducer, useEffect, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -44,7 +44,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 // ===== TYPE DEFINITIONS =====
-type CreateBookingForm = {
+type CreateBookingFormProps = {
   isOpen: boolean;
   onClose: () => void;
   startTime: Date | null;
@@ -93,6 +93,308 @@ interface Subcontractor {
   trade_specialty?: string;
 }
 
+// ===== CONSOLIDATED STATE =====
+interface TimeState {
+  startHour: string;
+  startMinute: string;
+  endHour: string;
+  endMinute: string;
+  duration: string;
+  customStartTime: Date | null;
+  customEndTime: Date | null;
+  selectedDate: Date;
+}
+
+interface FormState {
+  title: string;
+  description: string;
+  selectedSubcontractor: string;
+}
+
+interface AssetState {
+  assets: any[];
+  selectedAssetIds: string[];
+  assetError: boolean;
+}
+
+interface AsyncState {
+  isSubmitting: boolean;
+  error: string | null;
+  loadingSubcontractors: boolean;
+  project: any | null;
+  subcontractors: Subcontractor[];
+  successAlert: { isOpen: boolean; isConfirmed: boolean; count: number };
+}
+
+// ===== REDUCER ACTIONS =====
+type TimeAction =
+  | { type: "SET_START_TIME"; hour: string; minute: string }
+  | { type: "SET_END_TIME"; hour: string; minute: string }
+  | { type: "SET_DURATION"; duration: string }
+  | { type: "INITIALIZE"; startTime: Date; duration: string }
+  | { type: "SET_DATE"; date: Date }
+  | { type: "RESET" };
+
+type FormAction =
+  | { type: "SET_FIELD"; field: keyof FormState; value: string }
+  | { type: "RESET"; defaultSubcontractor?: string };
+
+type AssetAction =
+  | { type: "SET_ASSETS"; assets: any[] }
+  | { type: "SET_ASSET_ERROR"; error: boolean }
+  | { type: "ADD_ASSET"; assetKey: string }
+  | { type: "REMOVE_ASSET"; assetKey: string }
+  | { type: "SET_SELECTED"; assetIds: string[] }
+  | { type: "RESET" };
+
+type AsyncAction =
+  | { type: "SET_SUBMITTING"; value: boolean }
+  | { type: "SET_ERROR"; error: string | null }
+  | { type: "SET_PROJECT"; project: any }
+  | { type: "SET_SUBCONTRACTORS"; subs: Subcontractor[]; loading: boolean }
+  | { type: "SET_LOADING_SUBS"; loading: boolean }
+  | { type: "SHOW_SUCCESS"; isConfirmed: boolean; count: number }
+  | { type: "DISMISS_SUCCESS" }
+  | { type: "RESET" };
+
+// ===== REDUCERS =====
+function computeEndTime(
+  startTime: Date,
+  durationMinutes: number,
+): { endTime: Date; endHour: string; endMinute: string } {
+  const endTime = addMinutes(startTime, durationMinutes);
+  return {
+    endTime,
+    endHour: endTime.getHours().toString().padStart(2, "0"),
+    endMinute: endTime.getMinutes().toString().padStart(2, "0"),
+  };
+}
+
+function buildStartDate(
+  base: Date | null,
+  hour: string,
+  minute: string,
+): Date | null {
+  if (!base || !hour || !minute) return base;
+  const d = new Date(base);
+  d.setHours(parseInt(hour), parseInt(minute), 0, 0);
+  return d;
+}
+
+const initialTimeState: TimeState = {
+  startHour: "",
+  startMinute: "",
+  endHour: "",
+  endMinute: "",
+  duration: "60",
+  customStartTime: null,
+  customEndTime: null,
+  selectedDate: new Date(),
+};
+
+function timeReducer(state: TimeState, action: TimeAction): TimeState {
+  switch (action.type) {
+    case "INITIALIZE": {
+      const roundedMinutes =
+        Math.round(action.startTime.getMinutes() / 15) * 15;
+      const startHour = action.startTime.getHours().toString().padStart(2, "0");
+      const startMinute = (roundedMinutes % 60).toString().padStart(2, "0");
+
+      const normalizedStart = new Date(action.startTime);
+      normalizedStart.setHours(
+        parseInt(startHour),
+        parseInt(startMinute),
+        0,
+        0,
+      );
+
+      const { endTime, endHour, endMinute } = computeEndTime(
+        normalizedStart,
+        parseInt(action.duration),
+      );
+
+      return {
+        startHour,
+        startMinute,
+        endHour,
+        endMinute,
+        duration: action.duration,
+        customStartTime: normalizedStart,
+        customEndTime: endTime,
+        selectedDate: new Date(action.startTime),
+      };
+    }
+
+    case "SET_START_TIME": {
+      const newStart = buildStartDate(
+        state.customStartTime,
+        action.hour,
+        action.minute,
+      );
+      if (!newStart) {
+        return { ...state, startHour: action.hour, startMinute: action.minute };
+      }
+      const { endTime, endHour, endMinute } = computeEndTime(
+        newStart,
+        parseInt(state.duration),
+      );
+      return {
+        ...state,
+        startHour: action.hour,
+        startMinute: action.minute,
+        customStartTime: newStart,
+        customEndTime: endTime,
+        endHour,
+        endMinute,
+      };
+    }
+
+    case "SET_END_TIME": {
+      if (!state.customStartTime) {
+        return { ...state, endHour: action.hour, endMinute: action.minute };
+      }
+      const newEnd = new Date(state.customStartTime);
+      newEnd.setHours(parseInt(action.hour), parseInt(action.minute), 0, 0);
+      const durationMs = newEnd.getTime() - state.customStartTime.getTime();
+      const durationMinutes = durationMs / (1000 * 60);
+      return {
+        ...state,
+        endHour: action.hour,
+        endMinute: action.minute,
+        customEndTime: newEnd,
+        duration:
+          durationMinutes > 0 ? durationMinutes.toString() : state.duration,
+      };
+    }
+
+    case "SET_DURATION": {
+      if (!state.customStartTime) {
+        return { ...state, duration: action.duration };
+      }
+      const { endTime, endHour, endMinute } = computeEndTime(
+        state.customStartTime,
+        parseInt(action.duration),
+      );
+      return {
+        ...state,
+        duration: action.duration,
+        customEndTime: endTime,
+        endHour,
+        endMinute,
+      };
+    }
+
+    case "SET_DATE":
+      return { ...state, selectedDate: action.date };
+
+    case "RESET":
+      return initialTimeState;
+
+    default:
+      return state;
+  }
+}
+
+const initialFormState: FormState = {
+  title: "",
+  description: "",
+  selectedSubcontractor: "",
+};
+
+function formReducer(state: FormState, action: FormAction): FormState {
+  switch (action.type) {
+    case "SET_FIELD":
+      return { ...state, [action.field]: action.value };
+    case "RESET":
+      return {
+        ...initialFormState,
+        selectedSubcontractor: action.defaultSubcontractor || "",
+      };
+    default:
+      return state;
+  }
+}
+
+const initialAssetState: AssetState = {
+  assets: [],
+  selectedAssetIds: [],
+  assetError: false,
+};
+
+function assetReducer(state: AssetState, action: AssetAction): AssetState {
+  switch (action.type) {
+    case "SET_ASSETS":
+      return { ...state, assets: action.assets, assetError: false };
+    case "SET_ASSET_ERROR":
+      return { ...state, assetError: action.error, assets: [] };
+    case "ADD_ASSET":
+      return {
+        ...state,
+        selectedAssetIds: [...state.selectedAssetIds, action.assetKey],
+      };
+    case "REMOVE_ASSET":
+      return {
+        ...state,
+        selectedAssetIds: state.selectedAssetIds.filter(
+          (id) => id !== action.assetKey,
+        ),
+      };
+    case "SET_SELECTED":
+      return { ...state, selectedAssetIds: action.assetIds };
+    case "RESET":
+      return { ...state, selectedAssetIds: [] };
+    default:
+      return state;
+  }
+}
+
+const initialAsyncState: AsyncState = {
+  isSubmitting: false,
+  error: null,
+  loadingSubcontractors: false,
+  project: null,
+  subcontractors: [],
+  successAlert: { isOpen: false, isConfirmed: false, count: 0 },
+};
+
+function asyncReducer(state: AsyncState, action: AsyncAction): AsyncState {
+  switch (action.type) {
+    case "SET_SUBMITTING":
+      return { ...state, isSubmitting: action.value };
+    case "SET_ERROR":
+      return { ...state, error: action.error };
+    case "SET_PROJECT":
+      return { ...state, project: action.project };
+    case "SET_SUBCONTRACTORS":
+      return {
+        ...state,
+        subcontractors: action.subs,
+        loadingSubcontractors: action.loading,
+      };
+    case "SET_LOADING_SUBS":
+      return { ...state, loadingSubcontractors: action.loading };
+    case "SHOW_SUCCESS":
+      return {
+        ...state,
+        successAlert: {
+          isOpen: true,
+          isConfirmed: action.isConfirmed,
+          count: action.count,
+        },
+      };
+    case "DISMISS_SUCCESS":
+      return {
+        ...state,
+        successAlert: { isOpen: false, isConfirmed: false, count: 0 },
+      };
+    case "RESET":
+      return { ...state, error: null };
+    default:
+      return state;
+  }
+}
+
+// ===== COMPONENT =====
 export function CreateBookingForm({
   isOpen,
   onClose,
@@ -101,88 +403,90 @@ export function CreateBookingForm({
   defaultAsset,
   defaultAssetName,
   bookedAssets = [],
-}: CreateBookingForm) {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [selectedAssets, setSelectedAssets] = useState<string[]>([]);
-  const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([]);
-  const [duration, setDuration] = useState("60");
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+}: CreateBookingFormProps) {
   const { user } = useAuth();
   const userId = user?.id;
-
-  const [customStartTime, setCustomStartTime] = useState<Date | null>(
-    startTime,
-  );
-  const [customEndTime, setCustomEndTime] = useState<Date | null>(null);
-
-  const [startHour, setStartHour] = useState<string>("");
-  const [startMinute, setStartMinute] = useState<string>("");
-  const [endHour, setEndHour] = useState<string>("");
-  const [endMinute, setEndMinute] = useState<string>("");
-
-  const [assets, setAssets] = useState<any[]>([]);
-  const [assetError, setAssetError] = useState<boolean>(false);
-  const [project, setProject] = useState<any>(null);
-
-  const [subcontractors, setSubcontractors] = useState<Subcontractor[]>([]);
-  const [selectedSubcontractor, setSelectedSubcontractor] =
-    useState<string>("");
-  const [loadingSubcontractors, setLoadingSubcontractors] = useState(false);
-
   const isManager = user?.role === "manager" || user?.role === "admin";
   const isSubcontractor = user?.role === "subcontractor";
 
-  const [successAlert, setSuccessAlert] = useState<{
-    isOpen: boolean;
-    isConfirmed: boolean;
-    count: number;
-  }>({ isOpen: false, isConfirmed: false, count: 0 });
+  const [timeState, dispatchTime] = useReducer(timeReducer, initialTimeState);
+  const [formState, dispatchForm] = useReducer(formReducer, initialFormState);
+  const [assetState, dispatchAsset] = useReducer(
+    assetReducer,
+    initialAssetState,
+  );
+  const [asyncState, dispatchAsync] = useReducer(
+    asyncReducer,
+    initialAsyncState,
+  );
 
-  const handleSuccessDismiss = () => {
-    setSuccessAlert({ isOpen: false, isConfirmed: false, count: 0 });
+  // ===== DERIVED VALUES =====
+  const {
+    startHour,
+    startMinute,
+    endHour,
+    endMinute,
+    duration,
+    customStartTime,
+    customEndTime,
+    selectedDate,
+  } = timeState;
+  const { title, description, selectedSubcontractor } = formState;
+  const { assets, selectedAssetIds, assetError } = assetState;
+  const {
+    isSubmitting,
+    error,
+    loadingSubcontractors,
+    project,
+    subcontractors,
+    successAlert,
+  } = asyncState;
+
+  const formatHour = (hour: number): string => {
+    const period = hour >= 12 ? "PM" : "AM";
+    const displayHour = hour % 12 || 12;
+    return `${displayHour} ${period}`;
+  };
+
+  // ===== RESET =====
+  const resetForm = useCallback(() => {
+    dispatchTime({ type: "RESET" });
+    dispatchForm({
+      type: "RESET",
+      defaultSubcontractor: isSubcontractor ? userId || "" : "",
+    });
+    dispatchAsset({ type: "RESET" });
+    dispatchAsync({ type: "RESET" });
+  }, [isSubcontractor, userId]);
+
+  const handleSuccessDismiss = useCallback(() => {
+    dispatchAsync({ type: "DISMISS_SUCCESS" });
     resetForm();
     onClose();
-  };
+  }, [resetForm, onClose]);
 
-  const handleDurationChange = (newDuration: string) => {
-    setDuration(newDuration);
-    const durationMinutes = parseInt(newDuration, 10);
-
-    if (customStartTime) {
-      const newEndTime = new Date(customStartTime);
-      newEndTime.setMinutes(newEndTime.getMinutes() + durationMinutes);
-      setCustomEndTime(newEndTime);
-      setEndHour(newEndTime.getHours().toString().padStart(2, "0"));
-      setEndMinute(newEndTime.getMinutes().toString().padStart(2, "0"));
-    }
-  };
-
-  // Load project from localStorage
+  // ===== LOAD PROJECT FROM LOCALSTORAGE =====
   useEffect(() => {
     const projectString = localStorage.getItem(`project_${userId}`);
     if (projectString) {
       try {
-        const parsedProject = JSON.parse(projectString);
-        setProject(parsedProject);
-      } catch (error) {
-        console.error("Error parsing project:", error);
+        dispatchAsync({
+          type: "SET_PROJECT",
+          project: JSON.parse(projectString),
+        });
+      } catch (err) {
+        console.error("Error parsing project:", err);
       }
     }
   }, [userId]);
 
-  // Load assets from localStorage
+  // ===== LOAD ASSETS FROM LOCALSTORAGE =====
   useEffect(() => {
     const assetString = localStorage.getItem(`assets_${userId}`);
     if (!assetString) {
-      console.error("No assets found in localStorage");
-      setAssetError(true);
-      setAssets([]);
+      dispatchAsset({ type: "SET_ASSET_ERROR", error: true });
       return;
     }
-
     try {
       const parsedAssets = JSON.parse(assetString);
       const normalizedAssets = parsedAssets.map((a: any) => ({
@@ -190,24 +494,19 @@ export function CreateBookingForm({
         assetKey: a.id || a.assetKey,
         assetTitle: a.name || a.assetTitle,
       }));
-
-      setAssets(normalizedAssets);
-      setAssetError(false);
-    } catch (error) {
-      console.error("Error parsing assets:", error);
-      setAssetError(true);
-      setAssets([]);
+      dispatchAsset({ type: "SET_ASSETS", assets: normalizedAssets });
+    } catch (err) {
+      console.error("Error parsing assets:", err);
+      dispatchAsset({ type: "SET_ASSET_ERROR", error: true });
     }
   }, [userId]);
 
-  // Load subcontractors
+  // ===== LOAD SUBCONTRACTORS =====
   useEffect(() => {
     const loadSubcontractors = async () => {
-      if (!project?.id || !isManager) {
-        return;
-      }
+      if (!project?.id || !isManager) return;
 
-      setLoadingSubcontractors(true);
+      dispatchAsync({ type: "SET_LOADING_SUBS", loading: true });
       try {
         const response = await api.get(`/subcontractors/my-subcontractors`, {
           params: {
@@ -219,7 +518,6 @@ export function CreateBookingForm({
         });
 
         let subsData: any[] = [];
-
         if (Array.isArray(response.data)) {
           subsData = response.data;
         } else if (Array.isArray(response.data.subcontractors)) {
@@ -234,10 +532,10 @@ export function CreateBookingForm({
         } else {
           const values = Object.values(response.data || {});
           const arr = values.find((v) => Array.isArray(v));
-          if (arr) subsData = arr;
+          if (arr) subsData = arr as any[];
         }
 
-        const normalizedSubs = subsData.map((sub: any) => ({
+        const normalizedSubs: Subcontractor[] = subsData.map((sub: any) => ({
           id:
             sub.id ||
             sub.subcontractor_id ||
@@ -269,42 +567,50 @@ export function CreateBookingForm({
             sub.contractorTrade ||
             sub.role ||
             "",
-          raw: sub,
         }));
 
-        setSubcontractors(normalizedSubs);
+        dispatchAsync({
+          type: "SET_SUBCONTRACTORS",
+          subs: normalizedSubs,
+          loading: false,
+        });
 
         try {
           localStorage.setItem(
             `subcontractors_${userId}`,
             JSON.stringify(subsData),
           );
-        } catch (e) {
+        } catch {
           // ignore storage errors
         }
-      } catch (error: any) {
-        console.error("Error loading subcontractors:", error);
-        // Fallback: try cached subcontractors
+      } catch (err: any) {
+        console.error("Error loading subcontractors:", err);
+        // Fallback: try cached
         const cachedSubs = localStorage.getItem(`subcontractors_${userId}`);
         if (cachedSubs) {
           try {
             const parsedSubs = JSON.parse(cachedSubs);
-            const normalizedCached = parsedSubs.map((sub: any) => ({
-              id: sub.id || sub.subcontractor_id || sub.uuid,
-              first_name: sub.first_name || "",
-              last_name: sub.last_name || "",
-              email: sub.email || "",
-              company_name: sub.company_name || "",
-              trade_specialty: sub.trade_specialty || "",
-              raw: sub,
-            }));
-            setSubcontractors(normalizedCached);
-          } catch (e) {
-            console.error("Error parsing cached subcontractors:", e);
+            const normalizedCached: Subcontractor[] = parsedSubs.map(
+              (sub: any) => ({
+                id: sub.id || sub.subcontractor_id || sub.uuid,
+                first_name: sub.first_name || "",
+                last_name: sub.last_name || "",
+                email: sub.email || "",
+                company_name: sub.company_name || "",
+                trade_specialty: sub.trade_specialty || "",
+              }),
+            );
+            dispatchAsync({
+              type: "SET_SUBCONTRACTORS",
+              subs: normalizedCached,
+              loading: false,
+            });
+          } catch {
+            dispatchAsync({ type: "SET_LOADING_SUBS", loading: false });
           }
+        } else {
+          dispatchAsync({ type: "SET_LOADING_SUBS", loading: false });
         }
-      } finally {
-        setLoadingSubcontractors(false);
       }
     };
 
@@ -313,21 +619,28 @@ export function CreateBookingForm({
     }
   }, [isOpen, project, isManager, userId]);
 
-  // Auto-select current user if they're a subcontractor
+  // ===== AUTO-SELECT SUBCONTRACTOR FOR SUB USERS =====
   useEffect(() => {
     if (isSubcontractor && userId) {
-      setSelectedSubcontractor(userId);
+      dispatchForm({
+        type: "SET_FIELD",
+        field: "selectedSubcontractor",
+        value: userId,
+      });
     }
   }, [isSubcontractor, userId]);
 
-  // Set default asset if provided
+  // ===== SET DEFAULT ASSET =====
   useEffect(() => {
-    if (defaultAssetName && assets.length > 0 && selectedAssets.length === 0) {
+    if (
+      defaultAssetName &&
+      assets.length > 0 &&
+      selectedAssetIds.length === 0
+    ) {
       const assetNameWithoutPrefix = defaultAssetName.replace(
         /^[A-Z]\d{3}-/,
         "",
       );
-
       const matchingAsset = assets.find((asset) => {
         const assetTitle = asset.assetTitle || "";
         return (
@@ -336,134 +649,69 @@ export function CreateBookingForm({
           asset.assetKey === defaultAsset
         );
       });
-
       if (matchingAsset) {
-        setSelectedAssets([matchingAsset.assetKey]);
-        setSelectedAssetIds([matchingAsset.assetKey]);
+        dispatchAsset({
+          type: "SET_SELECTED",
+          assetIds: [matchingAsset.assetKey],
+        });
       }
     }
-  }, [defaultAssetName, defaultAsset, assets, selectedAssets.length]);
+  }, [defaultAssetName, defaultAsset, assets, selectedAssetIds.length]);
 
-  // Update end time when duration or start time changes
+  // ===== INITIALIZE TIMES WHEN MODAL OPENS =====
+  // Single effect replaces the old chain of: init times → compute end → sync duration
   useEffect(() => {
-    if (startHour && startMinute && customStartTime) {
-      const newStartTime = new Date(customStartTime);
-      newStartTime.setHours(parseInt(startHour), parseInt(startMinute));
-
-      const calculatedEndTime = addMinutes(newStartTime, parseInt(duration));
-      setEndHour(calculatedEndTime.getHours().toString().padStart(2, "0"));
-      setEndMinute(calculatedEndTime.getMinutes().toString().padStart(2, "0"));
-
-      setCustomEndTime(calculatedEndTime);
+    if (startTime && isOpen) {
+      dispatchTime({ type: "INITIALIZE", startTime, duration });
     }
-  }, [duration, startHour, startMinute, customStartTime]);
+  }, [startTime, isOpen]); // intentionally exclude `duration` — init uses current duration snapshot
 
-  // Initialize times when modal opens
-  useEffect(() => {
-    if (startTime) {
-      const hours = startTime.getHours().toString().padStart(2, "0");
-      const roundedMinutes = Math.round(startTime.getMinutes() / 15) * 15;
-      const minutes = (roundedMinutes % 60).toString().padStart(2, "0");
+  // ===== HANDLERS =====
+  const handleStartHourChange = (value: string) =>
+    dispatchTime({ type: "SET_START_TIME", hour: value, minute: startMinute });
 
-      setStartHour(hours);
-      setStartMinute(minutes);
+  const handleStartMinuteChange = (value: string) =>
+    dispatchTime({ type: "SET_START_TIME", hour: startHour, minute: value });
 
-      const endTime = addMinutes(startTime, parseInt(duration));
-      setEndHour(endTime.getHours().toString().padStart(2, "0"));
-      setEndMinute(endTime.getMinutes().toString().padStart(2, "0"));
+  const handleEndHourChange = (value: string) =>
+    dispatchTime({ type: "SET_END_TIME", hour: value, minute: endMinute });
 
-      setSelectedDate(new Date(startTime));
+  const handleEndMinuteChange = (value: string) =>
+    dispatchTime({ type: "SET_END_TIME", hour: endHour, minute: value });
 
-      setCustomStartTime(startTime);
-      setCustomEndTime(endTime);
-    }
-  }, [startTime, isOpen, duration]);
+  const handleDurationChange = (newDuration: string) =>
+    dispatchTime({ type: "SET_DURATION", duration: newDuration });
 
-  const formatHour = (hour: number): string => {
-    const period = hour >= 12 ? "PM" : "AM";
-    const displayHour = hour % 12 || 12;
-    return `${displayHour} ${period}`;
-  };
-
-  const handleStartHourChange = (value: string): void => {
-    setStartHour(value);
-    updateStartTime(value, startMinute);
-  };
-
-  const handleStartMinuteChange = (value: string): void => {
-    setStartMinute(value);
-    updateStartTime(startHour, value);
-  };
-
-  const updateStartTime = (hour: string, minute: string): void => {
-    if (hour && minute && customStartTime) {
-      const newStartTime = new Date(customStartTime);
-      newStartTime.setHours(parseInt(hour), parseInt(minute));
-      setCustomStartTime(newStartTime);
-
-      const calculatedEndTime = addMinutes(newStartTime, parseInt(duration));
-      setCustomEndTime(calculatedEndTime);
-      setEndHour(calculatedEndTime.getHours().toString().padStart(2, "0"));
-      setEndMinute(calculatedEndTime.getMinutes().toString().padStart(2, "0"));
-    }
-  };
-
-  const handleEndHourChange = (value: string): void => {
-    setEndHour(value);
-    updateEndTime(value, endMinute);
-  };
-
-  const handleEndMinuteChange = (value: string): void => {
-    setEndMinute(value);
-    updateEndTime(endHour, value);
-  };
-
-  const updateEndTime = (hour: string, minute: string): void => {
-    if (hour && minute && customStartTime) {
-      const newEndTime = new Date(customStartTime);
-      newEndTime.setHours(parseInt(hour), parseInt(minute));
-      setCustomEndTime(newEndTime);
-
-      const durationInMinutes =
-        (newEndTime.getTime() - customStartTime.getTime()) / (1000 * 60);
-
-      if (durationInMinutes > 0) {
-        setDuration(durationInMinutes.toString());
-      }
-    }
-  };
-
-  const removeAsset = (assetId: string) => {
-    setSelectedAssets((prev) => prev.filter((key) => key !== assetId));
-    setSelectedAssetIds((prev) => prev.filter((id) => id !== assetId));
-  };
-
+  // ===== SUBMIT =====
   const handleSubmit = async () => {
-    setError(null);
+    dispatchAsync({ type: "SET_ERROR", error: null });
 
     if (!customStartTime || !customEndTime || selectedAssetIds.length === 0) {
-      setError("Please fill in all required fields");
+      dispatchAsync({
+        type: "SET_ERROR",
+        error: "Please fill in all required fields",
+      });
       return;
     }
-
     if (!title.trim()) {
-      setError("Please enter a booking title");
+      dispatchAsync({
+        type: "SET_ERROR",
+        error: "Please enter a booking title",
+      });
       return;
     }
-
     if (!project) {
-      setError("No project selected");
+      dispatchAsync({ type: "SET_ERROR", error: "No project selected" });
       return;
     }
 
     try {
-      setIsSubmitting(true);
+      dispatchAsync({ type: "SET_SUBMITTING", value: true });
 
       const bookingDate = format(selectedDate, "yyyy-MM-dd");
       const startTimeFormatted = format(customStartTime, "HH:mm:ss");
       const endTimeFormatted = format(customEndTime, "HH:mm:ss");
 
-      // Create one booking per asset
       const bookingPromises = selectedAssetIds.map(async (assetId) => {
         const bookingData: BookingCreateRequest = {
           project_id: project.id,
@@ -471,12 +719,10 @@ export function CreateBookingForm({
           booking_date: bookingDate,
           start_time: startTimeFormatted,
           end_time: endTimeFormatted,
-          //  FIXED: Map Title to 'purpose' and Description to 'notes'
           purpose: title,
           notes: description,
           subcontractor_id: selectedSubcontractor || undefined,
         };
-
         const response = await api.post<BookingDetail>(
           "/bookings/",
           bookingData,
@@ -494,7 +740,7 @@ export function CreateBookingForm({
         }
       }
 
-      // Cache new bookings in localStorage
+      // Cache new bookings
       try {
         const storageKey = `bookings_v5_${userId}`;
         const existingRaw = (() => {
@@ -510,12 +756,10 @@ export function CreateBookingForm({
             return [];
           }
         })();
-
-        const newCache = [...existingRaw, ...createdBookings];
         localStorage.setItem(
           storageKey,
           JSON.stringify({
-            bookings: newCache,
+            bookings: [...existingRaw, ...createdBookings],
             timestamp: Date.now(),
           }),
         );
@@ -523,14 +767,13 @@ export function CreateBookingForm({
         console.error("Failed to update local booking cache:", e);
       }
 
-      // Update Calendar Events
+      // Build calendar events
       const events = createdBookings.map((booking) => {
         const returnedAssetId =
           booking.asset?.id ||
           booking.asset_id ||
           booking.assetId ||
           booking.assetKey;
-        const asset = assets.find((a) => a.assetKey === booking.asset_id);
         const assetTitle =
           booking.asset?.name ||
           assets.find(
@@ -538,7 +781,6 @@ export function CreateBookingForm({
           )?.assetTitle ||
           booking.asset_name ||
           booking.assetTitle ||
-          booking.asset?.name ||
           booking.assetName ||
           booking.asset_id;
 
@@ -560,7 +802,6 @@ export function CreateBookingForm({
           assetName: assetTitle,
           bookedAssets: [assetTitle],
           bookingKey: booking.id,
-          //  FIXED: Update event object to match page.tsx logic
           bookingTitle: booking.purpose || title,
           bookingDescription: booking.notes || description || "",
           bookingNotes: booking.notes || "",
@@ -580,38 +821,23 @@ export function CreateBookingForm({
       onSave(events);
 
       const firstBooking = createdBookings[0];
-      const wasConfirmed = firstBooking.status === "confirmed";
-      setSuccessAlert({
-        isOpen: true,
-        isConfirmed: wasConfirmed,
+      dispatchAsync({
+        type: "SHOW_SUCCESS",
+        isConfirmed: firstBooking.status === "confirmed",
         count: createdBookings.length,
       });
-    } catch (error: any) {
-      console.error("Error creating bookings:", error);
-      const errorMessage =
-        error.response?.data?.detail ||
-        error.message ||
-        "Failed to create booking";
-      setError(errorMessage);
+    } catch (err: any) {
+      console.error("Error creating bookings:", err);
+      dispatchAsync({
+        type: "SET_ERROR",
+        error:
+          err.response?.data?.detail ||
+          err.message ||
+          "Failed to create booking",
+      });
     } finally {
-      setIsSubmitting(false);
+      dispatchAsync({ type: "SET_SUBMITTING", value: false });
     }
-  };
-
-  const resetForm = () => {
-    setTitle("");
-    setDescription("");
-    setDuration("60");
-    setCustomStartTime(null);
-    setCustomEndTime(null);
-    setStartHour("");
-    setStartMinute("");
-    setEndHour("");
-    setEndMinute("");
-    setSelectedAssetIds([]);
-    setSelectedAssets([]);
-    setSelectedSubcontractor(isSubcontractor ? userId || "" : "");
-    setError(null);
   };
 
   return (
@@ -684,7 +910,13 @@ export function CreateBookingForm({
                 <Input
                   id="title"
                   value={title}
-                  onChange={(e) => setTitle(e.target.value)}
+                  onChange={(e) =>
+                    dispatchForm({
+                      type: "SET_FIELD",
+                      field: "title",
+                      value: e.target.value,
+                    })
+                  }
                   placeholder="Enter title"
                   className="h-9"
                   disabled={isSubmitting}
@@ -696,7 +928,13 @@ export function CreateBookingForm({
                 <Textarea
                   id="description"
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  onChange={(e) =>
+                    dispatchForm({
+                      type: "SET_FIELD",
+                      field: "description",
+                      value: e.target.value,
+                    })
+                  }
                   placeholder="Add more details..."
                   rows={3}
                   className="resize-none text-sm"
@@ -725,7 +963,9 @@ export function CreateBookingForm({
                   <Calendar
                     mode="single"
                     selected={selectedDate}
-                    onSelect={(date) => date && setSelectedDate(date)}
+                    onSelect={(date) =>
+                      date && dispatchTime({ type: "SET_DATE", date })
+                    }
                     initialFocus
                     disabled={(date) =>
                       date < new Date(new Date().setHours(0, 0, 0, 0))
@@ -862,13 +1102,13 @@ export function CreateBookingForm({
                 </Label>
                 <Select
                   value={selectedSubcontractor || "none"}
-                  onValueChange={(value) => {
-                    if (value === "none") {
-                      setSelectedSubcontractor("");
-                    } else {
-                      setSelectedSubcontractor(value);
-                    }
-                  }}
+                  onValueChange={(value) =>
+                    dispatchForm({
+                      type: "SET_FIELD",
+                      field: "selectedSubcontractor",
+                      value: value === "none" ? "" : value,
+                    })
+                  }
                   disabled={isSubmitting || loadingSubcontractors}
                 >
                   <SelectTrigger className="h-9 w-full text-sm">
@@ -879,7 +1119,6 @@ export function CreateBookingForm({
                               (s) => s.id === selectedSubcontractor,
                             );
                             if (!selected) return "None (Unassigned)";
-
                             const name =
                               `${selected.first_name} ${selected.last_name}`.trim();
                             return name || selected.email || "Unknown";
@@ -891,7 +1130,6 @@ export function CreateBookingForm({
                     <SelectItem value="none">
                       <span className="font-normal">None (Unassigned)</span>
                     </SelectItem>
-
                     {loadingSubcontractors ? (
                       <div className="px-2 py-1.5 text-sm text-gray-500">
                         Loading subcontractors...
@@ -905,7 +1143,6 @@ export function CreateBookingForm({
                         const fullName =
                           `${sub.first_name} ${sub.last_name}`.trim();
                         const displayName = fullName || sub.email || "Unknown";
-
                         return (
                           <SelectItem key={sub.id} value={sub.id}>
                             <div className="flex flex-col py-1">
@@ -931,9 +1168,9 @@ export function CreateBookingForm({
               <Label>
                 Select Assets <span className="text-red-500">*</span>
               </Label>
-              {selectedAssets.length > 0 && (
+              {selectedAssetIds.length > 0 && (
                 <div className="flex flex-wrap gap-1">
-                  {selectedAssets.map((assetKey) => {
+                  {selectedAssetIds.map((assetKey) => {
                     const asset = assets.find((a) => a.assetKey === assetKey);
                     return (
                       <Badge
@@ -945,7 +1182,9 @@ export function CreateBookingForm({
                           variant="ghost"
                           size="icon"
                           className="h-4 w-4"
-                          onClick={() => removeAsset(assetKey)}
+                          onClick={() =>
+                            dispatchAsset({ type: "REMOVE_ASSET", assetKey })
+                          }
                           disabled={isSubmitting}
                         >
                           <X className="h-3 w-3" />
@@ -963,7 +1202,7 @@ export function CreateBookingForm({
                     </p>
                   ) : (
                     assets.map((asset) => {
-                      const isSelected = selectedAssets.includes(
+                      const isSelected = selectedAssetIds.includes(
                         asset.assetKey,
                       );
                       const isBooked = bookedAssets.includes(asset.assetKey);
@@ -977,25 +1216,15 @@ export function CreateBookingForm({
                             checked={isSelected}
                             onCheckedChange={(checked) => {
                               if (checked) {
-                                setSelectedAssets([
-                                  ...selectedAssets,
-                                  asset.assetKey,
-                                ]);
-                                setSelectedAssetIds([
-                                  ...selectedAssetIds,
-                                  asset.assetKey,
-                                ]);
+                                dispatchAsset({
+                                  type: "ADD_ASSET",
+                                  assetKey: asset.assetKey,
+                                });
                               } else {
-                                setSelectedAssets(
-                                  selectedAssets.filter(
-                                    (k) => k !== asset.assetKey,
-                                  ),
-                                );
-                                setSelectedAssetIds(
-                                  selectedAssetIds.filter(
-                                    (id) => id !== asset.assetKey,
-                                  ),
-                                );
+                                dispatchAsset({
+                                  type: "REMOVE_ASSET",
+                                  assetKey: asset.assetKey,
+                                });
                               }
                             }}
                             disabled={isSubmitting || (isBooked && !isSelected)}
@@ -1039,7 +1268,7 @@ export function CreateBookingForm({
                   !title ||
                   !customStartTime ||
                   !customEndTime ||
-                  selectedAssets.length === 0 ||
+                  selectedAssetIds.length === 0 ||
                   isSubmitting
                 }
                 className="h-10 px-4 text-sm"
@@ -1059,23 +1288,24 @@ export function CreateBookingForm({
                         r="10"
                         stroke="currentColor"
                         strokeWidth="4"
-                      ></circle>
+                      />
                       <path
                         className="opacity-75"
                         fill="currentColor"
                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
+                      />
                     </svg>
                     Saving...
                   </span>
                 ) : (
-                  `Save Booking${selectedAssets.length > 1 ? "s" : ""}`
+                  `Save Booking${selectedAssetIds.length > 1 ? "s" : ""}`
                 )}
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
+
       <AlertDialog
         open={successAlert.isOpen}
         onOpenChange={(open) => {
