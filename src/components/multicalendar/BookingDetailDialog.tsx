@@ -133,14 +133,16 @@ export function BookingDetailsDialog({
     setActionLoading(true);
     try {
       // API LOGIC: Always send UPPERCASE to satisfy Backend Enums
-      await api.patch(`/bookings/${bookingId}/status`, null, {
-        params: { new_status: newStatus.toUpperCase() },
+      await api.patch(`/bookings/${bookingId}/status`, {
+        status: newStatus.toUpperCase(),
       });
       setConfirmAction({ ...confirmAction, isOpen: false });
       if (onActionComplete) onActionComplete();
       onClose();
     } catch (err: any) {
-      alert(err.response?.data?.detail || "Failed to update status");
+      const detail = err.response?.data?.detail;
+      const message = typeof detail === "string" ? detail : "Failed to update status";
+      alert(message);
     } finally {
       setActionLoading(false);
     }
