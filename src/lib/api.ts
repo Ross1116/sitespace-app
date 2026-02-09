@@ -32,8 +32,10 @@ api.interceptors.response.use(
     }
 
     if (error.response.status === 401) {
-      // Session truly expired — redirect
-      if (typeof window !== "undefined") {
+      // Don't redirect for public auth endpoints (forgot-password, reset-password, etc.)
+      const requestPath = error.config?.params?.path || "";
+      const isAuthRequest = requestPath.startsWith("/auth/");
+      if (!isAuthRequest && typeof window !== "undefined") {
         window.location.replace("/login");
       }
     }

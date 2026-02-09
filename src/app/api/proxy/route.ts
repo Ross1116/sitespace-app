@@ -25,6 +25,11 @@ async function tryRefresh(
   }
 }
 
+const PUBLIC_AUTH_PATHS = [
+  "/auth/forgot-password",
+  "/auth/reset-password",
+];
+
 async function proxyToBackend(
   request: Request,
   method: string,
@@ -36,9 +41,10 @@ async function proxyToBackend(
     return NextResponse.json({ message: "Missing path" }, { status: 400 });
   }
 
+  const isPublic = PUBLIC_AUTH_PATHS.some((p) => apiPath.startsWith(p));
   const tokens = await getToken();
 
-  if (!tokens.access) {
+  if (!tokens.access && !isPublic) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
@@ -50,9 +56,11 @@ async function proxyToBackend(
 
   // Build fetch options
   const headers: Record<string, string> = {
-    Authorization: `Bearer ${tokens.access}`,
     "Content-Type": "application/json",
   };
+  if (tokens.access) {
+    headers.Authorization = `Bearer ${tokens.access}`;
+  }
 
   const fetchOpts: RequestInit = { method, headers };
 
