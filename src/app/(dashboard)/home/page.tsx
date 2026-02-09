@@ -149,20 +149,36 @@ export default function HomePage() {
         projectData = resp.data?.projects || [];
       }
       setProjects(projectData);
-      localStorage.setItem(projectsListCacheKey, JSON.stringify(projectData));
 
-      const stored = localStorage.getItem(`project_${userId}`);
-      if (!stored && projectData.length > 0) {
-        const defaultProj = projectData[0];
-        localStorage.setItem(`project_${userId}`, JSON.stringify(defaultProj));
-        setSelectedProject(defaultProj);
-      } else if (stored) {
-        setSelectedProject(JSON.parse(stored));
-      }
+      // Only set initial project if none is currently selected
+      setSelectedProject((current: any) => {
+        if (current) return current;
+        const stored = localStorage.getItem(`project_${userId}`);
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored);
+            // Verify stored project still exists in the list
+            if (projectData.some((p) => p.id === parsed.id)) {
+              return parsed;
+            }
+          } catch {
+            // invalid JSON, fall through
+          }
+        }
+        // Default to first project
+        if (projectData.length > 0) {
+          localStorage.setItem(
+            `project_${userId}`,
+            JSON.stringify(projectData[0]),
+          );
+          return projectData[0];
+        }
+        return null;
+      });
     } catch (err) {
       console.error("Error fetching projects:", err);
     }
-  }, [userId, user?.role, projectsListCacheKey]);
+  }, [userId, user?.role]);
 
   const fetchAssets = useCallback(async () => {
     if (!userId || !selectedProject) return;
@@ -279,6 +295,13 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!selectedProject) return;
+
+    setLoadingBookings(true);
+    setFetchError(null);
+    setUpcomingBookings([]);
+    setAssetCount(0);
+    setSubcontractorCount(0);
+
     fetchAssets();
     fetchSubcontractors();
     fetchBookings(false);
@@ -301,7 +324,7 @@ export default function HomePage() {
     if (!proj || !proj.id) return;
     setShowProjectSelector(false);
     localStorage.setItem(`project_${userId}`, JSON.stringify(proj));
-    window.location.reload();
+    setSelectedProject(proj);
   };
 
   // --- Derived Data ---
