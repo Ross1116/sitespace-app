@@ -1,4 +1,3 @@
-// components/bookings/BookingCardDesktop.tsx
 "use client";
 
 import { Clock, HardHat, Briefcase, MapPin, History } from "lucide-react";
@@ -150,14 +149,16 @@ export default function BookingCardDesktop({
               <History size={15} />
             </button>
 
-            <BookingCardDropdown
-              bookingKey={booking.bookingKey}
-              bookingStatus={booking.bookingStatus}
-              subcontractorId={booking.subcontractorId}
-              isOpen={isDropdownOpen}
-              onToggle={handleToggle}
-              onActionComplete={onActionComplete}
-            />
+            <div data-booking-dropdown>
+              <BookingCardDropdown
+                bookingKey={booking.bookingKey}
+                bookingStatus={booking.bookingStatus}
+                subcontractorId={booking.subcontractorId}
+                isOpen={isDropdownOpen}
+                onToggle={handleToggle}
+                onActionComplete={onActionComplete}
+              />
+            </div>
           </div>
         </div>
       </div>

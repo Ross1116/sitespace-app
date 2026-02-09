@@ -1,4 +1,3 @@
-// components/bookings/BookingList.tsx
 "use client";
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
@@ -135,8 +134,11 @@ export default function BookingList({
       if (isInsideModal) return;
 
       if (openDropdownId) {
-        const openCardEl = bookingRefs.current[openDropdownId];
-        if (openCardEl && openCardEl.contains(target)) return;
+        // Only protect the dropdown itself, not the entire card
+        const dropdownEl = bookingRefs.current[openDropdownId]?.querySelector(
+          "[data-booking-dropdown]",
+        );
+        if (dropdownEl && dropdownEl.contains(target)) return;
         setOpenDropdownId(null);
       }
 
