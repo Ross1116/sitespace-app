@@ -268,7 +268,7 @@ export default function AssetsTable() {
   }, [userId]);
 
   const fetchAssets = useCallback(
-    async (isBackground = false, signal?: AbortSignal) => {
+    async (isBackground = false) => {
       if (!user || !project) return;
 
       if (!isBackground) setLoading(true);
@@ -281,7 +281,6 @@ export default function AssetsTable() {
             skip: 0,
             limit: 100,
           },
-          signal,
         });
 
         const assetsData = response.data?.assets || [];
@@ -337,9 +336,7 @@ export default function AssetsTable() {
       }
     }
 
-    const controller = new AbortController();
-    fetchAssets(false, controller.signal);
-    return () => controller.abort();
+    fetchAssets();
   }, [user, project, STORAGE_KEY, fetchAssets]);
 
   useEffect(() => {

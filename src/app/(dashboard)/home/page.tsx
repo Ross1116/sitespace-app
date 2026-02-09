@@ -129,12 +129,12 @@ export default function HomePage() {
   );
 
   // --- API Calls ---
-  const fetchProjects = useCallback(async (signal?: AbortSignal) => {
+  const fetchProjects = useCallback(async () => {
     if (!userId) return;
     try {
       let projectData: any[] = [];
       if (user?.role === "subcontractor") {
-        const resp = await api.get(`/subcontractors/${userId}/projects`, { signal });
+        const resp = await api.get(`/subcontractors/${userId}/projects`);
         projectData = resp.data.map((p: any) => ({
           id: p.project_id,
           name: p.project_name,
@@ -145,7 +145,6 @@ export default function HomePage() {
       } else {
         const resp = await api.get("/projects/", {
           params: { my_projects: true, limit: 100, skip: 0 },
-          signal,
         });
         projectData = resp.data?.projects || [];
       }
@@ -165,13 +164,12 @@ export default function HomePage() {
     }
   }, [userId, user?.role, projectsListCacheKey]);
 
-  const fetchAssets = useCallback(async (signal?: AbortSignal) => {
+  const fetchAssets = useCallback(async () => {
     if (!userId || !selectedProject) return;
     try {
       const projectId = selectedProject.id || selectedProject.project_id;
       const response = await api.get("/assets/", {
         params: { project_id: projectId, limit: 100 },
-        signal,
       });
       const assetData = response.data?.assets || [];
       setAssetCount(response.data?.total || assetData.length);
@@ -182,7 +180,7 @@ export default function HomePage() {
     }
   }, [selectedProject, userId, assetsCacheKey]);
 
-  const fetchSubcontractors = useCallback(async (signal?: AbortSignal) => {
+  const fetchSubcontractors = useCallback(async () => {
     if (!userId || !selectedProject) return;
     if (user?.role === "subcontractor") {
       setSubcontractorCount(0);
@@ -197,7 +195,6 @@ export default function HomePage() {
 
       const response = await api.get(endpoint, {
         params: { project_id: projectId, limit: 100, is_active: true },
-        signal,
       });
 
       let subData: any[] = [];
@@ -230,7 +227,7 @@ export default function HomePage() {
   }, [selectedProject, userId, user?.role, subcontractorsCacheKey]);
 
   const fetchBookings = useCallback(
-    async (isBackground = false, signal?: AbortSignal) => {
+    async (isBackground = false) => {
       if (!userId || !selectedProject) return;
       try {
         if (!isBackground) setLoadingBookings(true);
@@ -239,7 +236,6 @@ export default function HomePage() {
         const projectId = selectedProject.id || selectedProject.project_id;
         const resp = await api.get("/bookings/my/upcoming", {
           params: { limit: 50, project_id: projectId },
-          signal,
         });
 
         let bookingsData: Booking[] = resp.data || [];
@@ -264,36 +260,28 @@ export default function HomePage() {
 
   // --- Effects ---
   useEffect(() => {
-    const controller = new AbortController();
     const fetchProfile = async () => {
       try {
-        const response = await api.get<UserProfile>("/auth/me", { signal: controller.signal });
+        const response = await api.get<UserProfile>("/auth/me");
         setProfile(response.data);
-      } catch (error: any) {
-        if (error.name !== "CanceledError") {
-          console.error("Failed to fetch user profile", error);
-        }
+      } catch (error) {
+        console.error("Failed to fetch user profile", error);
       }
     };
     fetchProfile();
-    return () => controller.abort();
   }, []);
 
   useEffect(() => {
     if (!user || hasInitialized.current) return;
-    const controller = new AbortController();
-    fetchProjects(controller.signal);
+    fetchProjects();
     hasInitialized.current = true;
-    return () => controller.abort();
   }, [user, fetchProjects]);
 
   useEffect(() => {
     if (!selectedProject) return;
-    const controller = new AbortController();
-    fetchAssets(controller.signal);
-    fetchSubcontractors(controller.signal);
-    fetchBookings(false, controller.signal);
-    return () => controller.abort();
+    fetchAssets();
+    fetchSubcontractors();
+    fetchBookings(false);
   }, [selectedProject, fetchAssets, fetchSubcontractors, fetchBookings]);
 
   useEffect(() => {
@@ -313,7 +301,7 @@ export default function HomePage() {
     if (!proj || !proj.id) return;
     setShowProjectSelector(false);
     localStorage.setItem(`project_${userId}`, JSON.stringify(proj));
-    setSelectedProject(proj);
+    window.location.reload();
   };
 
   // --- Derived Data ---

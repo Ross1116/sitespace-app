@@ -20,18 +20,14 @@ export async function POST() {
     return NextResponse.json({ message: data.detail || "Token refresh failed" }, { status: response.status });
   }
 
-  const res = NextResponse.json(
-    { access_token: data.access_token, expires_in: data.expires_in },
-    { status: 200 },
+  const headers = new Headers();
+  headers.append(
+    "Set-Cookie",
+    `accessToken=${data.access_token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${60 * 60 * 24};`
   );
 
-  res.cookies.set("accessToken", data.access_token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    path: "/",
-    maxAge: 60 * 60 * 24,
-  });
-
-  return res;
+  return NextResponse.json(
+    { access_token: data.access_token, expires_in: data.expires_in },
+    { status: 200, headers }
+  );
 }
