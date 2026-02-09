@@ -176,14 +176,14 @@ export function BookingDetailsDialog({
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent className="max-w-lg bg-white p-0 gap-0 border-slate-200 shadow-2xl overflow-hidden">
           {/* HEADER */}
-          <DialogHeader className="px-6 pt-6 pb-4 bg-white border-b border-slate-50">
-            <div className="flex items-start justify-between gap-4">
+          <DialogHeader className="px-6 pt-6 pb-4 bg-white border-b border-slate-50 pr-12">
+            <div className="flex items-start justify-between gap-3">
               <DialogTitle className="text-xl font-semibold text-slate-900 leading-tight">
                 {loading ? "Loading..." : data?.purpose || "Untitled Booking"}
               </DialogTitle>
               {!loading && data && (
                 <Badge
-                  className={`${getStatusColor(status)} capitalize border px-3 py-1 text-xs font-semibold shadow-none rounded-full`}
+                  className={`${getStatusColor(status)} capitalize border px-3 py-1 text-xs font-semibold shadow-none rounded-full shrink-0 mt-0.5`}
                 >
                   {status}
                 </Badge>

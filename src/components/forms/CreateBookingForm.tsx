@@ -22,7 +22,14 @@ import { format, addMinutes } from "date-fns";
 import { CalendarEvent } from "@/components/ui/full-calendar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { X, Calendar as CalendarIcon, Info, CheckCircle } from "lucide-react";
+import {
+  X,
+  Calendar as CalendarIcon,
+  Info,
+  CheckCircle,
+  Ban,
+  AlertCircle,
+} from "lucide-react";
 import { useAuth } from "@/app/context/AuthContext";
 import api from "@/lib/api";
 import { Calendar } from "@/components/ui/calendar";
@@ -124,6 +131,11 @@ interface AsyncState {
   project: any | null;
   subcontractors: Subcontractor[];
   successAlert: { isOpen: boolean; isConfirmed: boolean; count: number };
+  partialSuccessAlert: {
+    isOpen: boolean;
+    succeededCount: number;
+    failures: { assetId: string; reason: string }[];
+  };
 }
 
 // ===== REDUCER ACTIONS =====
@@ -155,6 +167,12 @@ type AsyncAction =
   | { type: "SET_LOADING_SUBS"; loading: boolean }
   | { type: "SHOW_SUCCESS"; isConfirmed: boolean; count: number }
   | { type: "DISMISS_SUCCESS" }
+  | {
+      type: "SHOW_PARTIAL_SUCCESS";
+      succeeded: number;
+      failed: { assetId: string; reason: string }[];
+    }
+  | { type: "DISMISS_PARTIAL_SUCCESS" }
   | { type: "RESET" };
 
 // ===== REDUCERS =====
@@ -355,6 +373,11 @@ const initialAsyncState: AsyncState = {
   project: null,
   subcontractors: [],
   successAlert: { isOpen: false, isConfirmed: false, count: 0 },
+  partialSuccessAlert: {
+    isOpen: false,
+    succeededCount: 0,
+    failures: [],
+  },
 };
 
 function asyncReducer(state: AsyncState, action: AsyncAction): AsyncState {
@@ -386,6 +409,24 @@ function asyncReducer(state: AsyncState, action: AsyncAction): AsyncState {
       return {
         ...state,
         successAlert: { isOpen: false, isConfirmed: false, count: 0 },
+      };
+    case "SHOW_PARTIAL_SUCCESS":
+      return {
+        ...state,
+        partialSuccessAlert: {
+          isOpen: true,
+          succeededCount: action.succeeded,
+          failures: action.failed,
+        },
+      };
+    case "DISMISS_PARTIAL_SUCCESS":
+      return {
+        ...state,
+        partialSuccessAlert: {
+          isOpen: false,
+          succeededCount: 0,
+          failures: [],
+        },
       };
     case "RESET":
       return { ...state, error: null };
@@ -440,6 +481,7 @@ export function CreateBookingForm({
     project,
     subcontractors,
     successAlert,
+    partialSuccessAlert,
   } = asyncState;
 
   const formatHour = (hour: number): string => {
@@ -458,6 +500,12 @@ export function CreateBookingForm({
     dispatchAsset({ type: "RESET" });
     dispatchAsync({ type: "RESET" });
   }, [isSubcontractor, userId]);
+
+  const handlePartialSuccessDismiss = useCallback(() => {
+    dispatchAsync({ type: "DISMISS_PARTIAL_SUCCESS" });
+    resetForm();
+    onClose();
+  }, [resetForm, onClose]);
 
   const handleSuccessDismiss = useCallback(() => {
     dispatchAsync({ type: "DISMISS_SUCCESS" });
@@ -683,6 +731,7 @@ export function CreateBookingForm({
     dispatchTime({ type: "SET_DURATION", duration: newDuration });
 
   // ===== SUBMIT =====
+  // ===== SUBMIT =====
   const handleSubmit = async () => {
     dispatchAsync({ type: "SET_ERROR", error: null });
 
@@ -712,120 +761,165 @@ export function CreateBookingForm({
       const startTimeFormatted = format(customStartTime, "HH:mm:ss");
       const endTimeFormatted = format(customEndTime, "HH:mm:ss");
 
-      const bookingPromises = selectedAssetIds.map(async (assetId) => {
-        const bookingData: BookingCreateRequest = {
-          project_id: project.id,
-          asset_id: assetId,
-          booking_date: bookingDate,
-          start_time: startTimeFormatted,
-          end_time: endTimeFormatted,
-          purpose: title,
-          notes: description,
-          subcontractor_id: selectedSubcontractor || undefined,
-        };
-        const response = await api.post<BookingDetail>(
-          "/bookings/",
-          bookingData,
-        );
-        return response.data;
+      // Use Promise.allSettled instead of Promise.all
+      const results = await Promise.allSettled(
+        selectedAssetIds.map(async (assetId) => {
+          const bookingData: BookingCreateRequest = {
+            project_id: project.id,
+            asset_id: assetId,
+            booking_date: bookingDate,
+            start_time: startTimeFormatted,
+            end_time: endTimeFormatted,
+            purpose: title,
+            notes: description,
+            subcontractor_id: selectedSubcontractor || undefined,
+          };
+          const response = await api.post<BookingDetail>(
+            "/bookings/",
+            bookingData,
+          );
+          return { ...response.data, _requestedAssetId: assetId };
+        }),
+      );
+
+      // Separate successes and failures
+      const succeeded: BookingDetail[] = [];
+      const failed: { assetId: string; reason: string }[] = [];
+
+      results.forEach((result, index) => {
+        if (result.status === "fulfilled") {
+          succeeded.push(result.value);
+        } else {
+          const assetId = selectedAssetIds[index];
+          const asset = assets.find((a) => a.assetKey === assetId);
+          const assetName = asset?.assetTitle || assetId;
+          const reason =
+            result.reason?.response?.data?.detail ||
+            result.reason?.message ||
+            "Unknown error";
+          failed.push({ assetId: assetName, reason });
+        }
       });
 
-      const createdBookings = await Promise.all(bookingPromises);
-
-      if (isManager && Array.isArray(createdBookings)) {
-        for (const b of createdBookings) {
-          if (!b.status || b.status === "pending") {
-            b.status = "confirmed";
+      // Process successful bookings
+      if (succeeded.length > 0) {
+        if (isManager) {
+          for (const b of succeeded) {
+            if (!b.status || b.status === "pending") {
+              b.status = "confirmed";
+            }
           }
         }
+
+        // Cache new bookings
+        try {
+          const storageKey = `bookings_v5_${userId}`;
+          const existingRaw = (() => {
+            try {
+              const s = localStorage.getItem(storageKey);
+              if (!s) return [];
+              const parsed = JSON.parse(s);
+              if (Array.isArray(parsed)) return parsed;
+              if (parsed?.bookings && Array.isArray(parsed.bookings))
+                return parsed.bookings;
+              return [];
+            } catch {
+              return [];
+            }
+          })();
+          localStorage.setItem(
+            storageKey,
+            JSON.stringify({
+              bookings: [...existingRaw, ...succeeded],
+              timestamp: Date.now(),
+            }),
+          );
+        } catch (e) {
+          console.error("Failed to update local booking cache:", e);
+        }
+
+        // Build calendar events for successful bookings
+        const events = succeeded.map((booking) => {
+          const returnedAssetId =
+            booking.asset?.id ||
+            booking.asset_id ||
+            booking.assetId ||
+            booking.assetKey;
+          const assetTitle =
+            booking.asset?.name ||
+            assets.find(
+              (a) =>
+                a.assetKey === booking.asset_id || a.id === booking.asset_id,
+            )?.assetTitle ||
+            booking.asset_name ||
+            booking.assetTitle ||
+            booking.assetName ||
+            booking.asset_id;
+
+          const startDateTime = new Date(
+            `${booking.booking_date}T${booking.start_time}`,
+          );
+          const endDateTime = new Date(
+            `${booking.booking_date}T${booking.end_time}`,
+          );
+
+          return {
+            id: booking.id,
+            title: `${title} - ${assetTitle}`,
+            description: description || title,
+            start: startDateTime,
+            end: endDateTime,
+            color: booking.status === "confirmed" ? "green" : "yellow",
+            assetId: String(returnedAssetId),
+            assetName: assetTitle,
+            bookedAssets: [assetTitle],
+            bookingKey: booking.id,
+            bookingTitle: booking.purpose || title,
+            bookingDescription: booking.notes || description || "",
+            bookingNotes: booking.notes || "",
+            bookingTimeDt: booking.booking_date,
+            bookingStartTime: booking.start_time,
+            bookingEndTime: booking.end_time,
+            bookingStatus: booking.status,
+            status: booking.status,
+            managerId: booking.manager_id,
+            subcontractorId: booking.subcontractor_id,
+            projectId: booking.project_id,
+            projectName: booking.project?.name || project?.name,
+            _originalData: booking,
+          } as Partial<CalendarEvent>;
+        });
+
+        // Always call onSave for successful bookings so they appear immediately
+        onSave(events);
       }
 
-      // Cache new bookings
-      try {
-        const storageKey = `bookings_v5_${userId}`;
-        const existingRaw = (() => {
-          try {
-            const s = localStorage.getItem(storageKey);
-            if (!s) return [];
-            const parsed = JSON.parse(s);
-            if (Array.isArray(parsed)) return parsed;
-            if (parsed?.bookings && Array.isArray(parsed.bookings))
-              return parsed.bookings;
-            return [];
-          } catch {
-            return [];
-          }
-        })();
-        localStorage.setItem(
-          storageKey,
-          JSON.stringify({
-            bookings: [...existingRaw, ...createdBookings],
-            timestamp: Date.now(),
-          }),
-        );
-      } catch (e) {
-        console.error("Failed to update local booking cache:", e);
+      // Handle the UI response based on results
+      if (failed.length === 0) {
+        // All succeeded
+        const firstBooking = succeeded[0];
+        dispatchAsync({
+          type: "SHOW_SUCCESS",
+          isConfirmed: firstBooking.status === "confirmed",
+          count: succeeded.length,
+        });
+      } else if (succeeded.length === 0) {
+        // All failed
+        const failureDetails = failed
+          .map((f) => `• ${f.assetId}: ${f.reason}`)
+          .join("\n");
+        dispatchAsync({
+          type: "SET_ERROR",
+          error: `All bookings failed:\n${failureDetails}`,
+        });
+      } else {
+        // Partial success — show via a new state
+        dispatchAsync({
+          type: "SHOW_PARTIAL_SUCCESS",
+          succeeded: succeeded.length,
+          failed,
+        });
       }
-
-      // Build calendar events
-      const events = createdBookings.map((booking) => {
-        const returnedAssetId =
-          booking.asset?.id ||
-          booking.asset_id ||
-          booking.assetId ||
-          booking.assetKey;
-        const assetTitle =
-          booking.asset?.name ||
-          assets.find(
-            (a) => a.assetKey === booking.asset_id || a.id === booking.asset_id,
-          )?.assetTitle ||
-          booking.asset_name ||
-          booking.assetTitle ||
-          booking.assetName ||
-          booking.asset_id;
-
-        const startDateTime = new Date(
-          `${booking.booking_date}T${booking.start_time}`,
-        );
-        const endDateTime = new Date(
-          `${booking.booking_date}T${booking.end_time}`,
-        );
-
-        return {
-          id: booking.id,
-          title: `${title} - ${assetTitle}`,
-          description: description || title,
-          start: startDateTime,
-          end: endDateTime,
-          color: booking.status === "confirmed" ? "green" : "yellow",
-          assetId: String(returnedAssetId),
-          assetName: assetTitle,
-          bookedAssets: [assetTitle],
-          bookingKey: booking.id,
-          bookingTitle: booking.purpose || title,
-          bookingDescription: booking.notes || description || "",
-          bookingNotes: booking.notes || "",
-          bookingTimeDt: booking.booking_date,
-          bookingStartTime: booking.start_time,
-          bookingEndTime: booking.end_time,
-          bookingStatus: booking.status,
-          status: booking.status,
-          managerId: booking.manager_id,
-          subcontractorId: booking.subcontractor_id,
-          projectId: booking.project_id,
-          projectName: booking.project?.name || project?.name,
-          _originalData: booking,
-        } as Partial<CalendarEvent>;
-      });
-
-      onSave(events);
-
-      const firstBooking = createdBookings[0];
-      dispatchAsync({
-        type: "SHOW_SUCCESS",
-        isConfirmed: firstBooking.status === "confirmed",
-        count: createdBookings.length,
-      });
     } catch (err: any) {
       console.error("Error creating bookings:", err);
       dispatchAsync({
@@ -839,7 +933,6 @@ export function CreateBookingForm({
       dispatchAsync({ type: "SET_SUBMITTING", value: false });
     }
   };
-
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
@@ -1333,6 +1426,67 @@ export function CreateBookingForm({
           <AlertDialogFooter className="mt-2">
             <AlertDialogAction
               onClick={handleSuccessDismiss}
+              className="bg-[#0B1120] hover:bg-[#1a253a] text-white"
+            >
+              Done
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      {/* Partial Success Dialog */}
+      <AlertDialog
+        open={partialSuccessAlert.isOpen}
+        onOpenChange={(open) => {
+          if (!open) handlePartialSuccessDismiss();
+        }}
+      >
+        <AlertDialogContent className="bg-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-amber-500" />
+              Partial Booking Success
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-slate-600">
+                <p>
+                  <span className="font-semibold text-emerald-600">
+                    {partialSuccessAlert.succeededCount}
+                  </span>{" "}
+                  booking{partialSuccessAlert.succeededCount !== 1 ? "s" : ""}{" "}
+                  created successfully.
+                </p>
+
+                <div className="bg-red-50 border border-red-200 rounded-md p-3">
+                  <p className="font-semibold text-red-700 text-sm mb-2">
+                    {partialSuccessAlert.failures.length} booking
+                    {partialSuccessAlert.failures.length !== 1 ? "s" : ""}{" "}
+                    failed:
+                  </p>
+                  <ul className="space-y-1">
+                    {partialSuccessAlert.failures.map((f, i) => (
+                      <li
+                        key={i}
+                        className="text-sm text-red-600 flex items-start gap-1.5"
+                      >
+                        <Ban className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                        <span>
+                          <strong>{f.assetId}</strong>: {f.reason}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <p className="text-xs text-slate-500">
+                  Successfully created bookings have been added to the calendar.
+                  You may retry failed bookings separately.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-2">
+            <AlertDialogAction
+              onClick={handlePartialSuccessDismiss}
               className="bg-[#0B1120] hover:bg-[#1a253a] text-white"
             >
               Done
