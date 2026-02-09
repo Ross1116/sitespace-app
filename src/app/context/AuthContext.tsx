@@ -158,14 +158,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // ===== Logout =====
   const logout = useCallback(async () => {
-    // Call YOUR API route to clear HTTP-only cookies
-    await fetch("/api/auth/logout", {
-      method: "POST",
-      credentials: "include",
-    }).catch(() => {});
-
-    // Also tell backend to invalidate the token
-    await fetch("/api/auth/backend-logout", {
+    // Call API route to clear HTTP-only cookies (also invalidates backend token)
+    await fetch("/api/auth/signout", {
       method: "POST",
       credentials: "include",
     }).catch(() => {});

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   Home,
   Calendar,
@@ -31,14 +31,12 @@ const SideNav = () => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user, isAuthenticated, logout } = useAuth();
-  const router = useRouter();
   const pathname = usePathname();
 
-  const handleLogout = (e: React.MouseEvent) => {
+  const handleLogout = async (e: React.MouseEvent) => {
     e.preventDefault();
-    logout();
     setIsMobileMenuOpen(false);
-    router.push("/login");
+    await logout();
   };
 
   const topMenuItems: MenuItem[] = [
