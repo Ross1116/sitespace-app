@@ -171,7 +171,7 @@ export default function BookingsPage() {
   };
 
   const fetchBookings = useCallback(
-    async (isBackground = false) => {
+    async (isBackground = false, signal?: AbortSignal) => {
       if (!user) return;
 
       const projectString = localStorage.getItem(projectStorageKey);
@@ -186,6 +186,7 @@ export default function BookingsPage() {
         const project = JSON.parse(projectString);
         const response = await api.get<BookingListResponse>("/bookings/", {
           params: { project_id: project.id, limit: 1000, skip: 0 },
+          signal,
         });
 
         const rawBookings = response.data?.bookings || [];
@@ -231,7 +232,9 @@ export default function BookingsPage() {
       }
     }
 
-    fetchBookings();
+    const controller = new AbortController();
+    fetchBookings(false, controller.signal);
+    return () => controller.abort();
   }, [user, storageKey, fetchBookings]);
 
   // --- AUTO-SWITCH TAB when highlighting ---

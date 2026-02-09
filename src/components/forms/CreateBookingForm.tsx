@@ -202,6 +202,7 @@ export function CreateBookingForm({
 
   // Load subcontractors
   useEffect(() => {
+    const controller = new AbortController();
     const loadSubcontractors = async () => {
       if (!project?.id || !isManager) {
         return;
@@ -216,6 +217,7 @@ export function CreateBookingForm({
             is_active: true,
             project_id: project.id,
           },
+          signal: controller.signal,
         });
 
         let subsData: any[] = [];
@@ -311,6 +313,7 @@ export function CreateBookingForm({
     if (isOpen && project) {
       loadSubcontractors();
     }
+    return () => controller.abort();
   }, [isOpen, project, isManager, userId]);
 
   // Auto-select current user if they're a subcontractor
