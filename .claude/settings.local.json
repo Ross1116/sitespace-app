@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(del \"d:\\\\Coding_shit\\\\Sitespace\\\\Frontend\\\\src\\\\lib\\\\data.ts\")"
+    ]
+  }
+}

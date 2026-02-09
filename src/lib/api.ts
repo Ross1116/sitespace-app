@@ -45,15 +45,3 @@ api.interceptors.response.use(
 );
 
 export default api;
-
-export const checkServerHealth = async (): Promise<boolean> => {
-  try {
-    // Health check goes direct — no auth needed
-    await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/health`, {
-      timeout: 5000,
-    });
-    return true;
-  } catch {
-    return false;
-  }
-};
