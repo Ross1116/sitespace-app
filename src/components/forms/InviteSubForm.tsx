@@ -63,30 +63,34 @@ interface Contractor {
 }
 
 // ===== HELPER FUNCTIONS =====
+const secureRandom = (max: number): number => {
+  const array = new Uint32Array(1);
+  crypto.getRandomValues(array);
+  return array[0] % max;
+};
+
 const generateTemporaryPassword = (): string => {
   const length = 12;
   const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   const lower = "abcdefghijklmnopqrstuvwxyz";
   const numbers = "0123456789";
-  const special = "!@#$%^&*"; 
+  const special = "!@#$%^&*";
   const allChars = upper + lower + numbers + special;
 
   const requiredChars = [
-    upper.charAt(Math.floor(Math.random() * upper.length)),
-    lower.charAt(Math.floor(Math.random() * lower.length)),
-    numbers.charAt(Math.floor(Math.random() * numbers.length)),
-    special.charAt(Math.floor(Math.random() * special.length)),
+    upper.charAt(secureRandom(upper.length)),
+    lower.charAt(secureRandom(lower.length)),
+    numbers.charAt(secureRandom(numbers.length)),
+    special.charAt(secureRandom(special.length)),
   ];
 
   const remainingLength = length - requiredChars.length;
   for (let i = 0; i < remainingLength; i++) {
-    requiredChars.push(
-      allChars.charAt(Math.floor(Math.random() * allChars.length))
-    );
+    requiredChars.push(allChars.charAt(secureRandom(allChars.length)));
   }
 
   for (let i = requiredChars.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = secureRandom(i + 1);
     [requiredChars[i], requiredChars[j]] = [requiredChars[j], requiredChars[i]];
   }
 

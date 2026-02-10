@@ -43,6 +43,7 @@ export default function BookingCardDropdown({
   const [isDenyModalOpen, setIsDenyModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isRescheduleFormOpen, setIsRescheduleFormOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const { user } = useAuth();
   const hasManagerPrivileges =
@@ -66,7 +67,7 @@ export default function BookingCardDropdown({
       });
       onActionComplete?.();
     } catch (error: any) {
-      alert(error.response?.data?.detail || "Failed to update booking");
+      setErrorMessage(error.response?.data?.detail || "Failed to update booking");
     } finally {
       setIsLoading(false);
       if (isOpen) onToggle();
@@ -82,7 +83,7 @@ export default function BookingCardDropdown({
       });
       onActionComplete?.();
     } catch (error: any) {
-      alert(error.response?.data?.detail || "Failed to delete booking");
+      setErrorMessage(error.response?.data?.detail || "Failed to delete booking");
     } finally {
       setIsLoading(false);
       if (isOpen) onToggle();
@@ -281,6 +282,26 @@ export default function BookingCardDropdown({
             </Button>
             <Button variant="destructive" onClick={deleteBooking}>
               Yes, Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Error Dialog */}
+      <Dialog open={!!errorMessage} onOpenChange={() => setErrorMessage(null)}>
+        <DialogContent className="sm:max-w-[425px] bg-white">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="h-5 w-5" />
+              Error
+            </DialogTitle>
+            <DialogDescription className="text-slate-600">
+              {errorMessage}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setErrorMessage(null)}>
+              OK
             </Button>
           </DialogFooter>
         </DialogContent>

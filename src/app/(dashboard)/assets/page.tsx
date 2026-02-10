@@ -29,6 +29,14 @@ import UpdateAssetModal from "@/components/forms/UpdateAssetForm";
 import { format, parseISO } from "date-fns";
 import { Input } from "@/components/ui/input";
 import { useSmartRefresh } from "@/lib/useSmartRefresh";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface AssetFromBackend {
   id: string;
@@ -209,6 +217,8 @@ export default function AssetsTable() {
     useState<Asset | null>(null);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [deleteConfirmKey, setDeleteConfirmKey] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // Sort state
   const [sortField, setSortField] = useState<SortField | null>(null);
@@ -436,15 +446,20 @@ export default function AssetsTable() {
     await refresh();
   };
 
-  const handleDeleteAsset = async (assetKey: string) => {
-    if (!confirm("Are you sure you want to delete this asset?")) return;
+  const handleDeleteAsset = (assetKey: string) => {
+    setDeleteConfirmKey(assetKey);
+  };
 
+  const confirmDeleteAsset = async () => {
+    if (!deleteConfirmKey) return;
     try {
-      await api.delete(`/assets/${assetKey}`);
-      if (selectedAsset?.assetKey === assetKey) closeSidebar();
+      await api.delete(`/assets/${deleteConfirmKey}`);
+      if (selectedAsset?.assetKey === deleteConfirmKey) closeSidebar();
       await refresh();
     } catch (error: any) {
-      alert(error.response?.data?.detail || "Failed to delete asset");
+      setActionError(error.response?.data?.detail || "Failed to delete asset");
+    } finally {
+      setDeleteConfirmKey(null);
     }
   };
 
@@ -933,6 +948,49 @@ export default function AssetsTable() {
             assetData={selectedAssetForUpdate}
           />
         )}
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={!!deleteConfirmKey} onOpenChange={() => setDeleteConfirmKey(null)}>
+          <DialogContent className="sm:max-w-[425px] bg-white">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-red-600">
+                <AlertTriangle className="h-5 w-5" />
+                Delete Asset
+              </DialogTitle>
+              <DialogDescription className="text-slate-600">
+                Are you sure you want to delete this asset? This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="flex gap-2 sm:justify-end mt-4">
+              <Button variant="outline" onClick={() => setDeleteConfirmKey(null)}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={confirmDeleteAsset}>
+                Yes, Delete
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Error Dialog */}
+        <Dialog open={!!actionError} onOpenChange={() => setActionError(null)}>
+          <DialogContent className="sm:max-w-[425px] bg-white">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-red-600">
+                <AlertTriangle className="h-5 w-5" />
+                Error
+              </DialogTitle>
+              <DialogDescription className="text-slate-600">
+                {actionError}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setActionError(null)}>
+                OK
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

@@ -27,10 +27,12 @@ Updated:
 - [x] **Open Graph + SEO metadata**
 - [x] **Security headers**
 - [x] **Loading states**
+- [x] **PostHog reverse proxy** — Rewrites in next.config.ts route `/ingest/*` through own domain. Bypasses ad blockers.
+- [x] **Image type declarations** — `src/types/images.d.ts` for .webp/.png/.jpg/.svg imports.
 
 ## High Priority (Code)
 
-- [ ] **6. Replace `alert()` / `confirm()`**
+- [x] **6. Replace `alert()` / `confirm()`** — Replaced with Dialog components in BookingCardDropdown, assets page, BookingDetailDialog, calendar-views.
 - [ ] **7. Input validation on API routes**
 - [ ] **8. Refresh token rotation**
 - [ ] **9. Hardcoded colors**
@@ -40,7 +42,7 @@ Updated:
 - [ ] **10. CSRF protection**
 - [ ] **11. Session timeout**
 - [ ] **12. Accessibility gaps**
-- [ ] **13. `crypto.getRandomValues()` for password generation**
+- [x] **13. `crypto.getRandomValues()` for password generation** — Fixed in InviteSubForm.tsx.
 - [ ] **14. Password strength on register**
 
 ## Non-Code

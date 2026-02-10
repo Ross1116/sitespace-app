@@ -239,7 +239,7 @@ export const CalendarDayView = ({
     } catch (error) {
       console.error("Failed to reschedule", error);
       setEvents(originalEvents);
-      alert("Failed to reschedule.");
+      setValidationError({ title: "Reschedule Failed", message: "Failed to reschedule the booking. Please try again." });
     } finally {
       setIsRescheduling(false);
       setPendingReschedule(null);

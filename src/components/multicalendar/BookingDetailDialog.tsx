@@ -141,8 +141,7 @@ export function BookingDetailsDialog({
       onClose();
     } catch (err: any) {
       const detail = err.response?.data?.detail;
-      const message = typeof detail === "string" ? detail : "Failed to update status";
-      alert(message);
+      setError(typeof detail === "string" ? detail : "Failed to update status");
     } finally {
       setActionLoading(false);
     }
@@ -158,7 +157,7 @@ export function BookingDetailsDialog({
       if (onActionComplete) onActionComplete();
       onClose();
     } catch (err: any) {
-      alert(err.response?.data?.detail || "Failed to delete booking");
+      setError(err.response?.data?.detail || "Failed to delete booking");
     } finally {
       setActionLoading(false);
     }
