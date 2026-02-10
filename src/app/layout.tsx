@@ -16,8 +16,24 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Sitespace",
-  description: "Your all in one site scheduling app",
+  title: {
+    default: "Sitespace",
+    template: "%s | Sitespace",
+  },
+  description: "Your all-in-one site scheduling app. Manage bookings, assets, and subcontractors in one place.",
+  metadataBase: new URL("https://sitespace.com.au"),
+  openGraph: {
+    type: "website",
+    siteName: "Sitespace",
+    title: "Sitespace",
+    description: "Your all-in-one site scheduling app. Manage bookings, assets, and subcontractors in one place.",
+    url: "https://sitespace.com.au",
+  },
+  twitter: {
+    card: "summary",
+    title: "Sitespace",
+    description: "Your all-in-one site scheduling app. Manage bookings, assets, and subcontractors in one place.",
+  },
 };
 
 export default function RootLayout({
