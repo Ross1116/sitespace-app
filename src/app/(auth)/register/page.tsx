@@ -45,6 +45,7 @@ export default function Register() {
         email: formData.email,
         phone: formData.phone,
         password: formData.password,
+        confirmPassword: formData.confirmPassword,
       });
     } catch (err: any) {
       setError(err.message || "Registration failed");

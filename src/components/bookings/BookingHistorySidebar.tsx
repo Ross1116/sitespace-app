@@ -23,7 +23,7 @@ import {
   UserPlus,
 } from "lucide-react";
 import api from "@/lib/api";
-import { format, parseISO, formatDistanceToNow } from "date-fns";
+import { format, parseISO, formatDistanceToNow, isValid } from "date-fns";
 
 interface AuditEntry {
   id: string;
@@ -221,22 +221,32 @@ const getHeaderRoleDisplay = (role: string) => {
   );
 };
 
-const safeFormatDate = (dateString?: string | null) => {
-  if (!dateString) return "N/A";
+const safeParse = (dateString: string): Date | null => {
   try {
-    return format(parseISO(dateString), "PPP 'at' p");
+    let normalized = dateString;
+    // If no timezone indicator, assume UTC
+    if (!normalized.endsWith("Z") && !normalized.match(/[+-]\d{2}:?\d{2}$/)) {
+      normalized += "Z";
+    }
+    const date = parseISO(normalized);
+    return isValid(date) ? date : null;
   } catch {
-    return dateString;
+    return null;
   }
 };
 
-const safeRelativeTime = (dateString?: string | null) => {
+const safeFormatDate = (dateString?: string | null): string => {
+  if (!dateString) return "N/A";
+  const date = safeParse(dateString);
+  if (!date) return dateString;
+  return format(date, "PPP 'at' p");
+};
+
+const safeRelativeTime = (dateString?: string | null): string => {
   if (!dateString) return "";
-  try {
-    return formatDistanceToNow(parseISO(dateString), { addSuffix: true });
-  } catch {
-    return "";
-  }
+  const date = safeParse(dateString);
+  if (!date) return "";
+  return formatDistanceToNow(date, { addSuffix: true });
 };
 
 const formatChangeValue = (key: string, value: any): string => {
@@ -260,10 +270,16 @@ const formatChangeValue = (key: string, value: any): string => {
   ];
   if (dateFields.includes(key) && typeof value === "string") {
     try {
-      if (key.includes("time") && !value.includes("T")) {
+      if (
+        key.includes("time") &&
+        !value.includes("T") &&
+        !value.includes("-")
+      ) {
         return value.split(":").slice(0, 2).join(":");
       }
-      return format(parseISO(value), "PPP");
+      const date = safeParse(value);
+      if (!date) return String(value);
+      return format(date, "PPP");
     } catch {
       return String(value);
     }

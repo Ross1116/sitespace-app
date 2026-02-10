@@ -39,6 +39,7 @@ type RegisterData = {
   email: string;
   phone: string;
   password: string;
+  confirmPassword: string;
 };
 
 // ===== CONTEXT =====
@@ -140,6 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             email: data.email,
             phone: data.phone,
             password: data.password,
+            confirm_password: data.confirmPassword,
           }),
         },
       );

@@ -805,8 +805,8 @@ export function CreateBookingForm({
       if (succeeded.length > 0) {
         if (isManager) {
           for (const b of succeeded) {
-            if (!b.status || b.status === "pending") {
-              b.status = "confirmed";
+            if (!b.status || b.status.toLowerCase() === "pending") {
+              b.status = "CONFIRMED";
             }
           }
         }
@@ -869,7 +869,7 @@ export function CreateBookingForm({
             description: description || title,
             start: startDateTime,
             end: endDateTime,
-            color: booking.status === "confirmed" ? "green" : "yellow",
+            color: booking.status?.toLowerCase() === "confirmed" ? "green" : "yellow",
             assetId: String(returnedAssetId),
             assetName: assetTitle,
             bookedAssets: [assetTitle],
@@ -880,8 +880,8 @@ export function CreateBookingForm({
             bookingTimeDt: booking.booking_date,
             bookingStartTime: booking.start_time,
             bookingEndTime: booking.end_time,
-            bookingStatus: booking.status,
-            status: booking.status,
+            bookingStatus: booking.status?.toLowerCase() || "pending",
+            status: booking.status?.toLowerCase() || "pending",
             managerId: booking.manager_id,
             subcontractorId: booking.subcontractor_id,
             projectId: booking.project_id,
@@ -900,7 +900,7 @@ export function CreateBookingForm({
         const firstBooking = succeeded[0];
         dispatchAsync({
           type: "SHOW_SUCCESS",
-          isConfirmed: firstBooking.status === "confirmed",
+          isConfirmed: firstBooking.status?.toLowerCase() === "confirmed",
           count: succeeded.length,
         });
       } else if (succeeded.length === 0) {

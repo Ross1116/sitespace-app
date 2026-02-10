@@ -138,6 +138,8 @@ export const Calendar = ({
         if (a.id !== b.id) return false;
         if (a.start?.getTime() !== b.start?.getTime()) return false;
         if (a.end?.getTime() !== b.end?.getTime()) return false;
+        if (a.color !== b.color) return false;
+        if (a.title !== b.title) return false;
       }
       return true;
     })();

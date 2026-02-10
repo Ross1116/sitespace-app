@@ -349,7 +349,7 @@ export default function HomePage() {
   }).length;
 
   const pendingBookingsCount = upcomingBookings.filter(
-    (b) => b.status === "pending",
+    (b) => b.status?.toLowerCase() === "pending",
   ).length;
 
   return (
@@ -678,7 +678,7 @@ export default function HomePage() {
                                           : "bg-slate-100 text-slate-700"
                                   }`}
                                 >
-                                  {booking.status}
+                                  {status}
                                 </span>
                               </div>
 

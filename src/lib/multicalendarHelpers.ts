@@ -139,8 +139,9 @@ export function convertBookingToCalendarEvent(booking: any): CalendarEvent {
     new Date(new Date(start).getTime() + 60 * 60 * 1000); // fallback 1 hour
 
   // --- STATUS & COLOR ---
-  const status =
-    booking.status || raw.status || raw.booking_status || "pending";
+  const status = (
+    booking.status || raw.status || raw.booking_status || "pending"
+  ).toLowerCase();
   const statusColorMap: Record<string, any> = {
     pending: "yellow",
     confirmed: "green",
