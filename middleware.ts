@@ -15,7 +15,7 @@ export function middleware(request: NextRequest) {
   const token = request.cookies.get("accessToken")?.value;
   const hasValidToken = !!token && !isTokenExpired(token);
 
-  const isPublicPath = path === "/";
+  const isPublicPath = path === "/" || path === "/sentry-example-page";
 
   // 1. ALL Auth pages (Used to ensure these are NOT protected)
   const isAuthPage =
@@ -28,9 +28,7 @@ export function middleware(request: NextRequest) {
   // 2. STRICT Auth pages (Used to redirect logged-in users to Home)
   // We EXCLUDE set-password/reset-password here so users can access them even if a session exists.
   const isStrictAuthPage =
-    path === "/login" ||
-    path === "/register" ||
-    path === "/forgot-password";
+    path === "/login" || path === "/register" || path === "/forgot-password";
 
   // 3. Protected Routes (Dashboard, etc.)
   const isProtectedRoute =
