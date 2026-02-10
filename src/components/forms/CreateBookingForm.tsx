@@ -49,6 +49,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { ApiAsset, ApiBooking, ApiProject, getApiErrorMessage } from "@/types";
 
 // ===== TYPE DEFINITIONS =====
 type CreateBookingFormProps = {
@@ -74,22 +75,7 @@ interface BookingCreateRequest {
   purpose?: string;
 }
 
-interface BookingDetail {
-  id: string;
-  project_id?: string;
-  manager_id: string;
-  subcontractor_id?: string;
-  asset_id: string;
-  booking_date: string;
-  start_time: string;
-  end_time: string;
-  status: string;
-  notes?: string;
-  purpose?: string;
-  created_at: string;
-  updated_at: string;
-  [key: string]: any;
-}
+type BookingDetail = ApiBooking;
 
 interface Subcontractor {
   id: string;
@@ -99,6 +85,19 @@ interface Subcontractor {
   company_name?: string;
   trade_specialty?: string;
 }
+
+type AssetOption = ApiAsset & {
+  assetKey: string;
+  assetTitle: string;
+};
+
+type SubcontractorSource = Record<string, unknown>;
+
+const getString = (value: unknown): string =>
+  typeof value === "string" ? value : "";
+
+const getIdString = (value: unknown): string =>
+  typeof value === "string" || typeof value === "number" ? String(value) : "";
 
 // ===== CONSOLIDATED STATE =====
 interface TimeState {
@@ -119,7 +118,7 @@ interface FormState {
 }
 
 interface AssetState {
-  assets: any[];
+  assets: AssetOption[];
   selectedAssetIds: string[];
   assetError: boolean;
 }
@@ -128,7 +127,7 @@ interface AsyncState {
   isSubmitting: boolean;
   error: string | null;
   loadingSubcontractors: boolean;
-  project: any | null;
+  project: ApiProject | null;
   subcontractors: Subcontractor[];
   successAlert: { isOpen: boolean; isConfirmed: boolean; count: number };
   partialSuccessAlert: {
@@ -152,7 +151,7 @@ type FormAction =
   | { type: "RESET"; defaultSubcontractor?: string };
 
 type AssetAction =
-  | { type: "SET_ASSETS"; assets: any[] }
+  | { type: "SET_ASSETS"; assets: AssetOption[] }
   | { type: "SET_ASSET_ERROR"; error: boolean }
   | { type: "ADD_ASSET"; assetKey: string }
   | { type: "REMOVE_ASSET"; assetKey: string }
@@ -162,7 +161,7 @@ type AssetAction =
 type AsyncAction =
   | { type: "SET_SUBMITTING"; value: boolean }
   | { type: "SET_ERROR"; error: string | null }
-  | { type: "SET_PROJECT"; project: any }
+  | { type: "SET_PROJECT"; project: ApiProject }
   | { type: "SET_SUBCONTRACTORS"; subs: Subcontractor[]; loading: boolean }
   | { type: "SET_LOADING_SUBS"; loading: boolean }
   | { type: "SHOW_SUCCESS"; isConfirmed: boolean; count: number }
@@ -520,7 +519,7 @@ export function CreateBookingForm({
       try {
         dispatchAsync({
           type: "SET_PROJECT",
-          project: JSON.parse(projectString),
+          project: JSON.parse(projectString) as ApiProject,
         });
       } catch (err) {
         console.error("Error parsing project:", err);
@@ -536,12 +535,18 @@ export function CreateBookingForm({
       return;
     }
     try {
-      const parsedAssets = JSON.parse(assetString);
-      const normalizedAssets = parsedAssets.map((a: any) => ({
-        ...a,
-        assetKey: a.id || a.assetKey,
-        assetTitle: a.name || a.assetTitle,
-      }));
+      const parsedAssets = JSON.parse(assetString) as ApiAsset[];
+      const normalizedAssets: AssetOption[] = parsedAssets.map((asset) => {
+        const cached = asset as ApiAsset & {
+          assetKey?: string;
+          assetTitle?: string;
+        };
+        return {
+          ...asset,
+          assetKey: cached.assetKey ?? asset.id,
+          assetTitle: cached.assetTitle ?? asset.name,
+        };
+      });
       dispatchAsset({ type: "SET_ASSETS", assets: normalizedAssets });
     } catch (err) {
       console.error("Error parsing assets:", err);
@@ -565,57 +570,57 @@ export function CreateBookingForm({
           },
         });
 
-        let subsData: any[] = [];
+        let subsData: SubcontractorSource[] = [];
         if (Array.isArray(response.data)) {
-          subsData = response.data;
+          subsData = response.data as SubcontractorSource[];
         } else if (Array.isArray(response.data.subcontractors)) {
-          subsData = response.data.subcontractors;
+          subsData = response.data.subcontractors as SubcontractorSource[];
         } else if (Array.isArray(response.data.data)) {
-          subsData = response.data.data;
+          subsData = response.data.data as SubcontractorSource[];
         } else if (
           response.data.records &&
           Array.isArray(response.data.records)
         ) {
-          subsData = response.data.records;
+          subsData = response.data.records as SubcontractorSource[];
         } else {
           const values = Object.values(response.data || {});
           const arr = values.find((v) => Array.isArray(v));
-          if (arr) subsData = arr as any[];
+          if (arr) subsData = arr as SubcontractorSource[];
         }
 
-        const normalizedSubs: Subcontractor[] = subsData.map((sub: any) => ({
-          id:
-            sub.id ||
-            sub.subcontractor_id ||
-            sub.subcontractorKey ||
-            sub.uuid ||
-            sub.key,
-          first_name:
-            sub.first_name ||
-            sub.firstName ||
-            (typeof sub.name === "string" ? sub.name.split(" ")[0] : "") ||
-            "",
-          last_name:
-            sub.last_name ||
-            sub.lastName ||
-            (typeof sub.name === "string"
-              ? sub.name.split(" ").slice(1).join(" ")
-              : "") ||
-            "",
-          email: sub.email || sub.contractorEmail || sub.contact_email || "",
-          company_name:
-            sub.company_name ||
-            sub.companyName ||
-            sub.contractorCompany ||
-            sub.employer ||
-            "",
-          trade_specialty:
-            sub.trade_specialty ||
-            sub.tradeSpecialty ||
-            sub.contractorTrade ||
-            sub.role ||
-            "",
-        }));
+        const normalizedSubs: Subcontractor[] = subsData.map((sub) => {
+          const name = getString(sub.name);
+          return {
+            id:
+              getIdString(sub.id) ||
+              getIdString(sub.subcontractor_id) ||
+              getIdString(sub.subcontractorKey) ||
+              getIdString(sub.uuid) ||
+              getIdString(sub.key),
+            first_name:
+              getString(sub.first_name) ||
+              getString(sub.firstName) ||
+              (name ? name.split(" ")[0] : ""),
+            last_name:
+              getString(sub.last_name) ||
+              getString(sub.lastName) ||
+              (name ? name.split(" ").slice(1).join(" ") : ""),
+            email:
+              getString(sub.email) ||
+              getString(sub.contractorEmail) ||
+              getString(sub.contact_email),
+            company_name:
+              getString(sub.company_name) ||
+              getString(sub.companyName) ||
+              getString(sub.contractorCompany) ||
+              getString(sub.employer),
+            trade_specialty:
+              getString(sub.trade_specialty) ||
+              getString(sub.tradeSpecialty) ||
+              getString(sub.contractorTrade) ||
+              getString(sub.role),
+          };
+        });
 
         dispatchAsync({
           type: "SET_SUBCONTRACTORS",
@@ -631,23 +636,24 @@ export function CreateBookingForm({
         } catch {
           // ignore storage errors
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Error loading subcontractors:", err);
         // Fallback: try cached
         const cachedSubs = localStorage.getItem(`subcontractors_${userId}`);
         if (cachedSubs) {
           try {
-            const parsedSubs = JSON.parse(cachedSubs);
-            const normalizedCached: Subcontractor[] = parsedSubs.map(
-              (sub: any) => ({
-                id: sub.id || sub.subcontractor_id || sub.uuid,
-                first_name: sub.first_name || "",
-                last_name: sub.last_name || "",
-                email: sub.email || "",
-                company_name: sub.company_name || "",
-                trade_specialty: sub.trade_specialty || "",
-              }),
-            );
+            const parsedSubs = JSON.parse(cachedSubs) as SubcontractorSource[];
+            const normalizedCached: Subcontractor[] = parsedSubs.map((sub) => ({
+              id:
+                getIdString(sub.id) ||
+                getIdString(sub.subcontractor_id) ||
+                getIdString(sub.uuid),
+              first_name: getString(sub.first_name),
+              last_name: getString(sub.last_name),
+              email: getString(sub.email),
+              company_name: getString(sub.company_name),
+              trade_specialty: getString(sub.trade_specialty),
+            }));
             dispatchAsync({
               type: "SET_SUBCONTRACTORS",
               subs: normalizedCached,
@@ -920,14 +926,11 @@ export function CreateBookingForm({
           failed,
         });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error creating bookings:", err);
       dispatchAsync({
         type: "SET_ERROR",
-        error:
-          err.response?.data?.detail ||
-          err.message ||
-          "Failed to create booking",
+        error: getApiErrorMessage(err, "Failed to create booking"),
       });
     } finally {
       dispatchAsync({ type: "SET_SUBMITTING", value: false });

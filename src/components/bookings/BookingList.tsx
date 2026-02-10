@@ -7,9 +7,10 @@ import BookingCardMobile from "./BookingCardMobile";
 import BookingCardDesktop from "./BookingCardDesktop";
 import BookingHistorySidebar from "./BookingHistorySidebar";
 import { Button } from "@/components/ui/button";
+import type { TransformedBooking } from "@/types";
 
 interface BookingListProps {
-  bookings: any[];
+  bookings: TransformedBooking[];
   activeTab: string;
   loading: boolean;
   onActionComplete?: () => void;
@@ -30,7 +31,7 @@ export default function BookingList({
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
 
   // Sidebar state
-  const [sidebarBooking, setSidebarBooking] = useState<any | null>(null);
+  const [sidebarBooking, setSidebarBooking] = useState<TransformedBooking | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const bookingRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -171,7 +172,7 @@ export default function BookingList({
   );
 
   // Open history sidebar
-  const handleOpenHistory = useCallback((booking: any) => {
+  const handleOpenHistory = useCallback((booking: TransformedBooking) => {
     setSidebarBooking(booking);
     setSidebarOpen(true);
   }, []);
@@ -245,7 +246,7 @@ export default function BookingList({
                 </div>
 
                 <div className="space-y-3">
-                  {monthBookings.map((booking: any) => {
+                  {monthBookings.map((booking: TransformedBooking) => {
                     const isHighlighted = highlightedId === booking.bookingKey;
                     const isDropdownOpen =
                       openDropdownId === booking.bookingKey;

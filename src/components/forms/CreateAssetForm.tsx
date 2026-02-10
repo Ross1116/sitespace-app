@@ -21,6 +21,7 @@ import {
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { useAuth } from "@/app/context/AuthContext";
+import { getApiErrorMessage } from "@/types";
 
 // ===== TYPE DEFINITIONS =====
 interface AssetModalProps {
@@ -226,13 +227,9 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
         usageInstructions: "",
         assetProject: project,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating asset:", error);
-      const errorMessage =
-        error.response?.data?.detail ||
-        error.message ||
-        "Failed to create asset";
-      setError(errorMessage);
+      setError(getApiErrorMessage(error, "Failed to create asset"));
     } finally {
       setIsSubmitting(false);
     }

@@ -3,13 +3,14 @@
 import { Clock, HardHat, Briefcase, MapPin, History } from "lucide-react";
 import { formatDate, formatTime, isToday } from "@/lib/bookingHelpers";
 import BookingCardDropdown from "./BookingCardDropdown";
+import type { TransformedBooking } from "@/types";
 
 interface BookingCardDesktopProps {
-  booking: any;
+  booking: TransformedBooking;
   onActionComplete?: () => void;
   isDropdownOpen: boolean;
   onDropdownToggle: (bookingKey: string) => void;
-  onViewHistory?: (booking: any) => void;
+  onViewHistory?: (booking: TransformedBooking) => void;
 }
 
 export default function BookingCardDesktop({

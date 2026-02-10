@@ -1,4 +1,5 @@
 import { Truck, Wrench, Settings } from "lucide-react";
+import type { TransformedBooking } from "@/types";
 
 // --- Shared Date/Time Helpers ---
 
@@ -109,26 +110,29 @@ export const isToday = (date: Date) => {
   );
 };
 
-export const groupBookings = (bookings: any[]) => {
-  const groupedBookings = bookings.reduce((acc: any, booking) => {
-    // Ensure date parsing works safely
-    const dateStr = booking.bookingTimeDt || booking.booking_date;
-    if (!dateStr) return acc;
+export const groupBookings = (bookings: TransformedBooking[]) => {
+  const groupedBookings = bookings.reduce(
+    (acc: Record<string, TransformedBooking[]>, booking) => {
+      // Ensure date parsing works safely
+      const dateStr = booking.bookingTimeDt;
+      if (!dateStr) return acc;
 
-    const date = new Date(dateStr);
-    const month = date.toLocaleString("default", { month: "long" });
+      const date = new Date(dateStr);
+      const month = date.toLocaleString("default", { month: "long" });
 
-    if (!acc[month]) {
-      acc[month] = [];
-    }
+      if (!acc[month]) {
+        acc[month] = [];
+      }
 
-    acc[month].push(booking);
-    return acc;
-  }, {});
+      acc[month].push(booking);
+      return acc;
+    },
+    {},
+  );
 
   // Sort bookings by date within each month
   Object.keys(groupedBookings).forEach((month) => {
-    groupedBookings[month].sort((a: any, b: any) => {
+    groupedBookings[month].sort((a: TransformedBooking, b: TransformedBooking) => {
       const timeA = new Date(a.bookingTimeDt).getTime();
       const timeB = new Date(b.bookingTimeDt).getTime();
       // Secondary sort by time if dates are equal

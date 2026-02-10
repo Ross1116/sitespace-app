@@ -38,6 +38,12 @@ import { format } from "date-fns";
 import api from "@/lib/api";
 import { useAuth } from "@/app/context/AuthContext";
 import RescheduleBookingForm from "@/components/forms/RescheduleBookingForm";
+import { ApiBooking, ApiManager, getApiErrorMessage } from "@/types";
+
+type BookingDetail = Omit<ApiBooking, "manager" | "asset"> & {
+  manager?: (ApiManager & { email?: string }) | null;
+  asset?: { id: string; name: string; asset_code?: string };
+};
 
 interface BookingDetailsDialogProps {
   bookingId: string | null;
@@ -55,7 +61,7 @@ export function BookingDetailsDialog({
   const { user } = useAuth();
 
   // Data States
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<BookingDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
@@ -81,7 +87,7 @@ export function BookingDetailsDialog({
   const fetchDetails = async () => {
     setLoading(true);
     try {
-      const res = await api.get(`/bookings/${bookingId}`);
+      const res = await api.get<BookingDetail>(`/bookings/${bookingId}`);
       setData(res.data);
     } catch (err) {
       console.error("Error fetching booking details:", err);
@@ -139,9 +145,8 @@ export function BookingDetailsDialog({
       setConfirmAction({ ...confirmAction, isOpen: false });
       if (onActionComplete) onActionComplete();
       onClose();
-    } catch (err: any) {
-      const detail = err.response?.data?.detail;
-      setError(typeof detail === "string" ? detail : "Failed to update status");
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, "Failed to update status"));
     } finally {
       setActionLoading(false);
     }
@@ -156,8 +161,8 @@ export function BookingDetailsDialog({
       setConfirmAction({ ...confirmAction, isOpen: false });
       if (onActionComplete) onActionComplete();
       onClose();
-    } catch (err: any) {
-      setError(err.response?.data?.detail || "Failed to delete booking");
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, "Failed to delete booking"));
     } finally {
       setActionLoading(false);
     }

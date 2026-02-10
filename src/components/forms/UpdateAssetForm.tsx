@@ -21,6 +21,7 @@ import {
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { useAuth } from "@/app/context/AuthContext";
+import { ApiAsset, getApiErrorMessage } from "@/types";
 
 // ===== TYPE DEFINITIONS (Matching AssetsTable.tsx exactly) =====
 interface Project {
@@ -48,7 +49,7 @@ interface Asset {
   maintanenceEnddt: string;
   usageInstructions: string;
   assetCode: string;
-  _originalData?: any;
+  _originalData?: ApiAsset;
 }
 
 interface AssetUpdateRequest {
@@ -228,7 +229,7 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
       console.log("Updating asset:", asset.assetKey, updateRequest);
 
       // Use new backend endpoint
-      const response = await api.put(
+      const response = await api.put<ApiAsset>(
         `/assets/${asset.assetKey}`,
         updateRequest,
       );
@@ -236,11 +237,16 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
       console.log("Asset updated successfully:", response.data);
 
       //  Transform response - assetProject is always a string
+      const responseAssetType =
+        response.data.type ||
+        (response.data as { asset_type?: string }).asset_type ||
+        "";
+
       const updatedAsset: Asset = {
         assetKey: response.data.id,
         assetTitle: response.data.name,
         assetLocation: response.data.location || "",
-        assetType: response.data.asset_type,
+        assetType: responseAssetType,
         maintanenceStartdt: response.data.maintenance_start_date || "",
         maintanenceEnddt: response.data.maintenance_end_date || "",
         assetPoc: response.data.poc || "",
@@ -257,13 +263,9 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
 
       // Close modal
       onClose(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating asset:", error);
-      const errorMessage =
-        error.response?.data?.detail ||
-        error.message ||
-        "Failed to update asset";
-      setError(errorMessage);
+      setError(getApiErrorMessage(error, "Failed to update asset"));
     } finally {
       setIsSubmitting(false);
     }

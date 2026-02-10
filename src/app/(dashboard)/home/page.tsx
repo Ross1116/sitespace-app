@@ -32,43 +32,18 @@ import {
   isToday,
   groupBookingsByMonth,
 } from "@/lib/bookingHelpers";
+import type { ApiBooking, ApiProject, ApiSubcontractor } from "@/types";
+import type { LucideIcon } from "lucide-react";
 
 // --- Types ---
-interface Booking {
-  id: string;
-  project_id?: string;
-  manager_id: string;
-  subcontractor_id?: string;
-  asset_id: string;
-  booking_date: string;
-  start_time: string;
-  end_time: string;
-  status:
-    | "pending"
-    | "confirmed"
-    | "cancelled"
-    | "completed"
-    | "denied"
-    | string;
-  notes?: string;
-  purpose?: string;
-  title?: string;
-  created_at: string;
-  updated_at: string;
-  project?: { id: string; name: string };
-  manager?: {
-    id: string;
-    first_name: string;
-    last_name: string;
-    full_name?: string;
-  };
-  subcontractor?: {
-    id: string;
-    company_name?: string;
-    first_name: string;
-    last_name: string;
-  };
-  asset?: { id: string; name: string };
+type Booking = ApiBooking;
+
+interface SubcontractorProjectApi {
+  project_id: string;
+  project_name: string;
+  project_location?: string;
+  is_active?: boolean;
+  [key: string]: unknown;
 }
 
 interface UserProfile {
@@ -98,8 +73,8 @@ export default function HomePage() {
   const router = useRouter();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [projects, setProjects] = useState<any[]>([]);
-  const [selectedProject, setSelectedProject] = useState<any | null>(null);
+  const [projects, setProjects] = useState<ApiProject[]>([]);
+  const [selectedProject, setSelectedProject] = useState<ApiProject | null>(null);
   const [upcomingBookings, setUpcomingBookings] = useState<Booking[]>([]);
 
   const [assetCount, setAssetCount] = useState<number>(0);
@@ -132,10 +107,12 @@ export default function HomePage() {
   const fetchProjects = useCallback(async () => {
     if (!userId) return;
     try {
-      let projectData: any[] = [];
+      let projectData: ApiProject[] = [];
       if (user?.role === "subcontractor") {
-        const resp = await api.get(`/subcontractors/${userId}/projects`);
-        projectData = resp.data.map((p: any) => ({
+        const resp = await api.get<SubcontractorProjectApi[]>(
+          `/subcontractors/${userId}/projects`,
+        );
+        projectData = resp.data.map((p) => ({
           id: p.project_id,
           name: p.project_name,
           location: p.project_location,
@@ -143,7 +120,7 @@ export default function HomePage() {
           ...p,
         }));
       } else {
-        const resp = await api.get("/projects/", {
+        const resp = await api.get<{ projects?: ApiProject[] }>("/projects/", {
           params: { my_projects: true, limit: 100, skip: 0 },
         });
         projectData = resp.data?.projects || [];
@@ -151,12 +128,12 @@ export default function HomePage() {
       setProjects(projectData);
 
       // Only set initial project if none is currently selected
-      setSelectedProject((current: any) => {
+      setSelectedProject((current) => {
         if (current) return current;
         const stored = localStorage.getItem(`project_${userId}`);
         if (stored) {
           try {
-            const parsed = JSON.parse(stored);
+            const parsed = JSON.parse(stored) as ApiProject;
             // Verify stored project still exists in the list
             if (projectData.some((p) => p.id === parsed.id)) {
               return parsed;
@@ -213,24 +190,36 @@ export default function HomePage() {
         params: { project_id: projectId, limit: 100, is_active: true },
       });
 
-      let subData: any[] = [];
+      let subData: ApiSubcontractor[] = [];
       let total = 0;
 
-      if (Array.isArray(response.data)) {
-        subData = response.data;
+      const data = response.data as
+        | ApiSubcontractor[]
+        | {
+            subcontractors?: ApiSubcontractor[];
+            total?: number;
+            data?: ApiSubcontractor[];
+            records?: ApiSubcontractor[];
+          };
+
+      if (Array.isArray(data)) {
+        subData = data;
+        total = data.length;
+      } else if (Array.isArray(data.subcontractors)) {
+        subData = data.subcontractors;
+        total = data.total || subData.length;
+      } else if (Array.isArray(data.data)) {
+        subData = data.data;
         total = subData.length;
-      } else if (response.data?.subcontractors) {
-        subData = response.data.subcontractors;
-        total = response.data.total || subData.length;
-      } else if (response.data?.data) {
-        subData = response.data.data;
+      } else if (Array.isArray(data.records)) {
+        subData = data.records;
         total = subData.length;
       } else {
-        const values = Object.values(response.data || {});
+        const values = Object.values(data || {});
         const arr = values.find((v) => Array.isArray(v));
         if (arr && Array.isArray(arr)) {
-          subData = arr as any[];
-          total = (arr as any[]).length;
+          subData = arr as ApiSubcontractor[];
+          total = subData.length;
         }
       }
 
@@ -320,7 +309,7 @@ export default function HomePage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleProjectSelect = (proj: any) => {
+  const handleProjectSelect = (proj: ApiProject) => {
     if (!proj || !proj.id) return;
     setShowProjectSelector(false);
     localStorage.setItem(`project_${userId}`, JSON.stringify(proj));
@@ -765,6 +754,15 @@ export default function HomePage() {
 }
 
 // --- Sub-Components ---
+interface QuickAccessCardProps {
+  title: string;
+  count: number;
+  subtitle: string;
+  icon: LucideIcon;
+  bgColor: string;
+  href: string;
+}
+
 const QuickAccessCard = ({
   title,
   count,
@@ -772,7 +770,7 @@ const QuickAccessCard = ({
   icon: Icon,
   bgColor,
   href,
-}: any) => {
+}: QuickAccessCardProps) => {
   return (
     <Link href={href} className="block group">
       <Card

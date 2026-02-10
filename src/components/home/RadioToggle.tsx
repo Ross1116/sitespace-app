@@ -15,7 +15,7 @@ interface ProjectSelectorProps {
   onChange?: (projectId: string) => void;
   showSearch?: boolean;
   maxHeight?: number | string;
-  userId?: any;
+  userId?: string | number;
 }
 
 function ProjectSelector({ 

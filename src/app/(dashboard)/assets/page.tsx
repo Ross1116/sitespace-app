@@ -37,6 +37,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { getApiErrorMessage } from "@/types";
 
 interface AssetFromBackend {
   id: string;
@@ -304,7 +305,7 @@ export default function AssetsTable() {
             timestamp: Date.now(),
           }),
         );
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("Error fetching assets:", error);
         const cached = localStorage.getItem(STORAGE_KEY);
         if (cached) {
@@ -456,14 +457,14 @@ export default function AssetsTable() {
       await api.delete(`/assets/${deleteConfirmKey}`);
       if (selectedAsset?.assetKey === deleteConfirmKey) closeSidebar();
       await refresh();
-    } catch (error: any) {
-      setActionError(error.response?.data?.detail || "Failed to delete asset");
+    } catch (error: unknown) {
+      setActionError(getApiErrorMessage(error, "Failed to delete asset"));
     } finally {
       setDeleteConfirmKey(null);
     }
   };
 
-  const handleUpdateAsset = async (updatedAsset: any) => {
+  const handleUpdateAsset = async (updatedAsset: Asset) => {
     setAllAssets((prevAssets) =>
       prevAssets.map((a) =>
         a.assetKey === updatedAsset.assetKey ? { ...a, ...updatedAsset } : a,

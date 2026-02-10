@@ -26,7 +26,7 @@ import { useAuth } from "@/app/context/AuthContext";
 interface ContractorModalProps {
   isOpen: boolean;
   onClose: (open: boolean) => void;
-  onSave: (contractor: any) => void;
+  onSave: (contractor: { id: string }) => void;
 }
 
 interface SubcontractorCreateRequest {
@@ -258,10 +258,12 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
   ): Promise<boolean> => {
     try {
       const response = await api.get(`/projects/${projectId}`);
-      const project = response.data;
+      const project = response.data as {
+        subcontractors?: Array<{ id?: string }>;
+      };
 
       const isAssigned = project.subcontractors?.some(
-        (sub: any) => sub.id === subcontractorId
+        (sub) => sub.id === subcontractorId
       );
 
       return isAssigned || false;
@@ -346,23 +348,32 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
       setTimeout(() => {
         onClose(false);
       }, 2000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error processing subcontractor:", error);
 
       // Safe error extraction handling generic 500s or complex 422s
       let errorMessage = "Failed to process request";
       
-      if (error.response?.data?.detail) {
-        const detail = error.response.data.detail;
-        if (typeof detail === 'string') {
-          errorMessage = detail;
-        } else if (Array.isArray(detail)) {
-          // Flatten Pydantic validation errors
-          errorMessage = detail.map((err: any) => err.msg).join(", ");
-        } else {
-          errorMessage = JSON.stringify(detail);
-        }
-      } else if (error.message) {
+      const detail =
+        typeof error === "object" && error !== null
+          ? (error as { response?: { data?: { detail?: unknown } } }).response
+              ?.data?.detail
+          : undefined;
+
+      if (typeof detail === "string") {
+        errorMessage = detail;
+      } else if (Array.isArray(detail)) {
+        errorMessage = detail
+          .map((err) =>
+            typeof err === "object" && err !== null && "msg" in err
+              ? String((err as { msg?: unknown }).msg ?? "")
+              : "",
+          )
+          .filter(Boolean)
+          .join(", ");
+      } else if (detail !== undefined) {
+        errorMessage = JSON.stringify(detail);
+      } else if (error instanceof Error) {
         errorMessage = error.message;
       }
 

@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CheckCircle, AlertCircle, Eye, EyeOff, ShieldCheck, Loader2 } from "lucide-react";
 import api from "@/lib/api";
 import { useAuth } from "@/app/context/AuthContext";
+import { getApiErrorMessage } from "@/types";
 
 function ResetPasswordForm() {
   const router = useRouter();
@@ -70,9 +71,9 @@ function ResetPasswordForm() {
       
       setStatus({ type: 'success', message: "Password reset successfully! Redirecting..." });
       setTimeout(() => router.push("/login"), 2000);
-    } catch (error: any) {
-      const msg = error.response?.data?.detail || "Link expired or invalid.";
-      setStatus({ type: 'error', message: typeof msg === 'string' ? msg : "Validation error" });
+    } catch (error: unknown) {
+      const msg = getApiErrorMessage(error, "Link expired or invalid.");
+      setStatus({ type: 'error', message: msg });
     }
   };
 

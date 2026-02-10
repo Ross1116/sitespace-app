@@ -3,12 +3,30 @@ import {
   CalendarEvent as BaseCalendarEvent,
   AssetCalendar as BaseAssetCalendar,
 } from "@/components/ui/full-calendar/calendar-context";
+import { ApiBooking } from "@/types";
 
-export type VariantProps<Component extends (...args: any) => any> = Omit<
+export type VariantProps<
+  Component extends (...args: unknown[]) => unknown,
+> = Omit<
   OmitUndefined<Parameters<Component>[0]>,
   "class" | "className"
 >;
 export type OmitUndefined<T> = T extends undefined ? never : T;
+
+type UnknownRecord = Record<string, unknown>;
+
+const isRecord = (value: unknown): value is UnknownRecord =>
+  typeof value === "object" && value !== null;
+
+const getString = (value: unknown): string =>
+  typeof value === "string" ? value : "";
+
+const getId = (value: unknown): string =>
+  typeof value === "string" || typeof value === "number" ? String(value) : "";
+
+type BookingInput = Partial<CalendarEvent> & {
+  _originalData?: ApiBooking | UnknownRecord;
+};
 
 // --- INTERFACES ---
 
@@ -35,7 +53,7 @@ export interface CalendarEvent extends BaseCalendarEvent {
   projectId?: string;
   projectName?: string;
   projectLocation?: string;
-  _originalData?: any;
+  _originalData?: ApiBooking | UnknownRecord;
 }
 
 export interface AssetCalendar extends Omit<BaseAssetCalendar, "events"> {
@@ -44,7 +62,7 @@ export interface AssetCalendar extends Omit<BaseAssetCalendar, "events"> {
     id: string;
     name: string;
     asset_code?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
@@ -53,25 +71,35 @@ let hasLoggedDiagnostic = false;
 
 // --- CONVERSION ---
 
-export function convertBookingToCalendarEvent(booking: any): CalendarEvent {
-  const raw = booking._originalData || booking;
+export function convertBookingToCalendarEvent(
+  booking: BookingInput,
+): CalendarEvent {
+  const raw = isRecord(booking._originalData) ? booking._originalData : booking;
 
   // --- ASSET EXTRACTION ---
   let assetId = "unknown";
   let assetName = "Unknown Asset";
   let assetCode = "";
 
-  if (raw.asset && typeof raw.asset === "object") {
-    assetId = raw.asset.id || raw.asset_id || assetId;
-    assetCode = raw.asset.asset_code || raw.asset.code || assetCode;
-    if (raw.asset.name) assetName = raw.asset.name;
+  const rawAsset = isRecord(raw.asset) ? raw.asset : undefined;
+
+  if (rawAsset) {
+    assetId = getId(rawAsset.id) || getId(raw.asset_id) || assetId;
+    assetCode =
+      getString(rawAsset.asset_code) ||
+      getString(rawAsset.code) ||
+      assetCode;
+    const rawAssetName = getString(rawAsset.name);
+    if (rawAssetName) assetName = rawAssetName;
   } else if (raw.asset_id) {
-    assetId = raw.asset_id;
+    assetId = getId(raw.asset_id) || assetId;
     // If booking already has an assetName (from cache or create-time), preserve it
-    if (booking.assetName && booking.assetName !== "Unknown Asset") {
-      assetName = booking.assetName;
-    } else if (raw.asset_name) {
-      assetName = raw.asset_name;
+    const bookingAssetName = getString(booking.assetName);
+    if (bookingAssetName && bookingAssetName !== "Unknown Asset") {
+      assetName = bookingAssetName;
+    } else {
+      const rawAssetName = getString(raw.asset_name);
+      if (rawAssetName) assetName = rawAssetName;
     }
   }
 
@@ -81,14 +109,18 @@ export function convertBookingToCalendarEvent(booking: any): CalendarEvent {
   }
 
   // --- MANAGER / SUBCONTRACTOR NAMES ---
-  const managerName = raw.manager?.first_name || "Manager";
+  const manager = isRecord(raw.manager) ? raw.manager : undefined;
+  const subcontractor = isRecord(raw.subcontractor) ? raw.subcontractor : undefined;
+  const managerName = getString(manager?.first_name) || "Manager";
   const subName =
-    raw.subcontractor?.company_name || raw.subcontractor?.first_name || "";
-  const bookedFor = raw.subcontractor_id ? subName : managerName;
+    getString(subcontractor?.company_name) ||
+    getString(subcontractor?.first_name);
+  const subcontractorId = getId(raw.subcontractor_id);
+  const bookedFor = subcontractorId ? subName : managerName;
 
   // --- TITLE & DESCRIPTION LOGIC (Matches BookingsPage) ---
-  const rawPurpose = raw.purpose;
-  const rawNotes = raw.notes;
+  const rawPurpose = getString(raw.purpose);
+  const rawNotes = getString(raw.notes);
   let baseTitle = "";
   let baseDescription = "No description provided";
 
@@ -123,26 +155,29 @@ export function convertBookingToCalendarEvent(booking: any): CalendarEvent {
 
   // --- START / END TIMES (tolerant) ---
   const start =
-    booking.start ||
-    raw.start ||
+    (booking.start instanceof Date ? booking.start : null) ||
+    (raw.start instanceof Date ? raw.start : null) ||
     (raw.booking_date && raw.start_time
-      ? parseTimeToDate(raw.booking_date, raw.start_time)
+      ? parseTimeToDate(getString(raw.booking_date), getString(raw.start_time))
       : null) ||
     new Date();
 
   const end =
-    booking.end ||
-    raw.end ||
+    (booking.end instanceof Date ? booking.end : null) ||
+    (raw.end instanceof Date ? raw.end : null) ||
     (raw.booking_date && raw.end_time
-      ? parseTimeToDate(raw.booking_date, raw.end_time)
+      ? parseTimeToDate(getString(raw.booking_date), getString(raw.end_time))
       : null) ||
     new Date(new Date(start).getTime() + 60 * 60 * 1000); // fallback 1 hour
 
   // --- STATUS & COLOR ---
   const status = (
-    booking.status || raw.status || raw.booking_status || "pending"
+    getString(booking.status) ||
+    getString(raw.status) ||
+    getString(raw.booking_status) ||
+    "pending"
   ).toLowerCase();
-  const statusColorMap: Record<string, any> = {
+  const statusColorMap: Record<string, CalendarEvent["color"]> = {
     pending: "yellow",
     confirmed: "green",
     in_progress: "blue",
@@ -163,49 +198,50 @@ export function convertBookingToCalendarEvent(booking: any): CalendarEvent {
   return {
     id:
       booking.id ||
-      raw.id ||
-      `${assetId}_${raw.booking_date}_${raw.start_time}`,
+      getId(raw.id) ||
+      `${assetId}_${getString(raw.booking_date)}_${getString(raw.start_time)}`,
     start,
     end,
     title: finalTitle,
     description: baseDescription,
     color,
-    bookingKey: booking.id || raw.id,
+    bookingKey: booking.id || getId(raw.id),
     
     // Normalized Fields
     bookingTitle: baseTitle,
     bookingDescription: baseDescription,
     bookingNotes: rawNotes || "",
     
-    bookingTimeDt: raw.booking_date || raw.date || "",
-    bookingStartTime: raw.start_time || "",
-    bookingEndTime: raw.end_time || "",
+    bookingTimeDt: getString(raw.booking_date) || getString(raw.date),
+    bookingStartTime: getString(raw.start_time),
+    bookingEndTime: getString(raw.end_time),
     bookingStatus: status,
     bookingFor: bookedFor,
 
     assetId,
     assetName,
     assetCode,
-    assetType: raw.assetType,
+    assetType: getString(raw.assetType) || undefined,
     bookedAssets: [assetName],
 
     status,
-    managerId: raw.manager_id,
-    managerName: raw.manager?.first_name,
-    subcontractorId: raw.subcontractor_id,
-    subcontractorName: raw.subcontractor?.company_name,
-    projectId: raw.project_id,
-    projectName: raw.project?.name,
-    projectLocation: raw.project?.location,
+    managerId: getId(raw.manager_id) || undefined,
+    managerName: getString(manager?.first_name) || undefined,
+    subcontractorId: subcontractorId || undefined,
+    subcontractorName: getString(subcontractor?.company_name) || undefined,
+    projectId: getId(raw.project_id) || undefined,
+    projectName: isRecord(raw.project) ? getString(raw.project.name) || undefined : undefined,
+    projectLocation:
+      isRecord(raw.project) ? getString(raw.project.location) || undefined : undefined,
 
-    _originalData: raw,
+    _originalData: isRecord(booking._originalData) ? booking._originalData : raw,
   };
 }
 
 // --- GROUPING ---
 
 export function groupBookingsByAsset(
-  bookings: any[]
+  bookings: BookingInput[]
 ): Record<string, AssetCalendar> {
   const grouped: Record<string, AssetCalendar> = {};
 

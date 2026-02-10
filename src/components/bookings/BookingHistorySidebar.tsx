@@ -24,28 +24,15 @@ import {
 } from "lucide-react";
 import api from "@/lib/api";
 import { format, parseISO, formatDistanceToNow, isValid } from "date-fns";
-
-interface AuditEntry {
-  id: string;
-  booking_id: string;
-  actor_id: string;
-  actor_role: string;
-  actor_name: string;
-  action: string;
-  from_status: string | null;
-  to_status: string | null;
-  changes: Record<string, any> | null;
-  comment: string | null;
-  created_at: string;
-}
-
-interface AuditTrailResponse {
-  booking_id: string;
-  history: AuditEntry[];
-}
+import type {
+  AuditEntry,
+  AuditTrailResponse,
+  TransformedBooking,
+} from "@/types";
+import { getApiErrorMessage, isAxiosError } from "@/types";
 
 interface BookingHistorySidebarProps {
-  booking: any | null;
+  booking: TransformedBooking | null;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -249,7 +236,7 @@ const safeRelativeTime = (dateString?: string | null): string => {
   return formatDistanceToNow(date, { addSuffix: true });
 };
 
-const formatChangeValue = (key: string, value: any): string => {
+const formatChangeValue = (key: string, value: unknown): string => {
   if (value === null || value === undefined) return "—";
   if (typeof value === "boolean") return value ? "Yes" : "No";
   if (Array.isArray(value)) return value.map(String).join(", ");
@@ -306,7 +293,7 @@ const formatChangeKey = (key: string): string => {
   );
 };
 
-function ChangeDetails({ changes }: { changes: Record<string, any> }) {
+function ChangeDetails({ changes }: { changes: Record<string, unknown> }) {
   const [expanded, setExpanded] = useState(false);
 
   if (!changes || Object.keys(changes).length === 0) return null;
@@ -324,6 +311,9 @@ function ChangeDetails({ changes }: { changes: Record<string, any> }) {
             value !== null &&
             !Array.isArray(value) &&
             ("old" in value || "new" in value);
+          const changeObj = isOldNew
+            ? (value as { old?: unknown; new?: unknown })
+            : null;
 
           return (
             <div
@@ -333,14 +323,14 @@ function ChangeDetails({ changes }: { changes: Record<string, any> }) {
               <span className="font-semibold text-slate-500 text-[10px] uppercase tracking-wider">
                 {formatChangeKey(key)}
               </span>
-              {isOldNew ? (
+              {changeObj ? (
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-slate-400 line-through">
-                    {formatChangeValue(key, value.old)}
+                    {formatChangeValue(key, changeObj.old)}
                   </span>
                   <ArrowRight className="h-3 w-3 text-slate-300 shrink-0" />
                   <span className="text-slate-800 font-medium">
-                    {formatChangeValue(key, value.new)}
+                    {formatChangeValue(key, changeObj.new)}
                   </span>
                 </div>
               ) : (
@@ -403,15 +393,15 @@ export default function BookingHistorySidebar({
           },
         );
         setAuditTrail(response.data?.history || []);
-      } catch (err: any) {
-        if (err?.name === "CanceledError" || signal?.aborted) {
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name === "CanceledError" || signal?.aborted) {
           return;
         }
 
         console.error("Error fetching audit trail:", err);
-        if (err.response?.status === 403) {
+        if (isAxiosError(err) && err.response?.status === 403) {
           setError("You don't have permission to view this booking's history.");
-        } else if (err.response?.status === 404) {
+        } else if (isAxiosError(err) && err.response?.status === 404) {
           setError("Booking not found.");
         } else {
           setError("Failed to load booking history. Please try again.");

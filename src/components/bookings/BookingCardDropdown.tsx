@@ -10,6 +10,7 @@ import {
   Edit,
 } from "lucide-react";
 import api from "@/lib/api";
+import { getApiErrorMessage } from "@/types";
 import { useAuth } from "@/app/context/AuthContext";
 import {
   Dialog,
@@ -66,8 +67,8 @@ export default function BookingCardDropdown({
         status: newStatus.toUpperCase(),
       });
       onActionComplete?.();
-    } catch (error: any) {
-      setErrorMessage(error.response?.data?.detail || "Failed to update booking");
+    } catch (error: unknown) {
+      setErrorMessage(getApiErrorMessage(error, "Failed to update booking"));
     } finally {
       setIsLoading(false);
       if (isOpen) onToggle();
@@ -82,8 +83,8 @@ export default function BookingCardDropdown({
         data: { hard_delete: true },
       });
       onActionComplete?.();
-    } catch (error: any) {
-      setErrorMessage(error.response?.data?.detail || "Failed to delete booking");
+    } catch (error: unknown) {
+      setErrorMessage(getApiErrorMessage(error, "Failed to delete booking"));
     } finally {
       setIsLoading(false);
       if (isOpen) onToggle();

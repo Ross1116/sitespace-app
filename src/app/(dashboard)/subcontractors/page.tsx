@@ -21,6 +21,7 @@ import api from "@/lib/api";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
 import { useSmartRefresh } from "@/lib/useSmartRefresh";
+import { ApiProject, getApiErrorMessage } from "@/types";
 
 interface SubcontractorFromBackend {
   id: string;
@@ -109,7 +110,7 @@ export default function SubcontractorsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedProject, setSelectedProject] = useState<any | null>(null);
+  const [selectedProject, setSelectedProject] = useState<ApiProject | null>(null);
 
   // Sort state
   const [sortField, setSortField] = useState<SortField | null>(null);
@@ -119,7 +120,7 @@ export default function SubcontractorsPage() {
   const { user } = useAuth();
   const userId = user?.id;
 
-  const getProjectId = (proj: any | null): string | number | null => {
+  const getProjectId = (proj: ApiProject | null): string | null => {
     if (!proj) return null;
     return proj.id ?? proj.project_id ?? null;
   };
@@ -189,7 +190,7 @@ export default function SubcontractorsPage() {
           ? "/subcontractors/"
           : "/subcontractors/my-subcontractors";
 
-        const params: Record<string, any> = {
+        const params: Record<string, string | number | boolean> = {
           skip: 0,
           limit: 1000,
           is_active: true,
@@ -212,16 +213,14 @@ export default function SubcontractorsPage() {
             timestamp: Date.now(),
           }),
         );
-      } catch (err: any) {
-        const errMsg =
-          err?.response?.data?.detail || "Failed to fetch subcontractors";
-        setError(errMsg);
+      } catch (err: unknown) {
+        setError(getApiErrorMessage(err, "Failed to fetch subcontractors"));
 
         try {
           const cached = localStorage.getItem(cacheKey);
           if (cached) {
             const { subs } = JSON.parse(cached);
-            setAllSubs(subs);
+            if (Array.isArray(subs)) setAllSubs(subs);
           }
         } catch {}
       } finally {

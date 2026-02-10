@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { getApiErrorMessage } from "@/types";
 
 interface RescheduleBookingFormProps {
   isOpen: boolean;
@@ -102,9 +103,9 @@ export default function RescheduleBookingForm({
       const diff = differenceInMinutes(endDate, startDate);
       setDuration(diff.toString());
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to fetch booking:", err);
-      setError("Failed to load booking details. Please try again.");
+      setError(getApiErrorMessage(err, "Failed to load booking details. Please try again."));
     } finally {
       setLoading(false);
     }
@@ -174,9 +175,9 @@ export default function RescheduleBookingForm({
       onSave(); // Refresh parent list
       onClose(); // Close modal
       
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Update failed:", err);
-      setError(err.response?.data?.detail || err.message || "Failed to reschedule booking");
+      setError(getApiErrorMessage(err, "Failed to reschedule booking"));
     } finally {
       setSubmitting(false);
     }

@@ -18,7 +18,7 @@ Updated:
 - [x] **1. Remove secrets from git / add `.env.example`**
 - [x] **2. CI/CD pipeline**
 - [x] **3. Error boundaries**
-- [ ] **4. TypeScript interfaces / eliminate `any` types**
+- [x] **4. TypeScript interfaces / eliminate `any` types**
 - [ ] **5. AbortController on API fetches**
 
 ## Production Polish (Code)

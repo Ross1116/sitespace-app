@@ -7,6 +7,7 @@ import { Eye, EyeOff, Loader2, LayoutGrid } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { getApiErrorMessage } from "@/types";
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -47,8 +48,8 @@ export default function Register() {
         password: formData.password,
         confirmPassword: formData.confirmPassword,
       });
-    } catch (err: any) {
-      setError(err.message || "Registration failed");
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, "Registration failed"));
     } finally {
       setIsLoading(false);
     }

@@ -18,42 +18,9 @@ import { DesktopView } from "./DesktopView";
 import { AssetFilter } from "./AssetFilter";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { addHours } from "date-fns";
+import { ApiAsset, ApiBooking, ApiProject, getApiErrorMessage } from "@/types";
 
 // ===== 1. UPDATED INTERFACES (MATCHING YOUR JSON) =====
-
-interface ApiAsset {
-  id: string;
-  asset_code: string;
-  name: string;
-  type: string | null;
-  status: string;
-}
-
-interface ApiBooking {
-  id: string;
-  booking_date: string;
-  start_time: string;
-  end_time: string;
-  status: string;
-  purpose: string | null;
-  notes: string | null;
-
-  // IDs
-  project_id?: string;
-  manager_id: string;
-  subcontractor_id: string | null;
-  asset_id: string;
-
-  // Nested Objects
-  project?: any;
-  manager?: any;
-  subcontractor?: any;
-  asset?: ApiAsset;
-
-  // Timestamps
-  created_at?: string;
-  updated_at?: string;
-}
 
 interface CalendarDayResponse {
   date: string;
@@ -128,12 +95,12 @@ export default function MulticalendarPage() {
   const storageKey = `bookings_v5_${userId}`;
   const projectStorageKey = `project_${userId}`;
 
-  const getStoredProject = () => {
+  const getStoredProject = (): ApiProject | null => {
     if (!user) return null;
     const projectString = localStorage.getItem(projectStorageKey);
     if (!projectString) return null;
     try {
-      return JSON.parse(projectString);
+      return JSON.parse(projectString) as ApiProject;
     } catch {
       return null;
     }
@@ -145,7 +112,7 @@ export default function MulticalendarPage() {
     const endDate = new Date(`${b.booking_date}T${b.end_time}`);
 
     const status = b.status?.toLowerCase() || "pending";
-    let color = "yellow";
+    let color: CalendarEvent["color"] = "yellow";
     if (status === "confirmed") color = "green";
     if (status === "completed") color = "blue";
     if (status === "cancelled" || status === "denied") color = "pink";
@@ -163,13 +130,13 @@ export default function MulticalendarPage() {
       end: endDate,
       title: title,
       description: b.notes || "",
-      color: color as any,
+      color,
 
       // Custom fields for Drag/Drop & Details
       bookingKey: b.id,
       bookingStatus: status,
       bookingTitle: title,
-      bookingNotes: b.notes,
+      bookingNotes: b.notes || "",
 
       assetId: b.asset_id,
       assetName: assetName,
@@ -230,10 +197,10 @@ export default function MulticalendarPage() {
 
       setBookings(transformedBookings);
       hasFetched.current = true;
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("❌ Error fetching data:", err);
       if (bookings.length === 0) {
-        setError(err.message || "Failed to fetch calendar data");
+        setError(getApiErrorMessage(err, "Failed to fetch calendar data"));
       }
     } finally {
       setLoading(false);
@@ -289,19 +256,19 @@ export default function MulticalendarPage() {
 
     // Convert partials to full events using simple defaults,
     // real data comes on next fetch
-    const normalized = arr.map(
-      (ev: any, idx) =>
-        ({
-          ...ev,
-          id: ev.id || `temp-${Date.now()}-${idx}`,
-          start: ev.start || new Date(),
-          end: ev.end || addHours(new Date(), 1),
-          title: ev.title || "New Booking",
-          bookingStatus: "pending",
-          assetId: ev.assetId || "",
-          bookedAssets: ev.bookedAssets || [],
-        }) as CalendarEvent,
-    );
+    const normalized = arr.map((ev, idx) => {
+      const event = ev as Partial<CalendarEvent>;
+      return {
+        ...event,
+        id: event.id || `temp-${Date.now()}-${idx}`,
+        start: event.start || new Date(),
+        end: event.end || addHours(new Date(), 1),
+        title: event.title || "New Booking",
+        bookingStatus: "pending",
+        assetId: event.assetId || "",
+        bookedAssets: event.bookedAssets || [],
+      } as CalendarEvent;
+    });
 
     setBookings((prev) => [...prev, ...normalized]);
     handleActionComplete(); // Trigger refresh to get real data
@@ -323,10 +290,16 @@ export default function MulticalendarPage() {
             id: aId,
             name: b.assetName || "Unknown",
             events: [],
-            asset: (b as any)._originalData?.asset || {
-              id: aId,
-              name: b.assetName,
-            },
+            asset:
+              typeof b._originalData === "object" && b._originalData !== null
+                ? (b._originalData as { asset?: ApiAsset }).asset || {
+                    id: aId,
+                    name: b.assetName,
+                  }
+                : {
+                    id: aId,
+                    name: b.assetName,
+                  },
           };
         }
         groups[aId].events.push(b);

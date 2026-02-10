@@ -51,7 +51,7 @@ export function AssetFilter({
           <p className="text-slate-500 text-sm">No assets available</p>
         ) : (
           <div className="flex flex-col justify-evenly space-y-2">
-            {assetCalendars.map((calendar: any, index) => {
+            {assetCalendars.map((calendar, index) => {
               const assetName = calendar.asset?.name || calendar.name || "Unknown Asset";
               const assetCode = calendar.asset?.asset_code || calendar.asset_code || "";
               

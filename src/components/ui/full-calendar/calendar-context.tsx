@@ -62,14 +62,14 @@ export type CalendarEvent = {
   description?: string;
   color?: VariantProps<typeof monthEventVariants>["variant"];
   // Allow other props to pass through without TS errors
-  [key: string]: any;
+  [key: string]: unknown;
 };
 
 export type AssetCalendar = {
   id: string;
   name: string;
   events: CalendarEvent[];
-  asset?: any; 
+  asset?: unknown; 
 };
 
 type ContextType = {

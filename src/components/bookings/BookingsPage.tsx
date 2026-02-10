@@ -12,31 +12,11 @@ import { CreateBookingForm } from "@/components/forms/CreateBookingForm";
 import { Input } from "@/components/ui/input";
 import { useSmartRefresh } from "@/lib/useSmartRefresh";
 import { combineDateAndTime } from "@/lib/bookingHelpers";
-
-interface BookingDetail {
-  id: string;
-  project_id?: string;
-  manager_id: string;
-  subcontractor_id?: string;
-  asset_id: string;
-  booking_date: string;
-  start_time: string;
-  end_time: string;
-  status: string;
-  notes?: string;
-  purpose?: string;
-  asset?: { id: string; name: string; asset_code: string };
-  project?: { id: string; name: string };
-  [key: string]: any;
-}
-
-interface BookingListResponse {
-  bookings: BookingDetail[];
-  total: number;
-  skip: number;
-  limit: number;
-  has_more: boolean;
-}
+import type {
+  ApiBooking,
+  BookingListResponse,
+  TransformedBooking,
+} from "@/types";
 
 const parseTimeToMinutes = (timeStr: string): number => {
   if (!timeStr) return 0;
@@ -51,39 +31,36 @@ const calculateDuration = (startTime: string, endTime: string): number => {
   return end - start;
 };
 
-const transformBookingToLegacyFormat = (booking: BookingDetail) => {
-  const raw = booking._originalData || booking;
-  const cleanStart = (raw.start_time || "00:00")
+const transformBookingToLegacyFormat = (booking: ApiBooking): TransformedBooking => {
+  const cleanStart = (booking.start_time || "00:00")
     .split(":")
     .slice(0, 2)
     .join(":");
-  const cleanEnd = (raw.end_time || "00:00").split(":").slice(0, 2).join(":");
-  const startDateObj = combineDateAndTime(raw.booking_date, raw.start_time);
-  const endDateObj = combineDateAndTime(raw.booking_date, raw.end_time);
+  const cleanEnd = (booking.end_time || "00:00").split(":").slice(0, 2).join(":");
+  const startDateObj = combineDateAndTime(booking.booking_date, booking.start_time);
+  const endDateObj = combineDateAndTime(booking.booking_date, booking.end_time);
   const duration = calculateDuration(cleanStart, cleanEnd);
 
-  const managerName = raw.manager
-    ? `${raw.manager.first_name} ${raw.manager.last_name}`
+  const managerName = booking.manager
+    ? `${booking.manager.first_name} ${booking.manager.last_name}`
     : "Unknown";
   const subName =
-    raw.subcontractor?.company_name ||
-    (raw.subcontractor
-      ? `${raw.subcontractor.first_name} ${raw.subcontractor.last_name}`
+    booking.subcontractor?.company_name ||
+    (booking.subcontractor
+      ? `${booking.subcontractor.first_name} ${booking.subcontractor.last_name}`
       : "");
-  const bookedFor = raw.subcontractor_id ? subName : managerName;
+  const bookedFor = booking.subcontractor_id ? subName : managerName;
 
   let assetId = "unknown";
   let assetName = "Unknown Asset";
   let assetCode = "";
 
-  if (raw.asset && typeof raw.asset === "object") {
-    assetId = raw.asset.id || raw.asset.asset_id || assetId;
-    assetName = raw.asset.name || assetName;
-    assetCode = raw.asset.asset_code || raw.asset.code || assetCode;
-  } else if (raw.asset_id) {
-    assetId = raw.asset_id;
-    if (booking.assetName && booking.assetName !== "Unknown Asset")
-      assetName = booking.assetName;
+  if (booking.asset && typeof booking.asset === "object") {
+    assetId = booking.asset.id || assetId;
+    assetName = booking.asset.name || assetName;
+    assetCode = booking.asset.asset_code || assetCode;
+  } else if (booking.asset_id) {
+    assetId = booking.asset_id;
   }
 
   if (assetName === "Unknown Asset" && assetId !== "unknown") {
@@ -94,8 +71,8 @@ const transformBookingToLegacyFormat = (booking: BookingDetail) => {
   let finalTitle = "";
   let finalDescription = "No description provided";
 
-  const rawPurpose = raw.purpose;
-  const rawNotes = raw.notes;
+  const rawPurpose = booking.purpose;
+  const rawNotes = booking.notes;
 
   if (rawPurpose && rawPurpose.trim() !== "") {
     finalTitle = rawPurpose;
@@ -115,15 +92,15 @@ const transformBookingToLegacyFormat = (booking: BookingDetail) => {
     finalDescription = "No description provided";
   }
 
-  const normalizedStatus = (raw.status || "pending").toLowerCase();
+  const normalizedStatus = (booking.status || "pending").toLowerCase();
 
   return {
-    bookingKey: raw.id,
+    bookingKey: booking.id,
     bookingTitle: finalTitle,
     bookingDescription: finalDescription,
     bookingNotes: rawNotes || "",
-    projectName: raw.project?.name || "",
-    bookingTimeDt: raw.booking_date,
+    projectName: booking.project?.name || "",
+    bookingTimeDt: booking.booking_date,
     bookingStartTime: cleanStart,
     bookingEndTime: cleanEnd,
     start: startDateObj,
@@ -137,15 +114,15 @@ const transformBookingToLegacyFormat = (booking: BookingDetail) => {
     assetId: assetId,
     assetName: assetName,
     assetCode: assetCode,
-    subcontractorId: raw.subcontractor_id,
+    subcontractorId: booking.subcontractor_id ?? undefined,
     subcontractorName: subName,
-    _originalData: raw,
+    _originalData: booking,
   };
 };
 
 export default function BookingsPage() {
   const [activeTab, setActiveTab] = useState("Upcoming");
-  const [allBookings, setAllBookings] = useState<any[]>([]);
+  const [allBookings, setAllBookings] = useState<TransformedBooking[]>([]);
   const [loading, setLoading] = useState(true);
   const [isBookingFormOpen, setIsBookingFormOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -163,9 +140,9 @@ export default function BookingsPage() {
   const nextHour = startOfHour(addHours(now, 1));
   const endHour = addHours(nextHour, 1);
 
-  const processRawBookings = (rawBookings: BookingDetail[]) => {
+  const processRawBookings = (rawBookings: ApiBooking[]) => {
     const validBookings = rawBookings.filter(
-      (b) => b && (b.id || b.bookingKey),
+      (b) => b && b.id,
     );
     return validBookings.map(transformBookingToLegacyFormat);
   };
@@ -198,7 +175,7 @@ export default function BookingsPage() {
         );
         const uiBookings = processRawBookings(rawBookings);
         setAllBookings(uiBookings);
-      } catch (error: any) {
+      } catch (error) {
         console.error("Error fetching bookings:", error);
       } finally {
         setLoading(false);

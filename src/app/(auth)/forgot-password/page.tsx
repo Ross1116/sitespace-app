@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CheckCircle, AlertCircle, ArrowLeft, Loader2, KeyRound } from "lucide-react";
 import Link from "next/link";
 import api from "@/lib/api";
+import { getApiErrorMessage } from "@/types";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -26,8 +27,8 @@ export default function ForgotPassword() {
       setStatus({ type: 'success', message: "If an account exists, we've sent instructions to your email." });
       // Optional: Redirect after delay
       // setTimeout(() => router.push("/login"), 5000); 
-    } catch (error: any) {
-      setStatus({ type: 'error', message: error.response?.data?.detail || "Failed to send email." });
+    } catch (error: unknown) {
+      setStatus({ type: 'error', message: getApiErrorMessage(error, "Failed to send email.") });
     }
   };
 
