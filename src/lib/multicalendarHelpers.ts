@@ -3,7 +3,7 @@ import {
   CalendarEvent as BaseCalendarEvent,
   AssetCalendar as BaseAssetCalendar,
 } from "@/components/ui/full-calendar/calendar-context";
-import { ApiBooking } from "@/types";
+import { ApiAsset, ApiBooking } from "@/types";
 
 export type VariantProps<
   Component extends (...args: unknown[]) => unknown,
@@ -58,12 +58,7 @@ export interface CalendarEvent extends BaseCalendarEvent {
 
 export interface AssetCalendar extends Omit<BaseAssetCalendar, "events"> {
   events: CalendarEvent[];
-  asset?: {
-    id: string;
-    name: string;
-    asset_code?: string;
-    [key: string]: unknown;
-  };
+  asset?: ApiAsset | { id: string; name: string; asset_code?: string };
 }
 
 // Global debug flag (Module level variable instead of window)
@@ -183,7 +178,7 @@ export function convertBookingToCalendarEvent(
     in_progress: "blue",
     completed: "purple",
     cancelled: "pink",
-    denied: "red", // Added denied
+    denied: "pink", // Added denied
   };
   let color = statusColorMap[status] || "default";
 

@@ -848,18 +848,13 @@ export function CreateBookingForm({
         const events = succeeded.map((booking) => {
           const returnedAssetId =
             booking.asset?.id ||
-            booking.asset_id ||
-            booking.assetId ||
-            booking.assetKey;
+            booking.asset_id;
           const assetTitle =
             booking.asset?.name ||
             assets.find(
               (a) =>
                 a.assetKey === booking.asset_id || a.id === booking.asset_id,
             )?.assetTitle ||
-            booking.asset_name ||
-            booking.assetTitle ||
-            booking.assetName ||
             booking.asset_id;
 
           const startDateTime = new Date(

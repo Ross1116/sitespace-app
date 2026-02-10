@@ -21,7 +21,7 @@ import {
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { useAuth } from "@/app/context/AuthContext";
-import { ApiAsset, getApiErrorMessage } from "@/types";
+import { ApiAsset, TransformedAsset, getApiErrorMessage } from "@/types";
 
 // ===== TYPE DEFINITIONS (Matching AssetsTable.tsx exactly) =====
 interface Project {
@@ -32,25 +32,11 @@ interface Project {
 interface AssetModalProps {
   isOpen: boolean;
   onClose: (open: boolean) => void;
-  onSave: (asset: Asset) => void;
+  onSave: (asset: Asset) => void | Promise<void>;
   assetData: Asset;
 }
 
-//  MUST match exactly with AssetsTable.tsx Asset interface
-interface Asset {
-  assetKey: string;
-  assetTitle: string;
-  assetLocation: string;
-  assetType: string;
-  assetStatus: string;
-  assetPoc: string;
-  assetProject: string; //  Just string, not string | Project
-  maintanenceStartdt: string;
-  maintanenceEnddt: string;
-  usageInstructions: string;
-  assetCode: string;
-  _originalData?: ApiAsset;
-}
+type Asset = TransformedAsset;
 
 interface AssetUpdateRequest {
   name?: string;
@@ -112,12 +98,14 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
   const [asset, setAsset] = useState<Asset>({
     assetKey: "",
     assetTitle: "",
+    assetDescription: "",
     assetLocation: "",
     assetType: "",
     maintanenceStartdt: "",
     maintanenceEnddt: "",
     assetPoc: "",
     assetStatus: "Operational",
+    assetLastUpdated: "",
     usageInstructions: "",
     assetProject: "", //  Just a string
     assetCode: "",
@@ -241,16 +229,22 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
         response.data.type ||
         (response.data as { asset_type?: string }).asset_type ||
         "";
+      const descriptionText =
+        response.data.description ||
+        response.data.usage_instructions ||
+        "No description provided";
 
       const updatedAsset: Asset = {
         assetKey: response.data.id,
         assetTitle: response.data.name,
+        assetDescription: descriptionText,
         assetLocation: response.data.location || "",
         assetType: responseAssetType,
         maintanenceStartdt: response.data.maintenance_start_date || "",
         maintanenceEnddt: response.data.maintenance_end_date || "",
         assetPoc: response.data.poc || "",
         assetStatus: mapBackendStatusToFrontend(response.data.status),
+        assetLastUpdated: response.data.updated_at || "",
         usageInstructions:
           response.data.usage_instructions || response.data.description || "",
         assetProject: response.data.project_id || projectId, //  Always a string

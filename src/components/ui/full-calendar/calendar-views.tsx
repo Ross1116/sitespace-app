@@ -60,6 +60,22 @@ import { AlertCircle, Ban, Loader2 } from "lucide-react";
 const EARLIEST_START_HOUR = 6; // 6:00 AM
 const LATEST_END_HOUR = 20; // 8:00 PM
 
+type MaintenanceAsset = {
+  status?: string;
+  maintenance_start?: string;
+  maintenance_end?: string;
+};
+
+const toMaintenanceAsset = (value: unknown): MaintenanceAsset => {
+  if (typeof value === "object" && value !== null) {
+    return value as MaintenanceAsset;
+  }
+  return {};
+};
+
+const getString = (value: unknown): string =>
+  typeof value === "string" ? value : "";
+
 const DraggableEventWrapper = ({
   event,
   children,
@@ -107,12 +123,12 @@ export const CalendarDayView = ({
   const { events, date, setEvents } = useCalendar();
 
   // --- 1. MAINTENANCE LOGIC ---
-  const asset = assetCalendar?.asset;
+  const asset = toMaintenanceAsset(assetCalendar?.asset);
 
   const isSlotInMaintenance = (slotDate: Date) => {
     if (!asset) return false;
 
-    const status = asset.status?.toLowerCase() || "";
+    const status = getString(asset.status).toLowerCase();
     const isMaintenanceStatus =
       status.includes("maintenance") ||
       status.includes("broken") ||
@@ -225,14 +241,23 @@ export const CalendarDayView = ({
     setEvents(updatedEvents);
 
     try {
-      const bookingId = event.bookingKey || event.id;
-      const originalPayload = event._originalData || {};
+      const bookingId =
+        typeof event.bookingKey === "string" ? event.bookingKey : event.id;
+      const originalPayload =
+        typeof event._originalData === "object" && event._originalData !== null
+          ? (event._originalData as { purpose?: unknown; notes?: unknown })
+          : {};
+      const bookingTitle =
+        typeof event.bookingTitle === "string" ? event.bookingTitle : "";
+      const bookingNotes =
+        typeof event.bookingNotes === "string" ? event.bookingNotes : "";
       const payload = {
         booking_date: format(newStart, "yyyy-MM-dd"),
         start_time: format(newStart, "HH:mm:ss"),
         end_time: format(newEnd, "HH:mm:ss"),
-        purpose: originalPayload.purpose || event.bookingTitle || "Rescheduled",
-        notes: originalPayload.notes || event.bookingNotes || "",
+        purpose:
+          getString(originalPayload.purpose) || bookingTitle || "Rescheduled",
+        notes: getString(originalPayload.notes) || bookingNotes || "",
       };
       await api.put(`/bookings/${bookingId}`, payload);
       onActionComplete?.();
@@ -952,7 +977,11 @@ const EventGroupSideBySide = ({
                         e.stopPropagation();
                         // We ALLOW clicking to view details even in maintenance (to see what the booking is)
                         // But editing/rescheduling is disabled via the dialog's logic if needed (or here)
-                        onEventClick(event.bookingKey || event.id);
+                        const bookingId =
+                          typeof event.bookingKey === "string"
+                            ? event.bookingKey
+                            : event.id;
+                        onEventClick(bookingId);
                       }}
                     >
                       <div className="font-bold truncate">{event.title}</div>

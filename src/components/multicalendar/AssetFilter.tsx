@@ -53,7 +53,7 @@ export function AssetFilter({
           <div className="flex flex-col justify-evenly space-y-2">
             {assetCalendars.map((calendar, index) => {
               const assetName = calendar.asset?.name || calendar.name || "Unknown Asset";
-              const assetCode = calendar.asset?.asset_code || calendar.asset_code || "";
+              const assetCode = calendar.asset?.asset_code || "";
               
               return (
                 <div key={index} className="flex items-center space-x-2 group">

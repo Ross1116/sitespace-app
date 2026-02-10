@@ -37,7 +37,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { getApiErrorMessage } from "@/types";
+import { TransformedAsset, getApiErrorMessage } from "@/types";
 
 interface AssetFromBackend {
   id: string;
@@ -64,22 +64,7 @@ interface AssetListResponse {
   has_more: boolean;
 }
 
-interface Asset {
-  assetKey: string;
-  assetTitle: string;
-  assetDescription: string;
-  assetType: string;
-  assetStatus: string;
-  assetLastUpdated: string;
-  assetPoc: string;
-  assetProject: string;
-  assetLocation: string;
-  maintanenceStartdt: string;
-  maintanenceEnddt: string;
-  usageInstructions: string;
-  assetCode: string;
-  _originalData?: AssetFromBackend;
-}
+type Asset = TransformedAsset;
 
 interface Project {
   id: string;
