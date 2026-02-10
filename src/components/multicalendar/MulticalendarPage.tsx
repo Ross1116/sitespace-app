@@ -22,6 +22,20 @@ import { ApiAsset, ApiBooking, ApiProject, getApiErrorMessage } from "@/types";
 
 // ===== 1. UPDATED INTERFACES (MATCHING YOUR JSON) =====
 
+const isAbortError = (error: unknown, signal?: AbortSignal) => {
+  if (signal?.aborted) return true;
+  if (error instanceof Error && error.name === "CanceledError") return true;
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "ERR_CANCELED"
+  ) {
+    return true;
+  }
+  return false;
+};
+
 interface CalendarDayResponse {
   date: string;
   bookings: ApiBooking[];
@@ -38,6 +52,7 @@ const bookingsApi = {
     dateFrom: string,
     dateTo: string,
     projectId?: string,
+    signal?: AbortSignal,
   ): Promise<CalendarDayResponse[]> => {
     const response = await api.get<CalendarDayResponse[]>(
       "/bookings/calendar",
@@ -47,6 +62,7 @@ const bookingsApi = {
           date_to: dateTo,
           project_id: projectId,
         },
+        signal,
       },
     );
     return response.data;
@@ -54,7 +70,10 @@ const bookingsApi = {
 };
 
 const assetsApi = {
-  getProjectAssets: async (projectId: string): Promise<ApiAsset[]> => {
+  getProjectAssets: async (
+    projectId: string,
+    signal?: AbortSignal,
+  ): Promise<ApiAsset[]> => {
     try {
       const response = await api.get<AssetListResponse>("/assets/", {
         params: {
@@ -62,9 +81,11 @@ const assetsApi = {
           limit: 100,
           skip: 0,
         },
+        signal,
       });
       return response.data.assets.sort((a, b) => a.name.localeCompare(b.name));
     } catch (error) {
+      if (isAbortError(error, signal)) return [];
       console.error("Failed to fetch assets", error);
       return [];
     }
@@ -148,7 +169,7 @@ export default function MulticalendarPage() {
   };
 
   // ===== 3. FETCH DATA LOGIC =====
-  const fetchData = async (isBackground = false) => {
+  const fetchData = async (isBackground = false, signal?: AbortSignal) => {
     if (!user) {
       setLoading(false);
       return;
@@ -165,7 +186,8 @@ export default function MulticalendarPage() {
     }
 
     try {
-      const assets = await assetsApi.getProjectAssets(project.id);
+      const assets = await assetsApi.getProjectAssets(project.id, signal);
+      if (signal?.aborted) return;
       setAvailableAssets(assets);
 
       const today = new Date();
@@ -178,6 +200,7 @@ export default function MulticalendarPage() {
         dateFrom.toISOString().split("T")[0],
         dateTo.toISOString().split("T")[0],
         project.id,
+        signal,
       );
       const allBookings: ApiBooking[] = calendarData.flatMap(
         (dayData) => dayData.bookings || [],
@@ -189,6 +212,7 @@ export default function MulticalendarPage() {
           b.status?.toLowerCase() !== "denied",
       );
 
+      if (signal?.aborted) return;
       localStorage.setItem(storageKey, JSON.stringify(activeBookings));
 
       const transformedBookings: CalendarEvent[] = activeBookings.map(
@@ -198,12 +222,13 @@ export default function MulticalendarPage() {
       setBookings(transformedBookings);
       hasFetched.current = true;
     } catch (err: unknown) {
+      if (isAbortError(err, signal)) return;
       console.error("❌ Error fetching data:", err);
       if (bookings.length === 0) {
         setError(getApiErrorMessage(err, "Failed to fetch calendar data"));
       }
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   };
 
@@ -230,18 +255,25 @@ export default function MulticalendarPage() {
       }
     }
 
+    const controller = new AbortController();
     if (!hasFetched.current) {
-      fetchData(foundCache);
+      fetchData(foundCache, controller.signal);
     }
 
     const interval = setInterval(() => fetchData(true), 300000);
-    return () => clearInterval(interval);
+    return () => {
+      controller.abort();
+      clearInterval(interval);
+    };
   }, [user]);
 
   useEffect(() => {
     if (hasFetched.current) {
-      fetchData(true);
+      const controller = new AbortController();
+      fetchData(true, controller.signal);
+      return () => controller.abort();
     }
+    return undefined;
   }, [currentDate.getMonth(), currentDate.getFullYear()]);
 
   const handleActionComplete = () => {

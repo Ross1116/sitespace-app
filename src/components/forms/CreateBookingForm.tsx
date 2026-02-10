@@ -99,6 +99,20 @@ const getString = (value: unknown): string =>
 const getIdString = (value: unknown): string =>
   typeof value === "string" || typeof value === "number" ? String(value) : "";
 
+const isAbortError = (error: unknown, signal?: AbortSignal) => {
+  if (signal?.aborted) return true;
+  if (error instanceof Error && error.name === "CanceledError") return true;
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "ERR_CANCELED"
+  ) {
+    return true;
+  }
+  return false;
+};
+
 // ===== CONSOLIDATED STATE =====
 interface TimeState {
   startHour: string;
@@ -556,7 +570,8 @@ export function CreateBookingForm({
 
   // ===== LOAD SUBCONTRACTORS =====
   useEffect(() => {
-    const loadSubcontractors = async () => {
+    const controller = new AbortController();
+    const loadSubcontractors = async (signal: AbortSignal) => {
       if (!project?.id || !isManager) return;
 
       dispatchAsync({ type: "SET_LOADING_SUBS", loading: true });
@@ -568,6 +583,7 @@ export function CreateBookingForm({
             is_active: true,
             project_id: project.id,
           },
+          signal,
         });
 
         let subsData: SubcontractorSource[] = [];
@@ -637,6 +653,7 @@ export function CreateBookingForm({
           // ignore storage errors
         }
       } catch (err: unknown) {
+        if (isAbortError(err, signal)) return;
         console.error("Error loading subcontractors:", err);
         // Fallback: try cached
         const cachedSubs = localStorage.getItem(`subcontractors_${userId}`);
@@ -669,8 +686,10 @@ export function CreateBookingForm({
     };
 
     if (isOpen && project) {
-      loadSubcontractors();
+      loadSubcontractors(controller.signal);
+      return () => controller.abort();
     }
+    return undefined;
   }, [isOpen, project, isManager, userId]);
 
   // ===== AUTO-SELECT SUBCONTRACTOR FOR SUB USERS =====

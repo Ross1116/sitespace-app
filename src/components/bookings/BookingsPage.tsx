@@ -24,6 +24,20 @@ const parseTimeToMinutes = (timeStr: string): number => {
   return hours * 60 + minutes;
 };
 
+const isAbortError = (error: unknown, signal?: AbortSignal) => {
+  if (signal?.aborted) return true;
+  if (error instanceof Error && error.name === "CanceledError") return true;
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "ERR_CANCELED"
+  ) {
+    return true;
+  }
+  return false;
+};
+
 const calculateDuration = (startTime: string, endTime: string): number => {
   if (!startTime || !endTime) return 60;
   const start = parseTimeToMinutes(startTime);
@@ -148,7 +162,7 @@ export default function BookingsPage() {
   };
 
   const fetchBookings = useCallback(
-    async (isBackground = false) => {
+    async (isBackground = false, signal?: AbortSignal) => {
       if (!user) return;
 
       const projectString = localStorage.getItem(projectStorageKey);
@@ -163,6 +177,7 @@ export default function BookingsPage() {
         const project = JSON.parse(projectString);
         const response = await api.get<BookingListResponse>("/bookings/", {
           params: { project_id: project.id, limit: 1000, skip: 0 },
+          signal,
         });
 
         const rawBookings = response.data?.bookings || [];
@@ -176,9 +191,10 @@ export default function BookingsPage() {
         const uiBookings = processRawBookings(rawBookings);
         setAllBookings(uiBookings);
       } catch (error) {
+        if (isAbortError(error, signal)) return;
         console.error("Error fetching bookings:", error);
       } finally {
-        setLoading(false);
+        if (!signal?.aborted) setLoading(false);
       }
     },
     [user, storageKey, projectStorageKey],
@@ -208,7 +224,9 @@ export default function BookingsPage() {
       }
     }
 
-    fetchBookings();
+    const controller = new AbortController();
+    fetchBookings(false, controller.signal);
+    return () => controller.abort();
   }, [user, storageKey, fetchBookings]);
 
   // --- AUTO-SWITCH TAB when highlighting ---

@@ -169,6 +169,20 @@ const safeFormatDate = (dateString?: string) => {
   }
 };
 
+const isAbortError = (error: unknown, signal?: AbortSignal) => {
+  if (signal?.aborted) return true;
+  if (error instanceof Error && error.name === "CanceledError") return true;
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "ERR_CANCELED"
+  ) {
+    return true;
+  }
+  return false;
+};
+
 const SortIcon = ({
   field,
   currentSort,
@@ -264,7 +278,7 @@ export default function AssetsTable() {
   }, [userId]);
 
   const fetchAssets = useCallback(
-    async (isBackground = false) => {
+    async (isBackground = false, signal?: AbortSignal) => {
       if (!user || !project) return;
 
       if (!isBackground) setLoading(true);
@@ -277,6 +291,7 @@ export default function AssetsTable() {
             skip: 0,
             limit: 100,
           },
+          signal,
         });
 
         const assetsData = response.data?.assets || [];
@@ -291,6 +306,7 @@ export default function AssetsTable() {
           }),
         );
       } catch (error: unknown) {
+        if (isAbortError(error, signal)) return;
         console.error("Error fetching assets:", error);
         const cached = localStorage.getItem(STORAGE_KEY);
         if (cached) {
@@ -303,7 +319,7 @@ export default function AssetsTable() {
           setFetchError("Failed to load assets. Showing cached data.");
         }
       } finally {
-        setLoading(false);
+        if (!signal?.aborted) setLoading(false);
       }
     },
     [user, project, STORAGE_KEY],
@@ -332,7 +348,9 @@ export default function AssetsTable() {
       }
     }
 
-    fetchAssets();
+    const controller = new AbortController();
+    fetchAssets(false, controller.signal);
+    return () => controller.abort();
   }, [user, project, STORAGE_KEY, fetchAssets]);
 
   useEffect(() => {

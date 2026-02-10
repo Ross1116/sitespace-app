@@ -23,6 +23,20 @@ import { format } from "date-fns";
 import { useSmartRefresh } from "@/lib/useSmartRefresh";
 import { ApiProject, getApiErrorMessage } from "@/types";
 
+const isAbortError = (error: unknown, signal?: AbortSignal) => {
+  if (signal?.aborted) return true;
+  if (error instanceof Error && error.name === "CanceledError") return true;
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "ERR_CANCELED"
+  ) {
+    return true;
+  }
+  return false;
+};
+
 interface SubcontractorFromBackend {
   id: string;
   email: string;
@@ -172,7 +186,7 @@ export default function SubcontractorsPage() {
   }, [userId]);
 
   const fetchSubs = useCallback(
-    async (isBackground = false) => {
+    async (isBackground = false, signal?: AbortSignal) => {
       if (!user) return;
 
       if (user.role === "subcontractor") {
@@ -201,6 +215,7 @@ export default function SubcontractorsPage() {
 
         const response = await api.get<SubcontractorListResponse>(endpoint, {
           params,
+          signal,
         });
         const subsData = response.data?.subcontractors || [];
         const transformedSubs = subsData.map(transformBackendSubcontractor);
@@ -214,6 +229,7 @@ export default function SubcontractorsPage() {
           }),
         );
       } catch (err: unknown) {
+        if (isAbortError(err, signal)) return;
         setError(getApiErrorMessage(err, "Failed to fetch subcontractors"));
 
         try {
@@ -224,7 +240,7 @@ export default function SubcontractorsPage() {
           }
         } catch {}
       } finally {
-        setLoading(false);
+        if (!signal?.aborted) setLoading(false);
       }
     },
     [user, selectedProject, cacheKey],
@@ -249,13 +265,17 @@ export default function SubcontractorsPage() {
       }
     } catch {}
 
-    fetchSubs();
+    const controller = new AbortController();
+    fetchSubs(false, controller.signal);
+    return () => controller.abort();
   }, [user, cacheKey, fetchSubs]);
 
   useEffect(() => {
     if (!user) return;
     setCurrentPage(1);
-    fetchSubs(true);
+    const controller = new AbortController();
+    fetchSubs(true, controller.signal);
+    return () => controller.abort();
   }, [selectedProject, user, fetchSubs]);
 
   useEffect(() => {

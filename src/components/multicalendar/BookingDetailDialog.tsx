@@ -45,6 +45,20 @@ type BookingDetail = Omit<ApiBooking, "manager" | "asset"> & {
   asset?: { id: string; name: string; asset_code?: string };
 };
 
+const isAbortError = (error: unknown, signal?: AbortSignal) => {
+  if (signal?.aborted) return true;
+  if (error instanceof Error && error.name === "CanceledError") return true;
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "ERR_CANCELED"
+  ) {
+    return true;
+  }
+  return false;
+};
+
 interface BookingDetailsDialogProps {
   bookingId: string | null;
   isOpen: boolean;
@@ -75,25 +89,31 @@ export function BookingDetailsDialog({
 
   // --- 1. FETCH DATA ---
   useEffect(() => {
+    const controller = new AbortController();
     if (isOpen && bookingId) {
-      fetchDetails();
+      fetchDetails(controller.signal);
     } else {
       setData(null);
       setLoading(true);
       setError(null);
     }
+    return () => controller.abort();
   }, [isOpen, bookingId]);
 
-  const fetchDetails = async () => {
+  const fetchDetails = async (signal?: AbortSignal) => {
     setLoading(true);
     try {
-      const res = await api.get<BookingDetail>(`/bookings/${bookingId}`);
+      const res = await api.get<BookingDetail>(`/bookings/${bookingId}`, {
+        signal,
+      });
+      if (signal?.aborted) return;
       setData(res.data);
     } catch (err) {
+      if (isAbortError(err, signal)) return;
       console.error("Error fetching booking details:", err);
       setError("Failed to load booking details.");
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   };
 

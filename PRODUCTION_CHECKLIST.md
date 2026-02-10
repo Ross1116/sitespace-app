@@ -19,7 +19,7 @@ Updated:
 - [x] **2. CI/CD pipeline**
 - [x] **3. Error boundaries**
 - [x] **4. TypeScript interfaces / eliminate `any` types**
-- [ ] **5. AbortController on API fetches**
+- [x] **5. AbortController on API fetches**
 
 ## Production Polish (Code)
 

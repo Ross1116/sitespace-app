@@ -31,6 +31,20 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { getApiErrorMessage } from "@/types";
 
+const isAbortError = (error: unknown, signal?: AbortSignal) => {
+  if (signal?.aborted) return true;
+  if (error instanceof Error && error.name === "CanceledError") return true;
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "ERR_CANCELED"
+  ) {
+    return true;
+  }
+  return false;
+};
+
 interface RescheduleBookingFormProps {
   isOpen: boolean;
   onClose: () => void;
@@ -64,16 +78,19 @@ export default function RescheduleBookingForm({
 
   // Fetch Booking Details on Open
   useEffect(() => {
+    const controller = new AbortController();
     if (isOpen && bookingId) {
-      fetchBookingDetails();
+      fetchBookingDetails(controller.signal);
     }
+    return () => controller.abort();
   }, [isOpen, bookingId]);
 
-  const fetchBookingDetails = async () => {
+  const fetchBookingDetails = async (signal?: AbortSignal) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await api.get(`/bookings/${bookingId}`);
+      const response = await api.get(`/bookings/${bookingId}`, { signal });
+      if (signal?.aborted) return;
       const booking = response.data;
 
       // 1. Set Basic Info
@@ -104,10 +121,11 @@ export default function RescheduleBookingForm({
       setDuration(diff.toString());
 
     } catch (err: unknown) {
+      if (isAbortError(err, signal)) return;
       console.error("Failed to fetch booking:", err);
       setError(getApiErrorMessage(err, "Failed to load booking details. Please try again."));
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   };
 

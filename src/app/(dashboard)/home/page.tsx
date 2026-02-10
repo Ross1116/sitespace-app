@@ -35,6 +35,20 @@ import {
 import type { ApiBooking, ApiProject, ApiSubcontractor } from "@/types";
 import type { LucideIcon } from "lucide-react";
 
+const isAbortError = (error: unknown, signal?: AbortSignal) => {
+  if (signal?.aborted) return true;
+  if (error instanceof Error && error.name === "CanceledError") return true;
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "ERR_CANCELED"
+  ) {
+    return true;
+  }
+  return false;
+};
+
 // --- Types ---
 type Booking = ApiBooking;
 
@@ -104,13 +118,14 @@ export default function HomePage() {
   );
 
   // --- API Calls ---
-  const fetchProjects = useCallback(async () => {
+  const fetchProjects = useCallback(async (signal?: AbortSignal) => {
     if (!userId) return;
     try {
       let projectData: ApiProject[] = [];
       if (user?.role === "subcontractor") {
         const resp = await api.get<SubcontractorProjectApi[]>(
           `/subcontractors/${userId}/projects`,
+          { signal },
         );
         projectData = resp.data.map((p) => ({
           id: p.project_id,
@@ -122,9 +137,11 @@ export default function HomePage() {
       } else {
         const resp = await api.get<{ projects?: ApiProject[] }>("/projects/", {
           params: { my_projects: true, limit: 100, skip: 0 },
+          signal,
         });
         projectData = resp.data?.projects || [];
       }
+      if (signal?.aborted) return;
       setProjects(projectData);
 
       // Only set initial project if none is currently selected
@@ -153,27 +170,31 @@ export default function HomePage() {
         return null;
       });
     } catch (err) {
+      if (isAbortError(err, signal)) return;
       console.error("Error fetching projects:", err);
     }
   }, [userId, user?.role]);
 
-  const fetchAssets = useCallback(async () => {
+  const fetchAssets = useCallback(async (signal?: AbortSignal) => {
     if (!userId || !selectedProject) return;
     try {
       const projectId = selectedProject.id || selectedProject.project_id;
       const response = await api.get("/assets/", {
         params: { project_id: projectId, limit: 100 },
+        signal,
       });
       const assetData = response.data?.assets || [];
+      if (signal?.aborted) return;
       setAssetCount(response.data?.total || assetData.length);
       localStorage.setItem(assetsCacheKey, JSON.stringify(assetData));
     } catch (error) {
+      if (isAbortError(error, signal)) return;
       console.error("Error fetching assets", error);
       setAssetCount(0);
     }
   }, [selectedProject, userId, assetsCacheKey]);
 
-  const fetchSubcontractors = useCallback(async () => {
+  const fetchSubcontractors = useCallback(async (signal?: AbortSignal) => {
     if (!userId || !selectedProject) return;
     if (user?.role === "subcontractor") {
       setSubcontractorCount(0);
@@ -188,6 +209,7 @@ export default function HomePage() {
 
       const response = await api.get(endpoint, {
         params: { project_id: projectId, limit: 100, is_active: true },
+        signal,
       });
 
       let subData: ApiSubcontractor[] = [];
@@ -223,16 +245,18 @@ export default function HomePage() {
         }
       }
 
+      if (signal?.aborted) return;
       setSubcontractorCount(total);
       localStorage.setItem(subcontractorsCacheKey, JSON.stringify(subData));
     } catch (error) {
+      if (isAbortError(error, signal)) return;
       console.error("Error fetching subcontractors", error);
       setSubcontractorCount(0);
     }
   }, [selectedProject, userId, user?.role, subcontractorsCacheKey]);
 
   const fetchBookings = useCallback(
-    async (isBackground = false) => {
+    async (isBackground = false, signal?: AbortSignal) => {
       if (!userId || !selectedProject) return;
       try {
         if (!isBackground) setLoadingBookings(true);
@@ -241,6 +265,7 @@ export default function HomePage() {
         const projectId = selectedProject.id || selectedProject.project_id;
         const resp = await api.get("/bookings/my/upcoming", {
           params: { limit: 50, project_id: projectId },
+          signal,
         });
 
         let bookingsData: Booking[] = resp.data || [];
@@ -249,15 +274,17 @@ export default function HomePage() {
           return bProjId === projectId;
         });
 
+        if (signal?.aborted) return;
         setUpcomingBookings(bookingsData);
         localStorage.setItem(bookingsCacheKey, JSON.stringify(bookingsData));
       } catch (err) {
+        if (isAbortError(err, signal)) return;
         console.error("Error fetching bookings:", err);
         if (!isBackground) {
           setFetchError("Failed to load bookings. Please try again later.");
         }
       } finally {
-        setLoadingBookings(false);
+        if (!signal?.aborted) setLoadingBookings(false);
       }
     },
     [selectedProject, userId, bookingsCacheKey],
@@ -265,25 +292,37 @@ export default function HomePage() {
 
   // --- Effects ---
   useEffect(() => {
+    const controller = new AbortController();
     const fetchProfile = async () => {
       try {
-        const response = await api.get<UserProfile>("/auth/me");
+        const response = await api.get<UserProfile>("/auth/me", {
+          signal: controller.signal,
+        });
+        if (controller.signal.aborted) return;
         setProfile(response.data);
       } catch (error) {
+        if (isAbortError(error, controller.signal)) return;
         console.error("Failed to fetch user profile", error);
       }
     };
     fetchProfile();
+    return () => controller.abort();
   }, []);
 
   useEffect(() => {
     if (!user || hasInitialized.current) return;
-    fetchProjects();
-    hasInitialized.current = true;
+    const controller = new AbortController();
+    fetchProjects(controller.signal).finally(() => {
+      if (!controller.signal.aborted) {
+        hasInitialized.current = true;
+      }
+    });
+    return () => controller.abort();
   }, [user, fetchProjects]);
 
   useEffect(() => {
     if (!selectedProject) return;
+    const controller = new AbortController();
 
     setLoadingBookings(true);
     setFetchError(null);
@@ -291,9 +330,10 @@ export default function HomePage() {
     setAssetCount(0);
     setSubcontractorCount(0);
 
-    fetchAssets();
-    fetchSubcontractors();
-    fetchBookings(false);
+    fetchAssets(controller.signal);
+    fetchSubcontractors(controller.signal);
+    fetchBookings(false, controller.signal);
+    return () => controller.abort();
   }, [selectedProject, fetchAssets, fetchSubcontractors, fetchBookings]);
 
   useEffect(() => {
