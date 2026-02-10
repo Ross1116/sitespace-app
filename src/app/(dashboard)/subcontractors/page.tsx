@@ -366,7 +366,7 @@ export default function SubcontractorsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[hsl(20,60%,99%)] p-4 sm:p-6 lg:p-8 font-sans">
+    <div className="min-h-screen bg-[var(--page-bg)] p-4 sm:p-6 lg:p-8 font-sans">
       <div className="max-w-screen mx-auto space-y-6">
         <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-1 min-h-[85vh] flex flex-col relative overflow-hidden">
           <div className="p-6 flex-1 flex flex-col">
@@ -383,7 +383,7 @@ export default function SubcontractorsPage() {
               {user?.role !== "subcontractor" && (
                 <Button
                   onClick={() => setIsSubFormOpen(true)}
-                  className="bg-[#0B1120] hover:bg-[#1a253a] text-white rounded-lg px-4 py-2 h-auto text-sm font-medium shadow-md shadow-slate-900/10"
+                  className="bg-[var(--navy)] hover:bg-[var(--navy-hover)] text-white rounded-lg px-4 py-2 h-auto text-sm font-medium shadow-md shadow-slate-900/10"
                 >
                   <Plus className="mr-2 h-4 w-4" /> Invite a subcontractor
                 </Button>
@@ -407,7 +407,7 @@ export default function SubcontractorsPage() {
             </div>
 
             {/* Table Header — Sortable */}
-            <div className="hidden sm:grid grid-cols-12 gap-4 bg-gradient-to-r from-[#0f2a4a] to-[#0B1120] text-white py-3.5 px-6 rounded-xl text-sm font-semibold shadow-md shadow-slate-200 mb-4 select-none">
+            <div className="hidden sm:grid grid-cols-12 gap-4 bg-gradient-to-r from-[var(--navy-deep)] to-[var(--navy)] text-white py-3.5 px-6 rounded-xl text-sm font-semibold shadow-md shadow-slate-200 mb-4 select-none">
               {columnHeaders.map(({ label, field, colSpan }) => (
                 <div
                   key={field}
@@ -561,7 +561,7 @@ export default function SubcontractorsPage() {
                 <Button
                   onClick={() => handlePageChange(currentPage - 1)}
                   disabled={currentPage === 1}
-                  className="bg-[#0B1120] text-white hover:bg-[#1a253a] disabled:bg-slate-200 disabled:text-slate-400 rounded-full h-10 px-6 text-xs font-bold tracking-wide"
+                  className="bg-[var(--navy)] text-white hover:bg-[var(--navy-hover)] disabled:bg-slate-200 disabled:text-slate-400 rounded-full h-10 px-6 text-xs font-bold tracking-wide"
                 >
                   Previous
                 </Button>
@@ -574,7 +574,7 @@ export default function SubcontractorsPage() {
                 <Button
                   onClick={() => handlePageChange(currentPage + 1)}
                   disabled={currentPage >= totalPages}
-                  className="bg-[#0B1120] text-white hover:bg-[#1a253a] disabled:bg-slate-200 disabled:text-slate-400 rounded-full h-10 px-6 text-xs font-bold tracking-wide"
+                  className="bg-[var(--navy)] text-white hover:bg-[var(--navy-hover)] disabled:bg-slate-200 disabled:text-slate-400 rounded-full h-10 px-6 text-xs font-bold tracking-wide"
                 >
                   Next
                 </Button>
@@ -591,7 +591,7 @@ export default function SubcontractorsPage() {
         >
           {selectedContractor && (
             <div className="h-full flex flex-col">
-              <div className="p-8 bg-[#0B1120] text-white flex justify-between items-start">
+              <div className="p-8 bg-[var(--navy)] text-white flex justify-between items-start">
                 <div className="flex-1 pr-4">
                   <div className="flex items-center gap-4 mb-4">
                     <div className="h-12 w-12 rounded-full bg-white/10 flex items-center justify-center text-xl font-bold border border-white/20">
@@ -741,3 +741,4 @@ export default function SubcontractorsPage() {
     </div>
   );
 }
+

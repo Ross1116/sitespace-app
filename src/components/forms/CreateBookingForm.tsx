@@ -1443,7 +1443,7 @@ export function CreateBookingForm({
           <AlertDialogFooter className="mt-2">
             <AlertDialogAction
               onClick={handleSuccessDismiss}
-              className="bg-[#0B1120] hover:bg-[#1a253a] text-white"
+              className="bg-[var(--navy)] hover:bg-[var(--navy-hover)] text-white"
             >
               Done
             </AlertDialogAction>
@@ -1504,7 +1504,7 @@ export function CreateBookingForm({
           <AlertDialogFooter className="mt-2">
             <AlertDialogAction
               onClick={handlePartialSuccessDismiss}
-              className="bg-[#0B1120] hover:bg-[#1a253a] text-white"
+              className="bg-[var(--navy)] hover:bg-[var(--navy-hover)] text-white"
             >
               Done
             </AlertDialogAction>
@@ -1514,3 +1514,4 @@ export function CreateBookingForm({
     </>
   );
 }
+

@@ -30,7 +30,7 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="flex min-h-screen bg-[hsl(20,60%,99%)]">
+    <div className="flex min-h-screen bg-[var(--page-bg)]">
       <SideNav />
       <main className="flex-1 w-full relative overflow-x-hidden">
         <div className="pt-16 md:pt-0">

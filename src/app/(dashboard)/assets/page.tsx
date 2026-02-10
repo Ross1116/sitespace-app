@@ -480,7 +480,7 @@ export default function AssetsTable() {
   };
 
   return (
-    <div className="min-h-screen bg-[hsl(20,60%,99%)] p-4 sm:p-6 lg:p-8 font-sans">
+    <div className="min-h-screen bg-[var(--page-bg)] p-4 sm:p-6 lg:p-8 font-sans">
       <div className="max-w-screen mx-auto space-y-6">
         <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-1 min-h-[85vh] flex flex-col relative overflow-hidden">
           <div className="p-6 flex-1 flex flex-col">
@@ -497,7 +497,7 @@ export default function AssetsTable() {
 
               <div className="flex flex-col sm:flex-row items-center gap-4 w-full xl:w-auto">
                 <div className="flex gap-3 w-full sm:w-auto">
-                  <div className="bg-[#0B1120] text-white rounded-xl px-5 py-2 flex flex-col items-center justify-center min-w-[110px] shadow-md shadow-slate-900/10">
+                  <div className="bg-[var(--navy)] text-white rounded-xl px-5 py-2 flex flex-col items-center justify-center min-w-[110px] shadow-md shadow-slate-900/10">
                     <span className="text-2xl font-bold leading-none">
                       {allAssets?.length ?? 0}
                     </span>
@@ -505,7 +505,7 @@ export default function AssetsTable() {
                       Total Assets
                     </span>
                   </div>
-                  <div className="bg-[#D94E09] text-white rounded-xl px-5 py-2 flex flex-col items-center justify-center min-w-[110px] shadow-md shadow-orange-900/10">
+                  <div className="bg-[var(--brand-orange)] text-white rounded-xl px-5 py-2 flex flex-col items-center justify-center min-w-[110px] shadow-md shadow-orange-900/10">
                     <span className="text-2xl font-bold leading-none">
                       {maintenanceCount}
                     </span>
@@ -517,7 +517,7 @@ export default function AssetsTable() {
 
                 <Button
                   onClick={() => setIsAssetFormOpen(true)}
-                  className="bg-[#0B1120] hover:bg-[#1a253a] text-white rounded-lg px-6 py-5 h-auto text-sm font-bold shadow-md shadow-slate-900/10 w-full sm:w-auto"
+                  className="bg-[var(--navy)] hover:bg-[var(--navy-hover)] text-white rounded-lg px-6 py-5 h-auto text-sm font-bold shadow-md shadow-slate-900/10 w-full sm:w-auto"
                 >
                   <Plus className="mr-2 h-4 w-4 stroke-[3]" /> Add Asset
                 </Button>
@@ -541,7 +541,7 @@ export default function AssetsTable() {
             </div>
 
             {/* Table Header — Sortable */}
-            <div className="hidden sm:grid grid-cols-12 gap-4 bg-gradient-to-r from-[#0f2a4a] to-[#0B1120] text-white py-3.5 px-6 rounded-xl text-sm font-semibold shadow-md shadow-slate-200 mb-4 select-none">
+            <div className="hidden sm:grid grid-cols-12 gap-4 bg-gradient-to-r from-[var(--navy-deep)] to-[var(--navy)] text-white py-3.5 px-6 rounded-xl text-sm font-semibold shadow-md shadow-slate-200 mb-4 select-none">
               {columnHeaders.map(({ label, field, colSpan, extraClass }) => (
                 <div
                   key={field}
@@ -721,7 +721,7 @@ export default function AssetsTable() {
                 <Button
                   onClick={() => handlePageChange(currentPage - 1)}
                   disabled={currentPage === 1}
-                  className="bg-[#0B1120] text-white hover:bg-[#1a253a] disabled:bg-slate-200 disabled:text-slate-400 rounded-full h-10 px-6 text-xs font-bold tracking-wide"
+                  className="bg-[var(--navy)] text-white hover:bg-[var(--navy-hover)] disabled:bg-slate-200 disabled:text-slate-400 rounded-full h-10 px-6 text-xs font-bold tracking-wide"
                 >
                   Previous
                 </Button>
@@ -734,7 +734,7 @@ export default function AssetsTable() {
                 <Button
                   onClick={() => handlePageChange(currentPage + 1)}
                   disabled={currentPage >= totalPages}
-                  className="bg-[#0B1120] text-white hover:bg-[#1a253a] disabled:bg-slate-200 disabled:text-slate-400 rounded-full h-10 px-6 text-xs font-bold tracking-wide"
+                  className="bg-[var(--navy)] text-white hover:bg-[var(--navy-hover)] disabled:bg-slate-200 disabled:text-slate-400 rounded-full h-10 px-6 text-xs font-bold tracking-wide"
                 >
                   Next
                 </Button>
@@ -749,7 +749,7 @@ export default function AssetsTable() {
         >
           {selectedAsset && (
             <div className="h-full flex flex-col">
-              <div className="p-8 bg-[#0B1120] text-white flex justify-between items-start">
+              <div className="p-8 bg-[var(--navy)] text-white flex justify-between items-start">
                 <div className="flex-1 pr-4">
                   <div className="flex items-center gap-3 mb-4">
                     <div className="h-10 w-10 rounded-lg bg-white/10 flex items-center justify-center border border-white/20">
@@ -913,7 +913,7 @@ export default function AssetsTable() {
 
               <div className="p-4 bg-white border-t border-slate-100 flex gap-3">
                 <Button
-                  className="flex-1 bg-[#0B1120] text-white hover:bg-[#1a253a]"
+                  className="flex-1 bg-[var(--navy)] text-white hover:bg-[var(--navy-hover)]"
                   onClick={() => {
                     setSelectedAssetForUpdate(selectedAsset);
                     setIsUpdateModalOpen(true);
@@ -999,3 +999,4 @@ export default function AssetsTable() {
     </div>
   );
 }
+

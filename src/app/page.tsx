@@ -54,7 +54,7 @@ export default function HomePage() {
                 {valueProp.points.map((point, index) => (
                   <div key={index} className="flex items-start group">
                     <div className="flex-shrink-0 mt-1">
-                      <div className="h-8 w-8 rounded-lg bg-[#0B1120] flex items-center justify-center text-white shadow-lg shadow-slate-900/10 group-hover:scale-110 transition-transform">
+                      <div className="h-8 w-8 rounded-lg bg-[var(--navy)] flex items-center justify-center text-white shadow-lg shadow-slate-900/10 group-hover:scale-110 transition-transform">
                         <CheckCircle2 size={16} />
                       </div>
                     </div>
@@ -71,7 +71,7 @@ export default function HomePage() {
               <div className="mt-12">
                 <Button
                   size="lg"
-                  className="bg-[#0B1120] hover:bg-[#1a253a] text-white h-12 px-8 text-base font-bold shadow-xl shadow-slate-900/10"
+                  className="bg-[var(--navy)] hover:bg-[var(--navy-hover)] text-white h-12 px-8 text-base font-bold shadow-xl shadow-slate-900/10"
                 >
                   {valueProp.cta} <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
@@ -109,7 +109,7 @@ export default function HomePage() {
       >
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl mx-auto text-center mb-16">
-            <Badge className="mb-4 bg-[#0B1120] text-white hover:bg-[#0B1120]">
+            <Badge className="mb-4 bg-[var(--navy)] text-white hover:bg-[var(--navy)]">
               {pricing.badge}
             </Badge>
             <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">
@@ -127,7 +127,7 @@ export default function HomePage() {
       </section>
 
       {/* Final CTA */}
-      <section className="py-24 bg-[#0B1120] relative overflow-hidden">
+      <section className="py-24 bg-[var(--navy)] relative overflow-hidden">
         {/* Abstract Background Shapes */}
         <div className="absolute inset-0 opacity-10 pointer-events-none">
           <svg
@@ -150,7 +150,7 @@ export default function HomePage() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button
                 size="lg"
-                className="bg-white text-[#0B1120] hover:bg-slate-100 h-14 px-8 text-lg font-bold shadow-2xl"
+                className="bg-white text-[var(--navy)] hover:bg-slate-100 h-14 px-8 text-lg font-bold shadow-2xl"
               >
                 {finalCta.primaryCta} <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
@@ -170,3 +170,4 @@ export default function HomePage() {
     </div>
   );
 }
+

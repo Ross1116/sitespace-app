@@ -22,7 +22,7 @@ export function MobileView({
   return (
     <div className="flex-1 overflow-hidden">
       <div className="border border-slate-200 rounded-xl flex flex-col h-full min-h-96 overflow-hidden bg-white shadow-sm">
-        <div className="p-3 bg-[#0B1120] text-white font-semibold flex items-center justify-between">
+        <div className="p-3 bg-[var(--navy)] text-white font-semibold flex items-center justify-between">
           {loading ? (
             <Skeleton className="h-6 w-40 bg-slate-700" />
           ) : (

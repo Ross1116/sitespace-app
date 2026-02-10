@@ -517,7 +517,7 @@ export default function BookingHistorySidebar({
         {booking && (
           <div className="h-full flex flex-col">
             {/* Header */}
-            <div className="p-6 pb-5 bg-[#0B1120] text-white">
+            <div className="p-6 pb-5 bg-[var(--navy)] text-white">
               <div className="flex justify-between items-start mb-4">
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-lg bg-white/10 flex items-center justify-center border border-white/20">
@@ -794,7 +794,7 @@ export default function BookingHistorySidebar({
             <div className="p-4 bg-white border-t border-slate-100">
               <Button
                 onClick={onClose}
-                className="w-full bg-[#0B1120] text-white hover:bg-[#1a253a] rounded-xl h-10 text-sm font-bold"
+                className="w-full bg-[var(--navy)] text-white hover:bg-[var(--navy-hover)] rounded-xl h-10 text-sm font-bold"
               >
                 Close
               </Button>
@@ -805,3 +805,4 @@ export default function BookingHistorySidebar({
     </>
   );
 }
+

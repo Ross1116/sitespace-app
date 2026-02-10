@@ -36,7 +36,7 @@ export default function ForgotPassword() {
     <div className="flex min-h-screen w-full bg-white font-sans">
       
       {/* Left Side - Visual Panel */}
-      <div className="hidden lg:flex w-1/2 bg-[#0B1120] relative flex-col justify-between p-16 text-white overflow-hidden">
+      <div className="hidden lg:flex w-1/2 bg-[var(--navy)] relative flex-col justify-between p-16 text-white overflow-hidden">
         {/* Background Graphic */}
         <div className="absolute inset-0 opacity-10 pointer-events-none">
            <svg className="h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
@@ -46,7 +46,7 @@ export default function ForgotPassword() {
 
         <div className="z-10">
           <div className="flex items-center gap-3 mb-12">
-            <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center text-[#0B1120]">
+            <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center text-[var(--navy)]">
               <KeyRound size={24} />
             </div>
             <span className="text-2xl font-bold tracking-tight">Sitespace</span>
@@ -71,7 +71,7 @@ export default function ForgotPassword() {
         <div className="w-full max-w-md space-y-8">
           
           <div>
-            <Link href="/login" className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-[#0B1120] transition-colors mb-8 group">
+            <Link href="/login" className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-[var(--navy)] transition-colors mb-8 group">
               <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" /> Back to Login
             </Link>
             <h2 className="text-3xl font-bold text-slate-900">Forgot Password?</h2>
@@ -103,13 +103,13 @@ export default function ForgotPassword() {
                 onChange={(e) => setEmail(e.target.value)} 
                 required 
                 disabled={status.type === 'loading' || status.type === 'success'} 
-                className="h-12 border-slate-200 focus-visible:ring-[#0B1120] rounded-xl text-base" 
+                className="h-12 border-slate-200 focus-visible:ring-[var(--navy)] rounded-xl text-base" 
               />
             </div>
 
             <Button 
               type="submit" 
-              className="w-full h-12 bg-[#0B1120] hover:bg-[#1a253a] text-white font-bold text-base rounded-xl shadow-lg shadow-slate-900/10 transition-all disabled:opacity-70" 
+              className="w-full h-12 bg-[var(--navy)] hover:bg-[var(--navy-hover)] text-white font-bold text-base rounded-xl shadow-lg shadow-slate-900/10 transition-all disabled:opacity-70" 
               disabled={status.type === 'loading' || status.type === 'success'}
             >
               {status.type === 'loading' ? (
@@ -125,3 +125,4 @@ export default function ForgotPassword() {
     </div>
   );
 }
+

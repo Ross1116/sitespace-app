@@ -75,11 +75,11 @@ interface UserProfile {
 
 // --- Color Palette ---
 const PALETTE = {
-  bg: "bg-[hsl(20,60%,99%)]",
-  darkNavy: "bg-[#0B1120]",
-  navy: "bg-[#0f2a4a]",
-  blue: "bg-[#004e89]",
-  teal: "bg-[#0e7c9b]",
+  bg: "bg-[var(--page-bg)]",
+  darkNavy: "bg-[var(--navy)]",
+  navy: "bg-[var(--navy-deep)]",
+  blue: "bg-[var(--brand-blue)]",
+  teal: "bg-[var(--teal)]",
 };
 
 export default function HomePage() {
@@ -490,7 +490,7 @@ export default function HomePage() {
                           className={`w-full text-left px-3 py-3 rounded-lg text-sm font-medium transition-all flex items-center justify-between group cursor-pointer
                             ${
                               isActive
-                                ? "bg-[#0B1120] text-white shadow-md shadow-slate-900/10"
+                                ? "bg-[var(--navy)] text-white shadow-md shadow-slate-900/10"
                                 : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                             }`}
                         >
@@ -653,7 +653,7 @@ export default function HomePage() {
                           <div
                             key={booking.id}
                             onClick={() => handleBookingClick(booking.id)}
-                            className="bg-[#F8F9FB] rounded-xl flex overflow-hidden border border-transparent hover:border-slate-200 hover:shadow-md transition-all group cursor-pointer active:scale-[0.99]"
+                            className="bg-[var(--surface-subtle)] rounded-xl flex overflow-hidden border border-transparent hover:border-slate-200 hover:shadow-md transition-all group cursor-pointer active:scale-[0.99]"
                             role="button"
                             tabIndex={0}
                             onKeyDown={(e) => {
@@ -898,3 +898,4 @@ const SimpleCalendar = () => {
     </div>
   );
 };
+

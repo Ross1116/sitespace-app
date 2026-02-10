@@ -53,10 +53,10 @@ export const TimeTable = () => {
           >
             {now.getHours() === hour && (
               <div
-                className="absolute left-full translate-x-0 w-screen h-[2px] bg-[#0B1120] z-50 pointer-events-none"
+                className="absolute left-full translate-x-0 w-screen h-[2px] bg-[var(--navy)] z-50 pointer-events-none"
                 style={{ top: `${(now.getMinutes() / 60) * 100}%` }}
               >
-                <div className="size-2 rounded-full bg-[#0B1120] absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2"></div>
+                <div className="size-2 rounded-full bg-[var(--navy)] absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2"></div>
               </div>
             )}
             <p className="top-0 -translate-y-1/2 pr-2">{hour}:00</p>

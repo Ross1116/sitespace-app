@@ -380,13 +380,13 @@ export default function MulticalendarPage() {
     availableAssets.length === 0
   ) {
     return (
-      <div className="h-screen bg-[hsl(20,60%,99%)] flex items-center justify-center p-6">
+      <div className="h-screen bg-[var(--page-bg)] flex items-center justify-center p-6">
         <Card className="p-6 max-w-md border-red-200 shadow-md">
           <h2 className="text-lg font-semibold text-red-600 mb-2">Error</h2>
           <p className="text-slate-600 mb-4">{error}</p>
           <button
             onClick={handleRefresh}
-            className="px-4 py-2 bg-[#0B1120] text-white rounded hover:opacity-90 transition-opacity"
+            className="px-4 py-2 bg-[var(--navy)] text-white rounded hover:opacity-90 transition-opacity"
           >
             Retry
           </button>
@@ -395,7 +395,7 @@ export default function MulticalendarPage() {
     );
   }
 
-  const PAGE_BG = "bg-[hsl(20,60%,99%)]";
+  const PAGE_BG = "bg-[var(--page-bg)]";
 
   return (
     <div
@@ -486,3 +486,4 @@ export default function MulticalendarPage() {
     </div>
   );
 }
+

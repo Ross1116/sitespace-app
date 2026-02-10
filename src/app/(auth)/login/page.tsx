@@ -79,7 +79,7 @@ export default function Login() {
   return (
     <div className="flex min-h-screen w-full bg-slate-50 font-sans">
       {/* Left Side - Navy Theme */}
-      <div className="hidden lg:flex w-1/2 bg-[#0B1120] relative flex-col justify-between p-16 text-white overflow-hidden">
+      <div className="hidden lg:flex w-1/2 bg-[var(--navy)] relative flex-col justify-between p-16 text-white overflow-hidden">
         <div className="absolute inset-0 opacity-10 pointer-events-none">
           <svg
             className="h-full w-full"
@@ -92,7 +92,7 @@ export default function Login() {
 
         <div className="z-10">
           <div className="flex items-center gap-3 mb-12">
-            <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center text-[#0B1120]">
+            <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center text-[var(--navy)]">
               <LayoutGrid size={24} />
             </div>
             <span className="text-2xl font-bold tracking-tight">Sitespace</span>
@@ -151,7 +151,7 @@ export default function Login() {
                 required
                 disabled={isSubmitting}
                 autoComplete="email"
-                className="h-12 border-slate-200 focus-visible:ring-[#0B1120] bg-white"
+                className="h-12 border-slate-200 focus-visible:ring-[var(--navy)] bg-white"
               />
             </div>
 
@@ -165,7 +165,7 @@ export default function Login() {
                 </Label>
                 <Link
                   href="/forgot-password"
-                  className="text-xs font-semibold text-[#0B1120] hover:underline"
+                  className="text-xs font-semibold text-[var(--navy)] hover:underline"
                 >
                   Forgot password?
                 </Link>
@@ -180,7 +180,7 @@ export default function Login() {
                   required
                   disabled={isSubmitting}
                   autoComplete="current-password"
-                  className="h-12 pr-10 border-slate-200 focus-visible:ring-[#0B1120] bg-white"
+                  className="h-12 pr-10 border-slate-200 focus-visible:ring-[var(--navy)] bg-white"
                 />
                 <button
                   type="button"
@@ -200,7 +200,7 @@ export default function Login() {
                 onCheckedChange={(checked) =>
                   setRememberEmail(checked as boolean)
                 }
-                className="border-slate-300 data-[state=checked]:bg-[#0B1120] data-[state=checked]:border-[#0B1120]"
+                className="border-slate-300 data-[state=checked]:bg-[var(--navy)] data-[state=checked]:border-[var(--navy)]"
               />
               <label
                 htmlFor="remember"
@@ -212,7 +212,7 @@ export default function Login() {
 
             <Button
               type="submit"
-              className="w-full h-12 bg-[#0B1120] hover:bg-[#1a253a] text-white font-bold text-base transition-all shadow-lg shadow-slate-900/10 disabled:opacity-70"
+              className="w-full h-12 bg-[var(--navy)] hover:bg-[var(--navy-hover)] text-white font-bold text-base transition-all shadow-lg shadow-slate-900/10 disabled:opacity-70"
               disabled={isSubmitting || !email.trim() || !password.trim()}
             >
               {isSubmitting ? (
@@ -227,7 +227,7 @@ export default function Login() {
             Don&apos;t have an account?{" "}
             <Link
               href="/register"
-              className="font-bold text-[#0B1120] hover:underline"
+              className="font-bold text-[var(--navy)] hover:underline"
             >
               Create one here
             </Link>
@@ -237,3 +237,4 @@ export default function Login() {
     </div>
   );
 }
+

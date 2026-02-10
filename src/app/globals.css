@@ -52,6 +52,9 @@
 :root {
   --navy: #0b1120; /* Main Sidebar Background */
   --navy-light: #151e32; /* Hover state / Lighter navy */
+  --navy-hover: #1a253a;
+  --navy-deep: #0f2a4a;
+  --navy-90: rgba(11, 17, 32, 0.9);
   --teal: #0e7c9b; /* Active accent color */
   --teal-gradient: rgba(
     14,
@@ -59,6 +62,25 @@
     155,
     0.15
   ); /* Subtle background for active state */
+  --teal-gradient-strong: rgba(14, 124, 155, 0.3);
+  --brand-blue: #004e89;
+  --brand-orange: #d94e09;
+  --surface-subtle: #f8f9fb;
+  --page-bg: hsl(20, 60%, 99%);
+  --sentry-pill-bg: rgba(24, 20, 35, 0.03);
+  --sentry-link: #6341f0;
+  --sentry-link-dark: #b3a1ff;
+  --sentry-button: #553db8;
+  --sentry-button-top: #7553ff;
+  --sentry-button-border: #553db8;
+  --sentry-text-muted: #6e6c75;
+  --sentry-text-muted-dark: #a49fb5;
+  --sentry-success-bg: #00f261;
+  --sentry-success-border: #00bf4d;
+  --sentry-success-text: #181423;
+  --sentry-error-bg: #e50045;
+  --sentry-error-border: #a80033;
+  --sentry-error-text: #ffffff;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);

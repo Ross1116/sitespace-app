@@ -81,7 +81,7 @@ function ResetPasswordForm() {
   if (!tokenValid) {
     return (
       <div className="flex min-h-screen w-full bg-white font-sans">
-        <div className="hidden lg:flex w-1/2 bg-[#0B1120] relative flex-col justify-between p-16 text-white">
+        <div className="hidden lg:flex w-1/2 bg-[var(--navy)] relative flex-col justify-between p-16 text-white">
            <div className="z-10">
              <h1 className="text-5xl font-bold mb-4">Link Expired</h1>
              <p className="text-slate-400 text-xl">The security token is invalid.</p>
@@ -94,7 +94,7 @@ function ResetPasswordForm() {
             </div>
             <h2 className="text-2xl font-bold text-slate-900 mb-4">Invalid Reset Link</h2>
             <p className="text-slate-500 mb-8">This password reset link is invalid or has expired. Please request a new one.</p>
-            <Button onClick={() => router.push('/forgot-password')} className="w-full h-12 bg-[#0B1120] text-white font-bold rounded-xl">Request New Link</Button>
+            <Button onClick={() => router.push('/forgot-password')} className="w-full h-12 bg-[var(--navy)] text-white font-bold rounded-xl">Request New Link</Button>
           </div>
         </div>
       </div>
@@ -106,7 +106,7 @@ function ResetPasswordForm() {
     <div className="flex min-h-screen w-full bg-white font-sans">
       
       {/* Left Side - Security Panel */}
-      <div className="hidden lg:flex w-1/2 bg-[#0B1120] relative flex-col justify-between p-16 text-white overflow-hidden">
+      <div className="hidden lg:flex w-1/2 bg-[var(--navy)] relative flex-col justify-between p-16 text-white overflow-hidden">
         <div className="absolute inset-0 opacity-10 pointer-events-none">
            <svg className="h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
              <rect x="0" y="0" width="100" height="100" fill="transparent" />
@@ -116,7 +116,7 @@ function ResetPasswordForm() {
 
         <div className="z-10">
           <div className="flex items-center gap-3 mb-12">
-            <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center text-[#0B1120]">
+            <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center text-[var(--navy)]">
               <ShieldCheck size={24} />
             </div>
             <span className="text-2xl font-bold tracking-tight">Sitespace</span>
@@ -171,7 +171,7 @@ function ResetPasswordForm() {
                   onChange={(e) => setPassword(e.target.value)} 
                   required 
                   disabled={status.type === 'loading'} 
-                  className="h-12 pr-10 border-slate-200 focus-visible:ring-[#0B1120] rounded-xl text-base" 
+                  className="h-12 pr-10 border-slate-200 focus-visible:ring-[var(--navy)] rounded-xl text-base" 
                 />
                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
@@ -189,7 +189,7 @@ function ResetPasswordForm() {
                   onChange={(e) => setConfirmPassword(e.target.value)} 
                   required 
                   disabled={status.type === 'loading'} 
-                  className="h-12 border-slate-200 focus-visible:ring-[#0B1120] rounded-xl text-base" 
+                  className="h-12 border-slate-200 focus-visible:ring-[var(--navy)] rounded-xl text-base" 
               />
             </div>
 
@@ -210,7 +210,7 @@ function ResetPasswordForm() {
 
             <Button 
               type="submit" 
-              className="w-full h-12 bg-[#0B1120] hover:bg-[#1a253a] text-white font-bold rounded-xl shadow-lg shadow-slate-900/10 transition-all mt-4" 
+              className="w-full h-12 bg-[var(--navy)] hover:bg-[var(--navy-hover)] text-white font-bold rounded-xl shadow-lg shadow-slate-900/10 transition-all mt-4" 
               disabled={status.type === 'loading'}
             >
               {status.type === 'loading' ? <Loader2 className="animate-spin h-5 w-5" /> : "Reset Password"}
@@ -229,3 +229,4 @@ export default function ResetPasswordPage() {
     </Suspense>
   );
 }
+

@@ -58,7 +58,7 @@ export default function Register() {
   return (
     <div className="flex min-h-screen w-full bg-slate-50 font-sans">
       {/* Left Side - Navy Theme */}
-      <div className="hidden lg:flex w-1/2 bg-[#0B1120] relative flex-col justify-between p-16 text-white overflow-hidden">
+      <div className="hidden lg:flex w-1/2 bg-[var(--navy)] relative flex-col justify-between p-16 text-white overflow-hidden">
         {/* Background Curves */}
         <div className="absolute inset-0 opacity-10 pointer-events-none">
           <svg
@@ -72,7 +72,7 @@ export default function Register() {
 
         <div className="z-10">
           <div className="flex items-center gap-3 mb-12">
-            <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center text-[#0B1120]">
+            <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center text-[var(--navy)]">
               <LayoutGrid size={24} />
             </div>
             <span className="text-2xl font-bold tracking-tight">Sitespace</span>
@@ -121,7 +121,7 @@ export default function Register() {
                   placeholder="John"
                   onChange={handleChange}
                   required
-                  className="h-11 border-slate-200 focus-visible:ring-[#0B1120]"
+                  className="h-11 border-slate-200 focus-visible:ring-[var(--navy)]"
                 />
               </div>
               <div className="space-y-2">
@@ -132,7 +132,7 @@ export default function Register() {
                   placeholder="Doe"
                   onChange={handleChange}
                   required
-                  className="h-11 border-slate-200 focus-visible:ring-[#0B1120]"
+                  className="h-11 border-slate-200 focus-visible:ring-[var(--navy)]"
                 />
               </div>
             </div>
@@ -146,7 +146,7 @@ export default function Register() {
                 placeholder="name@company.com"
                 onChange={handleChange}
                 required
-                className="h-11 border-slate-200 focus-visible:ring-[#0B1120]"
+                className="h-11 border-slate-200 focus-visible:ring-[var(--navy)]"
               />
             </div>
 
@@ -159,7 +159,7 @@ export default function Register() {
                 placeholder="+1 (555) 000-0000"
                 onChange={handleChange}
                 required
-                className="h-11 border-slate-200 focus-visible:ring-[#0B1120]"
+                className="h-11 border-slate-200 focus-visible:ring-[var(--navy)]"
               />
             </div>
 
@@ -173,7 +173,7 @@ export default function Register() {
                   placeholder="••••••••"
                   onChange={handleChange}
                   required
-                  className="h-11 pr-10 border-slate-200 focus-visible:ring-[#0B1120]"
+                  className="h-11 pr-10 border-slate-200 focus-visible:ring-[var(--navy)]"
                 />
                 <button
                   type="button"
@@ -194,13 +194,13 @@ export default function Register() {
                 placeholder="••••••••"
                 onChange={handleChange}
                 required
-                className="h-11 border-slate-200 focus-visible:ring-[#0B1120]"
+                className="h-11 border-slate-200 focus-visible:ring-[var(--navy)]"
               />
             </div>
 
             <Button
               type="submit"
-              className="w-full h-12 bg-[#0B1120] hover:bg-[#1a253a] text-white font-bold text-base transition-all mt-4"
+              className="w-full h-12 bg-[var(--navy)] hover:bg-[var(--navy-hover)] text-white font-bold text-base transition-all mt-4"
               disabled={isLoading}
             >
               {isLoading ? (
@@ -215,7 +215,7 @@ export default function Register() {
             Already have an account?{" "}
             <Link
               href="/login"
-              className="font-bold text-[#0B1120] hover:underline"
+              className="font-bold text-[var(--navy)] hover:underline"
             >
               Log in
             </Link>
@@ -225,3 +225,4 @@ export default function Register() {
     </div>
   );
 }
+

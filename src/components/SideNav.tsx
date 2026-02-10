@@ -95,7 +95,7 @@ const SideNav = () => {
 
     // Active Style
     const activeClasses = isActive
-      ? "bg-gradient-to-r from-[rgba(14,124,155,0.3)] to-transparent text-white border-l-[3px] border-[#0e7c9b]"
+      ? "bg-gradient-to-r from-[var(--teal-gradient-strong)] to-transparent text-white border-l-[3px] border-[var(--teal)]"
       : "text-gray-400 hover:text-white hover:bg-white/5 border-l-[3px] border-transparent";
 
     return (
@@ -271,3 +271,4 @@ const SideNav = () => {
 };
 
 export default SideNav;
+

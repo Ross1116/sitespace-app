@@ -80,7 +80,7 @@ export function CalendarHeader({
         {/* Loading indicator */}
         {loading && (
           <div className="flex items-center gap-2 text-sm text-slate-500">
-            <div className="w-3.5 h-3.5 border-2 border-[#0B1120] border-t-transparent rounded-full animate-spin" />
+            <div className="w-3.5 h-3.5 border-2 border-[var(--navy)] border-t-transparent rounded-full animate-spin" />
             <span className="hidden sm:inline font-medium">Loading...</span>
           </div>
         )}

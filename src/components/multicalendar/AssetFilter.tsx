@@ -61,11 +61,11 @@ export function AssetFilter({
                     id={`asset-${index}`}
                     checked={visibleAssets.includes(index)}
                     onCheckedChange={() => toggleAssetVisibility(index)}
-                    className="border-slate-300 data-[state=checked]:bg-[#0B1120] data-[state=checked]:border-[#0B1120]"
+                    className="border-slate-300 data-[state=checked]:bg-[var(--navy)] data-[state=checked]:border-[var(--navy)]"
                   />
                   <label
                     htmlFor={`asset-${index}`}
-                    className="text-sm font-medium text-slate-700 truncate cursor-pointer group-hover:text-[#0B1120] transition-colors select-none"
+                    className="text-sm font-medium text-slate-700 truncate cursor-pointer group-hover:text-[var(--navy)] transition-colors select-none"
                     title={assetCode ? `${assetName} (${assetCode})` : assetName}
                   >
                     {assetName}
@@ -84,3 +84,4 @@ export function AssetFilter({
     </Card>
   );
 }
+

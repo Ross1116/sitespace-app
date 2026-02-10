@@ -332,10 +332,10 @@ export const CalendarDayView = ({
             <div className="flex-1 relative">
               {isCurrentDay && currentHour >= 6 && currentHour < 20 && (
                 <div
-                  className="absolute w-full border-t-2 border-[#0B1120] z-20 pointer-events-none"
+                  className="absolute w-full border-t-2 border-[var(--navy)] z-20 pointer-events-none"
                   style={{ top: `${(currentHour - 6) * 48}px` }}
                 >
-                  <div className="absolute -left-1.5 -top-1.5 w-3 h-3 rounded-full bg-[#0B1120]"></div>
+                  <div className="absolute -left-1.5 -top-1.5 w-3 h-3 rounded-full bg-[var(--navy)]"></div>
                 </div>
               )}
 
@@ -433,7 +433,7 @@ export const CalendarDayView = ({
           <AlertDialogFooter>
             <AlertDialogAction
               onClick={() => setValidationError(null)}
-              className="bg-[#0B1120] text-white"
+              className="bg-[var(--navy)] text-white"
             >
               Okay
             </AlertDialogAction>
@@ -462,7 +462,7 @@ export const CalendarDayView = ({
                 format(pendingReschedule.event.start, "h:mm a")}
             </span>
             <span className="text-slate-400">→</span>
-            <span className="font-bold text-[#0B1120]">
+            <span className="font-bold text-[var(--navy)]">
               {pendingReschedule?.newStart &&
                 format(pendingReschedule.newStart, "h:mm a")}
             </span>
@@ -477,7 +477,7 @@ export const CalendarDayView = ({
                 confirmReschedule();
               }}
               disabled={isRescheduling}
-              className="bg-[#0B1120] text-white"
+              className="bg-[var(--navy)] text-white"
             >
               {isRescheduling ? (
                 <>
@@ -622,7 +622,7 @@ export const CalendarWeekView = () => {
             <span
               className={cn(
                 "h-6 w-6 ml-1 grid place-content-center rounded-full text-xs font-bold",
-                isToday(date) ? "bg-[#0B1120] text-white" : "text-slate-900",
+                isToday(date) ? "bg-[var(--navy)] text-white" : "text-slate-900",
               )}
             >
               {format(date, "d")}
@@ -747,7 +747,7 @@ export const CalendarMonthView = () => {
                 className={cn(
                   "size-7 grid place-items-center rounded-full text-xs font-medium mb-1",
                   isToday(_date)
-                    ? "bg-[#0B1120] text-white font-bold"
+                    ? "bg-[var(--navy)] text-white font-bold"
                     : isSelectedDate && !isToday(_date)
                       ? "bg-slate-200 text-slate-900"
                       : "text-slate-700",
@@ -839,7 +839,7 @@ export const CalendarYearView = () => {
                       "aspect-square grid place-content-center size-full rounded-md",
                       isSameDay(today, _date) &&
                         isCurrentMonth &&
-                        "bg-[#0B1120] text-white font-bold",
+                        "bg-[var(--navy)] text-white font-bold",
                     )}
                   >
                     {format(_date, "d")}
@@ -899,7 +899,7 @@ export const EventGroup = ({
                   {event.title}
                 </div>
               </TooltipTrigger>
-              <TooltipContent className="bg-[#0B1120] text-white border-slate-700">
+              <TooltipContent className="bg-[var(--navy)] text-white border-slate-700">
                 <div className="flex flex-col gap-1">
                   <p className="font-bold">{event.title}</p>
                   <p className="text-xs text-slate-300">
@@ -993,7 +993,7 @@ const EventGroupSideBySide = ({
                       )}
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent className="bg-[#0B1120] text-white border-slate-700 z-[1000]">
+                  <TooltipContent className="bg-[var(--navy)] text-white border-slate-700 z-[1000]">
                     <div>
                       <div className="font-bold">{event.title}</div>
                       <div className="text-xs text-slate-300">
@@ -1011,3 +1011,4 @@ const EventGroupSideBySide = ({
     </div>
   );
 };
+

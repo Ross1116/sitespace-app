@@ -125,7 +125,7 @@ export default function Page() {
         h1 {
           padding: 0px 4px;
           border-radius: 4px;
-          background-color: rgba(24, 20, 35, 0.03);
+          background-color: var(--sentry-pill-bg);
           font-family: monospace;
           font-size: 20px;
           line-height: 1.2;
@@ -137,12 +137,12 @@ export default function Page() {
         }
 
         a {
-          color: #6341F0;
+          color: var(--sentry-link);
           text-decoration: underline;
           cursor: pointer;
 
           @media (prefers-color-scheme: dark) {
-            color: #B3A1FF;
+            color: var(--sentry-link-dark);
           }
         }
 
@@ -150,7 +150,7 @@ export default function Page() {
           border-radius: 8px;
           color: white;
           cursor: pointer;
-          background-color: #553DB8;
+          background-color: var(--sentry-button);
           border: none;
           padding: 0;
           margin-top: 4px;
@@ -162,8 +162,8 @@ export default function Page() {
             font-size: 20px;
             font-weight: bold;
             line-height: 1;
-            background-color: #7553FF;
-            border: 1px solid #553DB8;
+            background-color: var(--sentry-button-top);
+            border: 1px solid var(--sentry-button-border);
             transform: translateY(-4px);
           }
 
@@ -188,13 +188,13 @@ export default function Page() {
 
         .description {
           text-align: center;
-          color: #6E6C75;
+          color: var(--sentry-text-muted);
           max-width: 500px;
           line-height: 1.5;
           font-size: 20px;
 
           @media (prefers-color-scheme: dark) {
-            color: #A49FB5;
+            color: var(--sentry-text-muted-dark);
           }
         }
 
@@ -207,9 +207,9 @@ export default function Page() {
           border-radius: 8px;
           font-size: 20px;
           line-height: 1;
-          background-color: #00F261;
-          border: 1px solid #00BF4D;
-          color: #181423;
+          background-color: var(--sentry-success-bg);
+          border: 1px solid var(--sentry-success-border);
+          color: var(--sentry-success-text);
         }
 
         .success_placeholder {
@@ -218,17 +218,17 @@ export default function Page() {
 
         .connectivity-error {
           padding: 12px 16px;
-          background-color: #E50045;
+          background-color: var(--sentry-error-bg);
           border-radius: 8px;
           width: 500px;
-          color: #FFFFFF;
-          border: 1px solid #A80033;
+          color: var(--sentry-error-text);
+          border: 1px solid var(--sentry-error-border);
           text-align: center;
           margin: 0;
         }
 
         .connectivity-error a {
-          color: #FFFFFF;
+          color: var(--sentry-error-text);
           text-decoration: underline;
         }
       `}</style>

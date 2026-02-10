@@ -208,7 +208,7 @@ export const CalendarViewTrigger = forwardRef<
       variant="ghost"
       className={`
         ${currentView === view 
-          ? "bg-[#0B1120] text-white hover:bg-[#0B1120]/90" 
+          ? "bg-[var(--navy)] text-white hover:bg-[var(--navy-90)]" 
           : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"}
         ${className}
       `}
@@ -223,3 +223,4 @@ export const CalendarViewTrigger = forwardRef<
   );
 });
 CalendarViewTrigger.displayName = "CalendarViewTrigger";
+

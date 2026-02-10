@@ -35,7 +35,7 @@ Updated:
 - [x] **6. Replace `alert()` / `confirm()`** — Replaced with Dialog components in BookingCardDropdown, assets page, BookingDetailDialog, calendar-views.
 - [ ] **7. Input validation on API routes**
 - [ ] **8. Refresh token rotation**
-- [ ] **9. Hardcoded colors**
+- [x] **9. Hardcoded colors**
 
 ## Medium Priority (Code)
 
