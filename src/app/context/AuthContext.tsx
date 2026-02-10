@@ -12,6 +12,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import * as Sentry from "@sentry/nextjs";
+import posthog from "posthog-js";
 
 // ===== TYPES =====
 type User = {
@@ -86,6 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(userData);
       if (userData) {
         Sentry.setUser({ id: userData.id, email: userData.email, role: userData.role });
+        posthog.identify(userData.id, { email: userData.email, name: `${userData.first_name} ${userData.last_name}`, role: userData.role });
       }
       setIsInitialized(true);
     };
@@ -125,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       setUser(userData);
       Sentry.setUser({ id: userData.id, email: userData.email, role: userData.role });
+      posthog.identify(userData.id, { email: userData.email, name: `${userData.first_name} ${userData.last_name}`, role: userData.role });
       router.replace("/home");
     },
     [router, checkAuth],
@@ -173,6 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     setUser(null);
     Sentry.setUser(null);
+    posthog.reset();
 
     // Clear any cached data from localStorage
     if (typeof window !== "undefined") {

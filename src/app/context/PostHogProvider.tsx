@@ -12,6 +12,9 @@ export default function PostHogProvider({
   useEffect(() => {
     posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
       api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+      capture_pageview: true,
+      capture_pageleave: true,
+      disable_session_recording: false,
       loaded: (ph) => {
         Sentry.getCurrentScope().setTag(
           "posthog_session_id",
