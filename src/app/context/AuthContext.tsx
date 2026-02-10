@@ -11,6 +11,7 @@ import {
   useRef,
 } from "react";
 import { useRouter } from "next/navigation";
+import * as Sentry from "@sentry/nextjs";
 
 // ===== TYPES =====
 type User = {
@@ -83,6 +84,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const init = async () => {
       const userData = await checkAuth();
       setUser(userData);
+      if (userData) {
+        Sentry.setUser({ id: userData.id, email: userData.email, role: userData.role });
+      }
       setIsInitialized(true);
     };
 
@@ -120,6 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       setUser(userData);
+      Sentry.setUser({ id: userData.id, email: userData.email, role: userData.role });
       router.replace("/home");
     },
     [router, checkAuth],
@@ -167,6 +172,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }).catch(() => {});
 
     setUser(null);
+    Sentry.setUser(null);
 
     // Clear any cached data from localStorage
     if (typeof window !== "undefined") {
