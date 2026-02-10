@@ -15,8 +15,8 @@ Sentry.init({
 });
 
 // Initialize PostHog with Sentry integration
-posthog.init("phc_GGomDnrt14r7n64mN5FnJNgQgonOf7A4pkJ6sf4f7rt", {
-  api_host: "https://eu.i.posthog.com",
+posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
+  api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
 });
 
 // Link PostHog session to Sentry errors
