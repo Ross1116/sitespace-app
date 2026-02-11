@@ -20,9 +20,8 @@ import {
   Briefcase,
   AlertCircle,
 } from "lucide-react";
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import api from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -32,22 +31,10 @@ import {
   isToday,
   groupBookingsByMonth,
 } from "@/lib/bookingHelpers";
-import type { ApiBooking, ApiProject, ApiSubcontractor } from "@/types";
+import type { ApiBooking, ApiProject } from "@/types";
 import type { LucideIcon } from "lucide-react";
-
-const isAbortError = (error: unknown, signal?: AbortSignal) => {
-  if (signal?.aborted) return true;
-  if (error instanceof Error && error.name === "CanceledError") return true;
-  if (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    (error as { code?: string }).code === "ERR_CANCELED"
-  ) {
-    return true;
-  }
-  return false;
-};
+import useSWR from "swr";
+import { swrFetcher, SWR_CONFIG } from "@/lib/swr";
 
 // --- Types ---
 type Booking = ApiBooking;
@@ -86,256 +73,109 @@ export default function HomePage() {
   const { user } = useAuth();
   const router = useRouter();
 
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [projects, setProjects] = useState<ApiProject[]>([]);
   const [selectedProject, setSelectedProject] = useState<ApiProject | null>(null);
-  const [upcomingBookings, setUpcomingBookings] = useState<Booking[]>([]);
-
-  const [assetCount, setAssetCount] = useState<number>(0);
-  const [subcontractorCount, setSubcontractorCount] = useState<number>(0);
-
-  const [loadingBookings, setLoadingBookings] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
   const [showProjectSelector, setShowProjectSelector] = useState(false);
 
-  const hasInitialized = useRef(false);
   const userId = user?.id;
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const currentProjId =
-    selectedProject?.id || selectedProject?.project_id || "all";
-  const bookingsCacheKey = `home_bookings_${userId}_${currentProjId}`;
-  const projectsListCacheKey = `home_projects_list_${userId}`;
-  const assetsCacheKey = `assets_${userId}`;
-  const subcontractorsCacheKey = `subcontractors_${userId}`;
-
-  // --- Navigate to bookings page with specific booking highlighted ---
-  const handleBookingClick = useCallback(
-    (bookingId: string) => {
-      router.push(`/bookings?highlight=${bookingId}`);
-    },
-    [router],
+  // --- SWR: Profile ---
+  const { data: profile } = useSWR<UserProfile>(
+    userId ? "/auth/me" : null,
+    swrFetcher,
+    SWR_CONFIG,
   );
 
-  // --- API Calls ---
-  const fetchProjects = useCallback(async (signal?: AbortSignal) => {
-    if (!userId) return;
-    try {
-      let projectData: ApiProject[] = [];
-      if (user?.role === "subcontractor") {
-        const resp = await api.get<SubcontractorProjectApi[]>(
-          `/subcontractors/${userId}/projects`,
-          { signal },
-        );
-        projectData = resp.data.map((p) => ({
-          id: p.project_id,
-          name: p.project_name,
-          location: p.project_location,
-          status: p.is_active ? "active" : "inactive",
-          ...p,
-        }));
-      } else {
-        const resp = await api.get<{ projects?: ApiProject[] }>("/projects/", {
-          params: { my_projects: true, limit: 100, skip: 0 },
-          signal,
-        });
-        projectData = resp.data?.projects || [];
-      }
-      if (signal?.aborted) return;
-      setProjects(projectData);
-
-      // Only set initial project if none is currently selected
-      setSelectedProject((current) => {
-        if (current) return current;
-        const stored = localStorage.getItem(`project_${userId}`);
-        if (stored) {
-          try {
-            const parsed = JSON.parse(stored) as ApiProject;
-            // Verify stored project still exists in the list
-            if (projectData.some((p) => p.id === parsed.id)) {
-              return parsed;
-            }
-          } catch {
-            // invalid JSON, fall through
-          }
-        }
-        // Default to first project
-        if (projectData.length > 0) {
-          localStorage.setItem(
-            `project_${userId}`,
-            JSON.stringify(projectData[0]),
-          );
-          return projectData[0];
-        }
-        return null;
-      });
-    } catch (err) {
-      if (isAbortError(err, signal)) return;
-      console.error("Error fetching projects:", err);
-    }
+  // --- SWR: Projects list ---
+  const projectsUrl = useMemo(() => {
+    if (!userId) return null;
+    if (user?.role === "subcontractor") return `/subcontractors/${userId}/projects`;
+    return "/projects/?my_projects=true&limit=100&skip=0";
   }, [userId, user?.role]);
 
-  const fetchAssets = useCallback(async (signal?: AbortSignal) => {
-    if (!userId || !selectedProject) return;
-    try {
-      const projectId = selectedProject.id || selectedProject.project_id;
-      const response = await api.get("/assets/", {
-        params: { project_id: projectId, limit: 100 },
-        signal,
-      });
-      const assetData = response.data?.assets || [];
-      if (signal?.aborted) return;
-      setAssetCount(response.data?.total || assetData.length);
-      localStorage.setItem(assetsCacheKey, JSON.stringify(assetData));
-    } catch (error) {
-      if (isAbortError(error, signal)) return;
-      console.error("Error fetching assets", error);
-      setAssetCount(0);
-    }
-  }, [selectedProject, userId, assetsCacheKey]);
+  const { data: projectsRaw } = useSWR(projectsUrl, swrFetcher, SWR_CONFIG);
 
-  const fetchSubcontractors = useCallback(async (signal?: AbortSignal) => {
-    if (!userId || !selectedProject) return;
+  const projects = useMemo<ApiProject[]>(() => {
+    if (!projectsRaw) return [];
     if (user?.role === "subcontractor") {
-      setSubcontractorCount(0);
-      return;
+      return (projectsRaw as SubcontractorProjectApi[]).map((p) => ({
+        id: p.project_id,
+        name: p.project_name,
+        location: p.project_location,
+        status: p.is_active ? "active" : "inactive",
+        ...p,
+      }));
     }
-    try {
-      const projectId = selectedProject.id || selectedProject.project_id;
-      const isAdmin = user?.role === "admin";
-      const endpoint = isAdmin
-        ? "/subcontractors/"
-        : "/subcontractors/my-subcontractors";
+    return (projectsRaw as { projects?: ApiProject[] }).projects || [];
+  }, [projectsRaw, user?.role]);
 
-      const response = await api.get(endpoint, {
-        params: { project_id: projectId, limit: 100, is_active: true },
-        signal,
-      });
-
-      let subData: ApiSubcontractor[] = [];
-      let total = 0;
-
-      const data = response.data as
-        | ApiSubcontractor[]
-        | {
-            subcontractors?: ApiSubcontractor[];
-            total?: number;
-            data?: ApiSubcontractor[];
-            records?: ApiSubcontractor[];
-          };
-
-      if (Array.isArray(data)) {
-        subData = data;
-        total = data.length;
-      } else if (Array.isArray(data.subcontractors)) {
-        subData = data.subcontractors;
-        total = data.total || subData.length;
-      } else if (Array.isArray(data.data)) {
-        subData = data.data;
-        total = subData.length;
-      } else if (Array.isArray(data.records)) {
-        subData = data.records;
-        total = subData.length;
-      } else {
-        const values = Object.values(data || {});
-        const arr = values.find((v) => Array.isArray(v));
-        if (arr && Array.isArray(arr)) {
-          subData = arr as ApiSubcontractor[];
-          total = subData.length;
-        }
-      }
-
-      if (signal?.aborted) return;
-      setSubcontractorCount(total);
-      localStorage.setItem(subcontractorsCacheKey, JSON.stringify(subData));
-    } catch (error) {
-      if (isAbortError(error, signal)) return;
-      console.error("Error fetching subcontractors", error);
-      setSubcontractorCount(0);
-    }
-  }, [selectedProject, userId, user?.role, subcontractorsCacheKey]);
-
-  const fetchBookings = useCallback(
-    async (isBackground = false, signal?: AbortSignal) => {
-      if (!userId || !selectedProject) return;
+  // Set initial project once projects load
+  useEffect(() => {
+    if (projects.length === 0 || selectedProject) return;
+    const stored = localStorage.getItem(`project_${userId}`);
+    if (stored) {
       try {
-        if (!isBackground) setLoadingBookings(true);
-        setFetchError(null);
-
-        const projectId = selectedProject.id || selectedProject.project_id;
-        const resp = await api.get("/bookings/my/upcoming", {
-          params: { limit: 50, project_id: projectId },
-          signal,
-        });
-
-        let bookingsData: Booking[] = resp.data || [];
-        bookingsData = bookingsData.filter((b) => {
-          const bProjId = b.project?.id || b.project_id;
-          return bProjId === projectId;
-        });
-
-        if (signal?.aborted) return;
-        setUpcomingBookings(bookingsData);
-        localStorage.setItem(bookingsCacheKey, JSON.stringify(bookingsData));
-      } catch (err) {
-        if (isAbortError(err, signal)) return;
-        console.error("Error fetching bookings:", err);
-        if (!isBackground) {
-          setFetchError("Failed to load bookings. Please try again later.");
+        const parsed = JSON.parse(stored) as ApiProject;
+        if (projects.some((p) => p.id === parsed.id)) {
+          setSelectedProject(parsed);
+          return;
         }
-      } finally {
-        if (!signal?.aborted) setLoadingBookings(false);
-      }
-    },
-    [selectedProject, userId, bookingsCacheKey],
+      } catch { /* invalid JSON */ }
+    }
+    localStorage.setItem(`project_${userId}`, JSON.stringify(projects[0]));
+    setSelectedProject(projects[0]);
+  }, [projects, selectedProject, userId]);
+
+  const projectId = selectedProject?.id || selectedProject?.project_id || null;
+
+  // --- SWR: Assets count ---
+  const { data: assetsData } = useSWR(
+    projectId ? `/assets/?project_id=${projectId}&limit=100` : null,
+    swrFetcher,
+    SWR_CONFIG,
+  );
+  const assetCount = (assetsData as { total?: number; assets?: unknown[] })?.total
+    || (assetsData as { assets?: unknown[] })?.assets?.length
+    || 0;
+
+  // --- SWR: Subcontractors count ---
+  const subsUrl = useMemo(() => {
+    if (!user || user.role === "subcontractor" || !projectId) return null;
+    const endpoint = user.role === "admin" ? "/subcontractors/" : "/subcontractors/my-subcontractors";
+    return `${endpoint}?project_id=${projectId}&limit=100&is_active=true`;
+  }, [user, projectId]);
+
+  const { data: subsData } = useSWR(subsUrl, swrFetcher, SWR_CONFIG);
+  const subcontractorCount = useMemo(() => {
+    if (!subsData) return 0;
+    if (Array.isArray(subsData)) return subsData.length;
+    const d = subsData as { subcontractors?: unknown[]; total?: number };
+    if (d.total) return d.total;
+    if (Array.isArray(d.subcontractors)) return d.subcontractors.length;
+    return 0;
+  }, [subsData]);
+
+  // --- SWR: Bookings ---
+  const { data: bookingsRaw, isLoading: loadingBookings, error: fetchError } = useSWR<Booking[]>(
+    projectId ? `/bookings/my/upcoming?limit=50&project_id=${projectId}` : null,
+    swrFetcher,
+    SWR_CONFIG,
   );
 
-  // --- Effects ---
-  useEffect(() => {
-    const controller = new AbortController();
-    const fetchProfile = async () => {
-      try {
-        const response = await api.get<UserProfile>("/auth/me", {
-          signal: controller.signal,
-        });
-        if (controller.signal.aborted) return;
-        setProfile(response.data);
-      } catch (error) {
-        if (isAbortError(error, controller.signal)) return;
-        console.error("Failed to fetch user profile", error);
-      }
-    };
-    fetchProfile();
-    return () => controller.abort();
-  }, []);
-
-  useEffect(() => {
-    if (!user || hasInitialized.current) return;
-    const controller = new AbortController();
-    fetchProjects(controller.signal).finally(() => {
-      if (!controller.signal.aborted) {
-        hasInitialized.current = true;
-      }
+  const upcomingBookings = useMemo(() => {
+    if (!bookingsRaw || !Array.isArray(bookingsRaw)) return [];
+    return bookingsRaw.filter((b) => {
+      const bProjId = b.project?.id || b.project_id;
+      return bProjId === projectId;
     });
-    return () => controller.abort();
-  }, [user, fetchProjects]);
+  }, [bookingsRaw, projectId]);
 
-  useEffect(() => {
-    if (!selectedProject) return;
-    const controller = new AbortController();
+  // --- Navigate to bookings page ---
+  const handleBookingClick = (bookingId: string) => {
+    router.push(`/bookings?highlight=${bookingId}`);
+  };
 
-    setLoadingBookings(true);
-    setFetchError(null);
-    setUpcomingBookings([]);
-    setAssetCount(0);
-    setSubcontractorCount(0);
-
-    fetchAssets(controller.signal);
-    fetchSubcontractors(controller.signal);
-    fetchBookings(false, controller.signal);
-    return () => controller.abort();
-  }, [selectedProject, fetchAssets, fetchSubcontractors, fetchBookings]);
-
+  // Close dropdown on outside click
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (
