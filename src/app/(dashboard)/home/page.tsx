@@ -421,7 +421,7 @@ export default function HomePage() {
                 className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2.5 rounded-lg text-sm"
                 role="alert"
               >
-                {fetchError}
+                Failed to load bookings. Please try again later.
               </div>
             )}
 

@@ -216,7 +216,14 @@ export default function AssetsTable() {
     if (typeof window === "undefined" || !userId) return undefined;
     try {
       const raw = localStorage.getItem(`project_${userId}`);
-      return raw ? JSON.parse(raw) : undefined;
+      if (!raw) return undefined;
+      const parsed = JSON.parse(raw);
+      const id = parsed?.id ?? parsed?.project_id;
+      if (!id) return undefined;
+      return {
+        id,
+        text: parsed?.text ?? parsed?.name ?? parsed?.project_name ?? "",
+      };
     } catch {
       return undefined;
     }
@@ -227,11 +234,12 @@ export default function AssetsTable() {
     ? `/assets/?project_id=${project.id}&skip=0&limit=100`
     : null;
 
-  const { data, isLoading: loading, error: fetchError, mutate } = useSWR<AssetListResponse>(
-    swrKey,
-    swrFetcher,
-    SWR_CONFIG,
-  );
+  const {
+    data,
+    isLoading: loading,
+    error: fetchError,
+    mutate,
+  } = useSWR<AssetListResponse>(swrKey, swrFetcher, SWR_CONFIG);
 
   const allAssets = useMemo(
     () => (data?.assets || []).map(transformBackendAsset),
@@ -871,7 +879,10 @@ export default function AssetsTable() {
         )}
 
         {/* Delete Confirmation Dialog */}
-        <Dialog open={!!deleteConfirmKey} onOpenChange={() => setDeleteConfirmKey(null)}>
+        <Dialog
+          open={!!deleteConfirmKey}
+          onOpenChange={() => setDeleteConfirmKey(null)}
+        >
           <DialogContent className="sm:max-w-[425px] bg-white">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-red-600">
@@ -879,11 +890,15 @@ export default function AssetsTable() {
                 Delete Asset
               </DialogTitle>
               <DialogDescription className="text-slate-600">
-                Are you sure you want to delete this asset? This action cannot be undone.
+                Are you sure you want to delete this asset? This action cannot
+                be undone.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter className="flex gap-2 sm:justify-end mt-4">
-              <Button variant="outline" onClick={() => setDeleteConfirmKey(null)}>
+              <Button
+                variant="outline"
+                onClick={() => setDeleteConfirmKey(null)}
+              >
                 Cancel
               </Button>
               <Button variant="destructive" onClick={confirmDeleteAsset}>
@@ -916,4 +931,3 @@ export default function AssetsTable() {
     </div>
   );
 }
-

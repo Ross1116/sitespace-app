@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Calendar,
   CalendarCurrentDate,
@@ -10,31 +10,17 @@ import {
 } from "@/components/ui/full-calendar/index";
 import { Card } from "@/components/ui/card";
 import { useAuth } from "@/app/context/AuthContext";
-import api from "@/lib/api";
 import { CalendarEvent, AssetCalendar } from "@/lib/multicalendarHelpers";
 import { CalendarHeader } from "./CalendarHeader";
 import { MobileView } from "./MobileView";
 import { DesktopView } from "./DesktopView";
 import { AssetFilter } from "./AssetFilter";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { addHours } from "date-fns";
-import { ApiAsset, ApiBooking, ApiProject, getApiErrorMessage } from "@/types";
+import { ApiAsset, ApiBooking } from "@/types";
+import useSWR from "swr";
+import { swrFetcher, SWR_CONFIG } from "@/lib/swr";
 
-// ===== 1. UPDATED INTERFACES (MATCHING YOUR JSON) =====
-
-const isAbortError = (error: unknown, signal?: AbortSignal) => {
-  if (signal?.aborted) return true;
-  if (error instanceof Error && error.name === "CanceledError") return true;
-  if (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    (error as { code?: string }).code === "ERR_CANCELED"
-  ) {
-    return true;
-  }
-  return false;
-};
+// ===== INTERFACES =====
 
 interface CalendarDayResponse {
   date: string;
@@ -46,50 +32,40 @@ interface AssetListResponse {
   total: number;
 }
 
-// ===== API FUNCTIONS =====
-const bookingsApi = {
-  getCalendarView: async (
-    dateFrom: string,
-    dateTo: string,
-    projectId?: string,
-    signal?: AbortSignal,
-  ): Promise<CalendarDayResponse[]> => {
-    const response = await api.get<CalendarDayResponse[]>(
-      "/bookings/calendar",
-      {
-        params: {
-          date_from: dateFrom,
-          date_to: dateTo,
-          project_id: projectId,
-        },
-        signal,
-      },
-    );
-    return response.data;
-  },
-};
+// ===== HELPER: PROCESS BOOKING TO EVENT =====
+const processBookingToEvent = (b: ApiBooking): CalendarEvent => {
+  const startDate = new Date(`${b.booking_date}T${b.start_time}`);
+  const endDate = new Date(`${b.booking_date}T${b.end_time}`);
 
-const assetsApi = {
-  getProjectAssets: async (
-    projectId: string,
-    signal?: AbortSignal,
-  ): Promise<ApiAsset[]> => {
-    try {
-      const response = await api.get<AssetListResponse>("/assets/", {
-        params: {
-          project_id: projectId,
-          limit: 100,
-          skip: 0,
-        },
-        signal,
-      });
-      return response.data.assets.sort((a, b) => a.name.localeCompare(b.name));
-    } catch (error) {
-      if (isAbortError(error, signal)) return [];
-      console.error("Failed to fetch assets", error);
-      return [];
-    }
-  },
+  const status = b.status?.toLowerCase() || "pending";
+  let color: CalendarEvent["color"] = "yellow";
+  if (status === "confirmed") color = "green";
+  if (status === "completed") color = "blue";
+  if (status === "cancelled" || status === "denied") color = "pink";
+
+  let title = "Booking";
+  if (b.purpose && b.purpose.trim() !== "") title = b.purpose;
+  else if (b.notes && b.notes.trim() !== "") title = b.notes;
+
+  const assetName = b.asset?.name || "Unknown Asset";
+  const assetCode = b.asset?.asset_code || "";
+
+  return {
+    id: b.id,
+    start: startDate,
+    end: endDate,
+    title: title,
+    description: b.notes || "",
+    color,
+    bookingKey: b.id,
+    bookingStatus: status,
+    bookingTitle: title,
+    bookingNotes: b.notes || "",
+    assetId: b.asset_id,
+    assetName: assetName,
+    assetCode: assetCode,
+    _originalData: b,
+  } as CalendarEvent;
 };
 
 export default function MulticalendarPage() {
@@ -97,218 +73,95 @@ export default function MulticalendarPage() {
   const [selectedAssetIndex, setSelectedAssetIndex] = useState(0);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  // Data States
-  const [bookings, setBookings] = useState<CalendarEvent[]>([]);
-  const [availableAssets, setAvailableAssets] = useState<ApiAsset[]>([]);
-
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
   const { user } = useAuth();
-  const hasFetched = useRef(false);
   const userId = user?.id;
 
   // Visibility State
   const [initialLoad, setInitialLoad] = useState(true);
   const [visibleAssets, setVisibleAssets] = useState<number[]>([]);
 
-  // Keys
-  const storageKey = `bookings_v5_${userId}`;
-  const projectStorageKey = `project_${userId}`;
-
-  const getStoredProject = (): ApiProject | null => {
-    if (!user) return null;
-    const projectString = localStorage.getItem(projectStorageKey);
-    if (!projectString) return null;
+  // Read project from localStorage
+  const projectId = useMemo(() => {
+    if (!userId) return null;
     try {
-      return JSON.parse(projectString) as ApiProject;
+      const raw = localStorage.getItem(`project_${userId}`);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed?.id ?? parsed?.project_id ?? null;
     } catch {
       return null;
     }
-  };
+  }, [userId]);
 
-  // ===== 2. HELPER: PROCESS JSON TO EVENT =====
-  const processBookingToEvent = (b: ApiBooking): CalendarEvent => {
-    const startDate = new Date(`${b.booking_date}T${b.start_time}`);
-    const endDate = new Date(`${b.booking_date}T${b.end_time}`);
-
-    const status = b.status?.toLowerCase() || "pending";
-    let color: CalendarEvent["color"] = "yellow";
-    if (status === "confirmed") color = "green";
-    if (status === "completed") color = "blue";
-    if (status === "cancelled" || status === "denied") color = "pink";
-
-    let title = "Booking";
-    if (b.purpose && b.purpose.trim() !== "") title = b.purpose;
-    else if (b.notes && b.notes.trim() !== "") title = b.notes;
-
-    const assetName = b.asset?.name || "Unknown Asset";
-    const assetCode = b.asset?.asset_code || "";
-
+  // Date range: today ± 45 days
+  const { dateFrom, dateTo } = useMemo(() => {
+    const today = new Date();
+    const from = new Date(today);
+    from.setDate(today.getDate() - 45);
+    const to = new Date(today);
+    to.setDate(today.getDate() + 45);
     return {
-      id: b.id,
-      start: startDate,
-      end: endDate,
-      title: title,
-      description: b.notes || "",
-      color,
+      dateFrom: from.toISOString().split("T")[0],
+      dateTo: to.toISOString().split("T")[0],
+    };
+  }, []);
 
-      // Custom fields for Drag/Drop & Details
-      bookingKey: b.id,
-      bookingStatus: status,
-      bookingTitle: title,
-      bookingNotes: b.notes || "",
+  // --- SWR: Assets ---
+  const { data: assetsData } = useSWR<AssetListResponse>(
+    projectId ? `/assets/?project_id=${projectId}&limit=100&skip=0` : null,
+    swrFetcher,
+    SWR_CONFIG,
+  );
 
-      assetId: b.asset_id,
-      assetName: assetName,
-      assetCode: assetCode,
+  const availableAssets = useMemo(
+    () => (assetsData?.assets || []).sort((a: ApiAsset, b: ApiAsset) => a.name.localeCompare(b.name)),
+    [assetsData],
+  );
 
-      // Pass the Full Original Object so the Details Dialog works!
-      _originalData: b,
-    } as CalendarEvent;
-  };
+  // --- SWR: Calendar bookings ---
+  const {
+    data: calendarData,
+    isLoading: loading,
+    error: fetchError,
+    mutate,
+  } = useSWR<CalendarDayResponse[]>(
+    projectId
+      ? `/bookings/calendar?date_from=${dateFrom}&date_to=${dateTo}&project_id=${projectId}`
+      : null,
+    swrFetcher,
+    SWR_CONFIG,
+  );
 
-  // ===== 3. FETCH DATA LOGIC =====
-  const fetchData = async (isBackground = false, signal?: AbortSignal) => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-
-    if (!isBackground) setLoading(true);
-    setError(null);
-
-    const project = getStoredProject();
-    if (!project) {
-      setError("No project selected");
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const assets = await assetsApi.getProjectAssets(project.id, signal);
-      if (signal?.aborted) return;
-      setAvailableAssets(assets);
-
-      const today = new Date();
-      const dateFrom = new Date(today);
-      dateFrom.setDate(today.getDate() - 45);
-      const dateTo = new Date(today);
-      dateTo.setDate(today.getDate() + 45);
-
-      const calendarData = await bookingsApi.getCalendarView(
-        dateFrom.toISOString().split("T")[0],
-        dateTo.toISOString().split("T")[0],
-        project.id,
-        signal,
-      );
-      const allBookings: ApiBooking[] = calendarData.flatMap(
-        (dayData) => dayData.bookings || [],
-      );
-
-      const activeBookings = allBookings.filter(
+  const bookings = useMemo<CalendarEvent[]>(() => {
+    if (!calendarData) return [];
+    const allBookings = calendarData.flatMap((d) => d.bookings || []);
+    return allBookings
+      .filter(
         (b) =>
           b.status?.toLowerCase() !== "cancelled" &&
           b.status?.toLowerCase() !== "denied",
-      );
+      )
+      .map(processBookingToEvent);
+  }, [calendarData]);
 
-      if (signal?.aborted) return;
-      localStorage.setItem(storageKey, JSON.stringify(activeBookings));
-
-      const transformedBookings: CalendarEvent[] = activeBookings.map(
-        processBookingToEvent,
-      );
-
-      setBookings(transformedBookings);
-      hasFetched.current = true;
-    } catch (err: unknown) {
-      if (isAbortError(err, signal)) return;
-      console.error("❌ Error fetching data:", err);
-      if (bookings.length === 0) {
-        setError(getApiErrorMessage(err, "Failed to fetch calendar data"));
-      }
-    } finally {
-      if (!signal?.aborted) setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!user) return;
-    let foundCache = false;
-    const cachedBookings = localStorage.getItem(storageKey);
-    if (cachedBookings) {
-      try {
-        const parsedData = JSON.parse(cachedBookings);
-        if (Array.isArray(parsedData) && parsedData.length > 0) {
-          // Filter cached data
-          const filtered = parsedData.filter(
-            (b: ApiBooking) =>
-              b.status?.toLowerCase() !== "cancelled" &&
-              b.status?.toLowerCase() !== "denied",
-          );
-          const transformed = filtered.map(processBookingToEvent);
-          setBookings(transformed);
-          foundCache = true;
-        }
-      } catch {
-        localStorage.removeItem(storageKey);
-      }
-    }
-
-    const controller = new AbortController();
-    if (!hasFetched.current) {
-      fetchData(foundCache, controller.signal);
-    }
-
-    const interval = setInterval(() => fetchData(true), 300000);
-    return () => {
-      controller.abort();
-      clearInterval(interval);
-    };
-  }, [user]);
-
-  useEffect(() => {
-    if (hasFetched.current) {
-      const controller = new AbortController();
-      fetchData(true, controller.signal);
-      return () => controller.abort();
-    }
-    return undefined;
-  }, [currentDate.getMonth(), currentDate.getFullYear()]);
+  const error = useMemo(() => {
+    if (fetchError) return "Failed to fetch calendar data";
+    if (userId && !projectId) return "No project selected";
+    return null;
+  }, [fetchError, userId, projectId]);
 
   const handleActionComplete = () => {
-    fetchData(true);
+    mutate();
   };
 
-  // Keep for potential internal updates from child components
   const handleBookingCreated = (
-    newEvents: Partial<CalendarEvent>[] | Partial<CalendarEvent>,
+    _newEvents: Partial<CalendarEvent>[] | Partial<CalendarEvent>,
   ) => {
-    const arr = Array.isArray(newEvents) ? newEvents : [newEvents];
-
-    // Convert partials to full events using simple defaults,
-    // real data comes on next fetch
-    const normalized = arr.map((ev, idx) => {
-      const event = ev as Partial<CalendarEvent>;
-      return {
-        ...event,
-        id: event.id || `temp-${Date.now()}-${idx}`,
-        start: event.start || new Date(),
-        end: event.end || addHours(new Date(), 1),
-        title: event.title || "New Booking",
-        bookingStatus: "pending",
-        assetId: event.assetId || "",
-        bookedAssets: event.bookedAssets || [],
-      } as CalendarEvent;
-    });
-
-    setBookings((prev) => [...prev, ...normalized]);
-    handleActionComplete(); // Trigger refresh to get real data
+    mutate();
   };
 
   const handleRefresh = () => {
-    hasFetched.current = false;
-    fetchData(false);
+    mutate();
   };
 
   const assetCalendars: AssetCalendar[] = useMemo(() => {

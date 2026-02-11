@@ -31,13 +31,21 @@ const calculateDuration = (startTime: string, endTime: string): number => {
   return end - start;
 };
 
-const transformBookingToLegacyFormat = (booking: ApiBooking): TransformedBooking => {
+const transformBookingToLegacyFormat = (
+  booking: ApiBooking,
+): TransformedBooking => {
   const cleanStart = (booking.start_time || "00:00")
     .split(":")
     .slice(0, 2)
     .join(":");
-  const cleanEnd = (booking.end_time || "00:00").split(":").slice(0, 2).join(":");
-  const startDateObj = combineDateAndTime(booking.booking_date, booking.start_time);
+  const cleanEnd = (booking.end_time || "00:00")
+    .split(":")
+    .slice(0, 2)
+    .join(":");
+  const startDateObj = combineDateAndTime(
+    booking.booking_date,
+    booking.start_time,
+  );
   const endDateObj = combineDateAndTime(booking.booking_date, booking.end_time);
   const duration = calculateDuration(cleanStart, cleanEnd);
 
@@ -121,7 +129,9 @@ const transformBookingToLegacyFormat = (booking: ApiBooking): TransformedBooking
 };
 
 const processRawBookings = (rawBookings: ApiBooking[]) => {
-  return rawBookings.filter((b) => b && b.id).map(transformBookingToLegacyFormat);
+  return rawBookings
+    .filter((b) => b && b.id)
+    .map(transformBookingToLegacyFormat);
 };
 
 export default function BookingsPage() {
@@ -139,7 +149,8 @@ export default function BookingsPage() {
     try {
       const raw = localStorage.getItem(projectStorageKey);
       if (!raw) return null;
-      return JSON.parse(raw)?.id ?? null;
+      const parsed = JSON.parse(raw);
+      return parsed?.id ?? parsed?.project_id ?? null;
     } catch {
       return null;
     }
