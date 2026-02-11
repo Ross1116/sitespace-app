@@ -37,8 +37,8 @@ async function proxyToBackend(
   const url = new URL(request.url);
   const apiPath = url.searchParams.get("path");
 
-  if (!apiPath) {
-    return NextResponse.json({ message: "Missing path" }, { status: 400 });
+  if (!apiPath || !apiPath.startsWith("/") || apiPath.includes("..")) {
+    return NextResponse.json({ message: "Invalid path" }, { status: 400 });
   }
 
   const isPublic = PUBLIC_AUTH_PATHS.some((p) => apiPath.startsWith(p));

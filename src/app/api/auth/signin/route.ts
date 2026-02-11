@@ -1,8 +1,24 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
+
+const signinSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(1, "Password is required"),
+});
 
 export async function POST(request: Request) {
   try {
-    const { email, password } = await request.json();
+    const body = await request.json();
+    const parsed = signinSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        { message: parsed.error.issues[0]?.message || "Invalid input" },
+        { status: 400 },
+      );
+    }
+
+    const { email, password } = parsed.data;
 
     const response = await fetch(
       `${process.env.NEXT_PUBLIC_API_URL}/auth/login`,

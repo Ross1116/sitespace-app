@@ -39,5 +39,15 @@ export async function POST() {
     maxAge: 60 * 60 * 24,
   });
 
+  if (data.refresh_token) {
+    res.cookies.set("refreshToken", data.refresh_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7,
+    });
+  }
+
   return res;
 }
