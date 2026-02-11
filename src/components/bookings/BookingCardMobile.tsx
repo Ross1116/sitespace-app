@@ -121,6 +121,7 @@ export default function BookingCardMobile({
             }}
             className="cursor-pointer h-8 w-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
             title="View history"
+            aria-label="View booking history"
           >
             <History size={14} />
           </button>

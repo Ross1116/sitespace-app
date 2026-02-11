@@ -220,6 +220,8 @@ const SideNav = () => {
         `}
         onMouseEnter={() => setIsExpanded(true)}
         onMouseLeave={() => setIsExpanded(false)}
+        onFocus={() => setIsExpanded(true)}
+        onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setIsExpanded(false); }}
       >
         {/* LOGO AREA */}
         <div className="h-24 flex items-center flex-shrink-0 pl-6 mb-2">

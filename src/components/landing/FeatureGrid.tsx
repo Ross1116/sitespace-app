@@ -66,6 +66,8 @@ export default function FeatureGrid({ className }: FeatureGridProps) {
                 )}
                 onMouseEnter={() => setActiveFeature(feature.id)}
                 onMouseLeave={() => setActiveFeature(null)}
+                onFocus={() => setActiveFeature(feature.id)}
+                onBlur={() => setActiveFeature(null)}
               >
                 <CardContent className="p-6 flex flex-col h-full">
                   <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-3">{feature.title}</h3>

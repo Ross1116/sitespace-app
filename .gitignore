@@ -47,5 +47,5 @@ REMAINING_ISSUES.md
 # Sentry Config File
 .env.sentry-build-plugin
 
-# Claude AI files
-/.claude/
+# Legal
+/legal/

@@ -85,7 +85,7 @@ export default function BookingCardDesktop({
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
                 <RoleIcon size={13} className="text-slate-400" />
-                <span className="text-[10px] text-slate-400 uppercase tracking-wide font-bold">
+                <span className="text-[10px] text-slate-500 uppercase tracking-wide font-bold">
                   Assigned to:
                 </span>
                 <span className="truncate max-w-[120px] text-slate-700">
@@ -146,6 +146,7 @@ export default function BookingCardDesktop({
               }}
               className="h-8 w-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
               title="View history"
+              aria-label="View booking history"
             >
               <History size={15} />
             </button>

@@ -28,9 +28,40 @@ export default function Register() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const passwordChecks = [
+    { label: "8+ characters", met: formData.password.length >= 8 },
+    { label: "Uppercase letter", met: /[A-Z]/.test(formData.password) },
+    { label: "Lowercase letter", met: /[a-z]/.test(formData.password) },
+    { label: "Number", met: /\d/.test(formData.password) },
+  ];
+  const passedCount = passwordChecks.filter((c) => c.met).length;
+  const strengthLabel =
+    formData.password.length === 0
+      ? ""
+      : passedCount <= 1
+        ? "Weak"
+        : passedCount === 2
+          ? "Fair"
+          : passedCount === 3
+            ? "Good"
+            : "Strong";
+  const strengthColor =
+    passedCount <= 1
+      ? "bg-red-500"
+      : passedCount === 2
+        ? "bg-amber-500"
+        : passedCount === 3
+          ? "bg-blue-500"
+          : "bg-emerald-500";
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    if (passedCount < 4) {
+      setError("Password must be at least 8 characters with uppercase, lowercase, and a number");
+      return;
+    }
 
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match");
@@ -179,10 +210,36 @@ export default function Register() {
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
+              {formData.password.length > 0 && (
+                <div className="space-y-2 mt-2">
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-300 ${strengthColor}`}
+                        style={{ width: `${(passedCount / 4) * 100}%` }}
+                      />
+                    </div>
+                    <span className={`text-xs font-medium ${passedCount <= 1 ? "text-red-600" : passedCount === 2 ? "text-amber-600" : passedCount === 3 ? "text-blue-600" : "text-emerald-600"}`}>
+                      {strengthLabel}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-x-3 gap-y-1">
+                    {passwordChecks.map((check) => (
+                      <span
+                        key={check.label}
+                        className={`text-[11px] ${check.met ? "text-emerald-600" : "text-slate-400"}`}
+                      >
+                        {check.met ? "\u2713" : "\u2022"} {check.label}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
