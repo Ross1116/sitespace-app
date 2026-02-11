@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
-import api from "@/lib/api";
+import useSWR from "swr";
 import { useAuth } from "@/app/context/AuthContext";
 import BookingList from "./BookingList";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { addHours, startOfHour } from "date-fns";
 import { Plus, Search } from "lucide-react";
 import { CreateBookingForm } from "@/components/forms/CreateBookingForm";
 import { Input } from "@/components/ui/input";
-import { useSmartRefresh } from "@/lib/useSmartRefresh";
+import { swrFetcher, SWR_CONFIG } from "@/lib/swr";
 import { combineDateAndTime } from "@/lib/bookingHelpers";
 import type {
   ApiBooking,
@@ -24,20 +24,6 @@ const parseTimeToMinutes = (timeStr: string): number => {
   return hours * 60 + minutes;
 };
 
-const isAbortError = (error: unknown, signal?: AbortSignal) => {
-  if (signal?.aborted) return true;
-  if (error instanceof Error && error.name === "CanceledError") return true;
-  if (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    (error as { code?: string }).code === "ERR_CANCELED"
-  ) {
-    return true;
-  }
-  return false;
-};
-
 const calculateDuration = (startTime: string, endTime: string): number => {
   if (!startTime || !endTime) return 60;
   const start = parseTimeToMinutes(startTime);
@@ -45,13 +31,21 @@ const calculateDuration = (startTime: string, endTime: string): number => {
   return end - start;
 };
 
-const transformBookingToLegacyFormat = (booking: ApiBooking): TransformedBooking => {
+const transformBookingToLegacyFormat = (
+  booking: ApiBooking,
+): TransformedBooking => {
   const cleanStart = (booking.start_time || "00:00")
     .split(":")
     .slice(0, 2)
     .join(":");
-  const cleanEnd = (booking.end_time || "00:00").split(":").slice(0, 2).join(":");
-  const startDateObj = combineDateAndTime(booking.booking_date, booking.start_time);
+  const cleanEnd = (booking.end_time || "00:00")
+    .split(":")
+    .slice(0, 2)
+    .join(":");
+  const startDateObj = combineDateAndTime(
+    booking.booking_date,
+    booking.start_time,
+  );
   const endDateObj = combineDateAndTime(booking.booking_date, booking.end_time);
   const duration = calculateDuration(cleanStart, cleanEnd);
 
@@ -134,17 +128,56 @@ const transformBookingToLegacyFormat = (booking: ApiBooking): TransformedBooking
   };
 };
 
+const processRawBookings = (rawBookings: ApiBooking[]) => {
+  return rawBookings
+    .filter((b) => b && b.id)
+    .map(transformBookingToLegacyFormat);
+};
+
 export default function BookingsPage() {
   const [activeTab, setActiveTab] = useState("Upcoming");
-  const [allBookings, setAllBookings] = useState<TransformedBooking[]>([]);
-  const [loading, setLoading] = useState(true);
   const [isBookingFormOpen, setIsBookingFormOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
   const { user } = useAuth();
   const userId = user?.id;
-  const storageKey = `bookings_v5_${userId}`;
   const projectStorageKey = `project_${userId}`;
+
+  // Read project ID from localStorage for the SWR key
+  const projectId = useMemo(() => {
+    if (typeof window === "undefined" || !userId) return null;
+    try {
+      const raw = localStorage.getItem(projectStorageKey);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed?.id ?? parsed?.project_id ?? null;
+    } catch {
+      return null;
+    }
+  }, [userId, projectStorageKey]);
+
+  // Redirect if no project selected
+  useEffect(() => {
+    if (userId && !projectId && typeof window !== "undefined") {
+      window.location.href = "/home";
+    }
+  }, [userId, projectId]);
+
+  // --- SWR: fetch bookings ---
+  const swrKey = projectId
+    ? `/bookings/?project_id=${projectId}&limit=1000&skip=0`
+    : null;
+
+  const { data, isLoading, mutate } = useSWR<BookingListResponse>(
+    swrKey,
+    swrFetcher,
+    SWR_CONFIG,
+  );
+
+  const allBookings = useMemo(
+    () => processRawBookings(data?.bookings || []),
+    [data],
+  );
 
   // --- READ HIGHLIGHT PARAM ---
   const searchParams = useSearchParams();
@@ -154,86 +187,9 @@ export default function BookingsPage() {
   const nextHour = startOfHour(addHours(now, 1));
   const endHour = addHours(nextHour, 1);
 
-  const processRawBookings = (rawBookings: ApiBooking[]) => {
-    const validBookings = rawBookings.filter(
-      (b) => b && b.id,
-    );
-    return validBookings.map(transformBookingToLegacyFormat);
-  };
-
-  const fetchBookings = useCallback(
-    async (isBackground = false, signal?: AbortSignal) => {
-      if (!user) return;
-
-      const projectString = localStorage.getItem(projectStorageKey);
-      if (!projectString) {
-        if (typeof window !== "undefined") window.location.href = "/home";
-        return;
-      }
-
-      if (!isBackground) setLoading(true);
-
-      try {
-        const project = JSON.parse(projectString);
-        const response = await api.get<BookingListResponse>("/bookings/", {
-          params: { project_id: project.id, limit: 1000, skip: 0 },
-          signal,
-        });
-
-        const rawBookings = response.data?.bookings || [];
-        localStorage.setItem(
-          storageKey,
-          JSON.stringify({
-            bookings: rawBookings,
-            timestamp: Date.now(),
-          }),
-        );
-        const uiBookings = processRawBookings(rawBookings);
-        setAllBookings(uiBookings);
-      } catch (error) {
-        if (isAbortError(error, signal)) return;
-        console.error("Error fetching bookings:", error);
-      } finally {
-        if (!signal?.aborted) setLoading(false);
-      }
-    },
-    [user, storageKey, projectStorageKey],
-  );
-
-  const { refresh } = useSmartRefresh({
-    onRefresh: () => fetchBookings(true),
-    intervalMs: 5 * 60 * 1000,
-    refreshOnFocus: true,
-    refreshOnReconnect: true,
-  });
-
-  useEffect(() => {
-    if (!user) return;
-
-    const cachedData = localStorage.getItem(storageKey);
-    if (cachedData) {
-      try {
-        const { bookings } = JSON.parse(cachedData);
-        if (Array.isArray(bookings) && bookings.length > 0) {
-          const uiBookings = processRawBookings(bookings);
-          setAllBookings(uiBookings);
-          setLoading(false);
-        }
-      } catch {
-        localStorage.removeItem(storageKey);
-      }
-    }
-
-    const controller = new AbortController();
-    fetchBookings(false, controller.signal);
-    return () => controller.abort();
-  }, [user, storageKey, fetchBookings]);
-
   // --- AUTO-SWITCH TAB when highlighting ---
-  // If we have a highlight param, switch to "All" tab so the booking is guaranteed visible
   useEffect(() => {
     if (highlightBookingId && allBookings.length > 0) {
-      // Find which tab the booking belongs to
       const targetBooking = allBookings.find(
         (b) => b.bookingKey === highlightBookingId,
       );
@@ -245,11 +201,9 @@ export default function BookingsPage() {
         const isUpcoming =
           endDt >= new Date() && status !== "cancelled" && status !== "denied";
 
-        // If it's in the current "Upcoming" view, keep it. Otherwise switch to "All"
         if (activeTab === "Upcoming" && !isUpcoming) {
           setActiveTab("All");
         }
-        // If current tab filters it out, switch to "All"
         if (
           activeTab !== "Upcoming" &&
           activeTab !== "All" &&
@@ -258,22 +212,20 @@ export default function BookingsPage() {
           setActiveTab("All");
         }
       } else {
-        // Booking not found in current data, show all
         setActiveTab("All");
       }
     }
-    // Only run when bookings load or highlight changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [highlightBookingId, allBookings.length]);
 
-  const handleSaveBooking = async () => {
-    await refresh();
-  };
+  const handleSaveBooking = useCallback(() => {
+    mutate();
+  }, [mutate]);
 
   const handleFormClose = useCallback(() => {
     setIsBookingFormOpen(false);
-    setTimeout(() => refresh(), 300);
-  }, [refresh]);
+    mutate();
+  }, [mutate]);
 
   const filteredBookings = useMemo(() => {
     if (!allBookings || allBookings.length === 0) return [];
@@ -383,13 +335,13 @@ export default function BookingsPage() {
               </div>
             </div>
 
-            {/* Booking List — pass highlightBookingId */}
+            {/* Booking List */}
             <div className="flex-1">
               <BookingList
                 bookings={filteredBookings}
                 activeTab={activeTab}
-                loading={loading}
-                onActionComplete={refresh}
+                loading={isLoading}
+                onActionComplete={() => mutate()}
                 highlightBookingId={highlightBookingId}
               />
             </div>
@@ -407,4 +359,3 @@ export default function BookingsPage() {
     </div>
   );
 }
-

@@ -1,6 +1,7 @@
 // components/bookings/BookingCardMobile.tsx
 "use client";
 
+import { memo } from "react";
 import { Clock, HardHat, Briefcase, History } from "lucide-react";
 import { formatDate, formatTime, isToday } from "@/lib/bookingHelpers";
 import BookingCardDropdown from "./BookingCardDropdown";
@@ -14,7 +15,7 @@ interface BookingCardMobileProps {
   onViewHistory?: (booking: TransformedBooking) => void;
 }
 
-export default function BookingCardMobile({
+function BookingCardMobile({
   booking,
   onActionComplete,
   isDropdownOpen,
@@ -139,3 +140,5 @@ export default function BookingCardMobile({
     </div>
   );
 }
+
+export default memo(BookingCardMobile);

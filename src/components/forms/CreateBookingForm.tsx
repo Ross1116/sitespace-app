@@ -1,6 +1,6 @@
 "use client";
 
-import { useReducer, useEffect, useCallback } from "react";
+import { useReducer, useEffect, useCallback, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -50,6 +50,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ApiAsset, ApiBooking, ApiProject, getApiErrorMessage } from "@/types";
+import useSWR from "swr";
+import { swrFetcher } from "@/lib/swr";
 
 // ===== TYPE DEFINITIONS =====
 type CreateBookingFormProps = {
@@ -541,32 +543,31 @@ export function CreateBookingForm({
     }
   }, [userId]);
 
-  // ===== LOAD ASSETS FROM LOCALSTORAGE =====
+  // ===== LOAD ASSETS VIA SWR =====
+  const assetSwrKey = useMemo(() => {
+    if (!project?.id) return null;
+    return `/assets/?project_id=${project.id}&skip=0&limit=100`;
+  }, [project]);
+
+  const { data: assetsResponse, error: assetsSwrError } = useSWR<{
+    assets: ApiAsset[];
+  }>(assetSwrKey, swrFetcher);
+
   useEffect(() => {
-    const assetString = localStorage.getItem(`assets_${userId}`);
-    if (!assetString) {
+    if (assetsSwrError) {
       dispatchAsset({ type: "SET_ASSET_ERROR", error: true });
       return;
     }
-    try {
-      const parsedAssets = JSON.parse(assetString) as ApiAsset[];
-      const normalizedAssets: AssetOption[] = parsedAssets.map((asset) => {
-        const cached = asset as ApiAsset & {
-          assetKey?: string;
-          assetTitle?: string;
-        };
-        return {
-          ...asset,
-          assetKey: cached.assetKey ?? asset.id,
-          assetTitle: cached.assetTitle ?? asset.name,
-        };
-      });
-      dispatchAsset({ type: "SET_ASSETS", assets: normalizedAssets });
-    } catch (err) {
-      console.error("Error parsing assets:", err);
-      dispatchAsset({ type: "SET_ASSET_ERROR", error: true });
-    }
-  }, [userId]);
+    if (!assetsResponse) return;
+    const normalizedAssets: AssetOption[] = (assetsResponse.assets || []).map(
+      (asset) => ({
+        ...asset,
+        assetKey: asset.id,
+        assetTitle: asset.name,
+      }),
+    );
+    dispatchAsset({ type: "SET_ASSETS", assets: normalizedAssets });
+  }, [assetsResponse, assetsSwrError]);
 
   // ===== LOAD SUBCONTRACTORS =====
   useEffect(() => {
@@ -643,45 +644,10 @@ export function CreateBookingForm({
           subs: normalizedSubs,
           loading: false,
         });
-
-        try {
-          localStorage.setItem(
-            `subcontractors_${userId}`,
-            JSON.stringify(subsData),
-          );
-        } catch {
-          // ignore storage errors
-        }
       } catch (err: unknown) {
         if (isAbortError(err, signal)) return;
         console.error("Error loading subcontractors:", err);
-        // Fallback: try cached
-        const cachedSubs = localStorage.getItem(`subcontractors_${userId}`);
-        if (cachedSubs) {
-          try {
-            const parsedSubs = JSON.parse(cachedSubs) as SubcontractorSource[];
-            const normalizedCached: Subcontractor[] = parsedSubs.map((sub) => ({
-              id:
-                getIdString(sub.id) ||
-                getIdString(sub.subcontractor_id) ||
-                getIdString(sub.uuid),
-              first_name: getString(sub.first_name),
-              last_name: getString(sub.last_name),
-              email: getString(sub.email),
-              company_name: getString(sub.company_name),
-              trade_specialty: getString(sub.trade_specialty),
-            }));
-            dispatchAsync({
-              type: "SET_SUBCONTRACTORS",
-              subs: normalizedCached,
-              loading: false,
-            });
-          } catch {
-            dispatchAsync({ type: "SET_LOADING_SUBS", loading: false });
-          }
-        } else {
-          dispatchAsync({ type: "SET_LOADING_SUBS", loading: false });
-        }
+        dispatchAsync({ type: "SET_LOADING_SUBS", loading: false });
       }
     };
 
@@ -834,33 +800,6 @@ export function CreateBookingForm({
               b.status = "CONFIRMED";
             }
           }
-        }
-
-        // Cache new bookings
-        try {
-          const storageKey = `bookings_v5_${userId}`;
-          const existingRaw = (() => {
-            try {
-              const s = localStorage.getItem(storageKey);
-              if (!s) return [];
-              const parsed = JSON.parse(s);
-              if (Array.isArray(parsed)) return parsed;
-              if (parsed?.bookings && Array.isArray(parsed.bookings))
-                return parsed.bookings;
-              return [];
-            } catch {
-              return [];
-            }
-          })();
-          localStorage.setItem(
-            storageKey,
-            JSON.stringify({
-              bookings: [...existingRaw, ...succeeded],
-              timestamp: Date.now(),
-            }),
-          );
-        } catch (e) {
-          console.error("Failed to update local booking cache:", e);
         }
 
         // Build calendar events for successful bookings

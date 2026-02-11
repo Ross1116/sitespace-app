@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
+import useSWR from "swr";
 import { Button } from "@/components/ui/button";
 import {
   X,
@@ -28,7 +29,7 @@ import CreateAssetForm from "@/components/forms/CreateAssetForm";
 import UpdateAssetModal from "@/components/forms/UpdateAssetForm";
 import { format, parseISO } from "date-fns";
 import { Input } from "@/components/ui/input";
-import { useSmartRefresh } from "@/lib/useSmartRefresh";
+import { swrFetcher, SWR_CONFIG } from "@/lib/swr";
 import {
   Dialog,
   DialogContent,
@@ -169,20 +170,6 @@ const safeFormatDate = (dateString?: string) => {
   }
 };
 
-const isAbortError = (error: unknown, signal?: AbortSignal) => {
-  if (signal?.aborted) return true;
-  if (error instanceof Error && error.name === "CanceledError") return true;
-  if (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    (error as { code?: string }).code === "ERR_CANCELED"
-  ) {
-    return true;
-  }
-  return false;
-};
-
 const SortIcon = ({
   field,
   currentSort,
@@ -205,10 +192,6 @@ const SortIcon = ({
 };
 
 export default function AssetsTable() {
-  const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-  const [allAssets, setAllAssets] = useState<Asset[]>([]);
-  const [project, setProject] = useState<Project>();
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -227,7 +210,41 @@ export default function AssetsTable() {
   const itemsPerPage = 7;
   const { user } = useAuth();
   const userId = user?.id;
-  const STORAGE_KEY = `assets_v2_${userId}`;
+
+  // Read project from localStorage
+  const project = useMemo<Project | undefined>(() => {
+    if (typeof window === "undefined" || !userId) return undefined;
+    try {
+      const raw = localStorage.getItem(`project_${userId}`);
+      if (!raw) return undefined;
+      const parsed = JSON.parse(raw);
+      const id = parsed?.id ?? parsed?.project_id;
+      if (!id) return undefined;
+      return {
+        id,
+        text: parsed?.text ?? parsed?.name ?? parsed?.project_name ?? "",
+      };
+    } catch {
+      return undefined;
+    }
+  }, [userId]);
+
+  // --- SWR: fetch assets ---
+  const swrKey = project?.id
+    ? `/assets/?project_id=${project.id}&skip=0&limit=100`
+    : null;
+
+  const {
+    data,
+    isLoading: loading,
+    error: fetchError,
+    mutate,
+  } = useSWR<AssetListResponse>(swrKey, swrFetcher, SWR_CONFIG);
+
+  const allAssets = useMemo(
+    () => (data?.assets || []).map(transformBackendAsset),
+    [data],
+  );
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -265,93 +282,6 @@ export default function AssetsTable() {
       colSpan: "col-span-1",
     },
   ];
-
-  useEffect(() => {
-    const projectString = localStorage.getItem(`project_${userId}`);
-    if (!projectString) return;
-
-    try {
-      setProject(JSON.parse(projectString));
-    } catch (error) {
-      console.log("Error parsing project:", error);
-    }
-  }, [userId]);
-
-  const fetchAssets = useCallback(
-    async (isBackground = false, signal?: AbortSignal) => {
-      if (!user || !project) return;
-
-      if (!isBackground) setLoading(true);
-      setFetchError(null);
-
-      try {
-        const response = await api.get<AssetListResponse>("/assets/", {
-          params: {
-            project_id: project.id,
-            skip: 0,
-            limit: 100,
-          },
-          signal,
-        });
-
-        const assetsData = response.data?.assets || [];
-        const transformedAssets = assetsData.map(transformBackendAsset);
-
-        setAllAssets(transformedAssets);
-        localStorage.setItem(
-          STORAGE_KEY,
-          JSON.stringify({
-            assets: transformedAssets,
-            timestamp: Date.now(),
-          }),
-        );
-      } catch (error: unknown) {
-        if (isAbortError(error, signal)) return;
-        console.error("Error fetching assets:", error);
-        const cached = localStorage.getItem(STORAGE_KEY);
-        if (cached) {
-          try {
-            const { assets } = JSON.parse(cached);
-            setAllAssets(assets);
-          } catch {}
-        }
-        if (!isBackground) {
-          setFetchError("Failed to load assets. Showing cached data.");
-        }
-      } finally {
-        if (!signal?.aborted) setLoading(false);
-      }
-    },
-    [user, project, STORAGE_KEY],
-  );
-
-  const { refresh } = useSmartRefresh({
-    onRefresh: () => fetchAssets(true),
-    intervalMs: 5 * 60 * 1000,
-    refreshOnFocus: true,
-    refreshOnReconnect: true,
-  });
-
-  useEffect(() => {
-    if (!user || !project) return;
-
-    const cached = localStorage.getItem(STORAGE_KEY);
-    if (cached) {
-      try {
-        const { assets } = JSON.parse(cached);
-        if (Array.isArray(assets)) {
-          setAllAssets(assets);
-          setLoading(false);
-        }
-      } catch {
-        localStorage.removeItem(STORAGE_KEY);
-      }
-    }
-
-    const controller = new AbortController();
-    fetchAssets(false, controller.signal);
-    return () => controller.abort();
-  }, [user, project, STORAGE_KEY, fetchAssets]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -444,10 +374,10 @@ export default function AssetsTable() {
     setSidebarOpen(false);
   };
 
-  const handleSaveAssets = async () => {
+  const handleSaveAssets = () => {
     setIsAssetFormOpen(false);
     setCurrentPage(1);
-    await refresh();
+    mutate();
   };
 
   const handleDeleteAsset = (assetKey: string) => {
@@ -459,7 +389,7 @@ export default function AssetsTable() {
     try {
       await api.delete(`/assets/${deleteConfirmKey}`);
       if (selectedAsset?.assetKey === deleteConfirmKey) closeSidebar();
-      await refresh();
+      mutate();
     } catch (error: unknown) {
       setActionError(getApiErrorMessage(error, "Failed to delete asset"));
     } finally {
@@ -467,16 +397,11 @@ export default function AssetsTable() {
     }
   };
 
-  const handleUpdateAsset = async (updatedAsset: Asset) => {
-    setAllAssets((prevAssets) =>
-      prevAssets.map((a) =>
-        a.assetKey === updatedAsset.assetKey ? { ...a, ...updatedAsset } : a,
-      ),
-    );
+  const handleUpdateAsset = (updatedAsset: Asset) => {
     if (selectedAsset?.assetKey === updatedAsset.assetKey) {
       setSelectedAsset({ ...selectedAsset, ...updatedAsset });
     }
-    await refresh();
+    mutate();
   };
 
   return (
@@ -573,7 +498,7 @@ export default function AssetsTable() {
                 className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2.5 rounded-lg text-sm mb-3"
                 role="alert"
               >
-                {fetchError}
+                Failed to load assets. Please try again.
               </div>
             )}
 
@@ -954,7 +879,10 @@ export default function AssetsTable() {
         )}
 
         {/* Delete Confirmation Dialog */}
-        <Dialog open={!!deleteConfirmKey} onOpenChange={() => setDeleteConfirmKey(null)}>
+        <Dialog
+          open={!!deleteConfirmKey}
+          onOpenChange={() => setDeleteConfirmKey(null)}
+        >
           <DialogContent className="sm:max-w-[425px] bg-white">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-red-600">
@@ -962,11 +890,15 @@ export default function AssetsTable() {
                 Delete Asset
               </DialogTitle>
               <DialogDescription className="text-slate-600">
-                Are you sure you want to delete this asset? This action cannot be undone.
+                Are you sure you want to delete this asset? This action cannot
+                be undone.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter className="flex gap-2 sm:justify-end mt-4">
-              <Button variant="outline" onClick={() => setDeleteConfirmKey(null)}>
+              <Button
+                variant="outline"
+                onClick={() => setDeleteConfirmKey(null)}
+              >
                 Cancel
               </Button>
               <Button variant="destructive" onClick={confirmDeleteAsset}>
@@ -999,4 +931,3 @@ export default function AssetsTable() {
     </div>
   );
 }
-

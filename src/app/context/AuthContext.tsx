@@ -230,7 +230,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       "scroll",
       "touchstart",
     ];
-    events.forEach((e) => window.addEventListener(e, onActivity));
+    events.forEach((e) =>
+      window.addEventListener(e, onActivity, { passive: true }),
+    );
 
     return () => {
       clearTimeout(timer);

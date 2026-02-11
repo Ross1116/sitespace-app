@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { Clock, HardHat, Briefcase, MapPin, History } from "lucide-react";
 import { formatDate, formatTime, isToday } from "@/lib/bookingHelpers";
 import BookingCardDropdown from "./BookingCardDropdown";
@@ -13,7 +14,7 @@ interface BookingCardDesktopProps {
   onViewHistory?: (booking: TransformedBooking) => void;
 }
 
-export default function BookingCardDesktop({
+function BookingCardDesktop({
   booking,
   onActionComplete,
   isDropdownOpen,
@@ -167,3 +168,5 @@ export default function BookingCardDesktop({
     </div>
   );
 }
+
+export default memo(BookingCardDesktop);

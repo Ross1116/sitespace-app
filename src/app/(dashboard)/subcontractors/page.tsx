@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { useEffect, useRef, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   X,
   Plus,
@@ -17,25 +17,11 @@ import {
 } from "lucide-react";
 import SubFormModal from "@/components/forms/InviteSubForm";
 import { useAuth } from "@/app/context/AuthContext";
-import api from "@/lib/api";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
-import { useSmartRefresh } from "@/lib/useSmartRefresh";
-import { ApiProject, getApiErrorMessage } from "@/types";
-
-const isAbortError = (error: unknown, signal?: AbortSignal) => {
-  if (signal?.aborted) return true;
-  if (error instanceof Error && error.name === "CanceledError") return true;
-  if (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    (error as { code?: string }).code === "ERR_CANCELED"
-  ) {
-    return true;
-  }
-  return false;
-};
+import { ApiProject } from "@/types";
+import useSWR from "swr";
+import { swrFetcher, SWR_CONFIG } from "@/lib/swr";
 
 interface SubcontractorFromBackend {
   id: string;
@@ -116,15 +102,11 @@ const SortIcon = ({
 
 export default function SubcontractorsPage() {
   const [currentPage, setCurrentPage] = useState(1);
-  const [allSubs, setAllSubs] = useState<Contractor[]>([]);
   const [selectedContractor, setSelectedContractor] =
     useState<Contractor | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isSubFormOpen, setIsSubFormOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedProject, setSelectedProject] = useState<ApiProject | null>(null);
 
   // Sort state
   const [sortField, setSortField] = useState<SortField | null>(null);
@@ -134,17 +116,56 @@ export default function SubcontractorsPage() {
   const { user } = useAuth();
   const userId = user?.id;
 
-  const getProjectId = (proj: ApiProject | null): string | null => {
-    if (!proj) return null;
-    return proj.id ?? proj.project_id ?? null;
-  };
+  // Re-read project on cross-tab changes
+  const [projectVersion, setProjectVersion] = useState(0);
+  useEffect(() => {
+    const handler = (e: StorageEvent) => {
+      if (!userId || e.key !== `project_${userId}`) return;
+      setProjectVersion((v) => v + 1);
+      setCurrentPage(1);
+    };
+    window.addEventListener("storage", handler);
+    return () => window.removeEventListener("storage", handler);
+  }, [userId]);
 
-  const projectIdForCache = getProjectId(selectedProject);
-  const cacheKey = `subcontractors_${userId}_project_${projectIdForCache ?? "all"}`;
+  // Build project-aware memo (recomputes when projectVersion bumps)
+  const projectId = useMemo(() => {
+    if (!userId) return null;
+    try {
+      const raw = localStorage.getItem(`project_${userId}`);
+      if (!raw) return null;
+      const proj: ApiProject = JSON.parse(raw);
+      return proj.id ?? proj.project_id ?? null;
+    } catch {
+      return null;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, projectVersion]);
+
+  // SWR — role-based endpoint
+  const swrKey = useMemo(() => {
+    if (!user || user.role === "subcontractor") return null;
+    const endpoint = user.role === "admin"
+      ? "/subcontractors/"
+      : "/subcontractors/my-subcontractors";
+    const params = new URLSearchParams({ skip: "0", limit: "1000", is_active: "true" });
+    if (projectId) params.set("project_id", projectId);
+    return `${endpoint}?${params.toString()}`;
+  }, [user, projectId]);
+
+  const { data, isLoading: loading, error: fetchError, mutate } = useSWR<SubcontractorListResponse>(
+    swrKey,
+    swrFetcher,
+    SWR_CONFIG,
+  );
+
+  const allSubs = useMemo(
+    () => (data?.subcontractors || []).map(transformBackendSubcontractor),
+    [data],
+  );
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
-      // Toggle direction, then clear on third click
       if (sortDirection === "asc") {
         setSortDirection("desc");
       } else {
@@ -157,126 +178,6 @@ export default function SubcontractorsPage() {
     }
     setCurrentPage(1);
   };
-
-  // Load project from localStorage
-  useEffect(() => {
-    if (!userId) return;
-    try {
-      const raw = localStorage.getItem(`project_${userId}`);
-      if (raw) setSelectedProject(JSON.parse(raw));
-    } catch {
-      setSelectedProject(null);
-    }
-  }, [userId]);
-
-  // Listen for project changes in other tabs
-  useEffect(() => {
-    const handler = (e: StorageEvent) => {
-      if (!userId || e.key !== `project_${userId}`) return;
-      try {
-        const newVal = e.newValue ? JSON.parse(e.newValue) : null;
-        setSelectedProject(newVal);
-        setCurrentPage(1);
-      } catch {
-        setSelectedProject(null);
-      }
-    };
-    window.addEventListener("storage", handler);
-    return () => window.removeEventListener("storage", handler);
-  }, [userId]);
-
-  const fetchSubs = useCallback(
-    async (isBackground = false, signal?: AbortSignal) => {
-      if (!user) return;
-
-      if (user.role === "subcontractor") {
-        setLoading(false);
-        setAllSubs([]);
-        return;
-      }
-
-      if (!isBackground) setLoading(true);
-      setError(null);
-
-      try {
-        const isAdmin = user?.role === "admin";
-        const endpoint = isAdmin
-          ? "/subcontractors/"
-          : "/subcontractors/my-subcontractors";
-
-        const params: Record<string, string | number | boolean> = {
-          skip: 0,
-          limit: 1000,
-          is_active: true,
-        };
-
-        const projectId = getProjectId(selectedProject);
-        if (projectId) params.project_id = projectId;
-
-        const response = await api.get<SubcontractorListResponse>(endpoint, {
-          params,
-          signal,
-        });
-        const subsData = response.data?.subcontractors || [];
-        const transformedSubs = subsData.map(transformBackendSubcontractor);
-
-        setAllSubs(transformedSubs);
-        localStorage.setItem(
-          cacheKey,
-          JSON.stringify({
-            subs: transformedSubs,
-            timestamp: Date.now(),
-          }),
-        );
-      } catch (err: unknown) {
-        if (isAbortError(err, signal)) return;
-        setError(getApiErrorMessage(err, "Failed to fetch subcontractors"));
-
-        try {
-          const cached = localStorage.getItem(cacheKey);
-          if (cached) {
-            const { subs } = JSON.parse(cached);
-            if (Array.isArray(subs)) setAllSubs(subs);
-          }
-        } catch {}
-      } finally {
-        if (!signal?.aborted) setLoading(false);
-      }
-    },
-    [user, selectedProject, cacheKey],
-  );
-
-  const { refresh } = useSmartRefresh({
-    onRefresh: () => fetchSubs(true),
-    intervalMs: 5 * 60 * 1000,
-    refreshOnFocus: true,
-    refreshOnReconnect: true,
-  });
-
-  useEffect(() => {
-    if (!user) return;
-
-    try {
-      const cached = localStorage.getItem(cacheKey);
-      if (cached) {
-        const { subs } = JSON.parse(cached);
-        setAllSubs(subs);
-        setLoading(false);
-      }
-    } catch {}
-
-    const controller = new AbortController();
-    fetchSubs(false, controller.signal);
-    return () => controller.abort();
-  }, [user, cacheKey, fetchSubs]);
-
-  useEffect(() => {
-    if (!user) return;
-    setCurrentPage(1);
-    const controller = new AbortController();
-    fetchSubs(true, controller.signal);
-    return () => controller.abort();
-  }, [selectedProject, user, fetchSubs]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -350,7 +251,7 @@ export default function SubcontractorsPage() {
   const handleSaveSubs = async () => {
     setIsSubFormOpen(false);
     setCurrentPage(1);
-    await refresh();
+    await mutate();
   };
 
   const columnHeaders: {
@@ -461,13 +362,13 @@ export default function SubcontractorsPage() {
                     className="h-16 bg-slate-50 rounded-xl animate-pulse w-full border border-slate-100"
                   />
                 ))
-              ) : error ? (
+              ) : fetchError ? (
                 <div className="p-8 text-center text-red-500 bg-red-50 rounded-xl border border-red-100 m-2">
-                  {error}
+                  Failed to load subcontractors.
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => fetchSubs(true)}
+                    onClick={() => mutate()}
                     className="ml-4"
                   >
                     Retry
