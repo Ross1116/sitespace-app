@@ -3,7 +3,8 @@
     "allow": [
       "Bash(del \"d:\\\\Coding_shit\\\\Sitespace\\\\Frontend\\\\src\\\\lib\\\\data.ts\")",
       "Bash(npm ls:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(npx next build:*)"
     ]
   }
 }

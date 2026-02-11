@@ -39,8 +39,8 @@ Updated:
 
 ## Medium Priority (Code)
 
-- [ ] **10. CSRF protection**
-- [ ] **11. Session timeout**
+- [x] **10. CSRF protection** — Origin/Referer validation middleware on all state-changing `/api/*` requests. Combined with existing `sameSite: lax` cookies.
+- [x] **11. Session timeout** — 30-min inactivity auto-logout in AuthContext. Throttled activity listeners (mousemove, keydown, scroll, touch).
 - [ ] **12. Accessibility gaps**
 - [x] **13. `crypto.getRandomValues()` for password generation** — Fixed in InviteSubForm.tsx.
 - [ ] **14. Password strength on register**

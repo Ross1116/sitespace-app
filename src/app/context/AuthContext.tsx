@@ -201,6 +201,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const clearError = useCallback(() => setError(null), []);
 
+  // ===== Session timeout: auto-logout after 30 min inactivity =====
+  useEffect(() => {
+    if (!user) return;
+
+    const TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+    let timer = setTimeout(() => logout(), TIMEOUT_MS);
+
+    const resetTimer = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => logout(), TIMEOUT_MS);
+    };
+
+    // Throttle to fire at most once per 30 seconds
+    let lastReset = Date.now();
+    const onActivity = () => {
+      const now = Date.now();
+      if (now - lastReset > 30_000) {
+        lastReset = now;
+        resetTimer();
+      }
+    };
+
+    const events: (keyof WindowEventMap)[] = [
+      "mousemove",
+      "mousedown",
+      "keydown",
+      "scroll",
+      "touchstart",
+    ];
+    events.forEach((e) => window.addEventListener(e, onActivity));
+
+    return () => {
+      clearTimeout(timer);
+      events.forEach((e) => window.removeEventListener(e, onActivity));
+    };
+  }, [user, logout]);
+
   const value = useMemo<AuthContextType>(
     () => ({
       user,
