@@ -128,6 +128,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(userData);
       Sentry.setUser({ id: userData.id, email: userData.email, role: userData.role });
       posthog.identify(userData.id, { email: userData.email, name: `${userData.first_name} ${userData.last_name}`, role: userData.role });
+
+      // Pre-fetch project so every dashboard page has context immediately
+      try {
+        const projUrl =
+          userData.role === "subcontractor"
+            ? `/subcontractors/${userData.id}/projects`
+            : "/projects/?my_projects=true&limit=100&skip=0";
+
+        const projRes = await fetch(`/api/proxy?path=${encodeURIComponent(projUrl)}`, {
+          credentials: "include",
+        });
+
+        if (projRes.ok) {
+          const projData = await projRes.json();
+          let firstProject = null;
+
+          if (userData.role === "subcontractor" && Array.isArray(projData)) {
+            const p = projData[0];
+            if (p) {
+              firstProject = {
+                ...p,
+                id: p.project_id,
+                name: p.project_name,
+                location: p.project_location,
+                status: p.is_active ? "active" : "inactive",
+              };
+            }
+          } else {
+            const list = projData.projects || projData;
+            if (Array.isArray(list) && list.length > 0) {
+              firstProject = list[0];
+            }
+          }
+
+          if (firstProject) {
+            localStorage.setItem(
+              `project_${userData.id}`,
+              JSON.stringify(firstProject),
+            );
+          }
+        }
+      } catch {
+        // Non-blocking — home page will still set it as fallback
+      }
+
       router.replace("/home");
     },
     [router, checkAuth],
