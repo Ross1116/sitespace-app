@@ -554,19 +554,18 @@ export function CreateBookingForm({
   }>(assetSwrKey, swrFetcher);
 
   useEffect(() => {
-    if (assetsSwrError) {
+    if (assetsResponse) {
+      const normalizedAssets: AssetOption[] = (assetsResponse.assets || []).map(
+        (asset) => ({
+          ...asset,
+          assetKey: asset.id,
+          assetTitle: asset.name,
+        }),
+      );
+      dispatchAsset({ type: "SET_ASSETS", assets: normalizedAssets });
+    } else if (assetsSwrError) {
       dispatchAsset({ type: "SET_ASSET_ERROR", error: true });
-      return;
     }
-    if (!assetsResponse) return;
-    const normalizedAssets: AssetOption[] = (assetsResponse.assets || []).map(
-      (asset) => ({
-        ...asset,
-        assetKey: asset.id,
-        assetTitle: asset.name,
-      }),
-    );
-    dispatchAsset({ type: "SET_ASSETS", assets: normalizedAssets });
   }, [assetsResponse, assetsSwrError]);
 
   // ===== LOAD SUBCONTRACTORS =====

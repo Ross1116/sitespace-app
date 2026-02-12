@@ -99,11 +99,11 @@ export default function HomePage() {
     if (!projectsRaw) return [];
     if (user?.role === "subcontractor") {
       return (projectsRaw as SubcontractorProjectApi[]).map((p) => ({
+        ...p,
         id: p.project_id,
         name: p.project_name,
         location: p.project_location,
         status: p.is_active ? "active" : "inactive",
-        ...p,
       }));
     }
     return (projectsRaw as { projects?: ApiProject[] }).projects || [];
