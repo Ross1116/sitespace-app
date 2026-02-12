@@ -162,8 +162,8 @@ export interface TransformedAsset {
   assetPoc: string;
   assetProject: string;
   assetLocation: string;
-  maintanenceStartdt: string;
-  maintanenceEnddt: string;
+  maintenanceStartdt: string;
+  maintenanceEnddt: string;
   usageInstructions: string;
   assetCode: string;
   _originalData?: ApiAsset;

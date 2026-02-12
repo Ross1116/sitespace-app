@@ -555,13 +555,13 @@ export function CreateBookingForm({
 
   useEffect(() => {
     if (assetsResponse) {
-      const normalizedAssets: AssetOption[] = (assetsResponse.assets || []).map(
-        (asset) => ({
+      const normalizedAssets: AssetOption[] = (assetsResponse.assets || [])
+        .filter((asset) => asset.status !== "maintenance" && asset.status !== "retired")
+        .map((asset) => ({
           ...asset,
           assetKey: asset.id,
           assetTitle: asset.name,
-        }),
-      );
+        }));
       dispatchAsset({ type: "SET_ASSETS", assets: normalizedAssets });
     } else if (assetsSwrError) {
       dispatchAsset({ type: "SET_ASSET_ERROR", error: true });

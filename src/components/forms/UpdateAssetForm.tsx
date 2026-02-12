@@ -101,8 +101,8 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
     assetDescription: "",
     assetLocation: "",
     assetType: "",
-    maintanenceStartdt: "",
-    maintanenceEnddt: "",
+    maintenanceStartdt: "",
+    maintenanceEnddt: "",
     assetPoc: "",
     assetStatus: "Operational",
     assetLastUpdated: "",
@@ -186,6 +186,12 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
       return;
     }
 
+    if (asset.maintenanceStartdt && asset.maintenanceEnddt &&
+        asset.maintenanceEnddt.split("T")[0] < asset.maintenanceStartdt.split("T")[0]) {
+      setError("Maintenance end date must be on or after the start date");
+      return;
+    }
+
     try {
       setIsSubmitting(true);
 
@@ -205,13 +211,13 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
       };
 
       // Add maintenance dates if they exist
-      if (asset.maintanenceStartdt) {
+      if (asset.maintenanceStartdt) {
         updateRequest.maintenance_start_date =
-          asset.maintanenceStartdt.split("T")[0];
+          asset.maintenanceStartdt.split("T")[0];
       }
-      if (asset.maintanenceEnddt) {
+      if (asset.maintenanceEnddt) {
         updateRequest.maintenance_end_date =
-          asset.maintanenceEnddt.split("T")[0];
+          asset.maintenanceEnddt.split("T")[0];
       }
 
       console.log("Updating asset:", asset.assetKey, updateRequest);
@@ -240,8 +246,8 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
         assetDescription: descriptionText,
         assetLocation: response.data.location || "",
         assetType: responseAssetType,
-        maintanenceStartdt: response.data.maintenance_start_date || "",
-        maintanenceEnddt: response.data.maintenance_end_date || "",
+        maintenanceStartdt: response.data.maintenance_start_date || "",
+        maintenanceEnddt: response.data.maintenance_end_date || "",
         assetPoc: response.data.poc || "",
         assetStatus: mapBackendStatusToFrontend(response.data.status),
         assetLastUpdated: response.data.updated_at || "",
@@ -365,10 +371,10 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
                 <div className="flex-1">
                   <Input
                     type="date"
-                    name="maintanenceStartdt"
+                    name="maintenanceStartdt"
                     value={
-                      asset.maintanenceStartdt
-                        ? asset.maintanenceStartdt.split("T")[0]
+                      asset.maintenanceStartdt
+                        ? asset.maintenanceStartdt.split("T")[0]
                         : ""
                     }
                     onChange={handleMaintenanceChange}
@@ -378,10 +384,10 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
                 <div className="flex-1">
                   <Input
                     type="date"
-                    name="maintanenceEnddt"
+                    name="maintenanceEnddt"
                     value={
-                      asset.maintanenceEnddt
-                        ? asset.maintanenceEnddt.split("T")[0]
+                      asset.maintenanceEnddt
+                        ? asset.maintenanceEnddt.split("T")[0]
                         : ""
                     }
                     onChange={handleMaintenanceChange}

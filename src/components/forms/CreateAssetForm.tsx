@@ -178,6 +178,12 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
       return;
     }
 
+    if (asset.maintenanceStartdt && asset.maintenanceEnddt &&
+        asset.maintenanceEnddt < asset.maintenanceStartdt) {
+      setError("Maintenance end date must be on or after the start date");
+      return;
+    }
+
     try {
       setIsSubmitting(true);
       console.log("Creating new asset...");

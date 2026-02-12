@@ -62,8 +62,8 @@ const LATEST_END_HOUR = 20; // 8:00 PM
 
 type MaintenanceAsset = {
   status?: string;
-  maintenance_start?: string;
-  maintenance_end?: string;
+  maintenance_start_date?: string;
+  maintenance_end_date?: string;
 };
 
 const toMaintenanceAsset = (value: unknown): MaintenanceAsset => {
@@ -129,20 +129,21 @@ export const CalendarDayView = ({
     if (!asset) return false;
 
     const status = getString(asset.status).toLowerCase();
-    const isMaintenanceStatus =
-      status.includes("maintenance") ||
+    const isUnavailable =
+      status === "maintenance" ||
+      status === "retired" ||
       status.includes("broken") ||
       status.includes("repair");
 
-    if (!isMaintenanceStatus) return false;
+    if (!isUnavailable) return false;
 
-    // If no dates provided but status is maintenance, block everything
-    if (!asset.maintenance_start || !asset.maintenance_end) {
+    // If no dates provided but status is maintenance/retired, block everything
+    if (!asset.maintenance_start_date || !asset.maintenance_end_date) {
       return true;
     }
 
-    const start = new Date(asset.maintenance_start);
-    const end = new Date(asset.maintenance_end);
+    const start = new Date(asset.maintenance_start_date);
+    const end = new Date(asset.maintenance_end_date);
 
     // Check overlap
     return slotDate >= start && slotDate < end;
