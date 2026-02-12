@@ -51,22 +51,24 @@ Built with **Next.js 16**, **React 19**, **TypeScript**, and **Tailwind CSS 4**.
 
 **Dashboard**
 - Personalized greeting with role badge
-- Project switcher with localStorage persistence
+- Project switcher with persistence across sessions
 - Quick-access stat cards (bookings, assets, subcontractors, calendar)
 - Upcoming bookings grouped by month
 - Today's schedule mini-calendar
 
-**Authentication**
-- JWT-based auth with HTTP-only cookie storage
-- Automatic token refresh on expiry
+**Authentication & Security**
+- JWT-based auth with HTTP-only cookie storage (tokens never touch client JS)
+- Automatic token refresh with rotation
+- CSRF protection (Origin/Referer validation on all mutations)
+- 30-minute inactivity session timeout
 - Login, register, forgot password, and reset password flows
 - Password strength indicator with visual feedback
 - Middleware-based route protection
 
 **General**
 - Fully responsive (mobile-first with desktop/mobile component variants)
-- Smart data refresh (interval polling, tab focus, network reconnection)
-- localStorage caching with background updates
+- SWR data fetching with shared cache, deduplication, and auto-revalidation
+- Error boundaries at root and dashboard layout level
 - Landing page with hero, features, pricing, and testimonials
 
 ---
@@ -80,14 +82,15 @@ Built with **Next.js 16**, **React 19**, **TypeScript**, and **Tailwind CSS 4**.
 | UI Library | React 19 |
 | Styling | Tailwind CSS 4, CSS Variables (OKLch) |
 | Components | Radix UI primitives, shadcn/ui (New York style) |
-| Icons | Lucide React |
+| Data Fetching | SWR |
 | HTTP Client | Axios |
+| Icons | Lucide React |
 | Dates | date-fns |
 | Drag & Drop | @dnd-kit |
-| Animations | Framer Motion |
 | Calendar | react-day-picker + custom full-calendar |
 | Command Palette | cmdk |
-| Analytics | Vercel Speed Insights |
+| Error Tracking | Sentry |
+| Analytics | PostHog (reverse-proxied), Vercel Speed Insights |
 | Fonts | Geist Sans & Geist Mono |
 
 ---
@@ -116,10 +119,10 @@ src/
 │   │   │   ├── signin/route.ts    # Login → sets HTTP-only cookies
 │   │   │   ├── me/route.ts        # Session validation + token refresh
 │   │   │   ├── signout/route.ts   # Logout → clears cookies
-│   │   │   └── refresh/route.ts   # Token refresh
+│   │   │   └── refresh/route.ts   # Token refresh with rotation
 │   │   └── proxy/route.ts         # Universal backend proxy
 │   ├── context/
-│   │   └── AuthContext.tsx         # Global auth state provider
+│   │   └── AuthContext.tsx         # Global auth state, session timeout
 │   ├── layout.tsx                  # Root layout (AuthProvider, fonts)
 │   ├── page.tsx                    # Landing page
 │   └── unauthorized/page.tsx
@@ -135,13 +138,16 @@ src/
 │   └── ProtectedRoute.tsx          # Route protection wrapper
 ├── lib/
 │   ├── api.ts                      # Axios client with interceptors
+│   ├── swr.ts                      # Shared SWR fetcher and config
 │   ├── bookingHelpers.ts           # Date/time formatting utilities
 │   ├── multicalendarHelpers.ts     # Calendar view helpers
-│   ├── useSmartRefresh.ts          # Auto-refresh hook (polling + visibility)
 │   ├── data.ts                     # App data definitions
 │   ├── landingData.ts              # Landing page content
 │   └── utils.ts                    # cn() Tailwind class merge utility
-└── middleware.ts                    # Auth middleware (route protection, redirects)
+├── types/
+│   ├── index.ts                    # Shared TypeScript interfaces
+│   └── images.d.ts                 # Image module declarations
+└── middleware.ts                    # Auth + CSRF middleware
 ```
 
 ---
@@ -199,7 +205,7 @@ The backend is a Python API deployed on Railway. The `NEXT_PUBLIC_API_URL` shoul
 ### Request Flow
 
 ```
-Browser → Next.js Middleware (auth check)
+Browser → Next.js Middleware (auth + CSRF check)
        → React Client Component
        → Axios Client (lib/api.ts)
        → Request Interceptor (rewrites URL to ?path= format)
@@ -216,17 +222,17 @@ All API calls route through `/api/proxy` instead of hitting the backend directly
 ### State Management
 
 - **React Context** for authentication state (`AuthContext`)
-- **Component state** (`useState`) for page-level data
-- **localStorage** for project selection persistence and data caching
+- **SWR** for all server data (bookings, assets, subcontractors, projects, profile)
+- **localStorage** only for project selection persistence
 - No external state library (Redux, Zustand, etc.)
 
-### Data Refresh Strategy
+### Data Fetching
 
-The `useSmartRefresh` hook provides:
-- Configurable interval polling (default: 5 minutes)
-- Refresh on browser tab focus (visibility change)
-- Refresh on network reconnection
-- 30-second debounce between refreshes
+All dashboard pages use SWR with a shared config (`lib/swr.ts`):
+- 5-minute background revalidation interval
+- 30-second request deduplication
+- Automatic revalidation on tab focus and network reconnection
+- Shared cache across components (same key = same data)
 
 ---
 
@@ -235,8 +241,8 @@ The `useSmartRefresh` hook provides:
 | Route | Access | Description |
 |---|---|---|
 | `/` | Public | Landing page (hero, features, pricing, testimonials) |
-| `/login` | Guest only | Email/password login with "remember email" |
-| `/register` | Guest only | Account registration |
+| `/login` | Guest only | Email/password login |
+| `/register` | Guest only | Account registration with password strength check |
 | `/forgot-password` | Guest only | Request password reset email |
 | `/reset-password` | Guest only | Set new password via token |
 | `/set-password` | Guest only | Initial password setup (invited users) |
@@ -252,6 +258,7 @@ The `useSmartRefresh` hook provides:
 - Unauthenticated users on protected routes → redirect to `/login`
 - Authenticated users on login/register → redirect to `/home`
 - JWT expiration checked with 60-second buffer
+- CSRF validation (Origin/Referer) on all state-changing requests
 
 ---
 
@@ -263,8 +270,9 @@ The `useSmartRefresh` hook provides:
    - Access token: 24-hour expiry
    - Refresh token: 7-day expiry
 2. **Session check** — `GET /api/auth/me` validates the current session on app init
-3. **Auto-refresh** — The proxy automatically refreshes expired access tokens using the refresh token
-4. **Logout** — `POST /api/auth/signout` clears cookies and localStorage caches
+3. **Auto-refresh** — The proxy automatically refreshes expired access tokens using the refresh token. Both tokens are rotated.
+4. **Session timeout** — 30 minutes of inactivity triggers automatic logout
+5. **Logout** — `POST /api/auth/signout` clears cookies and session data
 
 ### Roles
 
@@ -290,10 +298,11 @@ GET /api/proxy?path=/bookings/my/upcoming
 
 The proxy at `/api/proxy/route.ts`:
 1. Reads the `path` query parameter
-2. Attaches the `Authorization: Bearer <token>` header from cookies
-3. Forwards the request to the Python backend
-4. On 401, attempts a token refresh and retries once
-5. Returns the response with updated cookies if tokens were refreshed
+2. Validates against path traversal attacks
+3. Attaches the `Authorization: Bearer <token>` header from cookies
+4. Forwards the request to the Python backend
+5. On 401, attempts a token refresh and retries once
+6. Returns the response with updated cookies if tokens were refreshed
 
 **Public endpoints** (`/auth/forgot-password`, `/auth/reset-password`) bypass the auth check.
 
@@ -307,8 +316,8 @@ The proxy at `/api/proxy/route.ts`:
 |---|---|
 | `BookingsPage` | Main page orchestrator with search, tabs, pagination |
 | `BookingList` | Renders booking cards with ref-based highlighting |
-| `BookingCardDesktop` | Desktop booking card (grid layout) |
-| `BookingCardMobile` | Mobile booking card (compact) |
+| `BookingCardDesktop` | Desktop booking card (memoized, grid layout) |
+| `BookingCardMobile` | Mobile booking card (memoized, compact) |
 | `BookingCardDropdown` | Action menu (confirm, deny, cancel, reschedule, delete) |
 | `BookingHistorySidebar` | Status change timeline (slide-in panel) |
 
@@ -327,11 +336,11 @@ The proxy at `/api/proxy/route.ts`:
 
 | Form | Purpose |
 |---|---|
-| `CreateBookingForm` | New booking with asset, date, time, subcontractor |
+| `CreateBookingForm` | New booking with asset, date, time, subcontractor (useReducer-based) |
 | `RescheduleBookingForm` | Change date/time of existing booking |
 | `CreateAssetForm` | New asset with type, code, description |
 | `UpdateAssetForm` | Edit asset details, toggle maintenance mode |
-| `InviteSubForm` | Invite subcontractor with auto-generated password |
+| `InviteSubForm` | Invite subcontractor with crypto-secure generated password |
 
 ### Navigation
 
