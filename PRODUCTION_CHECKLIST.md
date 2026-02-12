@@ -33,7 +33,7 @@ Updated:
 ## High Priority (Code)
 
 - [x] **6. Replace `alert()` / `confirm()`** — Replaced with Dialog components in BookingCardDropdown, assets page, BookingDetailDialog, calendar-views.
-- [x] **7. Input validation on API routes** — Zod schema on signin, path traversal protection on proxy route.
+- [x] **7. Input validation on API routes** — Zod schema on sign-in, path traversal protection on proxy route.
 - [x] **8. Refresh token rotation** — `/api/auth/refresh` now stores rotated refresh_token cookie.
 - [x] **9. Hardcoded colors**
 

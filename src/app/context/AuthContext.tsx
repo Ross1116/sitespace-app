@@ -130,7 +130,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       posthog.identify(userData.id, { email: userData.email, name: `${userData.first_name} ${userData.last_name}`, role: userData.role });
 
       // Pre-fetch project so every dashboard page has context immediately
-      try {
+      // Fire-and-forget — don't block the redirect
+      (async () => { try {
         const projUrl =
           userData.role === "subcontractor"
             ? `/subcontractors/${userData.id}/projects`
@@ -170,8 +171,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
       } catch {
-        // Non-blocking — home page will still set it as fallback
-      }
+          // Swallowed — home page will still set it as fallback
+        }
+      })();
 
       router.replace("/home");
     },
