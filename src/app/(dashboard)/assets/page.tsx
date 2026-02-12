@@ -96,8 +96,8 @@ const transformBackendAsset = (backendAsset: AssetFromBackend): Asset => {
     assetPoc: backendAsset.poc || "Unassigned",
     assetProject: backendAsset.project_id || "",
     assetLocation: backendAsset.location || "",
-    maintanenceStartdt: backendAsset.maintenance_start_date || "",
-    maintanenceEnddt: backendAsset.maintenance_end_date || "",
+    maintenanceStartdt: backendAsset.maintenance_start_date || "",
+    maintenanceEnddt: backendAsset.maintenance_end_date || "",
     usageInstructions: backendAsset.usage_instructions || "",
     assetCode: backendAsset.asset_code,
     _originalData: backendAsset,
@@ -762,8 +762,8 @@ export default function AssetsTable() {
                 </div>
 
                 {(selectedAsset.assetStatus === "Maintenance" ||
-                  selectedAsset.maintanenceStartdt ||
-                  selectedAsset.maintanenceEnddt) && (
+                  selectedAsset.maintenanceStartdt ||
+                  selectedAsset.maintenanceEnddt) && (
                   <div className="p-5 rounded-xl border border-amber-200 shadow-sm bg-amber-50/30">
                     <div className="flex items-center gap-2 mb-4 border-b border-amber-100 pb-2">
                       <AlertTriangle className="h-4 w-4 text-amber-500" />
@@ -780,7 +780,7 @@ export default function AssetsTable() {
                           </span>
                         </div>
                         <span className="text-sm font-semibold text-slate-900">
-                          {safeFormatDate(selectedAsset.maintanenceStartdt)}
+                          {safeFormatDate(selectedAsset.maintenanceStartdt)}
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
@@ -791,7 +791,7 @@ export default function AssetsTable() {
                           </span>
                         </div>
                         <span className="text-sm font-semibold text-slate-900">
-                          {safeFormatDate(selectedAsset.maintanenceEnddt)}
+                          {safeFormatDate(selectedAsset.maintenanceEnddt)}
                         </span>
                       </div>
                     </div>

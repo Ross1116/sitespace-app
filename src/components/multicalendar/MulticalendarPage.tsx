@@ -107,8 +107,8 @@ export default function MulticalendarPage() {
   }, []);
 
   // --- SWR: Assets ---
-  const { data: assetsData } = useSWR<AssetListResponse>(
-    projectId ? `/assets/?project_id=${projectId}&limit=100&skip=0` : null,
+  const { data: assetsData, mutate: mutateAssets } = useSWR<AssetListResponse>(
+    projectId ? `/assets/?project_id=${projectId}&skip=0&limit=100` : null,
     swrFetcher,
     SWR_CONFIG,
   );
@@ -152,6 +152,7 @@ export default function MulticalendarPage() {
 
   const handleActionComplete = () => {
     mutate();
+    mutateAssets();
   };
 
   const handleBookingCreated = (
@@ -162,6 +163,7 @@ export default function MulticalendarPage() {
 
   const handleRefresh = () => {
     mutate();
+    mutateAssets();
   };
 
   const assetCalendars: AssetCalendar[] = useMemo(() => {

@@ -4,7 +4,8 @@
       "Bash(del \"d:\\\\Coding_shit\\\\Sitespace\\\\Frontend\\\\src\\\\lib\\\\data.ts\")",
       "Bash(npm ls:*)",
       "Bash(npm install:*)",
-      "Bash(npx next build:*)"
+      "Bash(npx next build:*)",
+      "Bash(python -c:*)"
     ]
   }
 }
