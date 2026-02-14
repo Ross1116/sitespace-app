@@ -46,7 +46,7 @@ interface AssetFromBackend {
   name: string;
   type?: string | null;
   description?: string;
-  status: "available" | "in_use" | "maintenance" | "retired";
+  status: "available" | "maintenance" | "retired";
   project_id?: string;
   created_at: string;
   updated_at: string;
@@ -107,7 +107,6 @@ const transformBackendAsset = (backendAsset: AssetFromBackend): Asset => {
 const capitalizeStatus = (status: string): string => {
   const statusMap: Record<string, string> = {
     available: "Operational",
-    in_use: "In Use",
     maintenance: "Maintenance",
     retired: "Retired",
   };
@@ -130,12 +129,6 @@ const formatStatusForDisplay = (status: string) => {
       sidebarClassName:
         "text-emerald-300 bg-emerald-500/20 border-emerald-500/30",
       dotColor: "bg-emerald-500",
-    },
-    "In Use": {
-      label: "In Use",
-      className: "text-blue-700 border-blue-200 bg-blue-50",
-      sidebarClassName: "text-blue-300 bg-blue-500/20 border-blue-500/30",
-      dotColor: "bg-blue-500",
     },
     Maintenance: {
       label: "Maintenance",
@@ -322,12 +315,11 @@ export default function AssetsTable() {
         }
 
         if (sortField === "assetStatus") {
-          // Custom status order: Operational > In Use > Maintenance > Retired
+          // Custom status order: Operational > Maintenance > Retired
           const statusOrder: Record<string, number> = {
             Operational: 0,
-            "In Use": 1,
-            Maintenance: 2,
-            Retired: 3,
+            Maintenance: 1,
+            Retired: 2,
           };
           const aOrder = statusOrder[a.assetStatus] ?? 99;
           const bOrder = statusOrder[b.assetStatus] ?? 99;

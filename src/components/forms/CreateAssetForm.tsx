@@ -50,7 +50,7 @@ interface AssetCreateRequest {
   name: string;
   asset_type: string;
   description?: string;
-  status: "available" | "in_use" | "maintenance" | "retired";
+  status: "available" | "maintenance" | "retired";
   project_id?: string;
   location?: string;
   poc?: string;
@@ -62,10 +62,9 @@ interface AssetCreateRequest {
 // ===== HELPER FUNCTIONS =====
 const mapFrontendStatusToBackend = (
   status: string
-): "available" | "in_use" | "maintenance" | "retired" => {
-  const statusMap: Record<string, "available" | "in_use" | "maintenance" | "retired"> = {
+): "available" | "maintenance" | "retired" => {
+  const statusMap: Record<string, "available" | "maintenance" | "retired"> = {
     Operational: "available",
-    "In Use": "in_use",
     Maintenance: "maintenance",
     "Out of Service": "retired",
   };
@@ -404,18 +403,6 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
                   onClick={() => handleStatusChange("Operational")}
                 >
                   Operational
-                </button>
-                <button
-                  type="button"
-                  className={cn(
-                    "px-4 py-2 rounded-md transition text-sm",
-                    asset.assetStatus === "In Use"
-                      ? "bg-blue-100 text-blue-800 font-medium border-2 border-blue-500"
-                      : "bg-gray-100 hover:bg-gray-200 border-2 border-transparent"
-                  )}
-                  onClick={() => handleStatusChange("In Use")}
-                >
-                  In Use
                 </button>
                 <button
                   type="button"
