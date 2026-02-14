@@ -9,7 +9,7 @@ export type BookingStatus =
   | "cancelled"
   | "denied";
 
-export type AssetStatus = "available" | "in_use" | "maintenance" | "retired";
+export type AssetStatus = "available" | "maintenance" | "retired";
 
 export type UserRole = "admin" | "manager" | "subcontractor";
 

@@ -42,30 +42,25 @@ interface AssetUpdateRequest {
   name?: string;
   asset_type?: string;
   description?: string;
-  status?: "available" | "in_use" | "maintenance" | "retired";
+  status?: "available" | "maintenance" | "retired";
   project_id?: string;
   location?: string;
   poc?: string;
   usage_instructions?: string;
-  maintenance_start_date?: string;
-  maintenance_end_date?: string;
+  maintenance_start_date?: string | null;
+  maintenance_end_date?: string | null;
 }
 
 // ===== HELPER FUNCTIONS =====
 const mapFrontendStatusToBackend = (
   status: string,
-): "available" | "in_use" | "maintenance" | "retired" => {
-  const statusMap: Record<
-    string,
-    "available" | "in_use" | "maintenance" | "retired"
-  > = {
+): "available" | "maintenance" | "retired" => {
+  const statusMap: Record<string, "available" | "maintenance" | "retired"> = {
     Operational: "available",
-    "In Use": "in_use",
     Maintenance: "maintenance",
     "Out of Service": "retired",
     Retired: "retired",
     available: "available",
-    in_use: "in_use",
     maintenance: "maintenance",
     retired: "retired",
   };
@@ -75,7 +70,6 @@ const mapFrontendStatusToBackend = (
 const mapBackendStatusToFrontend = (status: string): string => {
   const statusMap: Record<string, string> = {
     available: "Operational",
-    in_use: "In Use",
     maintenance: "Maintenance",
     retired: "Out of Service",
   };
@@ -167,14 +161,39 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
 
   const handleMaintenanceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setAsset((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setAsset((prev) => {
+      const updated = { ...prev, [name]: value };
+
+      // If both dates are now set, check whether today falls inside the window
+      const start = updated.maintenanceStartdt?.split("T")[0];
+      const end = updated.maintenanceEnddt?.split("T")[0];
+      if (start && end) {
+        const today = new Date().toISOString().split("T")[0];
+        if (
+          start <= today &&
+          today <= end &&
+          updated.assetStatus === "Operational"
+        ) {
+          // Auto-switch so the UI immediately reflects what the backend will enforce
+          updated.assetStatus = "Maintenance";
+        }
+      }
+
+      return updated;
+    });
   };
 
   const handleStatusChange = (status: string) => {
-    setAsset((prev) => ({ ...prev, assetStatus: status }));
+    setAsset((prev) => {
+      const updates: Partial<Asset> = { assetStatus: status };
+      // Operational = explicitly available, clear any scheduled maintenance
+      // Out of Service = retired, backend rejects maintenance dates on retired assets
+      if (status === "Operational" || status === "Out of Service") {
+        updates.maintenanceStartdt = "";
+        updates.maintenanceEnddt = "";
+      }
+      return { ...prev, ...updates };
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -186,8 +205,12 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
       return;
     }
 
-    if (asset.maintenanceStartdt && asset.maintenanceEnddt &&
-        asset.maintenanceEnddt.split("T")[0] < asset.maintenanceStartdt.split("T")[0]) {
+    if (
+      asset.maintenanceStartdt &&
+      asset.maintenanceEnddt &&
+      asset.maintenanceEnddt.split("T")[0] <
+        asset.maintenanceStartdt.split("T")[0]
+    ) {
       setError("Maintenance end date must be on or after the start date");
       return;
     }
@@ -210,15 +233,14 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
         usage_instructions: asset.usageInstructions,
       };
 
-      // Add maintenance dates if they exist
-      if (asset.maintenanceStartdt) {
-        updateRequest.maintenance_start_date =
-          asset.maintenanceStartdt.split("T")[0];
-      }
-      if (asset.maintenanceEnddt) {
-        updateRequest.maintenance_end_date =
-          asset.maintenanceEnddt.split("T")[0];
-      }
+      // Always send maintenance dates — null explicitly clears them on the
+      // backend so stale windows don't linger after the user removes them.
+      updateRequest.maintenance_start_date = asset.maintenanceStartdt
+        ? asset.maintenanceStartdt.split("T")[0]
+        : null;
+      updateRequest.maintenance_end_date = asset.maintenanceEnddt
+        ? asset.maintenanceEnddt.split("T")[0]
+        : null;
 
       console.log("Updating asset:", asset.assetKey, updateRequest);
 
@@ -379,6 +401,10 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
                     }
                     onChange={handleMaintenanceChange}
                     placeholder="Start date"
+                    disabled={
+                      asset.assetStatus === "Out of Service" ||
+                      asset.assetStatus === "Retired"
+                    }
                   />
                 </div>
                 <div className="flex-1">
@@ -392,11 +418,18 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
                     }
                     onChange={handleMaintenanceChange}
                     placeholder="End date"
+                    disabled={
+                      asset.assetStatus === "Out of Service" ||
+                      asset.assetStatus === "Retired"
+                    }
                   />
                 </div>
               </div>
               <span className="text-xs text-gray-500">
-                Select scheduled maintenance start and end date
+                {asset.assetStatus === "Out of Service" ||
+                asset.assetStatus === "Retired"
+                  ? "Maintenance dates are not applicable for out-of-service assets"
+                  : "Select scheduled maintenance start and end date"}
               </span>
             </div>
 
@@ -417,18 +450,6 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
                   onClick={() => handleStatusChange("Operational")}
                 >
                   Operational
-                </button>
-                <button
-                  type="button"
-                  className={cn(
-                    "px-4 py-2 rounded-md transition text-sm",
-                    asset.assetStatus === "In Use"
-                      ? "bg-blue-100 text-blue-800 font-medium border-2 border-blue-500"
-                      : "bg-gray-100 hover:bg-gray-200 border-2 border-transparent",
-                  )}
-                  onClick={() => handleStatusChange("In Use")}
-                >
-                  In Use
                 </button>
                 <button
                   type="button"
