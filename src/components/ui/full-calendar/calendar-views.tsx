@@ -135,18 +135,28 @@ export const CalendarDayView = ({
       status.includes("broken") ||
       status.includes("repair");
 
-    if (!isUnavailable) return false;
+    // If maintenance dates exist, they define the exact blocked window
+    if (asset.maintenance_start_date && asset.maintenance_end_date) {
+      // Normalize: extract the YYYY-MM-DD prefix to handle ISO datetime strings
+      const startDateStr = asset.maintenance_start_date.split("T")[0];
+      const endDateStr = asset.maintenance_end_date.split("T")[0];
 
-    // If no dates provided but status is maintenance/retired, block everything
-    if (!asset.maintenance_start_date || !asset.maintenance_end_date) {
-      return true;
+      const [sy, sm, sd] = startDateStr.split("-").map(Number);
+      const [ey, em, ed] = endDateStr.split("-").map(Number);
+
+      // Validate that all parsed components are finite numbers (not NaN)
+      if ([sy, sm, sd, ey, em, ed].every((n) => Number.isFinite(n))) {
+        const start = new Date(sy, sm - 1, sd, 0, 0, 0); // 12:00 AM local
+        const end = new Date(ey, em - 1, ed, 23, 59, 59); // 11:59 PM local
+        return slotDate >= start && slotDate <= end;
+      }
+
+      // Parsing failed — fall back to status-based unavailability check
+      return isUnavailable;
     }
 
-    const start = new Date(asset.maintenance_start_date);
-    const end = new Date(asset.maintenance_end_date);
-
-    // Check overlap
-    return slotDate >= start && slotDate < end;
+    // No dates — if status is unavailable, block everything
+    return isUnavailable;
   };
 
   // --- STATES ---
@@ -265,7 +275,10 @@ export const CalendarDayView = ({
     } catch (error) {
       console.error("Failed to reschedule", error);
       setEvents(originalEvents);
-      setValidationError({ title: "Reschedule Failed", message: "Failed to reschedule the booking. Please try again." });
+      setValidationError({
+        title: "Reschedule Failed",
+        message: "Failed to reschedule the booking. Please try again.",
+      });
     } finally {
       setIsRescheduling(false);
       setPendingReschedule(null);
@@ -623,7 +636,9 @@ export const CalendarWeekView = () => {
             <span
               className={cn(
                 "h-6 w-6 ml-1 grid place-content-center rounded-full text-xs font-bold",
-                isToday(date) ? "bg-[var(--navy)] text-white" : "text-slate-900",
+                isToday(date)
+                  ? "bg-[var(--navy)] text-white"
+                  : "text-slate-900",
               )}
             >
               {format(date, "d")}
@@ -1012,4 +1027,3 @@ const EventGroupSideBySide = ({
     </div>
   );
 };
-

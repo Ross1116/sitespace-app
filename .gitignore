@@ -43,6 +43,7 @@ next-env.d.ts
 
 #extra file
 REMAINING_ISSUES.md
+/.claude/
 
 # Sentry Config File
 .env.sentry-build-plugin

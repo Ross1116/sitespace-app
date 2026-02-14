@@ -164,19 +164,25 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
     setAsset((prev) => {
       const updated = { ...prev, [name]: value };
 
-      // If both dates are now set, check whether today falls inside the window
-      const start = updated.maintenanceStartdt?.split("T")[0];
-      const end = updated.maintenanceEnddt?.split("T")[0];
+      const start = updated.maintenanceStartdt?.split("T")[0] || "";
+      const end = updated.maintenanceEnddt?.split("T")[0] || "";
+
       if (start && end) {
-        const today = new Date().toISOString().split("T")[0];
-        if (
-          start <= today &&
-          today <= end &&
-          updated.assetStatus === "Operational"
-        ) {
-          // Auto-switch so the UI immediately reflects what the backend will enforce
-          updated.assetStatus = "Maintenance";
-        }
+        // Both dates are present → set status to Maintenance
+        updated.assetStatus = "Maintenance";
+      } else if (
+        prev.maintenanceStartdt?.split("T")[0] &&
+        prev.maintenanceEnddt?.split("T")[0] &&
+        (!start || !end)
+      ) {
+        // Previously both dates were set, now one was removed →
+        // enforce both-or-none: clear both dates and reset status
+        updated.maintenanceStartdt = "";
+        updated.maintenanceEnddt = "";
+        updated.assetStatus = "Operational";
+      } else if (!start && !end && updated.assetStatus === "Maintenance") {
+        // Both dates empty but status is still Maintenance → reset status
+        updated.assetStatus = "Operational";
       }
 
       return updated;
@@ -218,6 +224,28 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
     try {
       setIsSubmitting(true);
 
+      // Enforce both-or-none for maintenance dates before sending the request
+      const startDateVal = asset.maintenanceStartdt?.split("T")[0] || "";
+      const endDateVal = asset.maintenanceEnddt?.split("T")[0] || "";
+      const hasStart = !!startDateVal;
+      const hasEnd = !!endDateVal;
+
+      let effectiveStatus = asset.assetStatus;
+      let effectiveMaintenanceStart = asset.maintenanceStartdt;
+      let effectiveMaintenanceEnd = asset.maintenanceEnddt;
+
+      if (hasStart && hasEnd) {
+        // Both present → keep / set Maintenance status
+        effectiveStatus = "Maintenance";
+      } else if (hasStart !== hasEnd) {
+        // Exactly one date is present (partial) → clear both and reset status
+        effectiveMaintenanceStart = "";
+        effectiveMaintenanceEnd = "";
+        if (effectiveStatus === "Maintenance") {
+          effectiveStatus = "Operational";
+        }
+      }
+
       //  assetProject is already a string, no need to check type
       const projectId = asset.assetProject;
 
@@ -226,7 +254,7 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
         name: asset.assetTitle,
         asset_type: asset.assetType,
         description: asset.usageInstructions,
-        status: mapFrontendStatusToBackend(asset.assetStatus),
+        status: mapFrontendStatusToBackend(effectiveStatus),
         project_id: projectId,
         location: asset.assetLocation,
         poc: asset.assetPoc,
@@ -235,11 +263,11 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
 
       // Always send maintenance dates — null explicitly clears them on the
       // backend so stale windows don't linger after the user removes them.
-      updateRequest.maintenance_start_date = asset.maintenanceStartdt
-        ? asset.maintenanceStartdt.split("T")[0]
+      updateRequest.maintenance_start_date = effectiveMaintenanceStart
+        ? effectiveMaintenanceStart.split("T")[0]
         : null;
-      updateRequest.maintenance_end_date = asset.maintenanceEnddt
-        ? asset.maintenanceEnddt.split("T")[0]
+      updateRequest.maintenance_end_date = effectiveMaintenanceEnd
+        ? effectiveMaintenanceEnd.split("T")[0]
         : null;
 
       console.log("Updating asset:", asset.assetKey, updateRequest);
@@ -490,20 +518,6 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
                 placeholder="Enter operator or contact person"
               />
             </div>
-
-            {/* Project (Read-only) */}
-            {/* <div className="space-y-2">
-              <Label htmlFor="projectName">Project</Label>
-              <Input
-                id="projectName"
-                value={project?.text || "Loading..."}
-                disabled
-                className="bg-gray-100 cursor-not-allowed"
-              />
-              <span className="text-xs text-gray-500">
-                Project cannot be changed from here
-              </span>
-            </div> */}
 
             {/* Usage Instructions */}
             <div className="space-y-2 md:col-span-2">
