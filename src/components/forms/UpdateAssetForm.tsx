@@ -164,19 +164,11 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
     setAsset((prev) => {
       const updated = { ...prev, [name]: value };
 
-      // If both dates are now set, check whether today falls inside the window
+      // If both dates are set, auto-switch status to Maintenance
       const start = updated.maintenanceStartdt?.split("T")[0];
       const end = updated.maintenanceEnddt?.split("T")[0];
       if (start && end) {
-        const today = new Date().toISOString().split("T")[0];
-        if (
-          start <= today &&
-          today <= end &&
-          updated.assetStatus === "Operational"
-        ) {
-          // Auto-switch so the UI immediately reflects what the backend will enforce
-          updated.assetStatus = "Maintenance";
-        }
+        updated.assetStatus = "Maintenance";
       }
 
       return updated;

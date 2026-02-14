@@ -135,18 +135,17 @@ export const CalendarDayView = ({
       status.includes("broken") ||
       status.includes("repair");
 
-    if (!isUnavailable) return false;
-
-    // If no dates provided but status is maintenance/retired, block everything
-    if (!asset.maintenance_start_date || !asset.maintenance_end_date) {
-      return true;
+    // If maintenance dates exist, they define the exact blocked window
+    if (asset.maintenance_start_date && asset.maintenance_end_date) {
+      const [sy, sm, sd] = asset.maintenance_start_date.split("-").map(Number);
+      const [ey, em, ed] = asset.maintenance_end_date.split("-").map(Number);
+      const start = new Date(sy, sm - 1, sd, 0, 0, 0); // 12:00 AM local
+      const end = new Date(ey, em - 1, ed, 23, 59, 59); // 11:59 PM local
+      return slotDate >= start && slotDate <= end;
     }
 
-    const start = new Date(asset.maintenance_start_date);
-    const end = new Date(asset.maintenance_end_date);
-
-    // Check overlap
-    return slotDate >= start && slotDate < end;
+    // No dates — if status is unavailable, block everything
+    return isUnavailable;
   };
 
   // --- STATES ---

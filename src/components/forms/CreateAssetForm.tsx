@@ -147,10 +147,18 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
 
   const handleMaintenanceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setAsset((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setAsset((prev) => {
+      const updated = { ...prev, [name]: value };
+
+      // If both dates are set, auto-switch status to Maintenance
+      const start = updated.maintenanceStartdt;
+      const end = updated.maintenanceEnddt;
+      if (start && end) {
+        updated.assetStatus = "Maintenance";
+      }
+
+      return updated;
+    });
   };
 
   const handleStatusChange = (status: string) => {
