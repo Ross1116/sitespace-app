@@ -61,7 +61,7 @@ interface AssetCreateRequest {
 
 // ===== HELPER FUNCTIONS =====
 const mapFrontendStatusToBackend = (
-  status: string
+  status: string,
 ): "available" | "maintenance" | "retired" => {
   const statusMap: Record<string, "available" | "maintenance" | "retired"> = {
     Operational: "available",
@@ -130,7 +130,10 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
   // Auto-generate asset code when type and title change
   useEffect(() => {
     if (asset.assetType && asset.assetTitle && !asset.assetCode) {
-      const generatedCode = generateAssetCode(asset.assetType, asset.assetTitle);
+      const generatedCode = generateAssetCode(
+        asset.assetType,
+        asset.assetTitle,
+      );
       setAsset((prev) => ({
         ...prev,
         assetCode: generatedCode,
@@ -139,7 +142,7 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
   }, [asset.assetType, asset.assetTitle]);
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
     setAsset((prev) => ({ ...prev, [name]: value }));
@@ -150,11 +153,25 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
     setAsset((prev) => {
       const updated = { ...prev, [name]: value };
 
-      // If both dates are set, auto-switch status to Maintenance
       const start = updated.maintenanceStartdt;
       const end = updated.maintenanceEnddt;
+
       if (start && end) {
+        // Both dates are present → set status to Maintenance
         updated.assetStatus = "Maintenance";
+      } else if (
+        prev.maintenanceStartdt &&
+        prev.maintenanceEnddt &&
+        (!start || !end)
+      ) {
+        // Previously both dates were set, now one was removed →
+        // enforce both-or-none: clear both dates and reset status
+        updated.maintenanceStartdt = "";
+        updated.maintenanceEnddt = "";
+        updated.assetStatus = "Operational";
+      } else if (!start && !end && updated.assetStatus === "Maintenance") {
+        // Both dates empty but status is still Maintenance → reset status
+        updated.assetStatus = "Operational";
       }
 
       return updated;
@@ -185,8 +202,21 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
       return;
     }
 
-    if (asset.maintenanceStartdt && asset.maintenanceEnddt &&
-        asset.maintenanceEnddt < asset.maintenanceStartdt) {
+    // Enforce both-or-none for maintenance dates
+    const hasMaintenanceStart = !!asset.maintenanceStartdt;
+    const hasMaintenanceEnd = !!asset.maintenanceEnddt;
+    if (hasMaintenanceStart !== hasMaintenanceEnd) {
+      setError(
+        "Both maintenance start and end dates must be provided, or neither",
+      );
+      return;
+    }
+
+    if (
+      asset.maintenanceStartdt &&
+      asset.maintenanceEnddt &&
+      asset.maintenanceEnddt < asset.maintenanceStartdt
+    ) {
       setError("Maintenance end date must be on or after the start date");
       return;
     }
@@ -406,7 +436,7 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
                     "px-4 py-2 rounded-md transition text-sm",
                     asset.assetStatus === "Operational"
                       ? "bg-green-100 text-green-800 font-medium border-2 border-green-500"
-                      : "bg-gray-100 hover:bg-gray-200 border-2 border-transparent"
+                      : "bg-gray-100 hover:bg-gray-200 border-2 border-transparent",
                   )}
                   onClick={() => handleStatusChange("Operational")}
                 >
@@ -418,7 +448,7 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
                     "px-4 py-2 rounded-md transition text-sm",
                     asset.assetStatus === "Maintenance"
                       ? "bg-yellow-100 text-yellow-800 font-medium border-2 border-yellow-500"
-                      : "bg-gray-100 hover:bg-gray-200 border-2 border-transparent"
+                      : "bg-gray-100 hover:bg-gray-200 border-2 border-transparent",
                   )}
                   onClick={() => handleStatusChange("Maintenance")}
                 >
@@ -430,7 +460,7 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
                     "px-4 py-2 rounded-md transition text-sm",
                     asset.assetStatus === "Out of Service"
                       ? "bg-red-100 text-red-800 font-medium border-2 border-red-500"
-                      : "bg-gray-100 hover:bg-gray-200 border-2 border-transparent"
+                      : "bg-gray-100 hover:bg-gray-200 border-2 border-transparent",
                   )}
                   onClick={() => handleStatusChange("Out of Service")}
                 >
