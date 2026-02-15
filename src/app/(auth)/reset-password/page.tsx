@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,7 +34,8 @@ function ResetPasswordForm() {
     message?: string;
   }>({ type: "idle" });
   const [tokenValid, setTokenValid] = useState(true);
-  const [token, setToken] = useState<string | null>(queryToken);
+  const [token, setToken] = useState<string | null>(null);
+  const hasCapturedToken = useRef(false);
 
   // 1. Force logout on mount
   useEffect(() => {
@@ -43,18 +44,22 @@ function ResetPasswordForm() {
 
   // 2. Capture token once, then scrub it from the URL to reduce leakage
   useEffect(() => {
+    if (hasCapturedToken.current) return;
+
     if (queryToken) {
       setToken(queryToken);
+      hasCapturedToken.current = true;
       window.history.replaceState({}, "", window.location.pathname);
       return;
     }
 
+    hasCapturedToken.current = true;
     setToken(null);
   }, [queryToken]);
 
   // 3. Validate Token Presence
   useEffect(() => {
-    if (!token) setTokenValid(false);
+    setTokenValid(Boolean(token));
   }, [token]);
 
   // 4. Strict Password Validation (Restored from your original code)
