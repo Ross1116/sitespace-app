@@ -131,28 +131,30 @@ export function BookingDetailsDialog({
       });
       if (signal?.aborted) return;
       setData(res.data);
+      setLoading(false);
 
-      try {
-        const auditRes = await api.get<AuditTrailResponse>(
-          `/bookings/${bookingId}/audit`,
-          {
-            params: { skip: 0, limit: 200 },
-            signal,
-          },
-        );
-        if (signal?.aborted) return;
-        const createdEntry = (auditRes.data?.history || []).find(
-          (entry) => entry.action?.toLowerCase() === "created",
-        );
-        setCreatedByEntry(createdEntry || null);
-      } catch {
-        if (!signal?.aborted) setCreatedByEntry(null);
-      }
+      void (async () => {
+        try {
+          const auditRes = await api.get<AuditTrailResponse>(
+            `/bookings/${bookingId}/audit`,
+            {
+              params: { skip: 0, limit: 200 },
+              signal,
+            },
+          );
+          if (signal?.aborted) return;
+          const createdEntry = (auditRes.data?.history || []).find(
+            (entry) => entry.action?.toLowerCase() === "created",
+          );
+          setCreatedByEntry(createdEntry || null);
+        } catch {
+          if (!signal?.aborted) setCreatedByEntry(null);
+        }
+      })();
     } catch (err) {
       if (isAbortError(err, signal)) return;
       console.error("Error fetching booking details:", err);
       setError("Failed to load booking details.");
-    } finally {
       if (!signal?.aborted) setLoading(false);
     }
   };
