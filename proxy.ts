@@ -44,11 +44,6 @@ function isTrustedApiMutationRequest(request: NextRequest): boolean {
     }
   }
 
-  const requestedWith = request.headers.get("x-requested-with")?.trim();
-  if (requestedWith === "XMLHttpRequest") {
-    return true;
-  }
-
   return validateCsrfToken(request);
 }
 
