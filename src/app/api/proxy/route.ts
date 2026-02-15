@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
 
 async function getToken() {
   const cookieStore = await cookies();
@@ -30,6 +31,9 @@ const PUBLIC_AUTH_PATHS = [
   "/auth/reset-password",
 ];
 
+const PUBLIC_AUTH_LIMIT = 8;
+const PUBLIC_AUTH_WINDOW_MS = 15 * 60 * 1000;
+
 async function proxyToBackend(
   request: Request,
   method: string,
@@ -42,7 +46,31 @@ async function proxyToBackend(
   }
 
   const isPublic = PUBLIC_AUTH_PATHS.some((p) => apiPath.startsWith(p));
+  const isPublicMutation =
+    isPublic && ["POST", "PUT", "PATCH"].includes(method);
   const tokens = await getToken();
+
+  if (isPublicMutation) {
+    const ip = getClientIp(request);
+    const limiter = checkRateLimit(
+      `auth:public:${ip}:${apiPath}`,
+      PUBLIC_AUTH_LIMIT,
+      PUBLIC_AUTH_WINDOW_MS,
+    );
+
+    if (!limiter.allowed) {
+      return NextResponse.json(
+        { message: "Too many requests. Please try again later." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(limiter.retryAfterSeconds),
+            "X-RateLimit-Remaining": String(limiter.remaining),
+          },
+        },
+      );
+    }
+  }
 
   if (!tokens.access && !isPublic) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+const MUTATION_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
 function isTokenExpired(token: string): boolean {
   try {
     const payload = JSON.parse(atob(token.split(".")[1]));
@@ -10,8 +12,48 @@ function isTokenExpired(token: string): boolean {
   }
 }
 
+function isTrustedApiMutationRequest(request: NextRequest): boolean {
+  const origin = request.headers.get("origin");
+  const host = request.headers.get("host");
+
+  if (origin) {
+    try {
+      return new URL(origin).host === host;
+    } catch {
+      return false;
+    }
+  }
+
+  const referer = request.headers.get("referer");
+  if (referer) {
+    try {
+      return new URL(referer).host === host;
+    } catch {
+      return false;
+    }
+  }
+
+  // SameSite=lax cookies and JSON APIs already reduce cross-site mutation risk.
+  // Preserve existing behavior for clients that omit both headers.
+  return true;
+}
+
 export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
+
+  // API security checks
+  if (path.startsWith("/api/")) {
+    if (!MUTATION_METHODS.has(request.method)) {
+      return NextResponse.next();
+    }
+
+    if (!isTrustedApiMutationRequest(request)) {
+      return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+    }
+
+    return NextResponse.next();
+  }
+
   const token = request.cookies.get("accessToken")?.value;
   const hasValidToken = !!token && !isTokenExpired(token);
 
@@ -62,7 +104,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico|monitoring|ingest).*)",
-  ],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|monitoring|ingest).*)"],
 };
