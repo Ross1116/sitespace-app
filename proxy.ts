@@ -49,9 +49,10 @@ function isTrustedApiMutationRequest(request: NextRequest): boolean {
 
 export function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
+  const isApiPath = path === "/api" || path.startsWith("/api/");
 
   // API security checks
-  if (path.startsWith("/api/")) {
+  if (isApiPath) {
     if (!MUTATION_METHODS.has(request.method)) {
       return NextResponse.next();
     }
