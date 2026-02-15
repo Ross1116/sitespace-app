@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import RescheduleBookingForm from "@/components/forms/RescheduleBookingForm";
+import { ApiBooking } from "@/types";
 
 interface BookingCardDropdownProps {
   bookingKey: string;
@@ -43,8 +44,10 @@ export default function BookingCardDropdown({
   const [isLoading, setIsLoading] = useState(false);
   const [isDenyModalOpen, setIsDenyModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [isRescheduleFormOpen, setIsRescheduleFormOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [competingPendingCount, setCompetingPendingCount] = useState(0);
 
   const { user } = useAuth();
   const hasManagerPrivileges =
@@ -95,6 +98,28 @@ export default function BookingCardDropdown({
   const confirmBooking = () => updateBookingStatus("confirmed");
   const completeBooking = () => updateBookingStatus("completed");
 
+  const handleConfirmClick = async () => {
+    setIsLoading(true);
+    try {
+      const response = await api.get<ApiBooking>(`/bookings/${bookingKey}`);
+      const competingCount = response.data.competing_pending_count ?? 0;
+      if (competingCount > 0) {
+        setCompetingPendingCount(competingCount);
+        if (isOpen) onToggle();
+        setIsConfirmModalOpen(true);
+      } else {
+        await updateBookingStatus("confirmed");
+      }
+    } catch (error: unknown) {
+      setErrorMessage(
+        getApiErrorMessage(error, "Failed to load booking details"),
+      );
+      if (isOpen) onToggle();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleDenyClick = () => {
     onToggle();
     setIsDenyModalOpen(true);
@@ -138,7 +163,7 @@ export default function BookingCardDropdown({
                   {hasManagerPrivileges && (
                     <>
                       <button
-                        onClick={confirmBooking}
+                        onClick={handleConfirmClick}
                         className="flex items-center px-4 py-2.5 text-xs font-medium text-emerald-600 hover:bg-emerald-50 w-full text-left"
                       >
                         <Calendar size={14} className="mr-2" /> Confirm
@@ -283,6 +308,42 @@ export default function BookingCardDropdown({
             </Button>
             <Button variant="destructive" onClick={deleteBooking}>
               Yes, Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirm Modal for Competing Pending Requests */}
+      <Dialog open={isConfirmModalOpen} onOpenChange={setIsConfirmModalOpen}>
+        <DialogContent className="sm:max-w-[425px] bg-white">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-emerald-600">
+              <AlertTriangle className="h-5 w-5" />
+              Confirm Booking?
+            </DialogTitle>
+            <DialogDescription className="text-slate-600">
+              Confirming this booking will auto-deny{" "}
+              <strong>{competingPendingCount}</strong> other pending request
+              {competingPendingCount === 1 ? "" : "s"} for this time slot.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2 sm:justify-end mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setIsConfirmModalOpen(false)}
+              disabled={isLoading}
+            >
+              Back
+            </Button>
+            <Button
+              className="bg-[var(--navy)] hover:bg-[var(--navy-hover)] text-white"
+              onClick={async () => {
+                setIsConfirmModalOpen(false);
+                await updateBookingStatus("confirmed");
+              }}
+              disabled={isLoading}
+            >
+              Confirm
             </Button>
           </DialogFooter>
         </DialogContent>

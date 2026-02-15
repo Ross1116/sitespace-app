@@ -73,7 +73,9 @@ export default function HomePage() {
   const { user } = useAuth();
   const router = useRouter();
 
-  const [selectedProject, setSelectedProject] = useState<ApiProject | null>(null);
+  const [selectedProject, setSelectedProject] = useState<ApiProject | null>(
+    null,
+  );
   const [showProjectSelector, setShowProjectSelector] = useState(false);
 
   const userId = user?.id;
@@ -89,7 +91,8 @@ export default function HomePage() {
   // --- SWR: Projects list ---
   const projectsUrl = useMemo(() => {
     if (!userId) return null;
-    if (user?.role === "subcontractor") return `/subcontractors/${userId}/projects`;
+    if (user?.role === "subcontractor")
+      return `/subcontractors/${userId}/projects`;
     return "/projects/?my_projects=true&limit=100&skip=0";
   }, [userId, user?.role]);
 
@@ -120,7 +123,9 @@ export default function HomePage() {
           setSelectedProject(parsed);
           return;
         }
-      } catch { /* invalid JSON */ }
+      } catch {
+        /* invalid JSON */
+      }
     }
     localStorage.setItem(`project_${userId}`, JSON.stringify(projects[0]));
     setSelectedProject(projects[0]);
@@ -134,14 +139,18 @@ export default function HomePage() {
     swrFetcher,
     SWR_CONFIG,
   );
-  const assetCount = (assetsData as { total?: number; assets?: unknown[] })?.total
-    || (assetsData as { assets?: unknown[] })?.assets?.length
-    || 0;
+  const assetCount =
+    (assetsData as { total?: number; assets?: unknown[] })?.total ||
+    (assetsData as { assets?: unknown[] })?.assets?.length ||
+    0;
 
   // --- SWR: Subcontractors count ---
   const subsUrl = useMemo(() => {
     if (!user || user.role === "subcontractor" || !projectId) return null;
-    const endpoint = user.role === "admin" ? "/subcontractors/" : "/subcontractors/my-subcontractors";
+    const endpoint =
+      user.role === "admin"
+        ? "/subcontractors/"
+        : "/subcontractors/my-subcontractors";
     return `${endpoint}?project_id=${projectId}&limit=100&is_active=true`;
   }, [user, projectId]);
 
@@ -156,7 +165,11 @@ export default function HomePage() {
   }, [subsData]);
 
   // --- SWR: Bookings ---
-  const { data: bookingsRaw, isLoading: loadingBookings, error: fetchError } = useSWR<Booking[]>(
+  const {
+    data: bookingsRaw,
+    isLoading: loadingBookings,
+    error: fetchError,
+  } = useSWR<Booking[]>(
     projectId ? `/bookings/my/upcoming?limit=50&project_id=${projectId}` : null,
     swrFetcher,
     SWR_CONFIG,
@@ -166,7 +179,8 @@ export default function HomePage() {
     if (!bookingsRaw || !Array.isArray(bookingsRaw)) return [];
     return bookingsRaw.filter((b) => {
       const bProjId = b.project?.id || b.project_id;
-      return bProjId === projectId;
+      const status = (b.status || "").toLowerCase();
+      return bProjId === projectId && status !== "denied";
     });
   }, [bookingsRaw, projectId]);
 
@@ -738,4 +752,3 @@ const SimpleCalendar = () => {
     </div>
   );
 };
-

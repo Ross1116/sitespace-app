@@ -49,7 +49,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ApiAsset, ApiBooking, ApiProject, getApiErrorMessage } from "@/types";
+import {
+  ApiAsset,
+  ApiBooking,
+  ApiProject,
+  BookingListResponse,
+  getApiErrorMessage,
+} from "@/types";
 import useSWR from "swr";
 import { swrFetcher } from "@/lib/swr";
 
@@ -556,7 +562,10 @@ export function CreateBookingForm({
   useEffect(() => {
     if (assetsResponse) {
       const normalizedAssets: AssetOption[] = (assetsResponse.assets || [])
-        .filter((asset) => asset.status !== "maintenance" && asset.status !== "retired")
+        .filter(
+          (asset) =>
+            asset.status !== "maintenance" && asset.status !== "retired",
+        )
         .map((asset) => ({
           ...asset,
           assetKey: asset.id,
@@ -751,6 +760,57 @@ export function CreateBookingForm({
       const startTimeFormatted = format(customStartTime, "HH:mm:ss");
       const endTimeFormatted = format(customEndTime, "HH:mm:ss");
 
+      const normalizeTime = (timeValue: string) =>
+        (timeValue || "").split(":").slice(0, 2).join(":");
+
+      const targetSubcontractorId = isSubcontractor
+        ? userId
+        : selectedSubcontractor || undefined;
+
+      if (targetSubcontractorId) {
+        const existing = await api.get<BookingListResponse>(`/bookings/`, {
+          params: {
+            project_id: project.id,
+            limit: 1000,
+            skip: 0,
+          },
+        });
+
+        const normalizedStart = normalizeTime(startTimeFormatted);
+        const normalizedEnd = normalizeTime(endTimeFormatted);
+        const duplicateAssetIds = new Set(
+          (existing.data.bookings || [])
+            .filter((booking) => {
+              const status = (booking.status || "").toLowerCase();
+              if (status === "cancelled" || status === "denied") return false;
+              return (
+                booking.subcontractor_id === targetSubcontractorId &&
+                booking.booking_date === bookingDate &&
+                normalizeTime(booking.start_time) === normalizedStart &&
+                normalizeTime(booking.end_time) === normalizedEnd &&
+                selectedAssetIds.includes(booking.asset_id)
+              );
+            })
+            .map((booking) => booking.asset_id),
+        );
+
+        if (duplicateAssetIds.size > 0) {
+          const blockedAssetNames = selectedAssetIds
+            .filter((assetId) => duplicateAssetIds.has(assetId))
+            .map(
+              (assetId) =>
+                assets.find((asset) => asset.assetKey === assetId)
+                  ?.assetTitle || assetId,
+            );
+
+          dispatchAsync({
+            type: "SET_ERROR",
+            error: `Duplicate request blocked: this subcontractor already has a booking request for the same slot on ${blockedAssetNames.join(", ")}.`,
+          });
+          return;
+        }
+      }
+
       // Use Promise.allSettled instead of Promise.all
       const results = await Promise.allSettled(
         selectedAssetIds.map(async (assetId) => {
@@ -803,9 +863,7 @@ export function CreateBookingForm({
 
         // Build calendar events for successful bookings
         const events = succeeded.map((booking) => {
-          const returnedAssetId =
-            booking.asset?.id ||
-            booking.asset_id;
+          const returnedAssetId = booking.asset?.id || booking.asset_id;
           const assetTitle =
             booking.asset?.name ||
             assets.find(
@@ -827,7 +885,10 @@ export function CreateBookingForm({
             description: description || title,
             start: startDateTime,
             end: endDateTime,
-            color: booking.status?.toLowerCase() === "confirmed" ? "green" : "yellow",
+            color:
+              booking.status?.toLowerCase() === "confirmed"
+                ? "green"
+                : "yellow",
             assetId: String(returnedAssetId),
             assetName: assetTitle,
             bookedAssets: [assetTitle],
@@ -1452,4 +1513,3 @@ export function CreateBookingForm({
     </>
   );
 }
-
