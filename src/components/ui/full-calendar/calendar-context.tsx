@@ -51,7 +51,7 @@ export const dayEventVariants = cva(
     defaultVariants: {
       variant: "default",
     },
-  }
+  },
 );
 
 export type CalendarEvent = {
@@ -69,7 +69,7 @@ export type AssetCalendar = {
   id: string;
   name: string;
   events: CalendarEvent[];
-  asset?: unknown; 
+  asset?: unknown;
 };
 
 type ContextType = {
@@ -140,6 +140,9 @@ export const Calendar = ({
         if (a.end?.getTime() !== b.end?.getTime()) return false;
         if (a.color !== b.color) return false;
         if (a.title !== b.title) return false;
+        if (a.description !== b.description) return false;
+        if (a.status !== b.status) return false;
+        if (a.bookingStatus !== b.bookingStatus) return false;
       }
       return true;
     })();
@@ -158,7 +161,7 @@ export const Calendar = ({
         setInternalDate(newDate);
       }
     },
-    [isDateControlled, onDateChange]
+    [isDateControlled, onDateChange],
   );
 
   const changeView = (view: View) => {
@@ -207,9 +210,11 @@ export const CalendarViewTrigger = forwardRef<
       size="sm"
       variant="ghost"
       className={`
-        ${currentView === view 
-          ? "bg-[var(--navy)] text-white hover:bg-[var(--navy-90)]" 
-          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"}
+        ${
+          currentView === view
+            ? "bg-[var(--navy)] text-white hover:bg-[var(--navy-90)]"
+            : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+        }
         ${className}
       `}
       {...props}
@@ -223,4 +228,3 @@ export const CalendarViewTrigger = forwardRef<
   );
 });
 CalendarViewTrigger.displayName = "CalendarViewTrigger";
-
