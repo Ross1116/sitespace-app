@@ -66,7 +66,7 @@ Built with **Next.js 16**, **React 19**, **TypeScript**, and **Tailwind CSS 4**.
 - Password strength indicator with visual feedback
 - Reset/invite token query scrubbing and analytics URL sanitization
 - Security headers including CSP + HSTS
-- Middleware-based route protection
+- Proxy-based route protection
 
 **General**
 - Fully responsive (mobile-first with desktop/mobile component variants)
@@ -152,7 +152,7 @@ src/
 ├── types/
 │   ├── index.ts                    # Shared TypeScript interfaces
 │   └── images.d.ts                 # Image module declarations
-└── middleware.ts                    # Auth + CSRF middleware
+└── proxy.ts                         # Auth + CSRF proxy
 ```
 
 ---
@@ -259,7 +259,7 @@ All dashboard pages use SWR with a shared config (`lib/swr.ts`):
 
 ### Route Protection
 
-`middleware.ts` handles route protection at the edge:
+`proxy.ts` handles route protection at the edge:
 - Unauthenticated users on protected routes → redirect to `/login`
 - Authenticated users on login/register → redirect to `/home`
 - JWT expiration checked with 60-second buffer

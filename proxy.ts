@@ -12,6 +12,17 @@ function isTokenExpired(token: string): boolean {
   }
 }
 
+function validateCsrfToken(request: NextRequest): boolean {
+  const requestToken = request.headers.get("x-csrf-token")?.trim();
+  const cookieToken = request.cookies.get("csrfToken")?.value?.trim();
+
+  if (!requestToken || !cookieToken) {
+    return false;
+  }
+
+  return requestToken === cookieToken;
+}
+
 function isTrustedApiMutationRequest(request: NextRequest): boolean {
   const origin = request.headers.get("origin");
   const host = request.headers.get("host");
@@ -33,12 +44,15 @@ function isTrustedApiMutationRequest(request: NextRequest): boolean {
     }
   }
 
-  // SameSite=lax cookies and JSON APIs already reduce cross-site mutation risk.
-  // Preserve existing behavior for clients that omit both headers.
-  return true;
+  const requestedWith = request.headers.get("x-requested-with")?.trim();
+  if (requestedWith === "XMLHttpRequest") {
+    return true;
+  }
+
+  return validateCsrfToken(request);
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
   // API security checks
