@@ -125,6 +125,7 @@ export function BookingDetailsDialog({
 
   const fetchDetails = async (signal?: AbortSignal) => {
     setLoading(true);
+    setCreatedByEntry(null);
     try {
       const res = await api.get<BookingDetail>(`/bookings/${bookingId}`, {
         signal,
