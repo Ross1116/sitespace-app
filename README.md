@@ -60,10 +60,13 @@ Built with **Next.js 16**, **React 19**, **TypeScript**, and **Tailwind CSS 4**.
 - JWT-based auth with HTTP-only cookie storage (tokens never touch client JS)
 - Automatic token refresh with rotation
 - CSRF protection (Origin/Referer validation on all mutations)
+- Auth abuse protection (rate limiting on sign-in and public forgot/reset flows)
 - 30-minute inactivity session timeout
 - Login, register, forgot password, and reset password flows
 - Password strength indicator with visual feedback
-- Middleware-based route protection
+- Reset/invite token query scrubbing and analytics URL sanitization
+- Security headers including CSP + HSTS
+- Proxy-based route protection
 
 **General**
 - Fully responsive (mobile-first with desktop/mobile component variants)
@@ -120,7 +123,8 @@ src/
 │   │   │   ├── me/route.ts        # Session validation + token refresh
 │   │   │   ├── signout/route.ts   # Logout → clears cookies
 │   │   │   └── refresh/route.ts   # Token refresh with rotation
-│   │   └── proxy/route.ts         # Universal backend proxy
+│   │   ├── proxy/route.ts         # Universal backend proxy + public auth rate limiting
+│   │   └── sentry-example-api/route.ts # Fault-injection route (disabled in production)
 │   ├── context/
 │   │   └── AuthContext.tsx         # Global auth state, session timeout
 │   ├── layout.tsx                  # Root layout (AuthProvider, fonts)
@@ -138,6 +142,7 @@ src/
 │   └── ProtectedRoute.tsx          # Route protection wrapper
 ├── lib/
 │   ├── api.ts                      # Axios client with interceptors
+│   ├── rateLimit.ts                # Shared in-memory API rate limiting utility
 │   ├── swr.ts                      # Shared SWR fetcher and config
 │   ├── bookingHelpers.ts           # Date/time formatting utilities
 │   ├── multicalendarHelpers.ts     # Calendar view helpers
@@ -147,7 +152,7 @@ src/
 ├── types/
 │   ├── index.ts                    # Shared TypeScript interfaces
 │   └── images.d.ts                 # Image module declarations
-└── middleware.ts                    # Auth + CSRF middleware
+└── proxy.ts                         # Auth + CSRF proxy
 ```
 
 ---
@@ -254,11 +259,11 @@ All dashboard pages use SWR with a shared config (`lib/swr.ts`):
 
 ### Route Protection
 
-`middleware.ts` handles route protection at the edge:
+`proxy.ts` handles route protection at the edge:
 - Unauthenticated users on protected routes → redirect to `/login`
 - Authenticated users on login/register → redirect to `/home`
 - JWT expiration checked with 60-second buffer
-- CSRF validation (Origin/Referer) on all state-changing requests
+- CSRF validation (Origin/Referer) on all state-changing `/api/*` requests via the same root middleware
 
 ---
 
@@ -303,6 +308,7 @@ The proxy at `/api/proxy/route.ts`:
 4. Forwards the request to the Python backend
 5. On 401, attempts a token refresh and retries once
 6. Returns the response with updated cookies if tokens were refreshed
+7. Applies rate limiting on public password flows (`/auth/forgot-password`, `/auth/reset-password`)
 
 **Public endpoints** (`/auth/forgot-password`, `/auth/reset-password`) bypass the auth check.
 
