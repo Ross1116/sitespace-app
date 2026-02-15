@@ -125,6 +125,7 @@ export function BookingDetailsDialog({
 
   // UI LOGIC: Always lowercase for comparison
   const status = (data?.status || "pending").toLowerCase();
+  const competingPendingCount = data?.competing_pending_count ?? 0;
 
   const formatTime = (timeStr: string) => {
     try {
@@ -191,6 +192,10 @@ export function BookingDetailsDialog({
   const openConfirm = (
     type: "deny" | "cancel" | "delete" | "confirm" | "complete",
   ) => {
+    if (type === "confirm" && competingPendingCount === 0) {
+      void handleUpdateStatus("confirmed");
+      return;
+    }
     setConfirmAction({ type, isOpen: true });
   };
 
@@ -479,7 +484,9 @@ export function BookingDetailsDialog({
             </AlertDialogTitle>
             <AlertDialogDescription className="text-slate-600">
               {confirmAction.type === "confirm" &&
-                "This will confirm the booking time and notify the user."}
+                (competingPendingCount > 0
+                  ? `Confirming this booking will auto-deny ${competingPendingCount} other pending request${competingPendingCount === 1 ? "" : "s"} for this time slot. Continue?`
+                  : "This will confirm the booking time and notify the user.")}
               {confirmAction.type === "complete" &&
                 "This will mark the job as finished and archive it."}
               {confirmAction.type === "deny" &&
@@ -530,4 +537,3 @@ export function BookingDetailsDialog({
     </>
   );
 }
-

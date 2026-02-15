@@ -49,6 +49,7 @@ interface AssetUpdateRequest {
   usage_instructions?: string;
   maintenance_start_date?: string | null;
   maintenance_end_date?: string | null;
+  pending_booking_capacity?: number;
 }
 
 // ===== HELPER FUNCTIONS =====
@@ -124,7 +125,13 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
   useEffect(() => {
     if (assetData) {
       console.log("Loading asset data:", assetData);
-      setAsset(assetData);
+      setAsset({
+        ...assetData,
+        pendingBookingCapacity:
+          assetData.pendingBookingCapacity ??
+          assetData._originalData?.pending_booking_capacity ??
+          5,
+      });
     }
   }, [assetData]);
 
@@ -233,6 +240,10 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
       let effectiveStatus = asset.assetStatus;
       let effectiveMaintenanceStart = asset.maintenanceStartdt;
       let effectiveMaintenanceEnd = asset.maintenanceEnddt;
+      const pendingBookingCapacity = Math.min(
+        20,
+        Math.max(1, Number(asset.pendingBookingCapacity ?? 5)),
+      );
 
       if (hasStart && hasEnd) {
         // Both present → keep / set Maintenance status
@@ -259,6 +270,7 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
         location: asset.assetLocation,
         poc: asset.assetPoc,
         usage_instructions: asset.usageInstructions,
+        pending_booking_capacity: pendingBookingCapacity,
       };
 
       // Always send maintenance dates — null explicitly clears them on the
@@ -305,6 +317,8 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
           response.data.usage_instructions || response.data.description || "",
         assetProject: response.data.project_id || projectId, //  Always a string
         assetCode: response.data.asset_code,
+        pendingBookingCapacity:
+          response.data.pending_booking_capacity ?? pendingBookingCapacity,
         _originalData: response.data,
       };
 
@@ -517,6 +531,34 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
                 onChange={handleChange}
                 placeholder="Enter operator or contact person"
               />
+            </div>
+
+            {/* Pending Booking Capacity */}
+            <div className="space-y-2">
+              <Label htmlFor="pendingBookingCapacity">
+                Pending Request Capacity
+              </Label>
+              <Input
+                id="pendingBookingCapacity"
+                name="pendingBookingCapacity"
+                type="number"
+                min={1}
+                max={20}
+                value={asset.pendingBookingCapacity ?? 5}
+                onChange={(e) => {
+                  const rawValue = Number(e.target.value);
+                  const safeValue = Number.isNaN(rawValue)
+                    ? 5
+                    : Math.min(20, Math.max(1, rawValue));
+                  setAsset((prev) => ({
+                    ...prev,
+                    pendingBookingCapacity: safeValue,
+                  }));
+                }}
+              />
+              <span className="text-xs text-gray-500">
+                Maximum pending requests allowed per slot (1-20)
+              </span>
             </div>
 
             {/* Usage Instructions */}

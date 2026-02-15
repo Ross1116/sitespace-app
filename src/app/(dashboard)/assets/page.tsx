@@ -55,6 +55,7 @@ interface AssetFromBackend {
   usage_instructions?: string;
   maintenance_start_date?: string;
   maintenance_end_date?: string;
+  pending_booking_capacity?: number;
 }
 
 interface AssetListResponse {
@@ -100,6 +101,7 @@ const transformBackendAsset = (backendAsset: AssetFromBackend): Asset => {
     maintenanceEnddt: backendAsset.maintenance_end_date || "",
     usageInstructions: backendAsset.usage_instructions || "",
     assetCode: backendAsset.asset_code,
+    pendingBookingCapacity: backendAsset.pending_booking_capacity,
     _originalData: backendAsset,
   };
 };

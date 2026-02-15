@@ -62,6 +62,7 @@ export interface ApiAsset {
   usage_instructions?: string;
   maintenance_start_date?: string;
   maintenance_end_date?: string;
+  pending_booking_capacity?: number;
 }
 
 export interface ApiBooking {
@@ -88,6 +89,7 @@ export interface ApiBooking {
     first_name: string;
     last_name: string;
   };
+  competing_pending_count?: number;
 }
 
 // ===== PAGINATED RESPONSE WRAPPERS =====
@@ -149,6 +151,7 @@ export interface TransformedBooking {
   subcontractorName?: string;
   projectName?: string;
   managerId?: string;
+  competingPendingCount?: number;
   _originalData?: ApiBooking;
 }
 
@@ -166,6 +169,7 @@ export interface TransformedAsset {
   maintenanceEnddt: string;
   usageInstructions: string;
   assetCode: string;
+  pendingBookingCapacity?: number;
   _originalData?: ApiAsset;
 }
 
