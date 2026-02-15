@@ -59,7 +59,7 @@ function ResetPasswordForm() {
 
   // 3. Validate Token Presence
   useEffect(() => {
-    if (!token) setTokenValid(false);
+    setTokenValid(Boolean(token));
   }, [token]);
 
   // 4. Strict Password Validation (Restored from your original code)
