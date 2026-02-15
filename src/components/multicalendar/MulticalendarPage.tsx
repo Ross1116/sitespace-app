@@ -19,6 +19,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ApiAsset, ApiBooking } from "@/types";
 import useSWR from "swr";
 import { swrFetcher, SWR_CONFIG } from "@/lib/swr";
+import { isAssetRetiredOrOutOfService } from "@/lib/assetStatus";
 
 // ===== INTERFACES =====
 
@@ -114,7 +115,10 @@ export default function MulticalendarPage() {
   );
 
   const availableAssets = useMemo(
-    () => (assetsData?.assets || []).sort((a: ApiAsset, b: ApiAsset) => a.name.localeCompare(b.name)),
+    () =>
+      (assetsData?.assets || [])
+        .filter((asset) => !isAssetRetiredOrOutOfService(asset.status))
+        .sort((a: ApiAsset, b: ApiAsset) => a.name.localeCompare(b.name)),
     [assetsData],
   );
 
@@ -170,6 +174,14 @@ export default function MulticalendarPage() {
     if (availableAssets.length === 0 && bookings.length > 0) {
       const groups: Record<string, AssetCalendar> = {};
       bookings.forEach((b) => {
+        const maybeAssetStatus = (
+          (b._originalData as { asset?: { status?: string } } | undefined)?.asset
+            ?.status
+        );
+        if (isAssetRetiredOrOutOfService(maybeAssetStatus)) {
+          return;
+        }
+
         // Safe access to assetId
         const aId = b.assetId || "unknown";
         if (!groups[aId]) {

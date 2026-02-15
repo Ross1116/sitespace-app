@@ -58,6 +58,7 @@ import {
 } from "@/types";
 import useSWR from "swr";
 import { swrFetcher } from "@/lib/swr";
+import { isAssetUnavailableForBooking } from "@/lib/assetStatus";
 
 // ===== TYPE DEFINITIONS =====
 type CreateBookingFormProps = {
@@ -562,10 +563,7 @@ export function CreateBookingForm({
   useEffect(() => {
     if (assetsResponse) {
       const normalizedAssets: AssetOption[] = (assetsResponse.assets || [])
-        .filter(
-          (asset) =>
-            asset.status !== "maintenance" && asset.status !== "retired",
-        )
+        .filter((asset) => !isAssetUnavailableForBooking(asset.status))
         .map((asset) => ({
           ...asset,
           assetKey: asset.id,
