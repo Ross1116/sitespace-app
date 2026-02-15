@@ -768,18 +768,31 @@ export function CreateBookingForm({
         : selectedSubcontractor || undefined;
 
       if (targetSubcontractorId) {
-        const existing = await api.get<BookingListResponse>(`/bookings/`, {
-          params: {
-            project_id: project.id,
-            limit: 1000,
-            skip: 0,
-          },
-        });
+        const limit = 200;
+        let skip = 0;
+        let hasMore = true;
+        const existingBookings: ApiBooking[] = [];
+
+        while (hasMore) {
+          const existing = await api.get<BookingListResponse>(`/bookings/`, {
+            params: {
+              project_id: project.id,
+              limit,
+              skip,
+              date_from: bookingDate,
+              date_to: bookingDate,
+            },
+          });
+
+          existingBookings.push(...(existing.data.bookings || []));
+          hasMore = Boolean(existing.data.has_more);
+          skip += limit;
+        }
 
         const normalizedStart = normalizeTime(startTimeFormatted);
         const normalizedEnd = normalizeTime(endTimeFormatted);
         const duplicateAssetIds = new Set(
-          (existing.data.bookings || [])
+          existingBookings
             .filter((booking) => {
               const status = (booking.status || "").toLowerCase();
               if (status === "cancelled" || status === "denied") return false;

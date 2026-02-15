@@ -982,7 +982,9 @@ const EventGroupSideBySide = ({
           ? shouldCollapsePending
             ? PENDING_LANE_WIDTH_PERCENT
             : pendingWidthPercent
-          : 100;
+          : pendingCount > 0
+            ? PENDING_LANE_WIDTH_PERCENT
+            : 100;
         const left = isPending
           ? shouldCollapsePending
             ? 0
@@ -1012,7 +1014,10 @@ const EventGroupSideBySide = ({
             }}
           >
             {/* 4. Pass isDisabled to wrapper to disable drag */}
-            <DraggableEventWrapper event={event} disabled={isDisabled}>
+            <DraggableEventWrapper
+              event={event}
+              disabled={isDisabled || isCollapsedPendingSummary}
+            >
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -1022,10 +1027,13 @@ const EventGroupSideBySide = ({
                         "w-full h-full hover:shadow-md transition-all",
                         isDisabled
                           ? "cursor-not-allowed opacity-75 grayscale"
-                          : "cursor-pointer",
+                          : isCollapsedPendingSummary
+                            ? "cursor-default"
+                            : "cursor-pointer",
                       )}
                       onClick={(e) => {
                         e.stopPropagation();
+                        if (isCollapsedPendingSummary) return;
                         // We ALLOW clicking to view details even in maintenance (to see what the booking is)
                         // But editing/rescheduling is disabled via the dialog's logic if needed (or here)
                         const bookingId =

@@ -22,6 +22,7 @@ import { format } from "date-fns";
 import { ApiProject } from "@/types";
 import useSWR from "swr";
 import { swrFetcher, SWR_CONFIG } from "@/lib/swr";
+import { useRouter } from "next/navigation";
 
 interface SubcontractorFromBackend {
   id: string;
@@ -114,7 +115,18 @@ export default function SubcontractorsPage() {
 
   const itemsPerPage = 7;
   const { user } = useAuth();
+  const router = useRouter();
   const userId = user?.id;
+
+  useEffect(() => {
+    if (user?.role === "subcontractor") {
+      router.replace("/home");
+    }
+  }, [user?.role, router]);
+
+  if (user?.role === "subcontractor") {
+    return null;
+  }
 
   // Re-read project on cross-tab changes
   const [projectVersion, setProjectVersion] = useState(0);

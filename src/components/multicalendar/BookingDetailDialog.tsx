@@ -189,11 +189,33 @@ export function BookingDetailsDialog({
     }
   };
 
+  const fetchLatestCompetingPendingCount = async () => {
+    try {
+      const res = await api.get<BookingDetail>(`/bookings/${bookingId}`);
+      setData(res.data);
+      return res.data.competing_pending_count ?? 0;
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, "Failed to validate booking state"));
+      return null;
+    }
+  };
+
   const openConfirm = (
     type: "deny" | "cancel" | "delete" | "confirm" | "complete",
   ) => {
-    if (type === "confirm" && competingPendingCount === 0) {
-      void handleUpdateStatus("confirmed");
+    if (type === "confirm") {
+      void (async () => {
+        const freshCompetingPendingCount =
+          await fetchLatestCompetingPendingCount();
+        if (freshCompetingPendingCount === null) return;
+
+        if (freshCompetingPendingCount === 0) {
+          await handleUpdateStatus("confirmed");
+          return;
+        }
+
+        setConfirmAction({ type, isOpen: true });
+      })();
       return;
     }
     setConfirmAction({ type, isOpen: true });
@@ -439,6 +461,17 @@ export function BookingDetailsDialog({
                       )}
                     </>
                   )}
+
+                  {status === "denied" &&
+                    (hasManagerPrivileges || isMyBooking) && (
+                      <Button
+                        variant="outline"
+                        className="bg-white border-slate-200 text-slate-700 hover:bg-slate-50 justify-start sm:justify-center"
+                        onClick={() => setIsRescheduleOpen(true)}
+                      >
+                        <Edit className="h-4 w-4 mr-2" /> Reschedule
+                      </Button>
+                    )}
                 </div>
               </div>
             </div>

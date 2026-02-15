@@ -229,6 +229,16 @@ export default function BookingCardDropdown({
                 </>
               )}
 
+              {normalizedStatus === "denied" &&
+                (hasManagerPrivileges || isMyBooking) && (
+                  <button
+                    onClick={handleRescheduleClick}
+                    className="flex items-center px-4 py-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50 w-full text-left"
+                  >
+                    <Edit size={14} className="mr-2" /> Reschedule
+                  </button>
+                )}
+
               {(normalizedStatus === "cancelled" ||
                 normalizedStatus === "denied") &&
                 isMyBooking && (

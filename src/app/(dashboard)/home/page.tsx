@@ -72,6 +72,7 @@ const PALETTE = {
 export default function HomePage() {
   const { user } = useAuth();
   const router = useRouter();
+  const isSubcontractorUser = user?.role === "subcontractor";
 
   const [selectedProject, setSelectedProject] = useState<ApiProject | null>(
     null,
@@ -381,7 +382,11 @@ export default function HomePage() {
           <h2 className="text-lg font-bold text-slate-900 mb-4">
             Quick Access
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div
+            className={`grid grid-cols-1 md:grid-cols-2 ${
+              isSubcontractorUser ? "lg:grid-cols-2" : "lg:grid-cols-4"
+            } gap-4`}
+          >
             <QuickAccessCard
               title="Calendar"
               count={upcomingBookings.length}
@@ -390,24 +395,28 @@ export default function HomePage() {
               bgColor={PALETTE.darkNavy}
               href="/multicalendar"
             />
-            <QuickAccessCard
-              title="Assets"
-              count={assetCount}
-              subtitle={`${
-                assetCount > 0 ? "Active on site" : "No assets active"
-              }`}
-              icon={HardHat}
-              bgColor={PALETTE.navy}
-              href="/assets"
-            />
-            <QuickAccessCard
-              title="Subcontractor"
-              count={subcontractorCount}
-              subtitle={`${subcontractorCount} Active`}
-              icon={Users}
-              bgColor={PALETTE.blue}
-              href="/subcontractors"
-            />
+            {!isSubcontractorUser && (
+              <QuickAccessCard
+                title="Assets"
+                count={assetCount}
+                subtitle={`${
+                  assetCount > 0 ? "Active on site" : "No assets active"
+                }`}
+                icon={HardHat}
+                bgColor={PALETTE.navy}
+                href="/assets"
+              />
+            )}
+            {!isSubcontractorUser && (
+              <QuickAccessCard
+                title="Subcontractor"
+                count={subcontractorCount}
+                subtitle={`${subcontractorCount} Active`}
+                icon={Users}
+                bgColor={PALETTE.blue}
+                href="/subcontractors"
+              />
+            )}
             <QuickAccessCard
               title="Bookings"
               count={upcomingBookings.length}
