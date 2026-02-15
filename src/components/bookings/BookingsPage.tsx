@@ -57,7 +57,29 @@ const transformBookingToLegacyFormat = (
     (booking.subcontractor
       ? `${booking.subcontractor.first_name} ${booking.subcontractor.last_name}`
       : "");
-  const bookedFor = booking.subcontractor_id ? subName : managerName;
+
+  const createdByName =
+    booking.created_by_name ||
+    booking.booked_by_name ||
+    booking.requested_by_name ||
+    booking.created_by?.full_name ||
+    (booking.created_by
+      ? `${booking.created_by.first_name || ""} ${booking.created_by.last_name || ""}`.trim()
+      : "");
+
+  const createdById = booking.created_by_id || booking.created_by?.id;
+
+  const bookedFor = createdByName
+    ? createdByName
+    : createdById &&
+        booking.subcontractor_id &&
+        createdById === booking.subcontractor_id
+      ? subName
+      : createdById && booking.manager_id && createdById === booking.manager_id
+        ? managerName
+        : booking.subcontractor_id
+          ? subName || managerName
+          : managerName;
 
   let assetId = "unknown";
   let assetName = "Unknown Asset";

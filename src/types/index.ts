@@ -83,6 +83,21 @@ export interface ApiBooking {
   asset?: { id: string; name: string; asset_code?: string };
   project?: { id: string; name: string };
   manager?: ApiManager;
+  created_by_id?: string | null;
+  created_by_name?: string | null;
+  created_by_role?: string | null;
+  booked_by_name?: string | null;
+  booked_by_role?: string | null;
+  requested_by_name?: string | null;
+  requested_by_role?: string | null;
+  created_by?: {
+    id?: string;
+    first_name?: string;
+    last_name?: string;
+    full_name?: string;
+    email?: string;
+    role?: string;
+  } | null;
   subcontractor?: {
     id: string;
     company_name?: string;
