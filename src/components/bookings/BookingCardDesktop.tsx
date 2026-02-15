@@ -88,7 +88,7 @@ function BookingCardDesktop({
               <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
                 <RoleIcon size={13} className="text-slate-400" />
                 <span className="text-[10px] text-slate-500 uppercase tracking-wide font-bold">
-                  Assigned to:
+                  Booked by:
                 </span>
                 <span className="truncate max-w-[120px] text-slate-700">
                   {booking.bookingFor}

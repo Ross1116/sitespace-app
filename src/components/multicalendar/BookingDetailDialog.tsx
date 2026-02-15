@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -38,11 +38,35 @@ import { format } from "date-fns";
 import api from "@/lib/api";
 import { useAuth } from "@/app/context/AuthContext";
 import RescheduleBookingForm from "@/components/forms/RescheduleBookingForm";
-import { ApiBooking, ApiManager, getApiErrorMessage } from "@/types";
+import {
+  ApiBooking,
+  ApiManager,
+  AuditEntry,
+  AuditTrailResponse,
+  getApiErrorMessage,
+} from "@/types";
 
 type BookingDetail = Omit<ApiBooking, "manager" | "asset"> & {
   manager?: (ApiManager & { email?: string }) | null;
   asset?: { id: string; name: string; asset_code?: string };
+  created_by_id?: string | null;
+  created_by_name?: string | null;
+  created_by_role?: string | null;
+  created_by_email?: string | null;
+  booked_by_name?: string | null;
+  booked_by_role?: string | null;
+  booked_by_email?: string | null;
+  requested_by_name?: string | null;
+  requested_by_role?: string | null;
+  requested_by_email?: string | null;
+  created_by?: {
+    id?: string;
+    first_name?: string;
+    last_name?: string;
+    full_name?: string;
+    email?: string;
+    role?: string;
+  } | null;
 };
 
 const isAbortError = (error: unknown, signal?: AbortSignal) => {
@@ -76,6 +100,7 @@ export function BookingDetailsDialog({
 
   // Data States
   const [data, setData] = useState<BookingDetail | null>(null);
+  const [createdByEntry, setCreatedByEntry] = useState<AuditEntry | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
@@ -94,6 +119,7 @@ export function BookingDetailsDialog({
       fetchDetails(controller.signal);
     } else {
       setData(null);
+      setCreatedByEntry(null);
       setLoading(true);
       setError(null);
     }
@@ -102,17 +128,37 @@ export function BookingDetailsDialog({
 
   const fetchDetails = async (signal?: AbortSignal) => {
     setLoading(true);
+    setCreatedByEntry(null);
     try {
       const res = await api.get<BookingDetail>(`/bookings/${bookingId}`, {
         signal,
       });
       if (signal?.aborted) return;
       setData(res.data);
+      setLoading(false);
+
+      void (async () => {
+        try {
+          const auditRes = await api.get<AuditTrailResponse>(
+            `/bookings/${bookingId}/audit`,
+            {
+              params: { skip: 0, limit: 200 },
+              signal,
+            },
+          );
+          if (signal?.aborted) return;
+          const createdEntry = (auditRes.data?.history || []).find(
+            (entry) => entry.action?.toLowerCase() === "created",
+          );
+          setCreatedByEntry(createdEntry || null);
+        } catch {
+          if (!signal?.aborted) setCreatedByEntry(null);
+        }
+      })();
     } catch (err) {
       if (isAbortError(err, signal)) return;
       console.error("Error fetching booking details:", err);
       setError("Failed to load booking details.");
-    } finally {
       if (!signal?.aborted) setLoading(false);
     }
   };
@@ -126,6 +172,117 @@ export function BookingDetailsDialog({
   // UI LOGIC: Always lowercase for comparison
   const status = (data?.status || "pending").toLowerCase();
   const competingPendingCount = data?.competing_pending_count ?? 0;
+
+  const bookedBy = useMemo(() => {
+    const initials = (name?: string | null) => {
+      if (!name) return "?";
+      const parts = name
+        .split(" ")
+        .map((part) => part.trim())
+        .filter(Boolean);
+      if (parts.length === 0) return "?";
+      if (parts.length === 1) return parts[0][0]?.toUpperCase() || "?";
+      return `${parts[0][0] || ""}${parts[parts.length - 1][0] || ""}`.toUpperCase();
+    };
+
+    if (createdByEntry?.actor_name) {
+      return {
+        name: createdByEntry.actor_name,
+        role: createdByEntry.actor_role || undefined,
+        email: undefined as string | undefined,
+        initials: initials(createdByEntry.actor_name),
+      };
+    }
+
+    if (!data) return null;
+
+    const createdByObj = data.created_by;
+    const createdByObjName =
+      createdByObj?.full_name ||
+      [createdByObj?.first_name, createdByObj?.last_name]
+        .filter(Boolean)
+        .join(" ")
+        .trim();
+
+    let explicitName: string | undefined;
+    let explicitRole: string | undefined;
+    let explicitEmail: string | undefined;
+
+    if (data.created_by_name) {
+      explicitName = data.created_by_name;
+      explicitRole = data.created_by_role || createdByObj?.role || undefined;
+      explicitEmail = data.created_by_email || createdByObj?.email || undefined;
+    } else if (data.booked_by_name) {
+      explicitName = data.booked_by_name;
+      explicitRole = data.booked_by_role || undefined;
+      explicitEmail = data.booked_by_email || undefined;
+    } else if (data.requested_by_name) {
+      explicitName = data.requested_by_name;
+      explicitRole = data.requested_by_role || undefined;
+      explicitEmail = data.requested_by_email || undefined;
+    } else if (createdByObjName) {
+      explicitName = createdByObjName;
+      explicitRole = createdByObj?.role || undefined;
+      explicitEmail = createdByObj?.email || undefined;
+    }
+
+    if (explicitName) {
+      return {
+        name: explicitName,
+        role: explicitRole,
+        email: explicitEmail,
+        initials: initials(explicitName),
+      };
+    }
+
+    const createdById = data.created_by_id || createdByObj?.id || undefined;
+    if (createdById && data.subcontractor?.id === createdById) {
+      const subName =
+        data.subcontractor.company_name ||
+        `${data.subcontractor.first_name} ${data.subcontractor.last_name}`.trim();
+      return {
+        name: subName,
+        role: "subcontractor",
+        email: undefined as string | undefined,
+        initials: initials(subName),
+      };
+    }
+    if (createdById && data.manager?.id === createdById) {
+      const managerName =
+        `${data.manager.first_name} ${data.manager.last_name}`.trim();
+      return {
+        name: managerName,
+        role: "manager",
+        email: data.manager.email,
+        initials: initials(managerName),
+      };
+    }
+
+    if (!createdById && data.subcontractor) {
+      const subName =
+        data.subcontractor.company_name ||
+        `${data.subcontractor.first_name} ${data.subcontractor.last_name}`.trim();
+      return {
+        name: subName,
+        role: "subcontractor",
+        email: undefined as string | undefined,
+        initials: initials(subName),
+      };
+    }
+
+    if (!createdById && data.manager) {
+      const managerName =
+        `${data.manager.first_name} ${data.manager.last_name}`.trim();
+      return {
+        name: managerName,
+        role: "manager",
+        email: data.manager.email,
+        initials: initials(managerName),
+      };
+    }
+
+    return null;
+  }, [createdByEntry, data]);
 
   const formatTime = (timeStr: string) => {
     try {
@@ -293,8 +450,8 @@ export function BookingDetailsDialog({
                     </p>
                   </div>
 
-                  {/* Manager (Booked By) */}
-                  {data.manager && (
+                  {/* Booked By */}
+                  {bookedBy && (
                     <div
                       className={`space-y-2 ${data.subcontractor ? "col-span-2 sm:col-span-1" : "col-span-2"}`}
                     >
@@ -303,16 +460,21 @@ export function BookingDetailsDialog({
                       </div>
                       <div className="flex items-center gap-3 bg-slate-50 p-2 rounded-md border border-slate-100">
                         <div className="h-8 w-8 rounded-full bg-slate-800 text-white text-xs flex items-center justify-center font-bold ring-2 ring-white shadow-sm shrink-0">
-                          {data.manager.first_name?.[0]}
-                          {data.manager.last_name?.[0]}
+                          {bookedBy.initials}
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-semibold text-slate-900 truncate">
-                            {data.manager.first_name} {data.manager.last_name}
+                            {bookedBy.name}
                           </p>
-                          <p className="text-xs text-slate-500 truncate">
-                            {data.manager.email}
-                          </p>
+                          {bookedBy.email ? (
+                            <p className="text-xs text-slate-500 truncate">
+                              {bookedBy.email}
+                            </p>
+                          ) : bookedBy.role ? (
+                            <p className="text-xs text-slate-500 truncate capitalize">
+                              {bookedBy.role}
+                            </p>
+                          ) : null}
                         </div>
                       </div>
                     </div>

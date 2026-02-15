@@ -5,12 +5,8 @@ import {
 } from "@/components/ui/full-calendar/calendar-context";
 import { ApiAsset, ApiBooking } from "@/types";
 
-export type VariantProps<
-  Component extends (...args: unknown[]) => unknown,
-> = Omit<
-  OmitUndefined<Parameters<Component>[0]>,
-  "class" | "className"
->;
+export type VariantProps<Component extends (...args: unknown[]) => unknown> =
+  Omit<OmitUndefined<Parameters<Component>[0]>, "class" | "className">;
 export type OmitUndefined<T> = T extends undefined ? never : T;
 
 type UnknownRecord = Record<string, unknown>;
@@ -81,9 +77,7 @@ export function convertBookingToCalendarEvent(
   if (rawAsset) {
     assetId = getId(rawAsset.id) || getId(raw.asset_id) || assetId;
     assetCode =
-      getString(rawAsset.asset_code) ||
-      getString(rawAsset.code) ||
-      assetCode;
+      getString(rawAsset.asset_code) || getString(rawAsset.code) || assetCode;
     const rawAssetName = getString(rawAsset.name);
     if (rawAssetName) assetName = rawAssetName;
   } else if (raw.asset_id) {
@@ -105,13 +99,46 @@ export function convertBookingToCalendarEvent(
 
   // --- MANAGER / SUBCONTRACTOR NAMES ---
   const manager = isRecord(raw.manager) ? raw.manager : undefined;
-  const subcontractor = isRecord(raw.subcontractor) ? raw.subcontractor : undefined;
-  const managerName = getString(manager?.first_name) || "Manager";
+  const subcontractor = isRecord(raw.subcontractor)
+    ? raw.subcontractor
+    : undefined;
+  const managerName =
+    [getString(manager?.first_name), getString(manager?.last_name)]
+      .filter(Boolean)
+      .join(" ")
+      .trim() || "Manager";
   const subName =
     getString(subcontractor?.company_name) ||
-    getString(subcontractor?.first_name);
+    [getString(subcontractor?.first_name), getString(subcontractor?.last_name)]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
   const subcontractorId = getId(raw.subcontractor_id);
-  const bookedFor = subcontractorId ? subName : managerName;
+
+  const createdBy = isRecord(raw.created_by) ? raw.created_by : undefined;
+  const createdByName =
+    getString(raw.created_by_name) ||
+    getString(raw.booked_by_name) ||
+    getString(raw.requested_by_name) ||
+    getString(createdBy?.full_name) ||
+    [getString(createdBy?.first_name), getString(createdBy?.last_name)]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+  const createdById = getId(raw.created_by_id) || getId(createdBy?.id);
+
+  let bookedFor = "";
+  if (createdByName) {
+    bookedFor = createdByName;
+  } else if (createdById && createdById === subcontractorId && subName) {
+    bookedFor = subName;
+  } else if (createdById && createdById === getId(raw.manager_id)) {
+    bookedFor = managerName;
+  } else if (subcontractorId && subName) {
+    bookedFor = subName;
+  } else {
+    bookedFor = managerName;
+  }
 
   // --- TITLE & DESCRIPTION LOGIC (Matches BookingsPage) ---
   const rawPurpose = getString(raw.purpose);
@@ -120,9 +147,17 @@ export function convertBookingToCalendarEvent(
   let baseDescription = "No description provided";
 
   // 1. Determine Title: Purpose > Notes > Fallback
-  if (rawPurpose && typeof rawPurpose === "string" && rawPurpose.trim() !== "") {
+  if (
+    rawPurpose &&
+    typeof rawPurpose === "string" &&
+    rawPurpose.trim() !== ""
+  ) {
     baseTitle = rawPurpose;
-  } else if (rawNotes && typeof rawNotes === "string" && rawNotes.trim() !== "") {
+  } else if (
+    rawNotes &&
+    typeof rawNotes === "string" &&
+    rawNotes.trim() !== ""
+  ) {
     baseTitle = rawNotes;
   } else {
     baseTitle = `Booking for ${bookedFor}`;
@@ -132,9 +167,9 @@ export function convertBookingToCalendarEvent(
   if (rawNotes && typeof rawNotes === "string" && rawNotes.trim() !== "") {
     // If we used notes as title, don't repeat in desc unless distinct
     if (baseTitle === rawNotes) {
-       baseDescription = "No additional details";
+      baseDescription = "No additional details";
     } else {
-       baseDescription = rawNotes;
+      baseDescription = rawNotes;
     }
   } else if (
     rawPurpose &&
@@ -201,12 +236,12 @@ export function convertBookingToCalendarEvent(
     description: baseDescription,
     color,
     bookingKey: booking.id || getId(raw.id),
-    
+
     // Normalized Fields
     bookingTitle: baseTitle,
     bookingDescription: baseDescription,
     bookingNotes: rawNotes || "",
-    
+
     bookingTimeDt: getString(raw.booking_date) || getString(raw.date),
     bookingStartTime: getString(raw.start_time),
     bookingEndTime: getString(raw.end_time),
@@ -221,22 +256,27 @@ export function convertBookingToCalendarEvent(
 
     status,
     managerId: getId(raw.manager_id) || undefined,
-    managerName: getString(manager?.first_name) || undefined,
+    managerName: managerName || undefined,
     subcontractorId: subcontractorId || undefined,
-    subcontractorName: getString(subcontractor?.company_name) || undefined,
+    subcontractorName: subName || undefined,
     projectId: getId(raw.project_id) || undefined,
-    projectName: isRecord(raw.project) ? getString(raw.project.name) || undefined : undefined,
-    projectLocation:
-      isRecord(raw.project) ? getString(raw.project.location) || undefined : undefined,
+    projectName: isRecord(raw.project)
+      ? getString(raw.project.name) || undefined
+      : undefined,
+    projectLocation: isRecord(raw.project)
+      ? getString(raw.project.location) || undefined
+      : undefined,
 
-    _originalData: isRecord(booking._originalData) ? booking._originalData : raw,
+    _originalData: isRecord(booking._originalData)
+      ? booking._originalData
+      : raw,
   };
 }
 
 // --- GROUPING ---
 
 export function groupBookingsByAsset(
-  bookings: BookingInput[]
+  bookings: BookingInput[],
 ): Record<string, AssetCalendar> {
   const grouped: Record<string, AssetCalendar> = {};
 
