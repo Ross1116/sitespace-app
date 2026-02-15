@@ -52,10 +52,13 @@ type BookingDetail = Omit<ApiBooking, "manager" | "asset"> & {
   created_by_id?: string | null;
   created_by_name?: string | null;
   created_by_role?: string | null;
+  created_by_email?: string | null;
   booked_by_name?: string | null;
   booked_by_role?: string | null;
+  booked_by_email?: string | null;
   requested_by_name?: string | null;
   requested_by_role?: string | null;
+  requested_by_email?: string | null;
   created_by?: {
     id?: string;
     first_name?: string;
@@ -201,24 +204,33 @@ export function BookingDetailsDialog({
         .join(" ")
         .trim();
 
-    const explicitName =
-      data.created_by_name ||
-      data.booked_by_name ||
-      data.requested_by_name ||
-      createdByObjName ||
-      undefined;
-    const explicitRole =
-      data.created_by_role ||
-      data.booked_by_role ||
-      data.requested_by_role ||
-      createdByObj?.role ||
-      undefined;
+    let explicitName: string | undefined;
+    let explicitRole: string | undefined;
+    let explicitEmail: string | undefined;
+
+    if (data.created_by_name) {
+      explicitName = data.created_by_name;
+      explicitRole = data.created_by_role || createdByObj?.role || undefined;
+      explicitEmail = data.created_by_email || createdByObj?.email || undefined;
+    } else if (data.booked_by_name) {
+      explicitName = data.booked_by_name;
+      explicitRole = data.booked_by_role || undefined;
+      explicitEmail = data.booked_by_email || undefined;
+    } else if (data.requested_by_name) {
+      explicitName = data.requested_by_name;
+      explicitRole = data.requested_by_role || undefined;
+      explicitEmail = data.requested_by_email || undefined;
+    } else if (createdByObjName) {
+      explicitName = createdByObjName;
+      explicitRole = createdByObj?.role || undefined;
+      explicitEmail = createdByObj?.email || undefined;
+    }
 
     if (explicitName) {
       return {
         name: explicitName,
         role: explicitRole,
-        email: createdByObj?.email || undefined,
+        email: explicitEmail,
         initials: initials(explicitName),
       };
     }
@@ -246,7 +258,7 @@ export function BookingDetailsDialog({
       };
     }
 
-    if (data.subcontractor) {
+    if (!createdById && data.subcontractor) {
       const subName =
         data.subcontractor.company_name ||
         `${data.subcontractor.first_name} ${data.subcontractor.last_name}`.trim();
@@ -258,7 +270,7 @@ export function BookingDetailsDialog({
       };
     }
 
-    if (data.manager) {
+    if (!createdById && data.manager) {
       const managerName =
         `${data.manager.first_name} ${data.manager.last_name}`.trim();
       return {
