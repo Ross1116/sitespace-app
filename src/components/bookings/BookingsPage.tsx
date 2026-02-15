@@ -124,6 +124,7 @@ const transformBookingToLegacyFormat = (
     assetCode: assetCode,
     subcontractorId: booking.subcontractor_id ?? undefined,
     subcontractorName: subName,
+    competingPendingCount: booking.competing_pending_count ?? 0,
     _originalData: booking,
   };
 };

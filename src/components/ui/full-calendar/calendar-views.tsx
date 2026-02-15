@@ -311,15 +311,6 @@ export const CalendarDayView = ({
 
   const currentHour = new Date().getHours();
   const isCurrentDay = isSameDay(date, new Date());
-  const hourHasEvents = hours.reduce(
-    (acc, hour) => {
-      acc[hour.toString()] = (events || []).some((event) =>
-        isSameHour(event.start, hour),
-      );
-      return acc;
-    },
-    {} as Record<string, boolean>,
-  );
 
   return (
     <>
@@ -380,11 +371,6 @@ export const CalendarDayView = ({
                                     : "cursor-pointer hover:bg-slate-100/60"
                                 }`}
                         onClick={() => handleTimeSlotClick(hour)}
-                        style={{
-                          pointerEvents: hourHasEvents[hour.toString()]
-                            ? "none"
-                            : "auto",
-                        }}
                       >
                         {underMaintenance && (
                           <div className="h-full flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
@@ -951,7 +937,23 @@ const EventGroupSideBySide = ({
   const eventsInHour = events.filter((event) => isSameHour(event.start, hour));
   if (eventsInHour.length === 0) return null;
 
-  const widthPercent = Math.max(25, 100 / eventsInHour.length);
+  const RESERVED_RIGHT_GAP_PERCENT = 18;
+  const PENDING_LANE_WIDTH_PERCENT = 100 - RESERVED_RIGHT_GAP_PERCENT;
+
+  const isPendingEvent = (event: CalendarEvent) => {
+    const eventStatus = (event.bookingStatus || event.status || "")
+      .toString()
+      .toLowerCase();
+    return eventStatus === "pending";
+  };
+
+  const pendingEvents = eventsInHour.filter(isPendingEvent);
+  const pendingCount = pendingEvents.length;
+  const shouldCollapsePending = pendingCount >= 4;
+  const pendingWidthPercent =
+    pendingCount > 0
+      ? Math.max(25, PENDING_LANE_WIDTH_PERCENT / pendingCount)
+      : PENDING_LANE_WIDTH_PERCENT;
 
   return (
     <div className="absolute inset-0 flex w-full h-full pointer-events-none">
@@ -959,25 +961,63 @@ const EventGroupSideBySide = ({
         const minutesOffset = event.start.getMinutes();
         const durationMinutes = differenceInMinutes(event.end, event.start);
         const hoursSpan = Math.ceil(durationMinutes / 60);
+        const pendingIndex = pendingEvents.findIndex(
+          (pending) => pending.id === event.id,
+        );
+        const isPending = pendingIndex !== -1;
+
+        if (shouldCollapsePending && isPending && pendingIndex > 0) {
+          return null;
+        }
+
+        const isCollapsedPendingSummary =
+          shouldCollapsePending && isPending && pendingIndex === 0;
+
         const heightVal =
           hoursSpan > 1
             ? `${100 - (minutesOffset / 60) * 100 + (hoursSpan - 1) * 100}%`
             : `${Math.max((durationMinutes / 60) * 100, 10)}%`;
+
+        const width = isPending
+          ? shouldCollapsePending
+            ? PENDING_LANE_WIDTH_PERCENT
+            : pendingWidthPercent
+          : pendingCount > 0
+            ? PENDING_LANE_WIDTH_PERCENT
+            : 100;
+        const left = isPending
+          ? shouldCollapsePending
+            ? 0
+            : pendingIndex * pendingWidthPercent
+          : 0;
+        const top = isCollapsedPendingSummary
+          ? "0%"
+          : `${(minutesOffset / 60) * 100}%`;
+        const height = isCollapsedPendingSummary ? "100%" : heightVal;
+        const eventTitle = isCollapsedPendingSummary
+          ? `${pendingCount} pending requests`
+          : event.title;
+        const tooltipTitle = isCollapsedPendingSummary
+          ? `${pendingCount} pending requests for this slot`
+          : event.title;
 
         return (
           <div
             key={event.id}
             className="absolute pointer-events-auto"
             style={{
-              top: `${(minutesOffset / 60) * 100}%`,
-              height: heightVal,
-              width: `${widthPercent}%`,
-              left: `${index * widthPercent}%`,
-              zIndex: 10,
+              top,
+              height,
+              width: `${width}%`,
+              left: `${left}%`,
+              zIndex: isCollapsedPendingSummary ? 12 : 10,
             }}
           >
             {/* 4. Pass isDisabled to wrapper to disable drag */}
-            <DraggableEventWrapper event={event} disabled={isDisabled}>
+            <DraggableEventWrapper
+              event={event}
+              disabled={isDisabled || isCollapsedPendingSummary}
+            >
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -987,10 +1027,13 @@ const EventGroupSideBySide = ({
                         "w-full h-full hover:shadow-md transition-all",
                         isDisabled
                           ? "cursor-not-allowed opacity-75 grayscale"
-                          : "cursor-pointer",
+                          : isCollapsedPendingSummary
+                            ? "cursor-default"
+                            : "cursor-pointer",
                       )}
                       onClick={(e) => {
                         e.stopPropagation();
+                        if (isCollapsedPendingSummary) return;
                         // We ALLOW clicking to view details even in maintenance (to see what the booking is)
                         // But editing/rescheduling is disabled via the dialog's logic if needed (or here)
                         const bookingId =
@@ -1000,8 +1043,8 @@ const EventGroupSideBySide = ({
                         onEventClick(bookingId);
                       }}
                     >
-                      <div className="font-bold truncate">{event.title}</div>
-                      {durationMinutes >= 20 && (
+                      <div className="font-bold truncate">{eventTitle}</div>
+                      {!isCollapsedPendingSummary && durationMinutes >= 20 && (
                         <div className="text-[10px] opacity-80 mt-0.5 font-medium">
                           {format(event.start, "h:mm a")} -{" "}
                           {format(event.end, "h:mm a")}
@@ -1011,11 +1054,13 @@ const EventGroupSideBySide = ({
                   </TooltipTrigger>
                   <TooltipContent className="bg-[var(--navy)] text-white border-slate-700 z-[1000]">
                     <div>
-                      <div className="font-bold">{event.title}</div>
-                      <div className="text-xs text-slate-300">
-                        {format(event.start, "h:mm a")} -{" "}
-                        {format(event.end, "h:mm a")}
-                      </div>
+                      <div className="font-bold">{tooltipTitle}</div>
+                      {!isCollapsedPendingSummary && (
+                        <div className="text-xs text-slate-300">
+                          {format(event.start, "h:mm a")} -{" "}
+                          {format(event.end, "h:mm a")}
+                        </div>
+                      )}
                     </div>
                   </TooltipContent>
                 </Tooltip>

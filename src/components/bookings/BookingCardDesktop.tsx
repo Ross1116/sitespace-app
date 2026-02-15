@@ -35,6 +35,7 @@ function BookingCardDesktop({
 
   const handleToggle = () => onDropdownToggle(booking.bookingKey);
   const status = (booking.bookingStatus || "").toString().toLowerCase();
+  const pendingRequestCount = booking.competingPendingCount ?? 0;
 
   return (
     <div
@@ -122,21 +123,30 @@ function BookingCardDesktop({
 
         {/* COL 4: STATUS & ACTIONS */}
         <div className="flex flex-col items-end gap-3 pl-6 border-l border-slate-100 h-full justify-center min-w-[120px]">
-          <span
-            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border
-                ${
-                  status === "confirmed"
-                    ? "bg-emerald-50 text-emerald-700 border-emerald-100"
-                    : status === "pending"
-                      ? "bg-amber-50 text-amber-700 border-amber-100"
-                      : status === "cancelled" || status === "denied"
-                        ? "bg-red-50 text-red-700 border-red-100"
-                        : "bg-slate-100 text-slate-700 border-slate-200"
-                }
-            `}
-          >
-            {status}
-          </span>
+          <div className="flex flex-col items-end gap-1.5">
+            <span
+              className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border
+                  ${
+                    status === "confirmed"
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                      : status === "pending"
+                        ? "bg-amber-50 text-amber-700 border-amber-100"
+                        : status === "cancelled" || status === "denied"
+                          ? "bg-red-50 text-red-700 border-red-100"
+                          : "bg-slate-100 text-slate-700 border-slate-200"
+                  }
+              `}
+            >
+              {status}
+            </span>
+
+            {pendingRequestCount > 0 && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold border bg-orange-50 text-orange-700 border-orange-100">
+                {pendingRequestCount} request
+                {pendingRequestCount === 1 ? "" : "s"}
+              </span>
+            )}
+          </div>
 
           <div className="relative w-full flex justify-end items-center gap-1.5">
             {/* History Button */}

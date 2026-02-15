@@ -125,6 +125,7 @@ export function BookingDetailsDialog({
 
   // UI LOGIC: Always lowercase for comparison
   const status = (data?.status || "pending").toLowerCase();
+  const competingPendingCount = data?.competing_pending_count ?? 0;
 
   const formatTime = (timeStr: string) => {
     try {
@@ -188,9 +189,35 @@ export function BookingDetailsDialog({
     }
   };
 
+  const fetchLatestCompetingPendingCount = async () => {
+    try {
+      const res = await api.get<BookingDetail>(`/bookings/${bookingId}`);
+      setData(res.data);
+      return res.data.competing_pending_count ?? 0;
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, "Failed to validate booking state"));
+      return null;
+    }
+  };
+
   const openConfirm = (
     type: "deny" | "cancel" | "delete" | "confirm" | "complete",
   ) => {
+    if (type === "confirm") {
+      void (async () => {
+        const freshCompetingPendingCount =
+          await fetchLatestCompetingPendingCount();
+        if (freshCompetingPendingCount === null) return;
+
+        if (freshCompetingPendingCount === 0) {
+          await handleUpdateStatus("confirmed");
+          return;
+        }
+
+        setConfirmAction({ type, isOpen: true });
+      })();
+      return;
+    }
     setConfirmAction({ type, isOpen: true });
   };
 
@@ -434,6 +461,17 @@ export function BookingDetailsDialog({
                       )}
                     </>
                   )}
+
+                  {status === "denied" &&
+                    (hasManagerPrivileges || isMyBooking) && (
+                      <Button
+                        variant="outline"
+                        className="bg-white border-slate-200 text-slate-700 hover:bg-slate-50 justify-start sm:justify-center"
+                        onClick={() => setIsRescheduleOpen(true)}
+                      >
+                        <Edit className="h-4 w-4 mr-2" /> Reschedule
+                      </Button>
+                    )}
                 </div>
               </div>
             </div>
@@ -479,7 +517,9 @@ export function BookingDetailsDialog({
             </AlertDialogTitle>
             <AlertDialogDescription className="text-slate-600">
               {confirmAction.type === "confirm" &&
-                "This will confirm the booking time and notify the user."}
+                (competingPendingCount > 0
+                  ? `Confirming this booking will auto-deny ${competingPendingCount} other pending request${competingPendingCount === 1 ? "" : "s"} for this time slot. Continue?`
+                  : "This will confirm the booking time and notify the user.")}
               {confirmAction.type === "complete" &&
                 "This will mark the job as finished and archive it."}
               {confirmAction.type === "deny" &&
@@ -530,4 +570,3 @@ export function BookingDetailsDialog({
     </>
   );
 }
-

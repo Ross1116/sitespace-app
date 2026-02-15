@@ -39,6 +39,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { TransformedAsset, getApiErrorMessage } from "@/types";
+import { useRouter } from "next/navigation";
 
 interface AssetFromBackend {
   id: string;
@@ -55,6 +56,7 @@ interface AssetFromBackend {
   usage_instructions?: string;
   maintenance_start_date?: string;
   maintenance_end_date?: string;
+  pending_booking_capacity?: number;
 }
 
 interface AssetListResponse {
@@ -100,6 +102,7 @@ const transformBackendAsset = (backendAsset: AssetFromBackend): Asset => {
     maintenanceEnddt: backendAsset.maintenance_end_date || "",
     usageInstructions: backendAsset.usage_instructions || "",
     assetCode: backendAsset.asset_code,
+    pendingBookingCapacity: backendAsset.pending_booking_capacity,
     _originalData: backendAsset,
   };
 };
@@ -202,7 +205,18 @@ export default function AssetsTable() {
 
   const itemsPerPage = 7;
   const { user } = useAuth();
+  const router = useRouter();
   const userId = user?.id;
+
+  useEffect(() => {
+    if (user?.role === "subcontractor") {
+      router.replace("/home");
+    }
+  }, [user?.role, router]);
+
+  if (user?.role === "subcontractor") {
+    return null;
+  }
 
   // Read project from localStorage
   const project = useMemo<Project | undefined>(() => {
