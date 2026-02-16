@@ -484,6 +484,13 @@ export default function HomePage() {
                           ? `${booking.manager.first_name} ${booking.manager.last_name}`.trim()
                           : "Unknown Manager";
 
+                        const assetName = booking.asset?.name?.trim();
+                        const assetCode = booking.asset?.asset_code?.trim();
+                        const assetLabel =
+                          assetName || booking.asset_id || "Unspecified asset";
+                        const assetCodeSuffix =
+                          assetName && assetCode ? `(${assetCode})` : "";
+
                         const subName =
                           booking.subcontractor?.company_name ||
                           (booking.subcontractor
@@ -496,9 +503,6 @@ export default function HomePage() {
 
                         const isSubcontractor = !!booking.subcontractor_id;
                         const RoleIcon = isSubcontractor ? HardHat : Briefcase;
-                        const iconColor = isSubcontractor
-                          ? "text-orange-600"
-                          : "text-blue-600";
 
                         let displayTitle = "";
                         if (booking.purpose && booking.purpose.trim() !== "") {
@@ -588,9 +592,29 @@ export default function HomePage() {
                                 )}
                               </div>
 
+                              <div className="flex items-center gap-1.5 text-xs mb-1">
+                                <MapPin size={13} className="text-blue-500" />
+                                <span className="text-[10px] uppercase tracking-wide font-bold text-slate-500">
+                                  Asset:
+                                </span>
+                                <span className="text-blue-700 font-semibold truncate max-w-[220px]">
+                                  {assetLabel}
+                                </span>
+                                {assetCodeSuffix && (
+                                  <span className="text-[10px] text-slate-400 font-medium">
+                                    {assetCodeSuffix}
+                                  </span>
+                                )}
+                              </div>
+
                               <div className="flex items-center gap-1 text-xs font-medium text-slate-400">
-                                <RoleIcon size={13} className={iconColor} />
-                                <span>Assigned to</span>
+                                <RoleIcon
+                                  size={13}
+                                  className="text-slate-400"
+                                />
+                                <span className="text-[10px] uppercase tracking-wide font-bold text-slate-500">
+                                  Booked by:
+                                </span>
                                 <span className="text-slate-600 truncate max-w-[180px]">
                                   {assignee}
                                 </span>
