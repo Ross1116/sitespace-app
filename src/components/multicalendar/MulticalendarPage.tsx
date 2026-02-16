@@ -331,6 +331,8 @@ export default function MulticalendarPage() {
             isCollapsed={isCollapsed}
             loading={loading}
             assetCalendars={assetCalendars}
+            visibleAssets={visibleAssets}
+            setVisibleAssets={setVisibleAssets}
             setIsCollapsed={setIsCollapsed}
             selectedAssetIndex={selectedAssetIndex}
             setSelectedAssetIndex={setSelectedAssetIndex}

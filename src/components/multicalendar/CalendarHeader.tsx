@@ -4,8 +4,9 @@ import {
   RefreshCw,
   AlertCircle,
   CalendarDays,
+  SlidersHorizontal,
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Select,
   SelectContent,
@@ -28,12 +29,15 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 import { AssetCalendar } from "@/lib/multicalendarHelpers";
 
 interface CalendarHeaderProps {
   isCollapsed: boolean;
   loading: boolean;
   assetCalendars: AssetCalendar[];
+  visibleAssets: number[];
+  setVisibleAssets: React.Dispatch<React.SetStateAction<number[]>>;
   setIsCollapsed: React.Dispatch<React.SetStateAction<boolean>>;
   selectedAssetIndex: number;
   setSelectedAssetIndex: React.Dispatch<React.SetStateAction<number>>;
@@ -45,6 +49,8 @@ export function CalendarHeader({
   isCollapsed,
   loading,
   assetCalendars,
+  visibleAssets,
+  setVisibleAssets,
   setIsCollapsed,
   selectedAssetIndex,
   setSelectedAssetIndex,
@@ -53,6 +59,35 @@ export function CalendarHeader({
 }: CalendarHeaderProps) {
   const { date, setDate } = useCalendar();
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const [isAssetFilterOpen, setIsAssetFilterOpen] = useState(false);
+  const [isRefreshAnimating, setIsRefreshAnimating] = useState(false);
+  const allAssetIndices = useMemo(
+    () => assetCalendars.map((_, index) => index),
+    [assetCalendars],
+  );
+
+  const handleRefreshClick = () => {
+    if (!onRefresh) return;
+    setIsRefreshAnimating(true);
+    onRefresh();
+    setTimeout(() => setIsRefreshAnimating(false), 800);
+  };
+
+  const toggleVisibleAsset = (index: number) => {
+    setVisibleAssets((prev) => {
+      if (prev.includes(index)) {
+        if (prev.length <= 1) return prev;
+        const next = prev.filter((value) => value !== index);
+        if (!next.includes(selectedAssetIndex)) {
+          setSelectedAssetIndex(next[0]);
+        }
+        return next;
+      }
+
+      const next = [...prev, index].sort((a, b) => a - b);
+      return next;
+    });
+  };
 
   return (
     <div className="mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
@@ -77,15 +112,69 @@ export function CalendarHeader({
           <Button
             variant="ghost"
             size="sm"
-            onClick={onRefresh}
+            onClick={handleRefreshClick}
             disabled={loading}
             className="h-8 w-8 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-100"
             title="Refresh bookings"
           >
-            <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+            <RefreshCw
+              size={16}
+              className={loading || isRefreshAnimating ? "animate-spin" : ""}
+            />
             <span className="sr-only">Refresh</span>
           </Button>
         )}
+
+        {/* Multi-asset filter for md-xl when sidebar filter is hidden */}
+        <div className="hidden md:flex items-center gap-2 xl:hidden">
+          <Popover open={isAssetFilterOpen} onOpenChange={setIsAssetFilterOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-3 text-xs bg-white border-slate-200 shadow-sm text-slate-700"
+                disabled={loading || assetCalendars.length === 0}
+              >
+                <SlidersHorizontal size={14} className="mr-1.5" />
+                Assets ({visibleAssets.length}/{assetCalendars.length})
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="start"
+              className="w-[250px] p-2 border-slate-200"
+            >
+              <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-100">
+                <span className="text-xs font-semibold text-slate-700">
+                  Visible assets
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-[11px]"
+                  onClick={() => setVisibleAssets(allAssetIndices)}
+                >
+                  Show all
+                </Button>
+              </div>
+              <div className="max-h-56 overflow-y-auto space-y-1 pr-1">
+                {assetCalendars.map((calendar, index) => (
+                  <label
+                    key={calendar.id || index}
+                    className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-slate-50 cursor-pointer"
+                  >
+                    <Checkbox
+                      checked={visibleAssets.includes(index)}
+                      onCheckedChange={() => toggleVisibleAsset(index)}
+                    />
+                    <span className="text-xs text-slate-700 truncate">
+                      {calendar.name}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
 
         {/* Error indicator */}
         {error && !loading && (
@@ -109,16 +198,19 @@ export function CalendarHeader({
 
       {/* Right Side: Navigation & Filters */}
       <div className="w-full sm:w-auto flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 sm:justify-end">
-        {/* Mobile Asset Selector */}
-        <div className="flex items-center gap-2 md:hidden">
+        {/* Single-asset selector for mobile (single column) */}
+        <div className="flex md:hidden items-center gap-2">
           <Select
             value={selectedAssetIndex.toString()}
-            onValueChange={(value: string) =>
-              setSelectedAssetIndex(parseInt(value))
-            }
+            onValueChange={(value: string) => {
+              const index = parseInt(value);
+              if (Number.isNaN(index)) return;
+              setSelectedAssetIndex(index);
+              setVisibleAssets([index]);
+            }}
             disabled={loading || assetCalendars.length === 0}
           >
-            <SelectTrigger className="w-[140px] h-8 text-xs bg-white border-slate-200 shadow-sm">
+            <SelectTrigger className="w-[170px] h-8 text-xs bg-white border-slate-200 shadow-sm">
               <SelectValue placeholder="Select asset" />
             </SelectTrigger>
             <SelectContent>
