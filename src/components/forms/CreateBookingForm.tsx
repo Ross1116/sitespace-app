@@ -960,7 +960,7 @@ export function CreateBookingForm({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="w-full max-w-md mx-auto rounded-xl p-3 sm:p-6 bg-white shadow-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[calc(100vw-1rem)] max-w-md mx-auto rounded-xl p-3 sm:p-6 bg-white shadow-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader className="mb-4">
             <DialogTitle className="text-lg sm:text-xl font-semibold">
               Book Time Slot
@@ -1076,7 +1076,7 @@ export function CreateBookingForm({
                     {selectedDate ? format(selectedDate, "PPP") : "Select date"}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="p-0">
+                <PopoverContent className="max-w-[calc(100vw-1rem)] p-0">
                   <Calendar
                     mode="single"
                     selected={selectedDate}
@@ -1099,42 +1099,50 @@ export function CreateBookingForm({
                   Start Time <span className="text-red-500">*</span>
                 </Label>
                 <div className="flex items-center gap-2">
-                  <Select
-                    value={startHour}
-                    onValueChange={handleStartHourChange}
-                    disabled={isSubmitting}
-                  >
-                    <SelectTrigger className="h-9 w-full text-sm">
-                      <SelectValue placeholder="Hour" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.from({ length: 24 }).map((_, i) => {
-                        const val = i.toString().padStart(2, "0");
-                        return (
+                  <div className="min-w-0 flex-1">
+                    <Select
+                      value={startHour}
+                      onValueChange={handleStartHourChange}
+                      disabled={isSubmitting}
+                    >
+                      <SelectTrigger className="h-9 w-full text-sm">
+                        <SelectValue placeholder="Hour" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 24 }).map((_, i) => {
+                          const val = i.toString().padStart(2, "0");
+                          return (
+                            <SelectItem
+                              key={val}
+                              value={val}
+                              className="text-sm"
+                            >
+                              {formatHour(i)}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <span className="shrink-0">:</span>
+                  <div className="min-w-0 flex-1">
+                    <Select
+                      value={startMinute}
+                      onValueChange={handleStartMinuteChange}
+                      disabled={isSubmitting}
+                    >
+                      <SelectTrigger className="h-9 w-full text-sm">
+                        <SelectValue placeholder="Min" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {["00", "15", "30", "45"].map((val) => (
                           <SelectItem key={val} value={val} className="text-sm">
-                            {formatHour(i)}
+                            {val}
                           </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                  <span>:</span>
-                  <Select
-                    value={startMinute}
-                    onValueChange={handleStartMinuteChange}
-                    disabled={isSubmitting}
-                  >
-                    <SelectTrigger className="h-9 w-full text-sm">
-                      <SelectValue placeholder="Min" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {["00", "15", "30", "45"].map((val) => (
-                        <SelectItem key={val} value={val} className="text-sm">
-                          {val}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
 
@@ -1143,42 +1151,50 @@ export function CreateBookingForm({
                   End Time <span className="text-red-500">*</span>
                 </Label>
                 <div className="flex items-center gap-2">
-                  <Select
-                    value={endHour}
-                    onValueChange={handleEndHourChange}
-                    disabled={isSubmitting}
-                  >
-                    <SelectTrigger className="h-9 w-full text-sm">
-                      <SelectValue placeholder="Hour" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.from({ length: 24 }).map((_, i) => {
-                        const val = i.toString().padStart(2, "0");
-                        return (
+                  <div className="min-w-0 flex-1">
+                    <Select
+                      value={endHour}
+                      onValueChange={handleEndHourChange}
+                      disabled={isSubmitting}
+                    >
+                      <SelectTrigger className="h-9 w-full text-sm">
+                        <SelectValue placeholder="Hour" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 24 }).map((_, i) => {
+                          const val = i.toString().padStart(2, "0");
+                          return (
+                            <SelectItem
+                              key={val}
+                              value={val}
+                              className="text-sm"
+                            >
+                              {formatHour(i)}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <span className="shrink-0">:</span>
+                  <div className="min-w-0 flex-1">
+                    <Select
+                      value={endMinute}
+                      onValueChange={handleEndMinuteChange}
+                      disabled={isSubmitting}
+                    >
+                      <SelectTrigger className="h-9 w-full text-sm">
+                        <SelectValue placeholder="Min" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {["00", "15", "30", "45"].map((val) => (
                           <SelectItem key={val} value={val} className="text-sm">
-                            {formatHour(i)}
+                            {val}
                           </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                  <span>:</span>
-                  <Select
-                    value={endMinute}
-                    onValueChange={handleEndMinuteChange}
-                    disabled={isSubmitting}
-                  >
-                    <SelectTrigger className="h-9 w-full text-sm">
-                      <SelectValue placeholder="Min" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {["00", "15", "30", "45"].map((val) => (
-                        <SelectItem key={val} value={val} className="text-sm">
-                          {val}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1370,12 +1386,12 @@ export function CreateBookingForm({
             </div>
 
             {/* Submit Button */}
-            <div className="pt-2 flex justify-end gap-2">
+            <div className="pt-2 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <Button
                 variant="outline"
                 onClick={onClose}
                 disabled={isSubmitting}
-                className="h-10 px-4 text-sm"
+                className="h-10 w-full px-4 text-sm sm:w-auto"
               >
                 Cancel
               </Button>
@@ -1388,7 +1404,7 @@ export function CreateBookingForm({
                   selectedAssetIds.length === 0 ||
                   isSubmitting
                 }
-                className="h-10 px-4 text-sm"
+                className="h-10 w-full px-4 text-sm sm:w-auto"
               >
                 {isSubmitting ? (
                   <span className="flex items-center">
@@ -1429,7 +1445,7 @@ export function CreateBookingForm({
           if (!open) handleSuccessDismiss();
         }}
       >
-        <AlertDialogContent className="bg-white">
+        <AlertDialogContent className="w-[calc(100vw-1rem)] bg-white">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5 text-emerald-600" />
@@ -1450,7 +1466,7 @@ export function CreateBookingForm({
           <AlertDialogFooter className="mt-2">
             <AlertDialogAction
               onClick={handleSuccessDismiss}
-              className="bg-[var(--navy)] hover:bg-[var(--navy-hover)] text-white"
+              className="w-full bg-[var(--navy)] text-white hover:bg-[var(--navy-hover)] sm:w-auto"
             >
               Done
             </AlertDialogAction>
@@ -1464,7 +1480,7 @@ export function CreateBookingForm({
           if (!open) handlePartialSuccessDismiss();
         }}
       >
-        <AlertDialogContent className="bg-white">
+        <AlertDialogContent className="w-[calc(100vw-1rem)] bg-white">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-amber-500" />
@@ -1511,7 +1527,7 @@ export function CreateBookingForm({
           <AlertDialogFooter className="mt-2">
             <AlertDialogAction
               onClick={handlePartialSuccessDismiss}
-              className="bg-[var(--navy)] hover:bg-[var(--navy-hover)] text-white"
+              className="w-full bg-[var(--navy)] text-white hover:bg-[var(--navy-hover)] sm:w-auto"
             >
               Done
             </AlertDialogAction>

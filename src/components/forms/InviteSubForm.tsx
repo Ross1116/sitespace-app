@@ -182,7 +182,7 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
   };
 
   const checkSubcontractorExists = async (
-    email: string
+    email: string,
   ): Promise<SubcontractorResponse | null> => {
     try {
       const response = await api.get("/subcontractors/search", {
@@ -196,7 +196,7 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
 
       const exactMatch = subcontractors.find(
         (sub: SubcontractorResponse) =>
-          sub.email.toLowerCase() === email.toLowerCase()
+          sub.email.toLowerCase() === email.toLowerCase(),
       );
 
       if (exactMatch) {
@@ -227,7 +227,7 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
 
     try {
       const existing = await checkSubcontractorExists(
-        contractor.contractorEmail.trim()
+        contractor.contractorEmail.trim(),
       );
 
       setExistingSubcontractor(existing);
@@ -236,7 +236,7 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
       if (existing) {
         const alreadyAssigned = await checkAlreadyAssigned(
           contractor.contractorProjectId,
-          existing.id
+          existing.id,
         );
 
         if (alreadyAssigned) {
@@ -254,7 +254,7 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
 
   const checkAlreadyAssigned = async (
     projectId: string,
-    subcontractorId: string
+    subcontractorId: string,
   ): Promise<boolean> => {
     try {
       const response = await api.get(`/projects/${projectId}`);
@@ -263,7 +263,7 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
       };
 
       const isAssigned = project.subcontractors?.some(
-        (sub) => sub.id === subcontractorId
+        (sub) => sub.id === subcontractorId,
       );
 
       return isAssigned || false;
@@ -293,7 +293,7 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
         subcontractorId = existingSubcontractor.id;
 
         await api.post(
-          `/subcontractors/${existingSubcontractor.id}/projects/${contractor.contractorProjectId}`
+          `/subcontractors/${existingSubcontractor.id}/projects/${contractor.contractorProjectId}`,
         );
 
         setSuccess("Adding existing subcontractor to your project...");
@@ -314,14 +314,14 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
           last_name: contractor.lastName.trim(),
           company_name: contractor.companyName.trim() || undefined,
           // Ensure empty string is converted to undefined
-          trade_specialty: contractor.tradeSpecialty || undefined, 
+          trade_specialty: contractor.tradeSpecialty || undefined,
           phone: contractor.contractorPhone.trim() || undefined,
           project_id: contractor.contractorProjectId,
         };
 
         const createResponse = await api.post(
           "/subcontractors/",
-          subcontractorData
+          subcontractorData,
         );
 
         const createdSubcontractor = createResponse.data;
@@ -330,7 +330,7 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
 
         try {
           await api.post(
-            `/subcontractors/${subcontractorId}/send-welcome-email`
+            `/subcontractors/${subcontractorId}/send-welcome-email`,
           );
         } catch (emailError) {
           console.error("Error sending welcome email:", emailError);
@@ -353,7 +353,7 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
 
       // Safe error extraction handling generic 500s or complex 422s
       let errorMessage = "Failed to process request";
-      
+
       const detail =
         typeof error === "object" && error !== null
           ? (error as { response?: { data?: { detail?: unknown } } }).response
@@ -389,7 +389,7 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader className="text-center">
           <DialogTitle className="text-2xl font-semibold">
             Invite Subcontractor
@@ -422,7 +422,7 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
               <Label htmlFor="contractorEmail">
                 Email Address <span className="text-red-500">*</span>
               </Label>
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <Input
                   id="contractorEmail"
                   name="contractorEmail"
@@ -442,6 +442,7 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
                       isCheckingEmail || !contractor.contractorEmail.trim()
                     }
                     variant="outline"
+                    className="w-full sm:w-auto"
                   >
                     {isCheckingEmail ? (
                       <svg
@@ -482,6 +483,7 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
                     }}
                     variant="outline"
                     size="sm"
+                    className="w-full sm:w-auto"
                   >
                     Change
                   </Button>
@@ -615,18 +617,19 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
             )}
           </div>
 
-          <div className="mt-8 flex justify-center gap-3">
+          <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-center">
             <Button
               type="button"
               variant="outline"
               onClick={() => onClose(false)}
               disabled={isSubmitting}
+              className="w-full sm:w-auto"
             >
               Cancel
             </Button>
             <Button
               type="submit"
-              className="bg-black text-white hover:bg-gray-800"
+              className="w-full bg-black text-white hover:bg-gray-800 sm:w-auto !whitespace-normal text-center leading-tight"
               disabled={isSubmitting || !emailChecked}
             >
               {isSubmitting ? (
@@ -656,7 +659,10 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
               ) : existingSubcontractor ? (
                 "Add to Project"
               ) : (
-                "Create & Add to Project"
+                <>
+                  <span className="sm:hidden">Create & Add</span>
+                  <span className="hidden sm:inline">Create & Add to Project</span>
+                </>
               )}
             </Button>
           </div>

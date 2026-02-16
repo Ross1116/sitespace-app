@@ -448,7 +448,7 @@ export default function HomePage() {
               </div>
             )}
 
-            <div className="bg-white rounded-2xl shadow-sm p-6 min-h-[400px] border border-slate-100 flex flex-col">
+            <div className="bg-white rounded-2xl shadow-sm p-5 sm:p-6 min-h-[400px] border border-slate-100 flex flex-col">
               {loadingBookings ? (
                 <div className="space-y-4">
                   {[1, 2, 3, 4].map((i) => (
@@ -456,9 +456,9 @@ export default function HomePage() {
                   ))}
                 </div>
               ) : filteredSortedBookings.length > 0 ? (
-                <div className="space-y-6">
+                <div className="space-y-5 sm:space-y-6">
                   {Object.keys(groupedBookings).map((month) => (
-                    <div key={month} className="space-y-2">
+                    <div key={month} className="space-y-3">
                       <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2 pl-1 border-b border-slate-100 pb-1">
                         {month}
                       </h3>
@@ -531,9 +531,9 @@ export default function HomePage() {
                             }}
                           >
                             {/* --- LEFT: DATE COLUMN --- */}
-                            <div className="w-20 sm:w-24 flex-shrink-0 flex flex-col items-center justify-center border-r border-slate-200 bg-slate-50/50">
+                            <div className="w-16 sm:w-24 flex-shrink-0 flex flex-col items-center justify-center border-r border-slate-200 bg-slate-50/50 px-1">
                               <div
-                                className={`text-sm font-medium uppercase ${
+                                className={`text-[11px] sm:text-sm font-medium uppercase ${
                                   isBookingToday
                                     ? "text-orange-500"
                                     : status === "pending"
@@ -544,7 +544,7 @@ export default function HomePage() {
                                 {dayOfWeek}
                               </div>
                               <div
-                                className={`text-2xl sm:text-3xl font-bold ${
+                                className={`text-xl sm:text-3xl font-bold ${
                                   isBookingToday
                                     ? "text-orange-600"
                                     : status === "pending"
@@ -557,13 +557,13 @@ export default function HomePage() {
                             </div>
 
                             {/* --- RIGHT: DETAILS --- */}
-                            <div className="flex-1 p-3 pl-4 flex flex-col justify-center">
-                              <div className="flex justify-between items-start mb-1">
-                                <h3 className="font-bold text-slate-900 text-sm line-clamp-1 group-hover:text-blue-900 transition-colors">
+                            <div className="min-w-0 flex-1 p-3 sm:p-3.5 sm:pl-4 flex flex-col justify-center">
+                              <div className="mb-1.5 flex flex-col gap-1.5 sm:flex-row sm:items-start sm:justify-between">
+                                <h3 className="min-w-0 font-bold text-slate-900 text-sm line-clamp-2 sm:line-clamp-1 group-hover:text-blue-900 transition-colors">
                                   {displayTitle}
                                 </h3>
                                 <span
-                                  className={`text-[10px] font-bold px-2 py-0.5 rounded ml-2 capitalize tracking-wide flex-shrink-0 ${
+                                  className={`w-fit text-[10px] font-bold px-2 py-0.5 rounded capitalize tracking-wide flex-shrink-0 ${
                                     status === "confirmed"
                                       ? "bg-green-100 text-green-700"
                                       : status === "pending"
@@ -578,7 +578,7 @@ export default function HomePage() {
                                 </span>
                               </div>
 
-                              <div className="flex items-center text-xs text-slate-500 font-medium mb-1.5">
+                              <div className="mb-2 flex flex-wrap items-center gap-y-1 text-xs font-medium text-slate-500">
                                 <Clock
                                   size={13}
                                   className="mr-1.5 text-slate-400"
@@ -592,37 +592,37 @@ export default function HomePage() {
                                 )}
                               </div>
 
-                              <div className="flex items-center gap-1.5 text-xs mb-1">
+                              <div className="mb-1.5 flex min-w-0 items-center gap-1.5 text-xs">
                                 <MapPin size={13} className="text-blue-500" />
-                                <span className="text-[10px] uppercase tracking-wide font-bold text-slate-500">
+                                <span className="shrink-0 text-[10px] uppercase tracking-wide font-bold text-slate-500">
                                   Asset:
                                 </span>
-                                <span className="text-blue-700 font-semibold truncate max-w-[220px]">
+                                <span className="min-w-0 flex-1 text-blue-700 font-semibold truncate">
                                   {assetLabel}
                                 </span>
                                 {assetCodeSuffix && (
-                                  <span className="text-[10px] text-slate-400 font-medium">
+                                  <span className="hidden text-[10px] text-slate-400 font-medium lg:inline">
                                     {assetCodeSuffix}
                                   </span>
                                 )}
                               </div>
 
-                              <div className="flex items-center gap-1 text-xs font-medium text-slate-400">
+                              <div className="flex min-w-0 items-center gap-1 text-xs font-medium text-slate-400">
                                 <RoleIcon
                                   size={13}
                                   className="text-slate-400"
                                 />
-                                <span className="text-[10px] uppercase tracking-wide font-bold text-slate-500">
+                                <span className="shrink-0 text-[10px] uppercase tracking-wide font-bold text-slate-500">
                                   Booked by:
                                 </span>
-                                <span className="text-slate-600 truncate max-w-[180px]">
+                                <span className="min-w-0 flex-1 text-slate-600 truncate">
                                   {assignee}
                                 </span>
                               </div>
                             </div>
 
                             {/* Arrow indicator on hover */}
-                            <div className="flex items-center pr-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="hidden sm:flex items-center pr-3 opacity-0 group-hover:opacity-100 transition-opacity">
                               <ChevronDown
                                 size={16}
                                 className="text-slate-400 -rotate-90"

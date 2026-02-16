@@ -889,7 +889,7 @@ export default function AssetsTable() {
           open={!!deleteConfirmKey}
           onOpenChange={() => setDeleteConfirmKey(null)}
         >
-          <DialogContent className="sm:max-w-[425px] bg-white">
+          <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-[425px] bg-white">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-red-600">
                 <AlertTriangle className="h-5 w-5" />
@@ -900,14 +900,19 @@ export default function AssetsTable() {
                 be undone.
               </DialogDescription>
             </DialogHeader>
-            <DialogFooter className="flex gap-2 sm:justify-end mt-4">
+            <DialogFooter className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <Button
                 variant="outline"
                 onClick={() => setDeleteConfirmKey(null)}
+                className="w-full sm:w-auto"
               >
                 Cancel
               </Button>
-              <Button variant="destructive" onClick={confirmDeleteAsset}>
+              <Button
+                variant="destructive"
+                onClick={confirmDeleteAsset}
+                className="w-full sm:w-auto"
+              >
                 Yes, Delete
               </Button>
             </DialogFooter>
@@ -916,7 +921,7 @@ export default function AssetsTable() {
 
         {/* Error Dialog */}
         <Dialog open={!!actionError} onOpenChange={() => setActionError(null)}>
-          <DialogContent className="sm:max-w-[425px] bg-white">
+          <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-[425px] bg-white">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-red-600">
                 <AlertTriangle className="h-5 w-5" />
@@ -927,7 +932,11 @@ export default function AssetsTable() {
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setActionError(null)}>
+              <Button
+                variant="outline"
+                onClick={() => setActionError(null)}
+                className="w-full sm:w-auto"
+              >
                 OK
               </Button>
             </DialogFooter>

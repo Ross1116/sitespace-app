@@ -1,223 +1,95 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-} from "@/components/ui/navigation-menu";
-import { Menu, MoveRight, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 
 function TopNav() {
   const navigationItems = [
-    {
-      title: "Home",
-      href: "/",
-      description: "",
-    },
-    {
-      title: "Product",
-      description: "Managing a small business today is already tough.",
-      items: [
-        { title: "Reports", href: "/reports" },
-        { title: "Statistics", href: "/statistics" },
-        { title: "Dashboards", href: "/dashboards" },
-        { title: "Recordings", href: "/recordings" },
-      ],
-    },
-    {
-      title: "Company",
-      description: "Managing a small business today is already tough.",
-      items: [
-        { title: "About us", href: "/about" },
-        { title: "Fundraising", href: "/fundraising" },
-        { title: "Investors", href: "/investors" },
-        { title: "Contact us", href: "/contact" },
-      ],
-    },
+    { title: "Home", href: "/" },
+    { title: "Solutions", href: "/#solutions" },
+    { title: "Pricing", href: "/#pricing" },
   ];
 
   const [isOpen, setOpen] = useState(false);
 
   return (
-    <header className="w-full z-40 top-0 left-0 fixed bg-teal-gradient/30 backdrop-blur-md border-b border-orange-200/40">
-      <div className="container relative mx-auto min-h-20 flex flex-row justify-between items-center px-4 sm:px-6 lg:px-8 lg:grid lg:grid-cols-3 lg:gap-4">
-        {/* Desktop Left Navigation */}
-        <div className="hidden lg:flex justify-start items-center gap-2 md:gap-4 lg:col-start-1">
-          <NavigationMenu className="flex justify-start items-start">
-            <NavigationMenuList className="flex justify-start gap-2 md:gap-4 flex-row">
-              {navigationItems.map((item) => (
-                <NavigationMenuItem key={item.title}>
-                  {item.href ? (
-                    /* 
-                       FIX 1: Invert wrapping + use asChild. 
-                       NavigationMenuLink passes logic down, Link renders the actual <a> 
-                    */
-                    <NavigationMenuLink asChild>
-                      <Link
-                        href={item.href}
-                        className="font-medium text-sm px-3 py-2 hover:bg-orange-200/50 rounded-md transition-colors"
-                      >
-                        {item.title}
-                      </Link>
-                    </NavigationMenuLink>
-                  ) : (
-                    <>
-                      <NavigationMenuTrigger className="font-medium text-sm bg-transparent hover:bg-orange-200/50 focus:bg-orange-200/50 data-[active]:bg-orange-200/50 data-[state=open]:bg-orange-200/50 transition-colors">
-                        {item.title}
-                      </NavigationMenuTrigger>
-
-                      <NavigationMenuContent className="!w-[450px] p-4 bg-orange-100/90 backdrop-blur-md border border-orange-200/60 shadow-lg rounded-lg">
-                        <div className="flex flex-col lg:grid grid-cols-2 gap-4">
-                          <div className="flex flex-col h-full justify-between">
-                            <div className="flex flex-col">
-                              <p className="text-base font-semibold">{item.title}</p>
-                              <p className="text-muted-foreground text-sm">
-                                {item.description}
-                              </p>
-                            </div>
-                            <Button
-                              size="sm"
-                              className="mt-10 bg-orange-500 hover:bg-orange-600 text-white"
-                            >
-                              Book a call today
-                            </Button>
-                          </div>
-
-                          <div className="flex flex-col text-sm h-full justify-end space-y-1">
-                            {item.items?.map((subItem) => (
-                              /* 
-                                FIX 2: Invert wrapping + use asChild.
-                                Move the key to the outermost element (NavigationMenuLink).
-                                Move the className to Link (the rendered element).
-                              */
-                              <NavigationMenuLink
-                                key={subItem.title}
-                                asChild
-                              >
-                                <Link
-                                  href={subItem.href}
-                                  className="flex flex-row justify-between items-center hover:bg-orange-200/50 py-2 px-3 rounded-md transition-colors"
-                                >
-                                  <span>{subItem.title}</span>
-                                  <MoveRight className="w-4 h-4 text-muted-foreground" />
-                                </Link>
-                              </NavigationMenuLink>
-                            ))}
-                          </div>
-                        </div>
-                      </NavigationMenuContent>
-                    </>
-                  )}
-                </NavigationMenuItem>
-              ))}
-            </NavigationMenuList>
-          </NavigationMenu>
+    <header className="fixed top-0 left-0 z-40 w-full border-b border-white/30 bg-[var(--teal-gradient)]/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_8px_30px_rgba(15,42,74,0.08)] backdrop-blur-xl before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/70 before:to-transparent">
+      <div className="container mx-auto flex min-h-[72px] items-center justify-between px-4 sm:px-6 lg:px-8">
+        <div className="hidden items-center gap-1 lg:flex">
+          {navigationItems.map((item) => (
+            <Link
+              key={item.title}
+              href={item.href}
+              className="group relative rounded-md px-3 py-2 text-sm font-semibold text-slate-700 transition-colors hover:text-[var(--brand-blue)]"
+            >
+              {item.title}
+              <span className="absolute inset-x-3 bottom-1 h-0.5 origin-left scale-x-0 rounded-full bg-[var(--brand-orange)] transition-transform duration-200 group-hover:scale-x-100" />
+            </Link>
+          ))}
         </div>
 
-        {/* Logo/Brand */}
-        <div className="flex items-center lg:justify-center lg:col-start-2">
+        <div className="flex items-center lg:absolute lg:left-1/2 lg:-translate-x-1/2">
           <Link href="/" className="inline-flex items-center">
             <Image
               src="/full-logo.svg"
               alt="Sitespace"
               width={120}
               height={48}
-              className="cursor-pointer hover:scale-105 transition-all"
+              className="transition-all duration-200 hover:scale-[1.03]"
             />
           </Link>
         </div>
 
-        {/* Desktop Right Buttons */}
-        <div className="hidden lg:flex justify-end items-center gap-2 md:gap-3 lg:col-start-3">
-          <Button variant="ghost" className="text-sm h-9 px-3 hover:bg-orange-200/50">
-            Book a demo
-          </Button>
-
-          <div className="border-r h-6 hidden md:inline-block border-orange-300/70" />
-
+        <div className="hidden items-center gap-2 lg:flex">
           <Button
             variant="outline"
-            className="cursor-pointer text-sm h-9 px-3 border-orange-300/70 hover:bg-orange-200/50 focus-visible:ring-orange-400"
+            className="h-9 border-white/50 bg-white/55 px-4 text-sm font-semibold text-[var(--navy)] hover:border-[var(--brand-blue)] hover:bg-white/75"
             asChild
           >
             <Link href="/login">Sign in</Link>
           </Button>
 
           <Button
-            className="cursor-pointer text-sm h-9 px-3 bg-orange-500 hover:bg-orange-600 focus-visible:ring-orange-400 text-white"
+            className="h-9 bg-[var(--brand-blue)] px-4 text-sm font-semibold text-white shadow-lg shadow-blue-900/20 hover:bg-[var(--navy-deep)]"
             asChild
           >
             <Link href="/register">Get Started</Link>
           </Button>
         </div>
 
-        {/* Mobile Hamburger */}
-        <div className="lg:hidden flex items-center">
-          <Button variant="ghost" onClick={() => setOpen(!isOpen)} className="p-2">
+        <div className="flex items-center lg:hidden">
+          <Button
+            variant="ghost"
+            onClick={() => setOpen(!isOpen)}
+            className="p-2 text-[var(--navy)] hover:bg-white/40"
+            aria-expanded={isOpen}
+            aria-label="Toggle navigation menu"
+          >
             {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </Button>
         </div>
 
-        {/* Mobile Menu Dropdown */}
         {isOpen && (
-          <div
-            className="absolute top-full left-0 w-full lg:hidden 
-                         bg-orange-100/95 backdrop-blur-md shadow-xl 
-                         border-t border-orange-200/60"
-          >
-            <div className="container mx-auto flex flex-col py-4 px-4 sm:px-6 gap-2">
+          <div className="absolute left-0 top-full w-full border-t border-white/40 bg-white/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.5),0_14px_34px_rgba(15,42,74,0.12)] backdrop-blur-xl lg:hidden">
+            <div className="container mx-auto flex flex-col gap-2 px-4 py-4 sm:px-6">
               {navigationItems.map((item) => (
-                <div key={item.title} className="py-2 border-b border-orange-200/40 last:border-b-0">
-                  <div className="flex flex-col gap-2">
-                    {item.href ? (
-                      <Link
-                        href={item.href}
-                        onClick={() => setOpen(false)}
-                        className="flex justify-between items-center py-2 text-gray-700 hover:text-orange-600"
-                      >
-                        <span className="text-lg font-medium">{item.title}</span>
-                        <MoveRight className="w-4 h-4 stroke-1 text-muted-foreground" />
-                      </Link>
-                    ) : (
-                      <p className="text-lg font-medium text-gray-800 py-2">
-                        {item.title}
-                      </p>
-                    )}
-
-                    {item.items &&
-                      item.items.map((subItem) => (
-                        <Link
-                          key={subItem.title}
-                          href={subItem.href}
-                          onClick={() => setOpen(false)}
-                          className="flex justify-between items-center py-1.5 pl-3 text-gray-600 hover:text-orange-600 hover:bg-orange-100/50 rounded-md"
-                        >
-                          <span>{subItem.title}</span>
-                          <MoveRight className="w-4 h-4 stroke-1 text-muted-foreground" />
-                        </Link>
-                      ))}
-                  </div>
-                </div>
+                <Link
+                  key={item.title}
+                  href={item.href}
+                  onClick={() => setOpen(false)}
+                  className="rounded-md px-2 py-2 text-base font-semibold text-slate-700 transition-colors hover:bg-white/50 hover:text-[var(--brand-blue)]"
+                >
+                  {item.title}
+                </Link>
               ))}
 
-              <div className="flex flex-col gap-3 pt-4 mt-2 border-t border-orange-200/40">
+              <div className="mt-2 flex flex-col gap-3 border-t border-slate-200 pt-4">
                 <Button
                   variant="outline"
-                  className="border-orange-300/70 hover:bg-orange-200/50 focus-visible:ring-orange-400 text-orange-700 hover:text-orange-800"
-                >
-                  Book a demo
-                </Button>
-
-                <Button
-                  variant="outline"
-                  className="border-orange-300/70 hover:bg-orange-200/50 focus-visible:ring-orange-400 text-orange-700 hover:text-orange-800"
+                  className="border-white/60 bg-white/65 font-semibold text-[var(--navy)] hover:border-[var(--brand-blue)] hover:bg-white/85"
                   asChild
                   onClick={() => setOpen(false)}
                 >
@@ -225,7 +97,7 @@ function TopNav() {
                 </Button>
 
                 <Button
-                  className="bg-orange-500 hover:bg-orange-600 focus-visible:ring-orange-400 text-white"
+                  className="bg-[var(--brand-blue)] font-semibold text-white hover:bg-[var(--navy-deep)]"
                   asChild
                   onClick={() => setOpen(false)}
                 >

@@ -262,7 +262,7 @@ export default function BookingCardDropdown({
 
       {/* Deny Modal */}
       <Dialog open={isDenyModalOpen} onOpenChange={setIsDenyModalOpen}>
-        <DialogContent className="sm:max-w-[425px] bg-white">
+        <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-[425px] bg-white">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-600">
               <AlertTriangle className="h-5 w-5" />
@@ -278,12 +278,17 @@ export default function BookingCardDropdown({
               .
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="flex gap-2 sm:justify-end mt-4">
-            <Button variant="outline" onClick={() => setIsDenyModalOpen(false)}>
+          <DialogFooter className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setIsDenyModalOpen(false)}
+              className="w-full sm:w-auto"
+            >
               Back
             </Button>
             <Button
               variant="destructive"
+              className="w-full sm:w-auto"
               onClick={() =>
                 updateBookingStatus(
                   normalizedStatus === "pending" ? "denied" : "cancelled",
@@ -298,7 +303,7 @@ export default function BookingCardDropdown({
 
       {/* Delete Modal */}
       <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
-        <DialogContent className="sm:max-w-[425px] bg-white">
+        <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-[425px] bg-white">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-600">
               <Trash2 className="h-5 w-5" />
@@ -309,14 +314,19 @@ export default function BookingCardDropdown({
               cannot be undone.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="flex gap-2 sm:justify-end mt-4">
+          <DialogFooter className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button
               variant="outline"
               onClick={() => setIsDeleteModalOpen(false)}
+              className="w-full sm:w-auto"
             >
               Back
             </Button>
-            <Button variant="destructive" onClick={deleteBooking}>
+            <Button
+              variant="destructive"
+              onClick={deleteBooking}
+              className="w-full sm:w-auto"
+            >
               Yes, Delete
             </Button>
           </DialogFooter>
@@ -325,7 +335,7 @@ export default function BookingCardDropdown({
 
       {/* Confirm Modal for Competing Pending Requests */}
       <Dialog open={isConfirmModalOpen} onOpenChange={setIsConfirmModalOpen}>
-        <DialogContent className="sm:max-w-[425px] bg-white">
+        <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-[425px] bg-white">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-emerald-600">
               <AlertTriangle className="h-5 w-5" />
@@ -337,16 +347,17 @@ export default function BookingCardDropdown({
               {competingPendingCount === 1 ? "" : "s"} for this time slot.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="flex gap-2 sm:justify-end mt-4">
+          <DialogFooter className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button
               variant="outline"
               onClick={() => setIsConfirmModalOpen(false)}
               disabled={isLoading}
+              className="w-full sm:w-auto"
             >
               Back
             </Button>
             <Button
-              className="bg-[var(--navy)] hover:bg-[var(--navy-hover)] text-white"
+              className="w-full bg-[var(--navy)] text-white hover:bg-[var(--navy-hover)] sm:w-auto"
               onClick={async () => {
                 setIsConfirmModalOpen(false);
                 await updateBookingStatus("confirmed");
@@ -361,7 +372,7 @@ export default function BookingCardDropdown({
 
       {/* Error Dialog */}
       <Dialog open={!!errorMessage} onOpenChange={() => setErrorMessage(null)}>
-        <DialogContent className="sm:max-w-[425px] bg-white">
+        <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-[425px] bg-white">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-600">
               <AlertTriangle className="h-5 w-5" />
@@ -372,7 +383,11 @@ export default function BookingCardDropdown({
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setErrorMessage(null)}>
+            <Button
+              variant="outline"
+              onClick={() => setErrorMessage(null)}
+              className="w-full sm:w-auto"
+            >
               OK
             </Button>
           </DialogFooter>

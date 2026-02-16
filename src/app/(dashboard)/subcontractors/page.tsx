@@ -124,10 +124,6 @@ export default function SubcontractorsPage() {
     }
   }, [user?.role, router]);
 
-  if (user?.role === "subcontractor") {
-    return null;
-  }
-
   // Re-read project on cross-tab changes
   const [projectVersion, setProjectVersion] = useState(0);
   useEffect(() => {
@@ -157,19 +153,25 @@ export default function SubcontractorsPage() {
   // SWR — role-based endpoint
   const swrKey = useMemo(() => {
     if (!user || user.role === "subcontractor") return null;
-    const endpoint = user.role === "admin"
-      ? "/subcontractors/"
-      : "/subcontractors/my-subcontractors";
-    const params = new URLSearchParams({ skip: "0", limit: "1000", is_active: "true" });
+    const endpoint =
+      user.role === "admin"
+        ? "/subcontractors/"
+        : "/subcontractors/my-subcontractors";
+    const params = new URLSearchParams({
+      skip: "0",
+      limit: "1000",
+      is_active: "true",
+    });
     if (projectId) params.set("project_id", projectId);
     return `${endpoint}?${params.toString()}`;
   }, [user, projectId]);
 
-  const { data, isLoading: loading, error: fetchError, mutate } = useSWR<SubcontractorListResponse>(
-    swrKey,
-    swrFetcher,
-    SWR_CONFIG,
-  );
+  const {
+    data,
+    isLoading: loading,
+    error: fetchError,
+    mutate,
+  } = useSWR<SubcontractorListResponse>(swrKey, swrFetcher, SWR_CONFIG);
 
   const allSubs = useMemo(
     () => (data?.subcontractors || []).map(transformBackendSubcontractor),
@@ -278,13 +280,17 @@ export default function SubcontractorsPage() {
     { label: "Email", field: "contractorEmail", colSpan: "col-span-2" },
   ];
 
+  if (user?.role === "subcontractor") {
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-[var(--page-bg)] p-4 sm:p-6 lg:p-8 font-sans">
       <div className="max-w-screen mx-auto space-y-6">
         <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-1 min-h-[85vh] flex flex-col relative overflow-hidden">
           <div className="p-6 flex-1 flex flex-col">
             {/* Header */}
-            <div className="flex justify-between items-end mb-6">
+            <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <h1 className="text-2xl font-extrabold text-slate-900">
                   Subcontractors
@@ -296,9 +302,13 @@ export default function SubcontractorsPage() {
               {user?.role !== "subcontractor" && (
                 <Button
                   onClick={() => setIsSubFormOpen(true)}
-                  className="bg-[var(--navy)] hover:bg-[var(--navy-hover)] text-white rounded-lg px-4 py-2 h-auto text-sm font-medium shadow-md shadow-slate-900/10"
+                  className="h-auto w-full rounded-lg bg-[var(--navy)] px-4 py-2 text-sm font-medium text-white shadow-md shadow-slate-900/10 hover:bg-[var(--navy-hover)] sm:w-auto"
                 >
-                  <Plus className="mr-2 h-4 w-4" /> Invite a subcontractor
+                  <Plus className="mr-2 h-4 w-4" />
+                  <span className="sm:hidden">Invite subcontractor</span>
+                  <span className="hidden sm:inline">
+                    Invite a subcontractor
+                  </span>
                 </Button>
               )}
             </div>
@@ -654,4 +664,3 @@ export default function SubcontractorsPage() {
     </div>
   );
 }
-

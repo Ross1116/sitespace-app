@@ -273,7 +273,7 @@ export default function BookingsPage() {
         <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-1 min-h-[85vh] flex flex-col relative overflow-hidden">
           <div className="p-6 flex-1 flex flex-col">
             {/* Header */}
-            <div className="flex flex-col xl:flex-row justify-between items-end mb-8 gap-6">
+            <div className="mb-8 flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
               <div>
                 <h1 className="text-2xl font-extrabold text-slate-900">
                   Bookings
@@ -283,9 +283,9 @@ export default function BookingsPage() {
                 </p>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-center gap-4 w-full xl:w-auto">
-                <div className="flex gap-3 w-full sm:w-auto">
-                  <div className="bg-[var(--navy)] text-white rounded-xl px-5 py-2 flex flex-col items-center justify-center min-w-[110px] shadow-md shadow-slate-900/10">
+              <div className="flex w-full flex-col gap-4 sm:flex-row sm:items-center xl:w-auto">
+                <div className="flex w-full gap-3 sm:w-auto">
+                  <div className="flex min-w-0 flex-1 flex-col items-center justify-center rounded-xl bg-[var(--navy)] px-4 py-2.5 text-white shadow-md shadow-slate-900/10 sm:min-w-[110px] sm:flex-none sm:px-5">
                     <span className="text-2xl font-bold leading-none">
                       {allBookings.length}
                     </span>
@@ -293,7 +293,7 @@ export default function BookingsPage() {
                       Total
                     </span>
                   </div>
-                  <div className="bg-[var(--brand-orange)] text-white rounded-xl px-5 py-2 flex flex-col items-center justify-center min-w-[110px] shadow-md shadow-orange-900/10">
+                  <div className="flex min-w-0 flex-1 flex-col items-center justify-center rounded-xl bg-[var(--brand-orange)] px-4 py-2.5 text-white shadow-md shadow-orange-900/10 sm:min-w-[110px] sm:flex-none sm:px-5">
                     <span className="text-2xl font-bold leading-none">
                       {pendingCount}
                     </span>
@@ -305,7 +305,7 @@ export default function BookingsPage() {
 
                 <Button
                   onClick={() => setIsBookingFormOpen(true)}
-                  className="bg-[var(--navy)] hover:bg-[var(--navy-hover)] text-white rounded-lg px-6 py-5 h-auto text-sm font-bold shadow-md shadow-slate-900/10 w-full sm:w-auto"
+                  className="h-auto w-full rounded-lg bg-[var(--navy)] px-6 py-3 text-sm font-bold text-white shadow-md shadow-slate-900/10 hover:bg-[var(--navy-hover)] sm:w-auto"
                 >
                   <Plus className="mr-2 h-4 w-4 stroke-[3]" /> New Booking
                 </Button>

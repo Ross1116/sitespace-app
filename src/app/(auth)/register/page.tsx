@@ -59,7 +59,9 @@ export default function Register() {
     setError("");
 
     if (passedCount < 4) {
-      setError("Password must be at least 8 characters with uppercase, lowercase, and a number");
+      setError(
+        "Password must be at least 8 characters with uppercase, lowercase, and a number",
+      );
       return;
     }
 
@@ -137,13 +139,16 @@ export default function Register() {
           </div>
 
           {error && (
-            <div className="bg-red-50 border border-red-100 text-red-600 px-4 py-3 rounded-lg text-sm font-medium animate-in slide-in-from-top-2" role="alert">
+            <div
+              className="bg-red-50 border border-red-100 text-red-600 px-4 py-3 rounded-lg text-sm font-medium animate-in slide-in-from-top-2"
+              role="alert"
+            >
               {error}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="firstName">First Name</Label>
                 <Input
@@ -224,7 +229,9 @@ export default function Register() {
                         style={{ width: `${(passedCount / 4) * 100}%` }}
                       />
                     </div>
-                    <span className={`text-xs font-medium ${passedCount <= 1 ? "text-red-600" : passedCount === 2 ? "text-amber-600" : passedCount === 3 ? "text-blue-600" : "text-emerald-600"}`}>
+                    <span
+                      className={`text-xs font-medium ${passedCount <= 1 ? "text-red-600" : passedCount === 2 ? "text-amber-600" : passedCount === 3 ? "text-blue-600" : "text-emerald-600"}`}
+                    >
                       {strengthLabel}
                     </span>
                   </div>
@@ -282,4 +289,3 @@ export default function Register() {
     </div>
   );
 }
-

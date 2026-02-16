@@ -63,7 +63,7 @@ export default function RescheduleBookingForm({
   const [error, setError] = useState<string | null>(null);
 
   // Form State
-  const [title, setTitle] = useState(""); 
+  const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [assetName, setAssetName] = useState("");
@@ -94,9 +94,9 @@ export default function RescheduleBookingForm({
       const booking = response.data;
 
       // 1. Set Basic Info
-      setTitle(booking.purpose || booking.notes?.split("\n")[0] || "Booking"); 
+      setTitle(booking.purpose || booking.notes?.split("\n")[0] || "Booking");
       setNotes(booking.notes || "");
-      
+
       if (booking.asset) {
         setAssetName(booking.asset.name);
         setAssetCode(booking.asset.asset_code);
@@ -112,25 +112,29 @@ export default function RescheduleBookingForm({
 
       setStartHour(format(startDate, "HH"));
       setStartMinute(format(startDate, "mm"));
-      
+
       setEndHour(format(endDate, "HH"));
       setEndMinute(format(endDate, "mm"));
 
       // 4. Calculate Duration
       const diff = differenceInMinutes(endDate, startDate);
       setDuration(diff.toString());
-
     } catch (err: unknown) {
       if (isAbortError(err, signal)) return;
       console.error("Failed to fetch booking:", err);
-      setError(getApiErrorMessage(err, "Failed to load booking details. Please try again."));
+      setError(
+        getApiErrorMessage(
+          err,
+          "Failed to load booking details. Please try again.",
+        ),
+      );
     } finally {
       if (!signal?.aborted) setLoading(false);
     }
   };
 
   // --- Time Logic Handlers ---
-  
+
   const formatHour = (hour: number): string => {
     const period = hour >= 12 ? "PM" : "AM";
     const displayHour = hour % 12 || 12;
@@ -139,12 +143,12 @@ export default function RescheduleBookingForm({
 
   const calculateEndTime = (sHour: string, sMinute: string, dur: string) => {
     if (!sHour || !sMinute) return;
-    
+
     const baseDate = new Date();
     baseDate.setHours(parseInt(sHour), parseInt(sMinute), 0);
-    
+
     const endDate = addMinutes(baseDate, parseInt(dur));
-    
+
     setEndHour(format(endDate, "HH"));
     setEndMinute(format(endDate, "mm"));
   };
@@ -167,14 +171,19 @@ export default function RescheduleBookingForm({
   const handleEndHourChange = (val: string) => setEndHour(val);
   const handleEndMinuteChange = (val: string) => setEndMinute(val);
 
-
   const handleSubmit = async () => {
     setError(null);
     setSubmitting(true);
 
     try {
       // Validation
-      if (!selectedDate || !startHour || !startMinute || !endHour || !endMinute) {
+      if (
+        !selectedDate ||
+        !startHour ||
+        !startMinute ||
+        !endHour ||
+        !endMinute
+      ) {
         throw new Error("Please fill in all date and time fields");
       }
 
@@ -184,7 +193,7 @@ export default function RescheduleBookingForm({
         start_time: `${startHour}:${startMinute}:00`,
         end_time: `${endHour}:${endMinute}:00`,
         purpose: title,
-        notes: notes
+        notes: notes,
       };
 
       // Call Update API
@@ -192,7 +201,6 @@ export default function RescheduleBookingForm({
 
       onSave(); // Refresh parent list
       onClose(); // Close modal
-      
     } catch (err: unknown) {
       console.error("Update failed:", err);
       setError(getApiErrorMessage(err, "Failed to reschedule booking"));
@@ -203,7 +211,7 @@ export default function RescheduleBookingForm({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-full max-w-md bg-white max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-md bg-white max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Clock className="h-5 w-5 text-orange-600" />
@@ -224,14 +232,17 @@ export default function RescheduleBookingForm({
           </div>
         ) : (
           <div className="space-y-5 mt-2">
-            
             {/* Read-Only Asset Info */}
             <div className="bg-stone-50 p-3 rounded-md border border-stone-200">
-               <Label className="text-xs text-gray-500 uppercase">Asset</Label>
-               <div className="flex items-center justify-between mt-1">
-                 <span className="font-medium text-sm">{assetName || "Unknown Asset"}</span>
-                 <Badge variant="outline" className="text-xs bg-white">{assetCode}</Badge>
-               </div>
+              <Label className="text-xs text-gray-500 uppercase">Asset</Label>
+              <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+                <span className="font-medium text-sm">
+                  {assetName || "Unknown Asset"}
+                </span>
+                <Badge variant="outline" className="text-xs bg-white">
+                  {assetCode}
+                </Badge>
+              </div>
             </div>
 
             {/* Basic Info */}
@@ -266,70 +277,111 @@ export default function RescheduleBookingForm({
                     className="w-full justify-start text-left font-normal"
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
+                    {selectedDate ? (
+                      format(selectedDate, "PPP")
+                    ) : (
+                      <span>Pick a date</span>
+                    )}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
+                <PopoverContent className="w-auto max-w-[calc(100vw-1rem)] p-0">
                   <Calendar
                     mode="single"
                     selected={selectedDate}
                     onSelect={(date) => date && setSelectedDate(date)}
                     initialFocus
-                    disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))}
+                    disabled={(date) =>
+                      date < new Date(new Date().setHours(0, 0, 0, 0))
+                    }
                   />
                 </PopoverContent>
               </Popover>
             </div>
 
             {/* Time Selection */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {/* Start Time */}
               <div className="space-y-2">
                 <Label>Start Time</Label>
-                <div className="flex gap-2">
-                  <Select value={startHour} onValueChange={handleStartHourChange}>
-                    <SelectTrigger><SelectValue placeholder="HH" /></SelectTrigger>
-                    <SelectContent>
-                      {Array.from({ length: 24 }).map((_, i) => (
-                        <SelectItem key={i} value={i.toString().padStart(2, '0')}>
-                          {formatHour(i)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select value={startMinute} onValueChange={handleStartMinuteChange}>
-                    <SelectTrigger><SelectValue placeholder="MM" /></SelectTrigger>
-                    <SelectContent>
-                      {["00", "15", "30", "45"].map((m) => (
-                        <SelectItem key={m} value={m}>{m}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="flex items-center gap-2">
+                  <div className="min-w-0 flex-1">
+                    <Select
+                      value={startHour}
+                      onValueChange={handleStartHourChange}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="HH" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 24 }).map((_, i) => (
+                          <SelectItem
+                            key={i}
+                            value={i.toString().padStart(2, "0")}
+                          >
+                            {formatHour(i)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <Select
+                      value={startMinute}
+                      onValueChange={handleStartMinuteChange}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="MM" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {["00", "15", "30", "45"].map((m) => (
+                          <SelectItem key={m} value={m}>
+                            {m}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
 
               {/* End Time */}
               <div className="space-y-2">
                 <Label>End Time</Label>
-                <div className="flex gap-2">
-                  <Select value={endHour} onValueChange={handleEndHourChange}>
-                    <SelectTrigger><SelectValue placeholder="HH" /></SelectTrigger>
-                    <SelectContent>
-                      {Array.from({ length: 24 }).map((_, i) => (
-                        <SelectItem key={i} value={i.toString().padStart(2, '0')}>
-                          {formatHour(i)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select value={endMinute} onValueChange={handleEndMinuteChange}>
-                    <SelectTrigger><SelectValue placeholder="MM" /></SelectTrigger>
-                    <SelectContent>
-                      {["00", "15", "30", "45"].map((m) => (
-                        <SelectItem key={m} value={m}>{m}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="flex items-center gap-2">
+                  <div className="min-w-0 flex-1">
+                    <Select value={endHour} onValueChange={handleEndHourChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="HH" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 24 }).map((_, i) => (
+                          <SelectItem
+                            key={i}
+                            value={i.toString().padStart(2, "0")}
+                          >
+                            {formatHour(i)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <Select
+                      value={endMinute}
+                      onValueChange={handleEndMinuteChange}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="MM" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {["00", "15", "30", "45"].map((m) => (
+                          <SelectItem key={m} value={m}>
+                            {m}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
             </div>
@@ -338,25 +390,34 @@ export default function RescheduleBookingForm({
             <div className="space-y-2">
               <Label>Duration</Label>
               <Select value={duration} onValueChange={handleDurationChange}>
-                <SelectTrigger><SelectValue placeholder="Select Duration" /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Duration" />
+                </SelectTrigger>
                 <SelectContent>
                   {[15, 30, 45, 60, 90, 120, 180, 240, 300, 360].map((val) => (
                     <SelectItem key={val} value={val.toString()}>
-                      {val >= 60 ? `${val / 60} hr${val > 60 ? 's' : ''}` : `${val} min`}
+                      {val >= 60
+                        ? `${val / 60} hr${val > 60 ? "s" : ""}`
+                        : `${val} min`}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
-            <DialogFooter className="gap-2 mt-6">
-              <Button variant="outline" onClick={onClose} disabled={submitting}>
+            <DialogFooter className="mt-6 flex-col gap-2 sm:flex-row">
+              <Button
+                variant="outline"
+                onClick={onClose}
+                disabled={submitting}
+                className="w-full sm:w-auto"
+              >
                 Cancel
               </Button>
-              <Button 
-                onClick={handleSubmit} 
+              <Button
+                onClick={handleSubmit}
                 disabled={submitting || loading}
-                className="bg-orange-600 hover:bg-orange-700"
+                className="w-full bg-orange-600 hover:bg-orange-700 sm:w-auto"
               >
                 {submitting ? "Saving..." : "Update Booking"}
               </Button>
