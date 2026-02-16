@@ -491,11 +491,9 @@ export default function HomePage() {
                         const assetCodeSuffix =
                           assetName && assetCode ? `(${assetCode})` : "";
 
-                        const subName =
-                          booking.subcontractor?.company_name ||
-                          (booking.subcontractor
-                            ? `${booking.subcontractor.first_name} ${booking.subcontractor.last_name}`.trim()
-                            : "");
+                        const subName = booking.subcontractor
+                          ? `${booking.subcontractor.first_name} ${booking.subcontractor.last_name}`.trim()
+                          : "";
 
                         const assignee = booking.subcontractor_id
                           ? subName || "Unknown Subcontractor"

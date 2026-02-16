@@ -52,11 +52,9 @@ const transformBookingToLegacyFormat = (
   const managerName = booking.manager
     ? `${booking.manager.first_name} ${booking.manager.last_name}`
     : "Unknown";
-  const subName =
-    booking.subcontractor?.company_name ||
-    (booking.subcontractor
-      ? `${booking.subcontractor.first_name} ${booking.subcontractor.last_name}`
-      : "");
+  const subName = booking.subcontractor
+    ? `${booking.subcontractor.first_name} ${booking.subcontractor.last_name}`.trim()
+    : "";
 
   const createdByName =
     booking.created_by_name ||

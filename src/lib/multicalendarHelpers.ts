@@ -109,12 +109,13 @@ export function convertBookingToCalendarEvent(
       .filter(Boolean)
       .join(" ")
       .trim() || "Manager";
-  const subName =
-    getString(subcontractor?.company_name) ||
-    [getString(subcontractor?.first_name), getString(subcontractor?.last_name)]
-      .filter(Boolean)
-      .join(" ")
-      .trim();
+  const subName = [
+    getString(subcontractor?.first_name),
+    getString(subcontractor?.last_name),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
   const subcontractorId = getId(raw.subcontractor_id);
 
   const createdBy = isRecord(raw.created_by) ? raw.created_by : undefined;
