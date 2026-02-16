@@ -31,7 +31,8 @@ export default function BookingList({
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
 
   // Sidebar state
-  const [sidebarBooking, setSidebarBooking] = useState<TransformedBooking | null>(null);
+  const [sidebarBooking, setSidebarBooking] =
+    useState<TransformedBooking | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const bookingRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -289,22 +290,22 @@ export default function BookingList({
         </div>
 
         {totalPages > 1 && (
-          <div className="flex justify-center items-center gap-4 pt-4 border-t border-slate-100">
+          <div className="flex flex-wrap items-center justify-center gap-2.5 border-t border-slate-100 pt-4 sm:gap-4">
             <Button
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={currentPage === 1}
-              className="bg-[var(--navy)] text-white hover:bg-[var(--navy-hover)] disabled:bg-slate-200 disabled:text-slate-400 rounded-full h-9 px-6 text-xs font-bold"
+              className="h-9 min-w-[96px] rounded-full bg-[var(--navy)] px-4 text-xs font-bold text-white hover:bg-[var(--navy-hover)] disabled:bg-slate-200 disabled:text-slate-400 sm:px-6"
             >
               Prev
             </Button>
-            <span className="text-xs font-bold text-slate-500">
+            <span className="order-first w-full text-center text-xs font-bold text-slate-500 sm:order-none sm:w-auto">
               Page <span className="text-slate-900">{currentPage}</span> of{" "}
               <span className="text-slate-900">{totalPages}</span>
             </span>
             <Button
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
-              className="bg-[var(--navy)] text-white hover:bg-[var(--navy-hover)] disabled:bg-slate-200 disabled:text-slate-400 rounded-full h-9 px-6 text-xs font-bold"
+              className="h-9 min-w-[96px] rounded-full bg-[var(--navy)] px-4 text-xs font-bold text-white hover:bg-[var(--navy-hover)] disabled:bg-slate-200 disabled:text-slate-400 sm:px-6"
             >
               Next
             </Button>
@@ -321,4 +322,3 @@ export default function BookingList({
     </>
   );
 }
-

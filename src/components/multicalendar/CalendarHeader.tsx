@@ -141,7 +141,7 @@ export function CalendarHeader({
             </PopoverTrigger>
             <PopoverContent
               align="start"
-              className="w-[250px] p-2 border-slate-200"
+              className="w-[250px] max-w-[calc(100vw-1rem)] p-2 border-slate-200"
             >
               <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-100">
                 <span className="text-xs font-semibold text-slate-700">
@@ -210,7 +210,7 @@ export function CalendarHeader({
             }}
             disabled={loading || assetCalendars.length === 0}
           >
-            <SelectTrigger className="w-[170px] h-8 text-xs bg-white border-slate-200 shadow-sm">
+            <SelectTrigger className="h-8 w-full max-w-[170px] text-xs bg-white border-slate-200 shadow-sm">
               <SelectValue placeholder="Select asset" />
             </SelectTrigger>
             <SelectContent>
@@ -265,7 +265,7 @@ export function CalendarHeader({
                 </PopoverTrigger>
                 <PopoverContent
                   align="center"
-                  className="w-[280px] p-2 border-slate-200"
+                  className="w-[280px] max-w-[calc(100vw-1rem)] p-2 border-slate-200"
                 >
                   <Calendar
                     date={date}
@@ -273,7 +273,7 @@ export function CalendarHeader({
                     view="month"
                     events={[]}
                   >
-                    <div className="w-full min-w-[240px]">
+                    <div className="w-full min-w-0">
                       <div className="flex items-center justify-between mb-2 border-b border-slate-100 pb-2">
                         <CalendarCurrentDate className="text-sm font-bold text-slate-900" />
                         <div className="flex items-center bg-white border border-slate-200 rounded-md h-7">

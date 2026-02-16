@@ -282,9 +282,11 @@ function ResetPasswordForm() {
               </div>
             )}
             {password && (
-              <p className="text-[10px] text-slate-400 mt-1 flex justify-between">
-                <span>Length</span> <span>Upper</span> <span>Lower</span>{" "}
-                <span>Number</span>
+              <p className="mt-1 grid grid-cols-4 text-[10px] text-slate-400">
+                <span className="text-left">Length</span>
+                <span className="text-center">Upper</span>
+                <span className="text-center">Lower</span>
+                <span className="text-right">Number</span>
               </p>
             )}
 

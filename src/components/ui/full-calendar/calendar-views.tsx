@@ -420,7 +420,7 @@ export const CalendarDayView = ({
         open={!!validationError}
         onOpenChange={() => setValidationError(null)}
       >
-        <AlertDialogContent className="bg-white">
+        <AlertDialogContent className="w-[calc(100vw-1rem)] bg-white">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 text-red-600">
               <AlertCircle className="h-5 w-5" />
@@ -433,7 +433,7 @@ export const CalendarDayView = ({
           <AlertDialogFooter>
             <AlertDialogAction
               onClick={() => setValidationError(null)}
-              className="bg-[var(--navy)] text-white"
+              className="w-full bg-[var(--navy)] text-white sm:w-auto"
             >
               Okay
             </AlertDialogAction>
@@ -448,7 +448,7 @@ export const CalendarDayView = ({
           !open && !isRescheduling && setPendingReschedule(null)
         }
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="w-[calc(100vw-1rem)]">
           <AlertDialogHeader>
             <AlertDialogTitle>Reschedule Booking</AlertDialogTitle>
             <AlertDialogDescription>
@@ -468,7 +468,10 @@ export const CalendarDayView = ({
             </span>
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isRescheduling}>
+            <AlertDialogCancel
+              disabled={isRescheduling}
+              className="w-full sm:w-auto"
+            >
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
@@ -477,7 +480,7 @@ export const CalendarDayView = ({
                 confirmReschedule();
               }}
               disabled={isRescheduling}
-              className="bg-[var(--navy)] text-white"
+              className="w-full bg-[var(--navy)] text-white sm:w-auto"
             >
               {isRescheduling ? (
                 <>

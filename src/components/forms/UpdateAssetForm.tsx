@@ -337,7 +337,7 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-4xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <div className="flex justify-center mb-2">
           <div className="inline-flex items-center bg-gray-100 px-3 py-1 rounded-full">
             <div className="w-3 h-3 bg-gray-300 rounded-full mr-2"></div>
@@ -431,7 +431,7 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
             {/* Maintenance Dates */}
             <div className="space-y-2">
               <Label>Maintenance Dates</Label>
-              <div className="flex space-x-2">
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <div className="flex-1">
                   <Input
                     type="date"
@@ -480,7 +480,7 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
               <Label>
                 Asset Status <span className="text-red-500">*</span>
               </Label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <button
                   type="button"
                   className={cn(
@@ -577,10 +577,10 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
             </div>
           </div>
 
-          <div className="mt-8 flex justify-end space-x-4">
+          <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end sm:gap-4">
             <Button
               type="button"
-              className="bg-gray-200 text-gray-800 hover:bg-gray-300"
+              className="w-full bg-gray-200 text-gray-800 hover:bg-gray-300 sm:w-auto"
               onClick={() => onClose(false)}
               disabled={isSubmitting}
             >
@@ -588,7 +588,7 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
             </Button>
             <Button
               type="submit"
-              className="bg-black text-white hover:bg-gray-800"
+              className="w-full bg-black text-white hover:bg-gray-800 sm:w-auto"
               disabled={isSubmitting}
             >
               {isSubmitting ? (

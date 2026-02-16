@@ -383,7 +383,7 @@ export function BookingDetailsDialog({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="max-w-lg bg-white p-0 gap-0 border-slate-200 shadow-2xl overflow-hidden">
+        <DialogContent className="w-[calc(100vw-1rem)] max-w-lg bg-white p-0 gap-0 border-slate-200 shadow-2xl overflow-hidden">
           {/* HEADER */}
           <DialogHeader className="px-6 pt-6 pb-4 bg-white border-b border-slate-50 pr-12">
             <div className="flex items-start justify-between gap-3">
@@ -399,9 +399,9 @@ export function BookingDetailsDialog({
               )}
             </div>
             {!loading && data?.asset && (
-              <div className="flex items-center gap-2 mt-1">
+              <div className="mt-1 flex flex-wrap items-center gap-2">
                 <span className="text-sm text-slate-500">Asset:</span>
-                <span className="text-sm font-medium text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md">
+                <span className="max-w-full truncate text-sm font-medium text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md">
                   {data.asset.name}
                   <span className="text-slate-400 ml-1 font-normal">
                     ({data.asset.asset_code})
@@ -426,7 +426,7 @@ export function BookingDetailsDialog({
             ) : data ? (
               <div className="space-y-6">
                 {/* Grid Info */}
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider">
                       <CalendarIcon className="h-3.5 w-3.5" /> Date
@@ -662,7 +662,7 @@ export function BookingDetailsDialog({
           setConfirmAction({ ...confirmAction, isOpen: open })
         }
       >
-        <AlertDialogContent className="bg-white">
+        <AlertDialogContent className="w-[calc(100vw-1rem)] bg-white">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               {confirmAction.type === "confirm" ||
@@ -693,12 +693,15 @@ export function BookingDetailsDialog({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-2">
-            <AlertDialogCancel disabled={actionLoading}>
+            <AlertDialogCancel
+              disabled={actionLoading}
+              className="w-full sm:w-auto"
+            >
               Go Back
             </AlertDialogCancel>
             <AlertDialogAction
               disabled={actionLoading}
-              className={`
+              className={`w-full sm:w-auto
                         ${
                           confirmAction.type === "deny" ||
                           confirmAction.type === "cancel" ||

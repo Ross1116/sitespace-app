@@ -278,9 +278,11 @@ function SetPasswordForm() {
                     className={`h-1.5 rounded-full transition-all duration-300 ${/[0-9]/.test(password) ? "bg-emerald-500" : "bg-slate-200"}`}
                   />
                 </div>
-                <p className="text-[10px] text-slate-400 mt-1 flex justify-between px-1">
-                  <span>Length</span> <span>Upper</span> <span>Lower</span>{" "}
-                  <span>Number</span>
+                <p className="mt-1 grid grid-cols-4 px-1 text-[10px] text-slate-400">
+                  <span className="text-left">Length</span>
+                  <span className="text-center">Upper</span>
+                  <span className="text-center">Lower</span>
+                  <span className="text-right">Number</span>
                 </p>
               </>
             )}
