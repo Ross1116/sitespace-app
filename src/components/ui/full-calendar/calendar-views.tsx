@@ -1000,6 +1000,9 @@ const EventGroupSideBySide = ({
         const tooltipTitle = isCollapsedPendingSummary
           ? `${pendingCount} pending requests for this slot`
           : event.title;
+        const isYourBooking = Boolean(
+          event.isBookedByMe || event.isAssignedToMe,
+        );
 
         return (
           <div
@@ -1024,7 +1027,7 @@ const EventGroupSideBySide = ({
                     <div
                       className={cn(
                         dayEventVariants({ variant: event.color }),
-                        "w-full h-full hover:shadow-md transition-all",
+                        "relative w-full h-full hover:shadow-md transition-all",
                         isDisabled
                           ? "cursor-not-allowed opacity-75 grayscale"
                           : isCollapsedPendingSummary
@@ -1043,6 +1046,9 @@ const EventGroupSideBySide = ({
                         onEventClick(bookingId);
                       }}
                     >
+                      {isYourBooking && (
+                        <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-slate-700" />
+                      )}
                       <div className="font-bold truncate">{eventTitle}</div>
                       {!isCollapsedPendingSummary && durationMinutes >= 20 && (
                         <div className="text-[10px] opacity-80 mt-0.5 font-medium">

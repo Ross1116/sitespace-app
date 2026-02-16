@@ -49,6 +49,8 @@ export interface CalendarEvent extends BaseCalendarEvent {
   projectId?: string;
   projectName?: string;
   projectLocation?: string;
+  isBookedByMe?: boolean;
+  isAssignedToMe?: boolean;
   _originalData?: ApiBooking | UnknownRecord;
 }
 
@@ -258,6 +260,14 @@ export function convertBookingToCalendarEvent(
     managerId: getId(raw.manager_id) || undefined,
     managerName: managerName || undefined,
     subcontractorId: subcontractorId || undefined,
+    isBookedByMe:
+      typeof booking.isBookedByMe === "boolean"
+        ? booking.isBookedByMe
+        : undefined,
+    isAssignedToMe:
+      typeof booking.isAssignedToMe === "boolean"
+        ? booking.isAssignedToMe
+        : undefined,
     subcontractorName: subName || undefined,
     projectId: getId(raw.project_id) || undefined,
     projectName: isRecord(raw.project)
