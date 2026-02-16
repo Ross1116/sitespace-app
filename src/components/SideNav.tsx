@@ -162,9 +162,10 @@ const SideNav = () => {
 
       {/* 2. MOBILE TOGGLE */}
       <button
-        className="fixed top-4 left-4 z-50 p-2 rounded-lg bg-navy text-white md:hidden shadow-lg border border-white/10"
+        className="fixed top-4 right-4 z-50 p-2 rounded-lg bg-navy text-white md:hidden shadow-lg border border-white/10"
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        aria-label="Toggle menu" aria-expanded={isMobileMenuOpen}
+        aria-label="Toggle menu"
+        aria-expanded={isMobileMenuOpen}
       >
         {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
       </button>
@@ -221,7 +222,9 @@ const SideNav = () => {
         onMouseEnter={() => setIsExpanded(true)}
         onMouseLeave={() => setIsExpanded(false)}
         onFocus={() => setIsExpanded(true)}
-        onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setIsExpanded(false); }}
+        onBlur={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget)) setIsExpanded(false);
+        }}
       >
         {/* LOGO AREA */}
         <div className="h-24 flex items-center flex-shrink-0 pl-6 mb-2">
@@ -273,4 +276,3 @@ const SideNav = () => {
 };
 
 export default SideNav;
-
