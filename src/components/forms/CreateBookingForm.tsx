@@ -854,10 +854,7 @@ export function CreateBookingForm({
           const assetId = selectedAssetIds[index];
           const asset = assets.find((a) => a.assetKey === assetId);
           const assetName = asset?.assetTitle || assetId;
-          const reason =
-            result.reason?.response?.data?.detail ||
-            result.reason?.message ||
-            "Unknown error";
+          const reason = getApiErrorMessage(result.reason, "Unknown error");
           failed.push({ assetId: assetName, reason });
         }
       });

@@ -222,17 +222,83 @@ export interface AuditTrailResponse {
 
 // ===== ERROR HANDLING =====
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function toMessageText(value: unknown): string | null {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+
+  if (Array.isArray(value)) {
+    const messages = value
+      .map((entry) => toMessageText(entry))
+      .filter((entry): entry is string => Boolean(entry));
+
+    if (messages.length === 0) return null;
+    return messages.join("; ");
+  }
+
+  if (isRecord(value)) {
+    const loc = Array.isArray(value.loc)
+      ? value.loc
+          .map((part) =>
+            typeof part === "string" || typeof part === "number"
+              ? String(part)
+              : null,
+          )
+          .filter((part): part is string => Boolean(part))
+          .join(".")
+      : null;
+
+    const directMessage =
+      toMessageText(value.detail) ||
+      toMessageText(value.message) ||
+      toMessageText(value.msg) ||
+      toMessageText(value.error) ||
+      toMessageText(value.errors);
+
+    if (directMessage) {
+      return loc && !directMessage.startsWith(loc)
+        ? `${loc}: ${directMessage}`
+        : directMessage;
+    }
+  }
+
+  return null;
+}
+
 /** Safely extract an error message from an unknown catch value (works with Axios errors). */
 export function getApiErrorMessage(
   error: unknown,
   fallback = "Something went wrong",
 ): string {
   if (error instanceof AxiosError) {
-    return error.response?.data?.detail || error.message || fallback;
+    const data = error.response?.data;
+    const messageFromPayload = toMessageText(data);
+
+    if (messageFromPayload) {
+      return messageFromPayload;
+    }
+
+    return error.message || fallback;
   }
+
   if (error instanceof Error) {
     return error.message || fallback;
   }
+
+  const unknownMessage = toMessageText(error);
+  if (unknownMessage) {
+    return unknownMessage;
+  }
+
   return fallback;
 }
 
