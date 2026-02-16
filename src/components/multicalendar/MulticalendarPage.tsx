@@ -103,18 +103,18 @@ export default function MulticalendarPage() {
     }
   }, [userId]);
 
-  // Date range: today ± 45 days
+  // Date range: currently viewed date ± 45 days
   const { dateFrom, dateTo } = useMemo(() => {
-    const today = new Date();
-    const from = new Date(today);
-    from.setDate(today.getDate() - 45);
-    const to = new Date(today);
-    to.setDate(today.getDate() + 45);
+    const center = new Date(currentDate);
+    const from = new Date(center);
+    from.setDate(center.getDate() - 45);
+    const to = new Date(center);
+    to.setDate(center.getDate() + 45);
     return {
       dateFrom: from.toISOString().split("T")[0],
       dateTo: to.toISOString().split("T")[0],
     };
-  }, []);
+  }, [currentDate]);
 
   // --- SWR: Assets ---
   const { data: assetsData, mutate: mutateAssets } = useSWR<AssetListResponse>(
@@ -142,7 +142,10 @@ export default function MulticalendarPage() {
       ? `/bookings/calendar?date_from=${dateFrom}&date_to=${dateTo}&project_id=${projectId}`
       : null,
     swrFetcher,
-    SWR_CONFIG,
+    {
+      ...SWR_CONFIG,
+      refreshInterval: 30_000,
+    },
   );
 
   const bookings = useMemo<CalendarEvent[]>(() => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useReducer, useEffect, useCallback, useMemo } from "react";
+import { useReducer, useEffect, useCallback, useMemo, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -43,6 +43,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
+  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -482,6 +483,15 @@ export function CreateBookingForm({
     asyncReducer,
     initialAsyncState,
   );
+  const [pendingConfirmAlert, setPendingConfirmAlert] = useState<{
+    isOpen: boolean;
+    pendingCount: number;
+    assetNames: string[];
+  }>({
+    isOpen: false,
+    pendingCount: 0,
+    assetNames: [],
+  });
 
   // ===== DERIVED VALUES =====
   const {
@@ -729,7 +739,7 @@ export function CreateBookingForm({
 
   // ===== SUBMIT =====
   // ===== SUBMIT =====
-  const handleSubmit = async () => {
+  const handleSubmit = async (skipPendingConfirmCheck = false) => {
     dispatchAsync({ type: "SET_ERROR", error: null });
 
     if (!customStartTime || !customEndTime || selectedAssetIds.length === 0) {
@@ -765,11 +775,14 @@ export function CreateBookingForm({
         ? userId
         : selectedSubcontractor || undefined;
 
-      if (targetSubcontractorId) {
+      let existingBookingsForDate: ApiBooking[] | null = null;
+      const getExistingBookingsForDate = async () => {
+        if (existingBookingsForDate) return existingBookingsForDate;
+
         const limit = 200;
         let skip = 0;
         let hasMore = true;
-        const existingBookings: ApiBooking[] = [];
+        const collected: ApiBooking[] = [];
 
         while (hasMore) {
           const existing = await api.get<BookingListResponse>(`/bookings/`, {
@@ -782,10 +795,59 @@ export function CreateBookingForm({
             },
           });
 
-          existingBookings.push(...(existing.data.bookings || []));
+          collected.push(...(existing.data.bookings || []));
           hasMore = Boolean(existing.data.has_more);
           skip += limit;
         }
+
+        existingBookingsForDate = collected;
+        return collected;
+      };
+
+      if (isManager && !skipPendingConfirmCheck) {
+        const existingBookings = await getExistingBookingsForDate();
+        const normalizedStart = normalizeTime(startTimeFormatted);
+        const normalizedEnd = normalizeTime(endTimeFormatted);
+
+        const competingPendingBookings = existingBookings.filter((booking) => {
+          const status = (booking.status || "").toLowerCase();
+          return (
+            status === "pending" &&
+            booking.booking_date === bookingDate &&
+            normalizeTime(booking.start_time) === normalizedStart &&
+            normalizeTime(booking.end_time) === normalizedEnd &&
+            selectedAssetIds.includes(booking.asset_id)
+          );
+        });
+
+        if (competingPendingBookings.length > 0) {
+          const affectedAssetNames = Array.from(
+            new Set(
+              competingPendingBookings.map((booking) => {
+                const matchedAsset = assets.find(
+                  (asset) => asset.assetKey === booking.asset_id,
+                );
+                return (
+                  matchedAsset?.assetTitle ||
+                  booking.asset?.name ||
+                  booking.asset_id
+                );
+              }),
+            ),
+          );
+
+          setPendingConfirmAlert({
+            isOpen: true,
+            pendingCount: competingPendingBookings.length,
+            assetNames: affectedAssetNames,
+          });
+          dispatchAsync({ type: "SET_SUBMITTING", value: false });
+          return;
+        }
+      }
+
+      if (targetSubcontractorId) {
+        const existingBookings = await getExistingBookingsForDate();
 
         const normalizedStart = normalizeTime(startTimeFormatted);
         const normalizedEnd = normalizeTime(endTimeFormatted);
@@ -859,16 +921,7 @@ export function CreateBookingForm({
         }
       });
 
-      // Process successful bookings
       if (succeeded.length > 0) {
-        if (isManager) {
-          for (const b of succeeded) {
-            if (!b.status || b.status.toLowerCase() === "pending") {
-              b.status = "CONFIRMED";
-            }
-          }
-        }
-
         // Build calendar events for successful bookings
         const events = succeeded.map((booking) => {
           const returnedAssetId = booking.asset?.id || booking.asset_id;
@@ -1396,7 +1449,9 @@ export function CreateBookingForm({
                 Cancel
               </Button>
               <Button
-                onClick={handleSubmit}
+                onClick={() => {
+                  void handleSubmit();
+                }}
                 disabled={
                   !title ||
                   !customStartTime ||
@@ -1438,6 +1493,55 @@ export function CreateBookingForm({
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={pendingConfirmAlert.isOpen}
+        onOpenChange={(open) =>
+          setPendingConfirmAlert((prev) => ({ ...prev, isOpen: open }))
+        }
+      >
+        <AlertDialogContent className="w-[calc(100vw-1rem)] bg-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-red-600" />
+              Confirm Booking?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-600">
+              {`Confirming this booking will auto-deny ${pendingConfirmAlert.pendingCount} other pending request${pendingConfirmAlert.pendingCount === 1 ? "" : "s"} for this time slot.`}
+              {pendingConfirmAlert.assetNames.length > 0 && (
+                <span className="mt-2 block text-slate-500">
+                  Affected asset
+                  {pendingConfirmAlert.assetNames.length === 1 ? "" : "s"}:{" "}
+                  {pendingConfirmAlert.assetNames.join(", ")}.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-2">
+            <AlertDialogCancel
+              disabled={isSubmitting}
+              className="w-full sm:w-auto"
+            >
+              Go Back
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isSubmitting}
+              className="w-full bg-[var(--navy)] text-white hover:bg-[var(--navy-hover)] sm:w-auto"
+              onClick={(e) => {
+                e.preventDefault();
+                setPendingConfirmAlert({
+                  isOpen: false,
+                  pendingCount: 0,
+                  assetNames: [],
+                });
+                void handleSubmit(true);
+              }}
+            >
+              Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog
         open={successAlert.isOpen}
