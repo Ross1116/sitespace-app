@@ -1003,6 +1003,27 @@ const EventGroupSideBySide = ({
         const isYourBooking = Boolean(
           event.isBookedByMe || event.isAssignedToMe,
         );
+        const durationLabel =
+          durationMinutes > 0 ? `${durationMinutes} min` : "Unknown";
+        const eventStatus =
+          typeof event.bookingStatus === "string" && event.bookingStatus
+            ? event.bookingStatus
+            : typeof event.status === "string" && event.status
+              ? event.status
+              : "unknown";
+        const eventAsset =
+          typeof event.assetName === "string" && event.assetName
+            ? event.assetName
+            : "Unknown asset";
+        const eventBookedFor =
+          typeof event.bookingFor === "string" ? event.bookingFor : "";
+        const eventNotes =
+          typeof event.description === "string" && event.description.trim()
+            ? event.description
+            : typeof event.bookingDescription === "string" &&
+                event.bookingDescription.trim()
+              ? event.bookingDescription
+              : "";
 
         return (
           <div
@@ -1059,13 +1080,41 @@ const EventGroupSideBySide = ({
                     </div>
                   </TooltipTrigger>
                   <TooltipContent className="bg-[var(--navy)] text-white border-slate-700 z-[1000]">
-                    <div>
+                    <div className="max-w-[260px] space-y-1">
                       <div className="font-bold">{tooltipTitle}</div>
                       {!isCollapsedPendingSummary && (
-                        <div className="text-xs text-slate-300">
-                          {format(event.start, "h:mm a")} -{" "}
-                          {format(event.end, "h:mm a")}
-                        </div>
+                        <>
+                          <div className="text-xs text-slate-300">
+                            {format(event.start, "h:mm a")} -{" "}
+                            {format(event.end, "h:mm a")}
+                          </div>
+                          <div className="text-xs text-slate-300 capitalize">
+                            Status:{" "}
+                            <span className="text-white">{eventStatus}</span>
+                          </div>
+                          <div className="text-xs text-slate-300">
+                            Asset:{" "}
+                            <span className="text-white">{eventAsset}</span>
+                          </div>
+                          {eventBookedFor && (
+                            <div className="text-xs text-slate-300">
+                              Booked by:{" "}
+                              <span className="text-white">
+                                {eventBookedFor}
+                              </span>
+                            </div>
+                          )}
+                          <div className="text-xs text-slate-300">
+                            Duration:{" "}
+                            <span className="text-white">{durationLabel}</span>
+                          </div>
+                          {eventNotes && (
+                            <div className="text-xs text-slate-300 line-clamp-2">
+                              Notes:{" "}
+                              <span className="text-white">{eventNotes}</span>
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   </TooltipContent>
