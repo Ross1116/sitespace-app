@@ -16,8 +16,8 @@ function TopNav() {
   const [isOpen, setOpen] = useState(false);
 
   return (
-    <header className="fixed top-0 left-0 z-40 w-full border-b border-white/30 bg-[var(--teal-gradient)]/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_8px_30px_rgba(15,42,74,0.08)] backdrop-blur-xl before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/70 before:to-transparent">
-      <div className="container mx-auto flex min-h-[72px] items-center justify-between px-4 sm:px-6 lg:px-8">
+    <header className="fixed top-0 left-0 z-40 w-full overflow-x-clip border-b border-white/30 bg-[var(--teal-gradient)]/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_8px_30px_rgba(15,42,74,0.08)] backdrop-blur-xl before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/70 before:to-transparent">
+      <div className="container mx-auto flex min-h-[72px] min-w-0 items-center justify-between px-4 sm:px-6 lg:px-8">
         <div className="hidden items-center gap-1 lg:flex">
           {navigationItems.map((item) => (
             <Link
@@ -73,7 +73,7 @@ function TopNav() {
         </div>
 
         {isOpen && (
-          <div className="absolute left-0 top-full w-full border-t border-white/40 bg-white/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.5),0_14px_34px_rgba(15,42,74,0.12)] backdrop-blur-xl lg:hidden">
+          <div className="absolute left-0 top-full w-full border-t border-white/55 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.9),rgba(246,251,255,0.88))] shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_14px_36px_rgba(15,42,74,0.16)] backdrop-blur-[26px] lg:hidden">
             <div className="container mx-auto flex flex-col gap-2 px-4 py-4 sm:px-6">
               {navigationItems.map((item) => (
                 <Link

@@ -15,7 +15,7 @@ export default function HomePage() {
   const { valueProp, testimonials, pricing, finalCta } = siteContent;
 
   return (
-    <div className="bg-slate-50 min-h-screen font-sans text-slate-900">
+    <div className="bg-slate-50 min-h-screen overflow-x-hidden font-sans text-slate-900">
       <TopNav />
 
       {/* Hero Section */}
@@ -170,4 +170,3 @@ export default function HomePage() {
     </div>
   );
 }
-
