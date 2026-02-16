@@ -34,7 +34,10 @@ interface AssetListResponse {
 }
 
 // ===== HELPER: PROCESS BOOKING TO EVENT =====
-const processBookingToEvent = (b: ApiBooking): CalendarEvent => {
+const processBookingToEvent = (
+  b: ApiBooking,
+  userId?: string,
+): CalendarEvent => {
   const startDate = new Date(`${b.booking_date}T${b.start_time}`);
   const endDate = new Date(`${b.booking_date}T${b.end_time}`);
 
@@ -50,6 +53,10 @@ const processBookingToEvent = (b: ApiBooking): CalendarEvent => {
 
   const assetName = b.asset?.name || "Unknown Asset";
   const assetCode = b.asset?.asset_code || "";
+  const createdById = b.created_by_id || b.created_by?.id;
+  const assignedUserId = b.subcontractor_id || b.manager_id;
+  const isBookedByMe = Boolean(userId && createdById === userId);
+  const isAssignedToMe = Boolean(userId && assignedUserId === userId);
 
   return {
     id: b.id,
@@ -65,6 +72,8 @@ const processBookingToEvent = (b: ApiBooking): CalendarEvent => {
     assetId: b.asset_id,
     assetName: assetName,
     assetCode: assetCode,
+    isBookedByMe,
+    isAssignedToMe,
     _originalData: b,
   } as CalendarEvent;
 };
@@ -145,8 +154,8 @@ export default function MulticalendarPage() {
           b.status?.toLowerCase() !== "cancelled" &&
           b.status?.toLowerCase() !== "denied",
       )
-      .map(processBookingToEvent);
-  }, [calendarData]);
+      .map((booking) => processBookingToEvent(booking, userId));
+  }, [calendarData, userId]);
 
   const error = useMemo(() => {
     if (fetchError) return "Failed to fetch calendar data";
@@ -175,9 +184,8 @@ export default function MulticalendarPage() {
       const groups: Record<string, AssetCalendar> = {};
       bookings.forEach((b) => {
         const maybeAssetStatus = (
-          (b._originalData as { asset?: { status?: string } } | undefined)?.asset
-            ?.status
-        );
+          b._originalData as { asset?: { status?: string } } | undefined
+        )?.asset?.status;
         if (isAssetRetiredOrOutOfService(maybeAssetStatus)) {
           return;
         }
@@ -312,7 +320,7 @@ export default function MulticalendarPage() {
 
       {/* --- MAIN CONTENT (Right Side) --- */}
       <Card
-        className={`p-6 mb-4 ${
+        className={`px-6 mb-2 ${
           isCollapsed ? "col-span-12" : "col-span-12 lg:col-span-9"
         } h-full flex flex-col bg-slate-50 border border-slate-200 shadow-sm rounded-2xl transition-all duration-600`}
       >
@@ -327,6 +335,37 @@ export default function MulticalendarPage() {
             onRefresh={handleRefresh}
             error={error}
           />
+          <div className="-mt-10 px-1 overflow-x-auto">
+            <div className="flex items-center gap-2 whitespace-nowrap min-w-max">
+              <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                Legend
+              </span>
+
+              <div className="flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-1 shrink-0">
+                <span className="h-2 w-2 rounded-full bg-slate-700" />
+                <span className="text-[11px] font-medium text-slate-700">
+                  Your booking
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-1 shrink-0">
+                <span className="h-2 w-2 rounded-full border border-slate-400 bg-white" />
+                <span className="text-[11px] font-medium text-slate-600">
+                  Other bookings
+                </span>
+              </div>
+
+              <div className="rounded-full border border-emerald-100 bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-700 shrink-0">
+                Confirmed
+              </div>
+              <div className="rounded-full border border-amber-100 bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-700 shrink-0">
+                Pending
+              </div>
+              <div className="rounded-full border border-sky-100 bg-sky-50 px-2 py-1 text-[11px] font-medium text-sky-700 shrink-0">
+                Completed
+              </div>
+            </div>
+          </div>
           <div className="md:hidden">
             <MobileView
               loading={loading}
@@ -353,4 +392,3 @@ export default function MulticalendarPage() {
     </div>
   );
 }
-
