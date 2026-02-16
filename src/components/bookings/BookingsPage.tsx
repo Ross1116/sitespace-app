@@ -31,6 +31,9 @@ const calculateDuration = (startTime: string, endTime: string): number => {
   return end - start;
 };
 
+const getSafeString = (value: unknown): string =>
+  typeof value === "string" ? value : "";
+
 const transformBookingToLegacyFormat = (
   booking: ApiBooking,
 ): TransformedBooking => {
@@ -53,7 +56,13 @@ const transformBookingToLegacyFormat = (
     ? `${booking.manager.first_name} ${booking.manager.last_name}`
     : "Unknown";
   const subName = booking.subcontractor
-    ? `${booking.subcontractor.first_name} ${booking.subcontractor.last_name}`.trim()
+    ? [
+        getSafeString(booking.subcontractor.first_name),
+        getSafeString(booking.subcontractor.last_name),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .trim()
     : "";
 
   const createdByName =

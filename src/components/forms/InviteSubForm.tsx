@@ -629,7 +629,7 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
             </Button>
             <Button
               type="submit"
-              className="w-full bg-black text-white hover:bg-gray-800 sm:w-auto !whitespace-normal text-center leading-tight"
+              className="w-full bg-black text-white hover:bg-gray-800 sm:w-auto"
               disabled={isSubmitting || !emailChecked}
             >
               {isSubmitting ? (
@@ -659,10 +659,7 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
               ) : existingSubcontractor ? (
                 "Add to Project"
               ) : (
-                <>
-                  <span className="sm:hidden">Create & Add</span>
-                  <span className="hidden sm:inline">Create & Add to Project</span>
-                </>
+                "Create & Add to Project"
               )}
             </Button>
           </div>

@@ -492,7 +492,13 @@ export default function HomePage() {
                           assetName && assetCode ? `(${assetCode})` : "";
 
                         const subName = booking.subcontractor
-                          ? `${booking.subcontractor.first_name} ${booking.subcontractor.last_name}`.trim()
+                          ? [
+                              booking.subcontractor?.first_name || "",
+                              booking.subcontractor?.last_name || "",
+                            ]
+                              .filter(Boolean)
+                              .join(" ")
+                              .trim()
                           : "";
 
                         const assignee = booking.subcontractor_id
