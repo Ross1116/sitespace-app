@@ -196,6 +196,9 @@ export function BookingDetailsDialog({
 
     if (!data) return null;
 
+    const subcontractorFullName =
+      `${data.subcontractor?.first_name || ""} ${data.subcontractor?.last_name || ""}`.trim();
+
     const createdByObj = data.created_by;
     const createdByObjName =
       createdByObj?.full_name ||
@@ -237,9 +240,7 @@ export function BookingDetailsDialog({
 
     const createdById = data.created_by_id || createdByObj?.id || undefined;
     if (createdById && data.subcontractor?.id === createdById) {
-      const subName =
-        data.subcontractor.company_name ||
-        `${data.subcontractor.first_name} ${data.subcontractor.last_name}`.trim();
+      const subName = subcontractorFullName || "Unknown Subcontractor";
       return {
         name: subName,
         role: "subcontractor",
@@ -259,9 +260,7 @@ export function BookingDetailsDialog({
     }
 
     if (!createdById && data.subcontractor) {
-      const subName =
-        data.subcontractor.company_name ||
-        `${data.subcontractor.first_name} ${data.subcontractor.last_name}`.trim();
+      const subName = subcontractorFullName || "Unknown Subcontractor";
       return {
         name: subName,
         role: "subcontractor",
@@ -488,13 +487,14 @@ export function BookingDetailsDialog({
                       </div>
                       <div className="flex items-center gap-3 bg-orange-50/50 p-2 rounded-md border border-orange-100">
                         <div className="h-8 w-8 rounded-full bg-orange-600 text-white text-xs flex items-center justify-center font-bold ring-2 ring-white shadow-sm shrink-0">
-                          {data.subcontractor.company_name?.[0] ||
-                            data.subcontractor.first_name?.[0]}
+                          {data.subcontractor.first_name?.[0] ||
+                            data.subcontractor.last_name?.[0] ||
+                            "?"}
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-semibold text-slate-900 truncate">
-                            {data.subcontractor.company_name ||
-                              `${data.subcontractor.first_name} ${data.subcontractor.last_name}`}
+                            {`${data.subcontractor.first_name || ""} ${data.subcontractor.last_name || ""}`.trim() ||
+                              "Unknown Subcontractor"}
                           </p>
                           <p className="text-xs text-slate-500 truncate">
                             Subcontractor

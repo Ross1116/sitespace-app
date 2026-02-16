@@ -279,7 +279,7 @@ export default function MulticalendarPage() {
       {/* --- LEFT SIDEBAR WRAPPER --- */}
       <div
         className={`${
-          isCollapsed ? "hidden" : "hidden lg:flex col-span-3"
+          isCollapsed ? "hidden" : "hidden xl:flex col-span-3"
         } flex-col gap-6`}
       >
         {/* Month Calendar Card */}
@@ -289,8 +289,8 @@ export default function MulticalendarPage() {
             date={currentDate}
             onDateChange={setCurrentDate}
           >
-            <div className="p-4 py-7 w-full flex flex-col">
-              <div className="flex px-4 items-center mb-6 justify-between border-b border-slate-100 pb-4">
+            <div className="p-3 w-full flex flex-col">
+              <div className="flex items-center mb-3 justify-between border-b border-slate-100 pb-2">
                 <CalendarCurrentDate className="text-lg font-bold text-slate-900" />
                 <div className="flex items-center gap-1 bg-slate-50 rounded-lg p-1">
                   <CalendarPrevTrigger className="p-1 hover:bg-white rounded-md text-slate-500 hover:text-slate-900">
@@ -301,8 +301,10 @@ export default function MulticalendarPage() {
                   </CalendarNextTrigger>
                 </div>
               </div>
-              <div className="px-2">
-                <CalendarMonthView />
+              <div className="overflow-x-auto">
+                <div className="min-w-[280px]">
+                  <CalendarMonthView />
+                </div>
               </div>
             </div>
           </Calendar>
@@ -321,7 +323,7 @@ export default function MulticalendarPage() {
       {/* --- MAIN CONTENT (Right Side) --- */}
       <Card
         className={`px-6 mb-2 ${
-          isCollapsed ? "col-span-12" : "col-span-12 lg:col-span-9"
+          isCollapsed ? "col-span-12" : "col-span-12 xl:col-span-9"
         } h-full flex flex-col bg-slate-50 border border-slate-200 shadow-sm rounded-2xl transition-all duration-600`}
       >
         <Calendar date={currentDate} onDateChange={setCurrentDate} view="day">
@@ -329,6 +331,8 @@ export default function MulticalendarPage() {
             isCollapsed={isCollapsed}
             loading={loading}
             assetCalendars={assetCalendars}
+            visibleAssets={visibleAssets}
+            setVisibleAssets={setVisibleAssets}
             setIsCollapsed={setIsCollapsed}
             selectedAssetIndex={selectedAssetIndex}
             setSelectedAssetIndex={setSelectedAssetIndex}
