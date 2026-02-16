@@ -124,10 +124,6 @@ export default function SubcontractorsPage() {
     }
   }, [user?.role, router]);
 
-  if (user?.role === "subcontractor") {
-    return null;
-  }
-
   // Re-read project on cross-tab changes
   const [projectVersion, setProjectVersion] = useState(0);
   useEffect(() => {
@@ -283,6 +279,10 @@ export default function SubcontractorsPage() {
     { label: "Phone", field: "contractorPhone", colSpan: "col-span-2" },
     { label: "Email", field: "contractorEmail", colSpan: "col-span-2" },
   ];
+
+  if (user?.role === "subcontractor") {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-[var(--page-bg)] p-4 sm:p-6 lg:p-8 font-sans">

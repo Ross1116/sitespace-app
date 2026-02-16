@@ -41,7 +41,7 @@ function BookingCardMobile({
   return (
     <div
       className={`
-        bg-white rounded-xl p-4 sm:p-4.5 border border-slate-200 
+        bg-white rounded-xl p-4 sm:p-5 border border-slate-200 
         shadow-[0_2px_8px_rgba(0,0,0,0.02)]
     `}
     >
