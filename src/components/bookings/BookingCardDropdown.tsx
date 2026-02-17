@@ -26,6 +26,10 @@ import { ApiBooking, BookingListResponse } from "@/types";
 import { reportError } from "@/lib/monitoring";
 import { BOOKING_PAGINATION_MAX_PAGES } from "@/lib/pagination";
 
+type PaginationGuardError = Error & {
+  __reportedByPaginationGuard?: boolean;
+};
+
 interface BookingCardDropdownProps {
   bookingKey: string;
   bookingStatus: string;
@@ -123,15 +127,19 @@ export default function BookingCardDropdown({
 
     while (hasMore) {
       if (pageCount >= BOOKING_PAGINATION_MAX_PAGES) {
+        const guardError: PaginationGuardError = new Error(
+          `Pagination guard triggered in BookingCardDropdown: pageCount=${pageCount}, maxPages=${BOOKING_PAGINATION_MAX_PAGES}, bookingId=${booking.id}, projectId=${project_id ?? "unknown"}`,
+        );
+        guardError.__reportedByPaginationGuard = true;
         reportError(
-          new Error(
-            `Pagination guard triggered in BookingCardDropdown: pageCount=${pageCount}, maxPages=${BOOKING_PAGINATION_MAX_PAGES}, bookingId=${booking.id}, projectId=${project_id ?? "unknown"}`,
-          ),
+          guardError,
           "BookingCardDropdown: pagination safety limit reached while loading competing pending bookings",
         );
-        throw new Error(
+        const userFacingGuardError: PaginationGuardError = new Error(
           "Too many related bookings to load right now. Please try again or contact support.",
         );
+        userFacingGuardError.__reportedByPaginationGuard = true;
+        throw userFacingGuardError;
       }
 
       const response = await api.get<BookingListResponse>(`/bookings/`, {
@@ -181,10 +189,12 @@ export default function BookingCardDropdown({
         await updateBookingStatus("confirmed");
       }
     } catch (error: unknown) {
-      reportError(
-        error,
-        "BookingCardDropdown: failed to load booking details for confirm flow",
-      );
+      if (!(error as PaginationGuardError)?.__reportedByPaginationGuard) {
+        reportError(
+          error,
+          "BookingCardDropdown: failed to load booking details for confirm flow",
+        );
+      }
       setErrorMessage(
         getApiErrorMessage(error, "Failed to load booking details"),
       );

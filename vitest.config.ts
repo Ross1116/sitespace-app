@@ -10,6 +10,9 @@ export default defineConfig({
     include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
     clearMocks: true,
     restoreMocks: true,
+    typecheck: {
+      tsconfig: "./tsconfig.vitest.json",
+    },
   },
   resolve: {
     alias: {

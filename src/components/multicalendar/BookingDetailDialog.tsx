@@ -425,6 +425,10 @@ export function BookingDetailsDialog({
         bookings: matchedPending,
       };
     } catch (err: unknown) {
+      reportError(
+        err,
+        `BookingDetailDialog: failed to validate booking state (bookingId=${bookingId})`,
+      );
       setError(getApiErrorMessage(err, "Failed to validate booking state"));
       return null;
     }

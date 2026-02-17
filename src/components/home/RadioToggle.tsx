@@ -40,7 +40,7 @@ function ProjectSelector({
   };
 
   const [selectedProject, setSelectedProject] = useState<string | undefined>(
-    getInitialProject(),
+    () => getInitialProject(),
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [visibleProjects, setVisibleProjects] = useState<Project[]>(projects);

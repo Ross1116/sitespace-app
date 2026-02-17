@@ -152,7 +152,7 @@ export const groupBookingsByMonth = <T extends { booking_date: string }>(
   bookings: T[],
 ) => {
   const groups: Record<string, T[]> = {};
-  const monthFormatter = new Intl.DateTimeFormat("en-US", {
+  const monthFormatter = new Intl.DateTimeFormat(undefined, {
     month: "long",
     year: "numeric",
   });
