@@ -21,6 +21,7 @@ import useSWR from "swr";
 import { swrFetcher, SWR_CONFIG } from "@/lib/swr";
 import { readStoredProject } from "@/lib/projectStorage";
 import { isAssetRetiredOrOutOfService } from "@/lib/assetStatus";
+import ComponentErrorBoundary from "@/components/ui/ComponentErrorBoundary";
 
 // ===== INTERFACES =====
 
@@ -337,58 +338,64 @@ export default function MulticalendarPage() {
             onRefresh={handleRefresh}
             error={error}
           />
-          <div className="-mt-10 px-1 overflow-x-auto">
-            <div className="flex items-center gap-2 whitespace-nowrap min-w-max">
-              <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
-                Legend
-              </span>
-
-              <div className="flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-1 shrink-0">
-                <span className="h-2 w-2 rounded-full bg-slate-700" />
-                <span className="text-[11px] font-medium text-slate-700">
-                  Your booking
+          <ComponentErrorBoundary
+            context="MulticalendarPage: interactive calendar surface render failed"
+            title="Calendar section unavailable"
+            message="The calendar section hit an issue. Retry this section to continue."
+            className="m-2 rounded-xl border border-red-200 bg-red-50 p-5 text-center"
+          >
+            <div className="-mt-10 px-1 overflow-x-auto">
+              <div className="flex items-center gap-2 whitespace-nowrap min-w-max">
+                <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                  Legend
                 </span>
-              </div>
 
-              <div className="flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-1 shrink-0">
-                <span className="h-2 w-2 rounded-full border border-slate-400 bg-white" />
-                <span className="text-[11px] font-medium text-slate-600">
-                  Other bookings
-                </span>
-              </div>
+                <div className="flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-1 shrink-0">
+                  <span className="h-2 w-2 rounded-full bg-slate-700" />
+                  <span className="text-[11px] font-medium text-slate-700">
+                    Your booking
+                  </span>
+                </div>
 
-              <div className="rounded-full border border-emerald-100 bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-700 shrink-0">
-                Confirmed
-              </div>
-              <div className="rounded-full border border-amber-100 bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-700 shrink-0">
-                Pending
-              </div>
-              <div className="rounded-full border border-sky-100 bg-sky-50 px-2 py-1 text-[11px] font-medium text-sky-700 shrink-0">
-                Completed
+                <div className="flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-1 shrink-0">
+                  <span className="h-2 w-2 rounded-full border border-slate-400 bg-white" />
+                  <span className="text-[11px] font-medium text-slate-600">
+                    Other bookings
+                  </span>
+                </div>
+
+                <div className="rounded-full border border-emerald-100 bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-700 shrink-0">
+                  Confirmed
+                </div>
+                <div className="rounded-full border border-amber-100 bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-700 shrink-0">
+                  Pending
+                </div>
+                <div className="rounded-full border border-sky-100 bg-sky-50 px-2 py-1 text-[11px] font-medium text-sky-700 shrink-0">
+                  Completed
+                </div>
               </div>
             </div>
-          </div>
-          <div className="md:hidden">
-            <MobileView
-              loading={loading}
-              selectedCalendar={selectedCalendar}
-              currentDate={currentDate}
-              onActionComplete={handleActionComplete}
-              onBookingCreated={handleBookingCreated}
-            />
-          </div>
-          <div className="hidden md:block flex-1 overflow-hidden">
-            {/* Desktop View with Maintenance Logic built-in */}
-            <DesktopView
-              loading={loading}
-              isCollapsed={isCollapsed}
-              assetCalendars={assetCalendars}
-              visibleAssets={visibleAssets}
-              currentDate={currentDate}
-              onActionComplete={handleActionComplete}
-              onBookingCreated={handleBookingCreated}
-            />
-          </div>
+            <div className="md:hidden">
+              <MobileView
+                loading={loading}
+                selectedCalendar={selectedCalendar}
+                currentDate={currentDate}
+                onActionComplete={handleActionComplete}
+                onBookingCreated={handleBookingCreated}
+              />
+            </div>
+            <div className="hidden md:block flex-1 overflow-hidden">
+              <DesktopView
+                loading={loading}
+                isCollapsed={isCollapsed}
+                assetCalendars={assetCalendars}
+                visibleAssets={visibleAssets}
+                currentDate={currentDate}
+                onActionComplete={handleActionComplete}
+                onBookingCreated={handleBookingCreated}
+              />
+            </div>
+          </ComponentErrorBoundary>
         </Calendar>
       </Card>
     </div>

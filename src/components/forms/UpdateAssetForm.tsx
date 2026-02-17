@@ -40,6 +40,7 @@ import {
 } from "@/types";
 import { reportError, reportMessage } from "@/lib/monitoring";
 import { readStoredProject } from "@/lib/projectStorage";
+import { ASSET_TYPE_OPTIONS } from "@/lib/formOptions";
 
 // ===== TYPE DEFINITIONS (Matching AssetsTable.tsx exactly) =====
 interface Project {
@@ -258,21 +259,6 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
     assetCode: "",
   });
 
-  // Asset types
-  const assetTypes = [
-    "Equipment",
-    "Vehicle",
-    "Tool",
-    "Machinery",
-    "Loading Zone",
-    "Storage Area",
-    "Crane",
-    "Excavator",
-    "Generator",
-    "Scaffolding",
-    "Other",
-  ];
-
   // Load asset data when modal opens or assetData changes
   useEffect(() => {
     if (assetData) {
@@ -311,6 +297,9 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
   useEffect(() => {
     if (!impactDialogOpen || !impactData) return;
 
+    const controller = new AbortController();
+    const { signal } = controller;
+
     const bookingIdsToFetch = Array.from(
       new Set(
         impactData.impacted_bookings
@@ -321,8 +310,6 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
 
     if (bookingIdsToFetch.length === 0) return;
 
-    let isCancelled = false;
-
     void (async () => {
       const failedBookingIds: string[] = [];
       const results = await Promise.all(
@@ -330,7 +317,9 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
           try {
             const response = await api.get<ApiBooking>(
               `/bookings/${bookingId}`,
+              { signal },
             );
+            if (signal.aborted) return null;
             const booking = response.data;
             const resolvedTitle =
               booking.purpose?.trim() || booking.title?.trim() || "";
@@ -342,6 +331,17 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
               title: resolvedTitle,
             };
           } catch (error: unknown) {
+            if (
+              signal.aborted ||
+              (error instanceof Error && error.name === "CanceledError") ||
+              (typeof error === "object" &&
+                error !== null &&
+                "code" in error &&
+                (error as { code?: string }).code === "ERR_CANCELED")
+            ) {
+              return null;
+            }
+
             failedBookingIds.push(bookingId);
             reportError(
               error,
@@ -352,7 +352,7 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
         }),
       );
 
-      if (isCancelled) return;
+      if (signal.aborted) return;
 
       const titleEntries = results.filter(
         (entry): entry is { bookingId: string; title: string } =>
@@ -378,7 +378,7 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
     })();
 
     return () => {
-      isCancelled = true;
+      controller.abort();
     };
   }, [impactDialogOpen, impactData, bookingTitlesById]);
 
@@ -681,6 +681,7 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
                   onChange={handleChange}
                   placeholder="ex. Loading Zone 1, Crane 2"
                   required
+                  aria-required="true"
                 />
               </div>
 
@@ -710,11 +711,11 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
                     setAsset((prev) => ({ ...prev, assetType: value }))
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger aria-required="true" aria-label="Asset type">
                     <SelectValue placeholder="Select asset type" />
                   </SelectTrigger>
                   <SelectContent>
-                    {assetTypes.map((type) => (
+                    {ASSET_TYPE_OPTIONS.map((type) => (
                       <SelectItem key={type} value={type}>
                         {type}
                       </SelectItem>
@@ -899,9 +900,14 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (
-                  <span className="flex items-center">
+                  <span
+                    className="flex items-center"
+                    role="status"
+                    aria-live="polite"
+                  >
                     <svg
                       className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                      aria-hidden="true"
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"

@@ -31,6 +31,10 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { getApiErrorMessage } from "@/types";
 import { reportError } from "@/lib/monitoring";
+import {
+  BOOKING_DURATION_OPTIONS,
+  QUARTER_HOUR_OPTIONS,
+} from "@/lib/formOptions";
 
 const isAbortError = (error: unknown, signal?: AbortSignal) => {
   if (signal?.aborted) return true;
@@ -213,6 +217,11 @@ export default function RescheduleBookingForm({
     }
   };
 
+  const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    void handleSubmit();
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="w-[calc(100vw-1rem)] max-w-md bg-white max-h-[90vh] overflow-y-auto p-4 sm:p-6">
@@ -231,11 +240,20 @@ export default function RescheduleBookingForm({
         )}
 
         {loading ? (
-          <div className="flex justify-center py-8">
-            <div className="animate-spin h-8 w-8 border-4 border-orange-500 border-t-transparent rounded-full"></div>
+          <div
+            className="flex justify-center py-8"
+            role="status"
+            aria-live="polite"
+            aria-label="Loading booking details"
+          >
+            <div
+              className="animate-spin h-8 w-8 border-4 border-orange-500 border-t-transparent rounded-full"
+              aria-hidden="true"
+            ></div>
+            <span className="sr-only">Loading booking details</span>
           </div>
         ) : (
-          <div className="space-y-5 mt-2">
+          <form onSubmit={handleFormSubmit} className="space-y-5 mt-2">
             {/* Read-Only Asset Info */}
             <div className="bg-stone-50 p-3 rounded-md border border-stone-200">
               <Label className="text-xs text-gray-500 uppercase">Asset</Label>
@@ -337,7 +355,7 @@ export default function RescheduleBookingForm({
                         <SelectValue placeholder="MM" />
                       </SelectTrigger>
                       <SelectContent>
-                        {["00", "15", "30", "45"].map((m) => (
+                        {QUARTER_HOUR_OPTIONS.map((m) => (
                           <SelectItem key={m} value={m}>
                             {m}
                           </SelectItem>
@@ -378,7 +396,7 @@ export default function RescheduleBookingForm({
                         <SelectValue placeholder="MM" />
                       </SelectTrigger>
                       <SelectContent>
-                        {["00", "15", "30", "45"].map((m) => (
+                        {QUARTER_HOUR_OPTIONS.map((m) => (
                           <SelectItem key={m} value={m}>
                             {m}
                           </SelectItem>
@@ -398,7 +416,7 @@ export default function RescheduleBookingForm({
                   <SelectValue placeholder="Select Duration" />
                 </SelectTrigger>
                 <SelectContent>
-                  {[15, 30, 45, 60, 90, 120, 180, 240, 300, 360].map((val) => (
+                  {BOOKING_DURATION_OPTIONS.map((val) => (
                     <SelectItem key={val} value={val.toString()}>
                       {val >= 60
                         ? `${val / 60} hr${val > 60 ? "s" : ""}`
@@ -412,6 +430,7 @@ export default function RescheduleBookingForm({
             <DialogFooter className="mt-6 flex-col gap-2 sm:flex-row">
               <Button
                 variant="outline"
+                type="button"
                 onClick={onClose}
                 disabled={submitting}
                 className="w-full sm:w-auto"
@@ -419,14 +438,14 @@ export default function RescheduleBookingForm({
                 Cancel
               </Button>
               <Button
-                onClick={handleSubmit}
+                type="submit"
                 disabled={submitting || loading}
                 className="w-full bg-orange-600 hover:bg-orange-700 sm:w-auto"
               >
                 {submitting ? "Saving..." : "Update Booking"}
               </Button>
             </DialogFooter>
-          </div>
+          </form>
         )}
       </DialogContent>
     </Dialog>

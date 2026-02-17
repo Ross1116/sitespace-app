@@ -508,12 +508,22 @@ export function BookingDetailsDialog({
           {/* BODY */}
           <div className="px-6 py-6 bg-white min-h-[200px]">
             {loading ? (
-              <div className="flex flex-col items-center justify-center h-full text-slate-400 space-y-3">
-                <Loader2 className="h-8 w-8 animate-spin" />
+              <div
+                className="flex flex-col items-center justify-center h-full text-slate-400 space-y-3"
+                role="status"
+                aria-live="polite"
+                aria-label="Fetching booking details"
+              >
+                <Loader2 className="h-8 w-8 animate-spin" aria-hidden="true" />
                 <p className="text-sm">Fetching booking details...</p>
+                <span className="sr-only">Fetching booking details</span>
               </div>
             ) : error ? (
-              <div className="bg-red-50 text-red-600 p-4 rounded-lg flex items-center gap-3 text-sm border border-red-100">
+              <div
+                className="bg-red-50 text-red-600 p-4 rounded-lg flex items-center gap-3 text-sm border border-red-100"
+                role="alert"
+                aria-live="assertive"
+              >
                 <AlertCircle className="h-5 w-5 shrink-0" />
                 {error}
               </div>
@@ -831,7 +841,13 @@ export function BookingDetailsDialog({
               }}
             >
               {actionLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <>
+                  <Loader2
+                    className="h-4 w-4 animate-spin"
+                    aria-hidden="true"
+                  />
+                  <span className="sr-only">Processing booking action</span>
+                </>
               ) : (
                 "Yes, Proceed"
               )}

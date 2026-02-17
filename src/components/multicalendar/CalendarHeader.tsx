@@ -116,10 +116,12 @@ export function CalendarHeader({
             disabled={loading}
             className="h-8 w-8 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-100"
             title="Refresh bookings"
+            aria-label="Refresh bookings"
           >
             <RefreshCw
               size={16}
               className={loading || isRefreshAnimating ? "animate-spin" : ""}
+              aria-hidden="true"
             />
             <span className="sr-only">Refresh</span>
           </Button>
@@ -181,6 +183,8 @@ export function CalendarHeader({
           <div
             className="flex items-center gap-1 text-red-600 text-sm"
             title={error}
+            role="alert"
+            aria-live="assertive"
           >
             <AlertCircle size={16} />
             <span className="hidden sm:inline">Error loading</span>
@@ -189,9 +193,18 @@ export function CalendarHeader({
 
         {/* Loading indicator */}
         {loading && (
-          <div className="flex items-center gap-2 text-sm text-slate-500">
-            <div className="w-3.5 h-3.5 border-2 border-[var(--navy)] border-t-transparent rounded-full animate-spin" />
+          <div
+            className="flex items-center gap-2 text-sm text-slate-500"
+            role="status"
+            aria-live="polite"
+            aria-label="Loading calendar data"
+          >
+            <div
+              className="w-3.5 h-3.5 border-2 border-[var(--navy)] border-t-transparent rounded-full animate-spin"
+              aria-hidden="true"
+            />
             <span className="hidden sm:inline font-medium">Loading...</span>
+            <span className="sr-only">Loading calendar data</span>
           </div>
         )}
       </div>

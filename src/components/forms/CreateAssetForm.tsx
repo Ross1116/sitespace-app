@@ -24,6 +24,7 @@ import { useAuth } from "@/app/context/AuthContext";
 import { getApiErrorMessage } from "@/types";
 import { reportError } from "@/lib/monitoring";
 import { readStoredProject } from "@/lib/projectStorage";
+import { ASSET_TYPE_OPTIONS } from "@/lib/formOptions";
 
 // ===== TYPE DEFINITIONS =====
 interface AssetModalProps {
@@ -269,21 +270,6 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
     }
   };
 
-  // Asset types (you might want to fetch these from backend or config)
-  const assetTypes = [
-    "Equipment",
-    "Vehicle",
-    "Tool",
-    "Machinery",
-    "Loading Zone",
-    "Storage Area",
-    "Crane",
-    "Excavator",
-    "Generator",
-    "Scaffolding",
-    "Other",
-  ];
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-4xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
@@ -329,6 +315,7 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
                 onChange={handleChange}
                 placeholder="ex. Loading Zone 1, Crane 2"
                 required
+                aria-required="true"
               />
             </div>
 
@@ -344,11 +331,11 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
                 }
                 required
               >
-                <SelectTrigger>
+                <SelectTrigger aria-required="true" aria-label="Asset type">
                   <SelectValue placeholder="Select asset type" />
                 </SelectTrigger>
                 <SelectContent>
-                  {assetTypes.map((type) => (
+                  {ASSET_TYPE_OPTIONS.map((type) => (
                     <SelectItem key={type} value={type}>
                       {type}
                     </SelectItem>
@@ -369,6 +356,7 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
                 onChange={handleChange}
                 placeholder="AUTO-GEN-001"
                 required
+                aria-required="true"
               />
               <span className="text-xs text-gray-500">
                 Auto-generated, but you can modify it
@@ -503,9 +491,14 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
               disabled={isSubmitting}
             >
               {isSubmitting ? (
-                <span className="flex items-center">
+                <span
+                  className="flex items-center"
+                  role="status"
+                  aria-live="polite"
+                >
                   <svg
                     className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                    aria-hidden="true"
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
