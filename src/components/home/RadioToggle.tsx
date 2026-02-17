@@ -46,14 +46,16 @@ function ProjectSelector({
   const [visibleProjects, setVisibleProjects] = useState<Project[]>(projects);
 
   const getFilteredProjects = () => {
-    if (!searchQuery.trim()) {
+    const trimmedLower = searchQuery.trim().toLowerCase();
+
+    if (!trimmedLower) {
       return projects;
     }
 
     return projects.filter(
       (project) =>
-        project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        project.id.toLowerCase().includes(searchQuery.toLowerCase()),
+        project.name.toLowerCase().includes(trimmedLower) ||
+        project.id.toLowerCase().includes(trimmedLower),
     );
   };
 
