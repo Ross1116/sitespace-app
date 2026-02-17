@@ -1,6 +1,6 @@
 import { Calendar, CalendarDayView } from "@/components/ui/full-calendar/index";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AssetCalendar, CalendarEvent } from "@/lib/multicalendarHelpers";
+import { AssetCalendar } from "@/lib/multicalendarHelpers";
 import { format } from "date-fns";
 
 interface DesktopViewProps {
@@ -9,10 +9,6 @@ interface DesktopViewProps {
   assetCalendars: AssetCalendar[];
   visibleAssets: number[];
   currentDate: Date;
-  onActionComplete?: () => void;
-  onBookingCreated?: (
-    newEvents: Partial<CalendarEvent> | Partial<CalendarEvent>[],
-  ) => void;
 }
 
 export function DesktopView({
@@ -21,8 +17,6 @@ export function DesktopView({
   assetCalendars,
   visibleAssets,
   currentDate,
-  onActionComplete,
-  onBookingCreated,
 }: DesktopViewProps) {
   const displayedCalendars = assetCalendars.filter((_, index) =>
     visibleAssets.includes(index),
@@ -113,11 +107,7 @@ export function DesktopView({
                 view="day"
                 date={currentDate}
               >
-                <CalendarDayView
-                  assetCalendar={calendar}
-                  onActionComplete={onActionComplete}
-                  onBookingCreated={onBookingCreated}
-                />
+                <CalendarDayView assetCalendar={calendar} />
               </Calendar>
             </div>
           </div>

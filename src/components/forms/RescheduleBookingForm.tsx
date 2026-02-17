@@ -34,6 +34,9 @@ import { reportError } from "@/lib/monitoring";
 import {
   BOOKING_DURATION_OPTIONS,
   QUARTER_HOUR_OPTIONS,
+  DEFAULT_BOOKING_DURATION_MINUTES,
+  HOURS_IN_DAY,
+  MINUTES_PER_HOUR,
 } from "@/lib/formOptions";
 
 const isAbortError = (error: unknown, signal?: AbortSignal) => {
@@ -79,7 +82,9 @@ export default function RescheduleBookingForm({
   const [startMinute, setStartMinute] = useState("");
   const [endHour, setEndHour] = useState("");
   const [endMinute, setEndMinute] = useState("");
-  const [duration, setDuration] = useState("60");
+  const [duration, setDuration] = useState(
+    DEFAULT_BOOKING_DURATION_MINUTES.toString(),
+  );
 
   // Fetch Booking Details on Open
   useEffect(() => {
@@ -335,7 +340,7 @@ export default function RescheduleBookingForm({
                         <SelectValue placeholder="HH" />
                       </SelectTrigger>
                       <SelectContent>
-                        {Array.from({ length: 24 }).map((_, i) => (
+                        {Array.from({ length: HOURS_IN_DAY }).map((_, i) => (
                           <SelectItem
                             key={i}
                             value={i.toString().padStart(2, "0")}
@@ -376,7 +381,7 @@ export default function RescheduleBookingForm({
                         <SelectValue placeholder="HH" />
                       </SelectTrigger>
                       <SelectContent>
-                        {Array.from({ length: 24 }).map((_, i) => (
+                        {Array.from({ length: HOURS_IN_DAY }).map((_, i) => (
                           <SelectItem
                             key={i}
                             value={i.toString().padStart(2, "0")}
@@ -418,8 +423,8 @@ export default function RescheduleBookingForm({
                 <SelectContent>
                   {BOOKING_DURATION_OPTIONS.map((val) => (
                     <SelectItem key={val} value={val.toString()}>
-                      {val >= 60
-                        ? `${val / 60} hr${val > 60 ? "s" : ""}`
+                      {val >= MINUTES_PER_HOUR
+                        ? `${val / MINUTES_PER_HOUR} hr${val > MINUTES_PER_HOUR ? "s" : ""}`
                         : `${val} min`}
                     </SelectItem>
                   ))}

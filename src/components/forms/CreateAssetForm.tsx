@@ -31,8 +31,6 @@ interface AssetModalProps {
   isOpen: boolean;
   onClose: (open: boolean) => void;
   onSave: () => void;
-  startTime?: Date;
-  endTime?: Date;
 }
 
 interface Asset {

@@ -67,6 +67,9 @@ import { normalizeSubcontractorList } from "@/lib/subcontractorNormalization";
 import {
   BOOKING_DURATION_OPTIONS,
   QUARTER_HOUR_OPTIONS,
+  DEFAULT_BOOKING_DURATION_MINUTES,
+  HOURS_IN_DAY,
+  MINUTES_PER_HOUR,
 } from "@/lib/formOptions";
 
 // ===== TYPE DEFINITIONS =====
@@ -76,7 +79,6 @@ type CreateBookingFormProps = {
   startTime: Date | null;
   endTime: Date | null;
   onSave: (newEvent: Partial<CalendarEvent> | Partial<CalendarEvent>[]) => void;
-  selectedAssetId?: string;
   bookedAssets?: string[];
   defaultAsset?: string;
   defaultAssetName?: string;
@@ -241,7 +243,7 @@ const initialTimeState: TimeState = {
   startMinute: "",
   endHour: "",
   endMinute: "",
-  duration: "60",
+  duration: DEFAULT_BOOKING_DURATION_MINUTES.toString(),
   customStartTime: null,
   customEndTime: null,
   selectedDate: new Date(),
@@ -1208,7 +1210,7 @@ export function CreateBookingForm({
                         <SelectValue placeholder="Hour" />
                       </SelectTrigger>
                       <SelectContent>
-                        {Array.from({ length: 24 }).map((_, i) => {
+                        {Array.from({ length: HOURS_IN_DAY }).map((_, i) => {
                           const val = i.toString().padStart(2, "0");
                           return (
                             <SelectItem
@@ -1268,7 +1270,7 @@ export function CreateBookingForm({
                         <SelectValue placeholder="Hour" />
                       </SelectTrigger>
                       <SelectContent>
-                        {Array.from({ length: 24 }).map((_, i) => {
+                        {Array.from({ length: HOURS_IN_DAY }).map((_, i) => {
                           const val = i.toString().padStart(2, "0");
                           return (
                             <SelectItem
@@ -1328,8 +1330,8 @@ export function CreateBookingForm({
                       value={val.toString()}
                       className="text-sm"
                     >
-                      {val >= 60
-                        ? `${val / 60} hour${val >= 120 ? "s" : ""}`
+                      {val >= MINUTES_PER_HOUR
+                        ? `${val / MINUTES_PER_HOUR} hour${val >= MINUTES_PER_HOUR * 2 ? "s" : ""}`
                         : `${val} minutes`}
                     </SelectItem>
                   ))}

@@ -40,7 +40,13 @@ import {
 } from "@/types";
 import { reportError, reportMessage } from "@/lib/monitoring";
 import { readStoredProject } from "@/lib/projectStorage";
-import { ASSET_TYPE_OPTIONS } from "@/lib/formOptions";
+import {
+  ASSET_TYPE_OPTIONS,
+  MIN_PENDING_BOOKING_CAPACITY,
+  MAX_PENDING_BOOKING_CAPACITY,
+  DEFAULT_PENDING_BOOKING_CAPACITY,
+  clampPendingBookingCapacity,
+} from "@/lib/formOptions";
 
 // ===== TYPE DEFINITIONS (Matching AssetsTable.tsx exactly) =====
 interface Project {
@@ -120,6 +126,24 @@ const mapBackendStatusToFrontend = (status: string): string => {
 
 const isRecord = (value: unknown): value is Record<string, unknown> => {
   return typeof value === "object" && value !== null;
+};
+
+const isCanceledRequestError = (
+  error: unknown,
+  signal?: AbortSignal,
+): boolean => {
+  if (signal?.aborted) return true;
+  if (error instanceof Error && error.name === "CanceledError") return true;
+  if (!isRecord(error)) return false;
+  return error.code === "ERR_CANCELED";
+};
+
+const getResponseAssetType = (asset: ApiAsset): string => {
+  if (asset.type) return asset.type;
+  if (isRecord(asset) && typeof asset.asset_type === "string") {
+    return asset.asset_type;
+  }
+  return "";
 };
 
 const normalizeImpactPayload = (
@@ -267,7 +291,7 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
         pendingBookingCapacity:
           assetData.pendingBookingCapacity ??
           assetData._originalData?.pending_booking_capacity ??
-          5,
+          DEFAULT_PENDING_BOOKING_CAPACITY,
       });
     }
   }, [assetData]);
@@ -331,14 +355,7 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
               title: resolvedTitle,
             };
           } catch (error: unknown) {
-            if (
-              signal.aborted ||
-              (error instanceof Error && error.name === "CanceledError") ||
-              (typeof error === "object" &&
-                error !== null &&
-                "code" in error &&
-                (error as { code?: string }).code === "ERR_CANCELED")
-            ) {
+            if (isCanceledRequestError(error, signal)) {
               return null;
             }
 
@@ -463,9 +480,10 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
       let effectiveStatus = asset.assetStatus;
       let effectiveMaintenanceStart = asset.maintenanceStartdt;
       let effectiveMaintenanceEnd = asset.maintenanceEnddt;
-      const pendingBookingCapacity = Math.min(
-        20,
-        Math.max(1, Number(asset.pendingBookingCapacity ?? 5)),
+      const pendingBookingCapacity = clampPendingBookingCapacity(
+        Number(
+          asset.pendingBookingCapacity ?? DEFAULT_PENDING_BOOKING_CAPACITY,
+        ),
       );
 
       if (hasStart && hasEnd) {
@@ -513,10 +531,7 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
             ? { params: { confirm_booking_denials: true } }
             : undefined,
         );
-        const responseAssetType =
-          response.data.type ||
-          (response.data as { asset_type?: string }).asset_type ||
-          "";
+        const responseAssetType = getResponseAssetType(response.data);
         const descriptionText =
           response.data.description ||
           response.data.usage_instructions ||
@@ -592,10 +607,7 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
         { params: { confirm_booking_denials: true } },
       );
 
-      const responseAssetType =
-        response.data.type ||
-        (response.data as { asset_type?: string }).asset_type ||
-        "";
+      const responseAssetType = getResponseAssetType(response.data);
       const descriptionText =
         response.data.description ||
         response.data.usage_instructions ||
@@ -604,7 +616,11 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
       const pendingBookingCapacity =
         response.data.pending_booking_capacity ??
         pendingUpdateRequest.pending_booking_capacity ??
-        Math.min(20, Math.max(1, Number(asset.pendingBookingCapacity ?? 5)));
+        clampPendingBookingCapacity(
+          Number(
+            asset.pendingBookingCapacity ?? DEFAULT_PENDING_BOOKING_CAPACITY,
+          ),
+        );
 
       const updatedAsset: Asset = {
         assetKey: response.data.id,
@@ -850,14 +866,17 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
                   id="pendingBookingCapacity"
                   name="pendingBookingCapacity"
                   type="number"
-                  min={1}
-                  max={20}
-                  value={asset.pendingBookingCapacity ?? 5}
+                  min={MIN_PENDING_BOOKING_CAPACITY}
+                  max={MAX_PENDING_BOOKING_CAPACITY}
+                  value={
+                    asset.pendingBookingCapacity ??
+                    DEFAULT_PENDING_BOOKING_CAPACITY
+                  }
                   onChange={(e) => {
                     const rawValue = Number(e.target.value);
                     const safeValue = Number.isNaN(rawValue)
-                      ? 5
-                      : Math.min(20, Math.max(1, rawValue));
+                      ? DEFAULT_PENDING_BOOKING_CAPACITY
+                      : clampPendingBookingCapacity(rawValue);
                     setAsset((prev) => ({
                       ...prev,
                       pendingBookingCapacity: safeValue,
@@ -865,7 +884,8 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
                   }}
                 />
                 <span className="text-xs text-gray-500">
-                  Maximum pending requests allowed per slot (1-20)
+                  Maximum pending requests allowed per slot (
+                  {MIN_PENDING_BOOKING_CAPACITY}-{MAX_PENDING_BOOKING_CAPACITY})
                 </span>
               </div>
 

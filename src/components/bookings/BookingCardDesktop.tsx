@@ -4,23 +4,19 @@ import { memo } from "react";
 import { Clock, HardHat, Briefcase, MapPin, History } from "lucide-react";
 import { formatDate, formatTime, isToday } from "@/lib/bookingHelpers";
 import BookingCardDropdown from "./BookingCardDropdown";
+import { useBookingCardActions } from "./BookingCardActionsContext";
 import type { TransformedBooking } from "@/types";
 
 interface BookingCardDesktopProps {
   booking: TransformedBooking;
-  onActionComplete?: () => void;
-  isDropdownOpen: boolean;
-  onDropdownToggle: (bookingKey: string) => void;
   onViewHistory?: (booking: TransformedBooking) => void;
 }
 
 function BookingCardDesktop({
   booking,
-  onActionComplete,
-  isDropdownOpen,
-  onDropdownToggle,
   onViewHistory,
 }: BookingCardDesktopProps) {
+  const { isDropdownOpen } = useBookingCardActions();
   const { day, month } = formatDate(booking.bookingTimeDt);
   const timeRange = formatTime(
     booking.bookingTimeDt,
@@ -33,7 +29,6 @@ function BookingCardDesktop({
   const isSubcontractor = !!booking.subcontractorId;
   const RoleIcon = isSubcontractor ? HardHat : Briefcase;
 
-  const handleToggle = () => onDropdownToggle(booking.bookingKey);
   const status = (booking.bookingStatus || "").toString().toLowerCase();
   const pendingRequestCount = booking.competingPendingCount ?? 0;
 
@@ -170,9 +165,6 @@ function BookingCardDesktop({
                 bookingKey={booking.bookingKey}
                 bookingStatus={booking.bookingStatus}
                 subcontractorId={booking.subcontractorId}
-                isOpen={isDropdownOpen}
-                onToggle={handleToggle}
-                onActionComplete={onActionComplete}
               />
             </div>
           </div>

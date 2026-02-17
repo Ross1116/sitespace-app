@@ -15,6 +15,7 @@ import { CalendarHeader } from "./CalendarHeader";
 import { MobileView } from "./MobileView";
 import { DesktopView } from "./DesktopView";
 import { AssetFilter } from "./AssetFilter";
+import { MulticalendarActionsProvider } from "./MulticalendarActionsContext";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ApiAsset, ApiBooking } from "@/types";
 import useSWR from "swr";
@@ -375,26 +376,29 @@ export default function MulticalendarPage() {
                 </div>
               </div>
             </div>
-            <div className="md:hidden">
-              <MobileView
-                loading={loading}
-                selectedCalendar={selectedCalendar}
-                currentDate={currentDate}
-                onActionComplete={handleActionComplete}
-                onBookingCreated={handleBookingCreated}
-              />
-            </div>
-            <div className="hidden md:block flex-1 overflow-hidden">
-              <DesktopView
-                loading={loading}
-                isCollapsed={isCollapsed}
-                assetCalendars={assetCalendars}
-                visibleAssets={visibleAssets}
-                currentDate={currentDate}
-                onActionComplete={handleActionComplete}
-                onBookingCreated={handleBookingCreated}
-              />
-            </div>
+            <MulticalendarActionsProvider
+              value={{
+                onActionComplete: handleActionComplete,
+                onBookingCreated: handleBookingCreated,
+              }}
+            >
+              <div className="md:hidden">
+                <MobileView
+                  loading={loading}
+                  selectedCalendar={selectedCalendar}
+                  currentDate={currentDate}
+                />
+              </div>
+              <div className="hidden md:block flex-1 overflow-hidden">
+                <DesktopView
+                  loading={loading}
+                  isCollapsed={isCollapsed}
+                  assetCalendars={assetCalendars}
+                  visibleAssets={visibleAssets}
+                  currentDate={currentDate}
+                />
+              </div>
+            </MulticalendarActionsProvider>
           </ComponentErrorBoundary>
         </Calendar>
       </Card>

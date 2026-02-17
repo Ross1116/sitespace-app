@@ -25,28 +25,37 @@ import RescheduleBookingForm from "@/components/forms/RescheduleBookingForm";
 import { ApiBooking, BookingListResponse } from "@/types";
 import { reportError } from "@/lib/monitoring";
 import { BOOKING_PAGINATION_MAX_PAGES } from "@/lib/pagination";
+import { useBookingCardActions } from "./BookingCardActionsContext";
 
 type PaginationGuardError = Error & {
   __reportedByPaginationGuard?: boolean;
+};
+
+const isPaginationGuardError = (
+  error: unknown,
+): error is PaginationGuardError => {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  return Reflect.get(error, "__reportedByPaginationGuard") === true;
 };
 
 interface BookingCardDropdownProps {
   bookingKey: string;
   bookingStatus: string;
   subcontractorId?: string;
-  isOpen: boolean;
-  onToggle: () => void;
-  onActionComplete?: () => void;
 }
 
 export default function BookingCardDropdown({
   bookingKey,
   bookingStatus,
   subcontractorId,
-  isOpen,
-  onToggle,
-  onActionComplete,
 }: BookingCardDropdownProps) {
+  const {
+    isDropdownOpen: isOpen,
+    toggleDropdown: onToggle,
+    onActionComplete,
+  } = useBookingCardActions();
   const [isLoading, setIsLoading] = useState(false);
   const [isDenyModalOpen, setIsDenyModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -189,7 +198,7 @@ export default function BookingCardDropdown({
         await updateBookingStatus("confirmed");
       }
     } catch (error: unknown) {
-      if (!(error as PaginationGuardError)?.__reportedByPaginationGuard) {
+      if (!isPaginationGuardError(error)) {
         reportError(
           error,
           "BookingCardDropdown: failed to load booking details for confirm flow",

@@ -1,22 +1,22 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { motion } from "framer-motion"
-import Image from "next/image"
+import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
+import Image from "next/image";
 
 export function HeroIllustration() {
-  const [isClient, setIsClient] = useState(false)
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    setIsClient(true)
-  }, [])
+    setIsClient(true);
+  }, []);
 
   if (!isClient) {
     return (
       <div className="relative w-full max-w-lg mx-auto h-[500px] flex items-center justify-center">
         <div className="w-full h-full bg-slate-100 rounded-lg animate-pulse"></div>
       </div>
-    )
+    );
   }
 
   return (
@@ -29,7 +29,6 @@ export function HeroIllustration() {
       >
         <div className="relative shadow-xl rounded-2xl">
           <Image
-            // src="https://placehold.co/600x500.png?text=Dashboard+Preview"
             src="/static/images/truck-2.jpg"
             alt="Dashboard Preview"
             width={500}
@@ -95,6 +94,5 @@ export function HeroIllustration() {
         </div>
       </motion.div>
     </div>
-  )
+  );
 }
-

@@ -9,19 +9,10 @@ import type { TransformedBooking } from "@/types";
 
 interface BookingCardMobileProps {
   booking: TransformedBooking;
-  onActionComplete?: () => void;
-  isDropdownOpen: boolean;
-  onDropdownToggle: (bookingKey: string) => void;
   onViewHistory?: (booking: TransformedBooking) => void;
 }
 
-function BookingCardMobile({
-  booking,
-  onActionComplete,
-  isDropdownOpen,
-  onDropdownToggle,
-  onViewHistory,
-}: BookingCardMobileProps) {
+function BookingCardMobile({ booking, onViewHistory }: BookingCardMobileProps) {
   const { day, dayOfWeek, date } = formatDate(booking.bookingTimeDt);
   const timeRange = formatTime(
     booking.bookingTimeDt,
@@ -34,7 +25,6 @@ function BookingCardMobile({
   const isSubcontractor = !!booking.subcontractorId;
   const RoleIcon = isSubcontractor ? HardHat : Briefcase;
 
-  const handleToggle = () => onDropdownToggle(booking.bookingKey);
   const status = (booking.bookingStatus || "").toString().toLowerCase();
   const pendingRequestCount = booking.competingPendingCount ?? 0;
 
@@ -142,9 +132,6 @@ function BookingCardMobile({
             bookingKey={booking.bookingKey}
             bookingStatus={booking.bookingStatus}
             subcontractorId={booking.subcontractorId}
-            isOpen={isDropdownOpen}
-            onToggle={handleToggle}
-            onActionComplete={onActionComplete}
           />
         </div>
       </div>

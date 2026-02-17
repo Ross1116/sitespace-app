@@ -95,6 +95,40 @@ const generateTemporaryPassword = (): string => {
   return requiredChars.join("");
 };
 
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === "object" && value !== null;
+};
+
+const getErrorDetail = (error: unknown): unknown => {
+  if (!isRecord(error)) return undefined;
+  const response = error.response;
+  if (!isRecord(response)) return undefined;
+  const data = response.data;
+  if (!isRecord(data) || !("detail" in data)) return undefined;
+  return data.detail;
+};
+
+const extractProjectSubcontractorIds = (payload: unknown): string[] => {
+  if (!isRecord(payload) || !Array.isArray(payload.subcontractors)) {
+    return [];
+  }
+
+  return payload.subcontractors
+    .map((sub) => {
+      if (!isRecord(sub) || typeof sub.id !== "string") return "";
+      return sub.id;
+    })
+    .filter(Boolean);
+};
+
+const getValidationMessage = (entry: unknown): string => {
+  if (!isRecord(entry) || !("msg" in entry)) return "";
+  const msg = entry.msg;
+  if (typeof msg === "string") return msg;
+  if (msg === undefined || msg === null) return "";
+  return String(msg);
+};
+
 const SubFormModal: React.FC<ContractorModalProps> = ({
   isOpen,
   onClose,
@@ -240,15 +274,8 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
   ): Promise<boolean> => {
     try {
       const response = await api.get(`/projects/${projectId}`);
-      const project = response.data as {
-        subcontractors?: Array<{ id?: string }>;
-      };
-
-      const isAssigned = project.subcontractors?.some(
-        (sub) => sub.id === subcontractorId,
-      );
-
-      return isAssigned || false;
+      const subcontractorIds = extractProjectSubcontractorIds(response.data);
+      return subcontractorIds.includes(subcontractorId);
     } catch (error) {
       reportError(error, "InviteSubForm: failed to check project assignment");
       return false;
@@ -339,21 +366,13 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
       // Safe error extraction handling generic 500s or complex 422s
       let errorMessage = "Failed to process request";
 
-      const detail =
-        typeof error === "object" && error !== null
-          ? (error as { response?: { data?: { detail?: unknown } } }).response
-              ?.data?.detail
-          : undefined;
+      const detail = getErrorDetail(error);
 
       if (typeof detail === "string") {
         errorMessage = detail;
       } else if (Array.isArray(detail)) {
         errorMessage = detail
-          .map((err) =>
-            typeof err === "object" && err !== null && "msg" in err
-              ? String((err as { msg?: unknown }).msg ?? "")
-              : "",
-          )
+          .map((err) => getValidationMessage(err))
           .filter(Boolean)
           .join(", ");
       } else if (detail !== undefined) {

@@ -1,23 +1,17 @@
 import { Calendar, CalendarDayView } from "@/components/ui/full-calendar/index";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AssetCalendar, CalendarEvent } from "@/lib/multicalendarHelpers";
+import { AssetCalendar } from "@/lib/multicalendarHelpers";
 
 interface MobileViewProps {
   loading: boolean;
   selectedCalendar: AssetCalendar;
   currentDate: Date;
-  onActionComplete?: () => void;
-  onBookingCreated?: (
-    events: Partial<CalendarEvent>[] | Partial<CalendarEvent>
-  ) => void;
 }
 
 export function MobileView({
   loading,
   selectedCalendar,
   currentDate,
-  onActionComplete,
-  onBookingCreated,
 }: MobileViewProps) {
   return (
     <div className="flex-1 overflow-hidden">
@@ -43,11 +37,7 @@ export function MobileView({
               view="day"
               date={currentDate}
             >
-              <CalendarDayView
-                assetCalendar={selectedCalendar}
-                onActionComplete={onActionComplete}
-                onBookingCreated={onBookingCreated}
-              />
+              <CalendarDayView assetCalendar={selectedCalendar} />
             </Calendar>
           )}
         </div>
