@@ -13,6 +13,7 @@ import {
 import { useRouter } from "next/navigation";
 import * as Sentry from "@sentry/nextjs";
 import posthog from "posthog-js";
+import { useSWRConfig } from "swr";
 import { saveStoredProject } from "@/lib/projectStorage";
 
 // ===== TYPES =====
@@ -53,6 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const { mutate } = useSWRConfig();
   const initAttempted = useRef(false);
 
   // ===== Check auth status via server =====
@@ -133,6 +135,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setError("Login succeeded but failed to load profile");
         throw new Error("Profile load failed");
       }
+
+      // Clear any stale SWR cache from a previous session before setting new user context
+      await mutate(() => true, undefined, { revalidate: false });
 
       setUser(userData);
       Sentry.setUser({
@@ -242,6 +247,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     Sentry.setUser(null);
     posthog.reset();
+
+    // Clear in-memory SWR cache so a different user never sees stale items
+    await mutate(() => true, undefined, { revalidate: false });
 
     // Clear any cached data from localStorage
     if (typeof window !== "undefined") {
