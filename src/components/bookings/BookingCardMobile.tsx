@@ -102,9 +102,17 @@ function BookingCardMobile({
             <Clock size={12} className="text-slate-400" />
             <span className="truncate">{timeRange}</span>
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium min-w-0">
             <RoleIcon size={12} className="text-slate-400" />
-            <span className="truncate">{booking.bookingFor}</span>
+            <span className="text-[10px] uppercase tracking-wide font-bold text-slate-500 shrink-0">
+              Booked by:
+            </span>
+            <span
+              className="truncate min-w-0 text-slate-700"
+              title={booking.bookingFor}
+            >
+              {booking.bookingFor}
+            </span>
           </div>
           <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
             <MapPin size={12} className="text-blue-500" />
