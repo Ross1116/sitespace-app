@@ -43,6 +43,7 @@ import {
   ApiManager,
   AuditEntry,
   AuditTrailResponse,
+  BookingListResponse,
   getApiErrorMessage,
 } from "@/types";
 
@@ -104,6 +105,9 @@ export function BookingDetailsDialog({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [competingPendingBookings, setCompetingPendingBookings] = useState<
+    ApiBooking[]
+  >([]);
 
   // Modal States
   const [isRescheduleOpen, setIsRescheduleOpen] = useState(false);
@@ -345,11 +349,67 @@ export function BookingDetailsDialog({
     }
   };
 
-  const fetchLatestCompetingPendingCount = async () => {
+  const fetchLatestCompetingPending = async (): Promise<{
+    count: number;
+    bookings: ApiBooking[];
+  } | null> => {
     try {
       const res = await api.get<BookingDetail>(`/bookings/${bookingId}`);
       setData(res.data);
-      return res.data.competing_pending_count ?? 0;
+      const competingCount = res.data.competing_pending_count ?? 0;
+
+      if (competingCount === 0) {
+        return { count: 0, bookings: [] };
+      }
+
+      const { booking_date, start_time, end_time, asset_id, project_id } =
+        res.data;
+      if (!booking_date || !start_time || !end_time || !asset_id) {
+        return { count: competingCount, bookings: [] };
+      }
+
+      const limit = 200;
+      let skip = 0;
+      let hasMore = true;
+      const collected: ApiBooking[] = [];
+
+      while (hasMore) {
+        const listRes = await api.get<BookingListResponse>(`/bookings/`, {
+          params: {
+            project_id,
+            date_from: booking_date,
+            date_to: booking_date,
+            limit,
+            skip,
+          },
+        });
+
+        collected.push(...(listRes.data.bookings || []));
+        hasMore = Boolean(listRes.data.has_more);
+        skip += limit;
+      }
+
+      const normalizeTime = (value: string) =>
+        value.split(":").slice(0, 2).join(":");
+      const normalizedStart = normalizeTime(start_time);
+      const normalizedEnd = normalizeTime(end_time);
+
+      const matchedPending = collected.filter((booking) => {
+        const status = (booking.status || "").toLowerCase();
+        return (
+          status === "pending" &&
+          booking.id !== bookingId &&
+          booking.asset_id === asset_id &&
+          booking.booking_date === booking_date &&
+          normalizeTime(booking.start_time) === normalizedStart &&
+          normalizeTime(booking.end_time) === normalizedEnd
+        );
+      });
+
+      return {
+        count: matchedPending.length || competingCount,
+        bookings: matchedPending,
+      };
     } catch (err: unknown) {
       setError(getApiErrorMessage(err, "Failed to validate booking state"));
       return null;
@@ -361,15 +421,16 @@ export function BookingDetailsDialog({
   ) => {
     if (type === "confirm") {
       void (async () => {
-        const freshCompetingPendingCount =
-          await fetchLatestCompetingPendingCount();
-        if (freshCompetingPendingCount === null) return;
+        const freshCompetingPending = await fetchLatestCompetingPending();
+        if (!freshCompetingPending) return;
 
-        if (freshCompetingPendingCount === 0) {
+        if (freshCompetingPending.count === 0) {
+          setCompetingPendingBookings([]);
           await handleUpdateStatus("confirmed");
           return;
         }
 
+        setCompetingPendingBookings(freshCompetingPending.bookings);
         setConfirmAction({ type, isOpen: true });
       })();
       return;
@@ -692,6 +753,19 @@ export function BookingDetailsDialog({
                 "This action is permanent and cannot be undone."}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {confirmAction.type === "confirm" &&
+            competingPendingBookings.length > 0 && (
+              <div className="max-h-56 overflow-y-auto rounded-md border border-gray-200 p-3 text-sm text-slate-700">
+                <p className="font-medium text-slate-800">Impacted bookings:</p>
+                <ul className="mt-2 list-disc space-y-1 pl-5">
+                  {competingPendingBookings.map((booking) => (
+                    <li key={booking.id}>
+                      {`${booking.purpose || booking.title || "Booking"} (${booking.status || "pending"}) — ${booking.booking_date} ${booking.start_time}-${booking.end_time}`}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           <AlertDialogFooter className="mt-2">
             <AlertDialogCancel
               disabled={actionLoading}
