@@ -35,11 +35,18 @@ export const MIN_PENDING_BOOKING_CAPACITY = 1;
 export const MAX_PENDING_BOOKING_CAPACITY = 20;
 export const DEFAULT_PENDING_BOOKING_CAPACITY = 5;
 
-export const clampPendingBookingCapacity = (value: number): number =>
-  Math.min(
+export const clampPendingBookingCapacity = (
+  value: number | null | undefined,
+): number => {
+  const safeValue = Number.isFinite(value)
+    ? (value as number)
+    : DEFAULT_PENDING_BOOKING_CAPACITY;
+
+  return Math.min(
     MAX_PENDING_BOOKING_CAPACITY,
-    Math.max(MIN_PENDING_BOOKING_CAPACITY, value),
+    Math.max(MIN_PENDING_BOOKING_CAPACITY, safeValue),
   );
+};
 
 export const BOOKING_DURATION_OPTIONS = [
   15, 30, 45, 60, 90, 120, 180, 240, 300, 360,

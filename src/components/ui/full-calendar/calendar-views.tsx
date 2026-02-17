@@ -652,14 +652,24 @@ export const CalendarWeekView = () => {
         onEventClick(completeEvents[completeEvents.length - 1]);
       }
     } else {
-      if (newEvent.start && newEvent.title) {
+      const start = toDate(newEvent.start);
+      const title = typeof newEvent.title === "string" ? newEvent.title : "";
+
+      if (start && title) {
+        const end = toDate(newEvent.end) || addHours(start, 1);
         const completeEvent: CalendarEvent = {
-          id: newEvent.id || Math.random().toString(36).substring(2, 11),
-          start: newEvent.start,
-          end: newEvent.end || addHours(newEvent.start, 1),
-          title: newEvent.title,
-          description: newEvent.description || "",
-          color: newEvent.color || "default",
+          id:
+            typeof newEvent.id === "string"
+              ? newEvent.id
+              : Math.random().toString(36).substring(2, 11),
+          start,
+          end,
+          title,
+          description:
+            typeof newEvent.description === "string"
+              ? newEvent.description
+              : "",
+          color: isCalendarColor(newEvent.color) ? newEvent.color : "yellow",
         };
 
         setEvents([...events, completeEvent]);

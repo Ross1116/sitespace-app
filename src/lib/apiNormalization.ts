@@ -57,6 +57,10 @@ const toApiBooking = (record: UnknownRecord): ApiBooking | null => {
 
   const assetRecord = toOptionalRecord(record.asset);
   const projectRecord = toOptionalRecord(record.project);
+  const assetObjectId = assetRecord ? asId(assetRecord.id) : "";
+  const assetObjectName = assetRecord ? asString(assetRecord.name) : "";
+  const projectObjectId = projectRecord ? asId(projectRecord.id) : "";
+  const projectObjectName = projectRecord ? asString(projectRecord.name) : "";
 
   return {
     id,
@@ -73,17 +77,17 @@ const toApiBooking = (record: UnknownRecord): ApiBooking | null => {
     title: asString(record.title) || undefined,
     created_at: asString(record.created_at) || undefined,
     updated_at: asString(record.updated_at) || undefined,
-    asset: assetRecord
+    asset: assetObjectId && assetObjectName
       ? {
-          id: asId(assetRecord.id),
-          name: asString(assetRecord.name),
+          id: assetObjectId,
+          name: assetObjectName,
           asset_code: asString(assetRecord.asset_code) || undefined,
         }
       : undefined,
-    project: projectRecord
+    project: projectObjectId && projectObjectName
       ? {
-          id: asId(projectRecord.id),
-          name: asString(projectRecord.name),
+          id: projectObjectId,
+          name: projectObjectName,
         }
       : undefined,
     competing_pending_count:

@@ -104,6 +104,9 @@ const getErrorDetail = (error: unknown): unknown => {
   const response = error.response;
   if (!isRecord(response)) return undefined;
   const data = response.data;
+  if (typeof data === "string" || Array.isArray(data)) {
+    return data;
+  }
   if (!isRecord(data) || !("detail" in data)) return undefined;
   return data.detail;
 };
@@ -122,6 +125,8 @@ const extractProjectSubcontractorIds = (payload: unknown): string[] => {
 };
 
 const getValidationMessage = (entry: unknown): string => {
+  if (typeof entry === "string") return entry;
+  if (Array.isArray(entry)) return JSON.stringify(entry);
   if (!isRecord(entry) || !("msg" in entry)) return "";
   const msg = entry.msg;
   if (typeof msg === "string") return msg;
