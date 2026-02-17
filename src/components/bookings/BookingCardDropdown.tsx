@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import RescheduleBookingForm from "@/components/forms/RescheduleBookingForm";
-import { ApiBooking } from "@/types";
+import { ApiBooking, BookingListResponse } from "@/types";
 
 interface BookingCardDropdownProps {
   bookingKey: string;
@@ -48,6 +48,9 @@ export default function BookingCardDropdown({
   const [isRescheduleFormOpen, setIsRescheduleFormOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [competingPendingCount, setCompetingPendingCount] = useState(0);
+  const [competingPendingBookings, setCompetingPendingBookings] = useState<
+    ApiBooking[]
+  >([]);
 
   const { user } = useAuth();
   const hasManagerPrivileges =
@@ -98,16 +101,67 @@ export default function BookingCardDropdown({
   const confirmBooking = () => updateBookingStatus("confirmed");
   const completeBooking = () => updateBookingStatus("completed");
 
+  const fetchCompetingPendingBookings = async (
+    booking: ApiBooking,
+  ): Promise<ApiBooking[]> => {
+    const { booking_date, start_time, end_time, asset_id, project_id } =
+      booking;
+    if (!booking_date || !start_time || !end_time || !asset_id) return [];
+
+    const normalizeTime = (value: string) =>
+      value.split(":").slice(0, 2).join(":");
+    const normalizedStart = normalizeTime(start_time);
+    const normalizedEnd = normalizeTime(end_time);
+
+    const limit = 200;
+    let skip = 0;
+    let hasMore = true;
+    const collected: ApiBooking[] = [];
+
+    while (hasMore) {
+      const response = await api.get<BookingListResponse>(`/bookings/`, {
+        params: {
+          project_id,
+          date_from: booking_date,
+          date_to: booking_date,
+          limit,
+          skip,
+        },
+      });
+
+      collected.push(...(response.data.bookings || []));
+      hasMore = Boolean(response.data.has_more);
+      skip += limit;
+    }
+
+    return collected.filter((entry) => {
+      const status = (entry.status || "").toLowerCase();
+      return (
+        status === "pending" &&
+        entry.id !== bookingKey &&
+        entry.asset_id === asset_id &&
+        entry.booking_date === booking_date &&
+        normalizeTime(entry.start_time) === normalizedStart &&
+        normalizeTime(entry.end_time) === normalizedEnd
+      );
+    });
+  };
+
   const handleConfirmClick = async () => {
     setIsLoading(true);
     try {
       const response = await api.get<ApiBooking>(`/bookings/${bookingKey}`);
       const competingCount = response.data.competing_pending_count ?? 0;
       if (competingCount > 0) {
+        const pendingBookings = await fetchCompetingPendingBookings(
+          response.data,
+        );
+        setCompetingPendingBookings(pendingBookings);
         setCompetingPendingCount(competingCount);
         if (isOpen) onToggle();
         setIsConfirmModalOpen(true);
       } else {
+        setCompetingPendingBookings([]);
         await updateBookingStatus("confirmed");
       }
     } catch (error: unknown) {
@@ -347,6 +401,18 @@ export default function BookingCardDropdown({
               {competingPendingCount === 1 ? "" : "s"} for this time slot.
             </DialogDescription>
           </DialogHeader>
+          {competingPendingBookings.length > 0 && (
+            <div className="max-h-56 overflow-y-auto rounded-md border border-gray-200 p-3 text-sm text-slate-700">
+              <p className="font-medium text-slate-800">Impacted bookings:</p>
+              <ul className="mt-2 list-disc space-y-1 pl-5">
+                {competingPendingBookings.map((booking) => (
+                  <li key={booking.id}>
+                    {`${booking.purpose || booking.title || "Booking"} (${booking.status || "pending"}) — ${booking.booking_date} ${booking.start_time}-${booking.end_time}`}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <DialogFooter className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button
               variant="outline"

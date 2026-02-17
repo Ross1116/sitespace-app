@@ -487,10 +487,19 @@ export function CreateBookingForm({
     isOpen: boolean;
     pendingCount: number;
     assetNames: string[];
+    impactedBookings: Array<{
+      id: string;
+      title: string;
+      status: string;
+      bookingDate: string;
+      startTime: string;
+      endTime: string;
+    }>;
   }>({
     isOpen: false,
     pendingCount: 0,
     assetNames: [],
+    impactedBookings: [],
   });
 
   // ===== DERIVED VALUES =====
@@ -840,6 +849,15 @@ export function CreateBookingForm({
             isOpen: true,
             pendingCount: competingPendingBookings.length,
             assetNames: affectedAssetNames,
+            impactedBookings: competingPendingBookings.map((booking) => ({
+              id: booking.id,
+              title:
+                booking.purpose?.trim() || booking.title?.trim() || "Booking",
+              status: booking.status || "pending",
+              bookingDate: booking.booking_date,
+              startTime: booking.start_time,
+              endTime: booking.end_time,
+            })),
           });
           dispatchAsync({ type: "SET_SUBMITTING", value: false });
           return;
@@ -1517,6 +1535,18 @@ export function CreateBookingForm({
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {pendingConfirmAlert.impactedBookings.length > 0 && (
+            <div className="max-h-56 overflow-y-auto rounded-md border border-gray-200 p-3 text-sm text-slate-700">
+              <p className="font-medium text-slate-800">Impacted bookings:</p>
+              <ul className="mt-2 list-disc space-y-1 pl-5">
+                {pendingConfirmAlert.impactedBookings.map((booking) => (
+                  <li key={booking.id}>
+                    {`${booking.title} (${booking.status}) — ${booking.bookingDate} ${booking.startTime}-${booking.endTime}`}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <AlertDialogFooter className="mt-2">
             <AlertDialogCancel
               disabled={isSubmitting}
@@ -1533,6 +1563,7 @@ export function CreateBookingForm({
                   isOpen: false,
                   pendingCount: 0,
                   assetNames: [],
+                  impactedBookings: [],
                 });
                 void handleSubmit(true);
               }}
