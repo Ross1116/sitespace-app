@@ -13,7 +13,7 @@ import {
 import { useRouter } from "next/navigation";
 import * as Sentry from "@sentry/nextjs";
 import posthog from "posthog-js";
-import { mutate } from "swr";
+import { useSWRConfig } from "swr";
 import { saveStoredProject } from "@/lib/projectStorage";
 
 // ===== TYPES =====
@@ -54,6 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const { mutate } = useSWRConfig();
   const initAttempted = useRef(false);
 
   // ===== Check auth status via server =====

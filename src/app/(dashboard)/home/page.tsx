@@ -114,16 +114,45 @@ export default function HomePage() {
     return (projectsRaw as { projects?: ApiProject[] }).projects || [];
   }, [projectsRaw, user?.role]);
 
-  // Set initial project once projects load
+  // Prevent stale project context when auth session/user changes
   useEffect(() => {
-    if (projects.length === 0 || selectedProject) return;
+    setSelectedProject(null);
+  }, [userId]);
+
+  // Set/validate project once projects load
+  useEffect(() => {
+    if (projects.length === 0) return;
+
+    const currentProjectId = selectedProject?.id || selectedProject?.project_id;
+    if (currentProjectId) {
+      const matchingCurrent = projects.find(
+        (project) => project.id === currentProjectId,
+      );
+      if (matchingCurrent) {
+        setSelectedProject(matchingCurrent);
+        return;
+      }
+    }
+
     const parsed = readStoredProject(userId) as ApiProject | null;
-    if (parsed && projects.some((p) => p.id === parsed.id)) {
-      setSelectedProject(parsed);
+    if (parsed) {
+      const matchingStored = projects.find(
+        (project) => project.id === parsed.id,
+      );
+      if (matchingStored) {
+        setSelectedProject(matchingStored);
+        saveStoredProject(userId, matchingStored);
+        return;
+      }
+    }
+
+    const fallbackProject = projects[0];
+    if (!fallbackProject) {
       return;
     }
-    saveStoredProject(userId, projects[0]);
-    setSelectedProject(projects[0]);
+
+    saveStoredProject(userId, fallbackProject);
+    setSelectedProject(fallbackProject);
   }, [projects, selectedProject, userId]);
 
   const projectId = selectedProject?.id || selectedProject?.project_id || null;
