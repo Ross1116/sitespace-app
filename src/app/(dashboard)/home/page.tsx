@@ -35,7 +35,11 @@ import type { ApiBooking, ApiProject } from "@/types";
 import type { LucideIcon } from "lucide-react";
 import useSWR from "swr";
 import { swrFetcher, SWR_CONFIG } from "@/lib/swr";
-import { readStoredProject, saveStoredProject } from "@/lib/projectStorage";
+import {
+  readStoredProject,
+  removeStoredProject,
+  saveStoredProject,
+} from "@/lib/projectStorage";
 
 // --- Types ---
 type Booking = ApiBooking;
@@ -121,7 +125,13 @@ export default function HomePage() {
 
   // Set/validate project once projects load
   useEffect(() => {
-    if (projects.length === 0) return;
+    if (projects.length === 0) {
+      if (selectedProject) {
+        setSelectedProject(null);
+        removeStoredProject(userId);
+      }
+      return;
+    }
 
     const currentProjectId = selectedProject?.id || selectedProject?.project_id;
     if (currentProjectId) {

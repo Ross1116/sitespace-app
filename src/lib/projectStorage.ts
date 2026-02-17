@@ -87,3 +87,10 @@ export const readStoredProject = (
     return null;
   }
 };
+
+export const removeStoredProject = (
+  userId: string | number | undefined,
+): void => {
+  if (typeof window === "undefined" || !userId) return;
+  localStorage.removeItem(getProjectStorageKey(userId));
+};
