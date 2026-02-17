@@ -157,7 +157,13 @@ export function BookingDetailsDialog({
             (entry) => entry.action?.toLowerCase() === "created",
           );
           setCreatedByEntry(createdEntry || null);
-        } catch {
+        } catch (err: unknown) {
+          if (!isAbortError(err, signal)) {
+            reportError(
+              err,
+              "BookingDetailDialog: failed to fetch booking audit trail",
+            );
+          }
           if (!signal?.aborted) setCreatedByEntry(null);
         }
       })();

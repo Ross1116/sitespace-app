@@ -23,6 +23,10 @@ import api from "@/lib/api";
 import { useAuth } from "@/app/context/AuthContext";
 import { reportError } from "@/lib/monitoring";
 import { readStoredProject } from "@/lib/projectStorage";
+import {
+  normalizeSubcontractorList,
+  type NormalizedSubcontractor,
+} from "@/lib/subcontractorNormalization";
 
 // ===== TYPE DEFINITIONS =====
 interface ContractorModalProps {
@@ -43,16 +47,7 @@ interface SubcontractorCreateRequest {
   project_id?: string;
 }
 
-interface SubcontractorResponse {
-  id: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  company_name?: string;
-  trade_specialty?: string;
-  phone?: string;
-  is_active: boolean;
-}
+type SubcontractorResponse = NormalizedSubcontractor;
 
 interface Contractor {
   firstName: string;
@@ -188,7 +183,7 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
         },
       });
 
-      const subcontractors = response.data?.subcontractors || [];
+      const subcontractors = normalizeSubcontractorList(response.data);
 
       const exactMatch = subcontractors.find(
         (sub: SubcontractorResponse) =>

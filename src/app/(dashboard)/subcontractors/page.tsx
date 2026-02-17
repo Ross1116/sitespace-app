@@ -24,27 +24,10 @@ import useSWR from "swr";
 import { swrFetcher, SWR_CONFIG } from "@/lib/swr";
 import { useRouter } from "next/navigation";
 import { readStoredProject } from "@/lib/projectStorage";
-
-interface SubcontractorFromBackend {
-  id: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  company_name?: string;
-  trade_specialty?: string;
-  phone?: string;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-interface SubcontractorListResponse {
-  subcontractors: SubcontractorFromBackend[];
-  total: number;
-  skip: number;
-  limit: number;
-  has_more: boolean;
-}
+import {
+  normalizeSubcontractorList,
+  type NormalizedSubcontractor,
+} from "@/lib/subcontractorNormalization";
 
 interface Contractor {
   contractorKey: string;
@@ -54,7 +37,7 @@ interface Contractor {
   contractorEmail: string;
   contractorPhone: string;
   isActive: boolean;
-  _originalData?: SubcontractorFromBackend;
+  _originalData?: NormalizedSubcontractor;
 }
 
 type SortField =
@@ -67,7 +50,7 @@ type SortField =
 type SortDirection = "asc" | "desc";
 
 const transformBackendSubcontractor = (
-  backendSub: SubcontractorFromBackend,
+  backendSub: NormalizedSubcontractor,
 ): Contractor => {
   return {
     contractorKey: backendSub.id,
@@ -166,10 +149,10 @@ export default function SubcontractorsPage() {
     isLoading: loading,
     error: fetchError,
     mutate,
-  } = useSWR<SubcontractorListResponse>(swrKey, swrFetcher, SWR_CONFIG);
+  } = useSWR<unknown>(swrKey, swrFetcher, SWR_CONFIG);
 
   const allSubs = useMemo(
-    () => (data?.subcontractors || []).map(transformBackendSubcontractor),
+    () => normalizeSubcontractorList(data).map(transformBackendSubcontractor),
     [data],
   );
 
@@ -624,7 +607,7 @@ export default function SubcontractorsPage() {
                 </div>
 
                 {/* Timestamps */}
-                {selectedContractor._originalData && (
+                {selectedContractor._originalData?.created_at && (
                   <div className="text-center space-y-1 py-4 pt-2 border-t border-slate-200 mt-4">
                     <p className="text-[10px] text-slate-400 flex items-center justify-center gap-1">
                       <Clock size={10} />

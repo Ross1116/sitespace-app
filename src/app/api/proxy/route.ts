@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
+import { reportError } from "@/lib/monitoring";
 
 async function getToken() {
   const cookieStore = await cookies();
@@ -21,15 +22,13 @@ async function tryRefresh(
     });
     if (!res.ok) return null;
     return await res.json();
-  } catch {
+  } catch (error: unknown) {
+    reportError(error, "proxy route: token refresh request failed", "server");
     return null;
   }
 }
 
-const PUBLIC_AUTH_PATHS = [
-  "/auth/forgot-password",
-  "/auth/reset-password",
-];
+const PUBLIC_AUTH_PATHS = ["/auth/forgot-password", "/auth/reset-password"];
 
 const PUBLIC_AUTH_LIMIT = 8;
 const PUBLIC_AUTH_WINDOW_MS = 15 * 60 * 1000;
@@ -96,7 +95,8 @@ async function proxyToBackend(
     try {
       const body = await request.text();
       if (body) fetchOpts.body = body;
-    } catch {
+    } catch (error: unknown) {
+      reportError(error, "proxy route: failed to read request body", "server");
       /* no body */
     }
   }

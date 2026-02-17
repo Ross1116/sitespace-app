@@ -14,7 +14,9 @@ import { useRouter } from "next/navigation";
 import * as Sentry from "@sentry/nextjs";
 import posthog from "posthog-js";
 import { useSWRConfig } from "swr";
+import { reportError } from "@/lib/monitoring";
 import { saveStoredProject } from "@/lib/projectStorage";
+import { normalizeProjectList } from "@/lib/apiNormalization";
 
 // ===== TYPES =====
 type User = {
@@ -75,7 +77,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role: userData.role,
         user_type: userData.user_type,
       };
-    } catch {
+    } catch (error: unknown) {
+      reportError(error, "AuthContext: failed to check auth status");
       return null;
     }
   }, []);
@@ -169,32 +172,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
           if (projRes.ok) {
             const projData = await projRes.json();
-            let firstProject = null;
-
-            if (userData.role === "subcontractor" && Array.isArray(projData)) {
-              const p = projData[0];
-              if (p) {
-                firstProject = {
-                  ...p,
-                  id: p.project_id,
-                  name: p.project_name,
-                  location: p.project_location,
-                  status: p.is_active ? "active" : "inactive",
-                };
-              }
-            } else {
-              const list = projData.projects || projData;
-              if (Array.isArray(list) && list.length > 0) {
-                firstProject = list[0];
-              }
-            }
+            const firstProject = normalizeProjectList(projData)[0] ?? null;
 
             if (firstProject) {
               saveStoredProject(userData.id, firstProject);
             }
           }
-        } catch {
-          // Swallowed — home page will still set it as fallback
+        } catch (error: unknown) {
+          reportError(
+            error,
+            "AuthContext: failed to prefetch project during login",
+          );
         }
       })();
 
@@ -225,7 +213,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       );
 
       if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
+        const errData = await res.json().catch((parseError: unknown) => {
+          reportError(
+            parseError,
+            "AuthContext: failed to parse register error response",
+          );
+          return {};
+        });
         const message = errData.detail || "Registration failed";
         setError(message);
         throw new Error(message);
@@ -242,7 +236,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await fetch("/api/auth/signout", {
       method: "POST",
       credentials: "include",
-    }).catch(() => {});
+    }).catch((error: unknown) => {
+      reportError(error, "AuthContext: signout request failed");
+    });
 
     setUser(null);
     Sentry.setUser(null);
