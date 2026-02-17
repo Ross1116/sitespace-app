@@ -1,5 +1,7 @@
 "use client";
 
+import { reportError } from "@/lib/monitoring";
+
 import { cn } from "@/lib/utils";
 import {
   Tooltip,
@@ -273,7 +275,10 @@ export const CalendarDayView = ({
       await api.put(`/bookings/${bookingId}`, payload);
       onActionComplete?.();
     } catch (error) {
-      console.error("Failed to reschedule", error);
+      reportError(
+        error,
+        "CalendarViews: failed to reschedule booking via drag/drop",
+      );
       setEvents(originalEvents);
       setValidationError({
         title: "Reschedule Failed",
@@ -552,13 +557,6 @@ export const CalendarWeekView = () => {
       end: endTime,
     });
     setIsBookingFormOpen(true);
-
-    console.log(
-      "Create event at:",
-      format(startTime, "h:mm a"),
-      "to",
-      format(endTime, "h:mm a"),
-    );
   };
 
   const handleSaveEvent = (

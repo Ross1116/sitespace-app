@@ -46,6 +46,8 @@ import {
   BookingListResponse,
   getApiErrorMessage,
 } from "@/types";
+import { reportError } from "@/lib/monitoring";
+import { BOOKING_PAGINATION_MAX_PAGES } from "@/lib/pagination";
 
 type BookingDetail = Omit<ApiBooking, "manager" | "asset"> & {
   manager?: (ApiManager & { email?: string }) | null;
@@ -161,7 +163,7 @@ export function BookingDetailsDialog({
       })();
     } catch (err) {
       if (isAbortError(err, signal)) return;
-      console.error("Error fetching booking details:", err);
+      reportError(err, "BookingDetailDialog: failed to fetch booking details");
       setError("Failed to load booking details.");
       if (!signal?.aborted) setLoading(false);
     }
@@ -371,9 +373,22 @@ export function BookingDetailsDialog({
       const limit = 200;
       let skip = 0;
       let hasMore = true;
+      let pageCount = 0;
+      let guardTriggered = false;
       const collected: ApiBooking[] = [];
 
       while (hasMore) {
+        if (pageCount >= BOOKING_PAGINATION_MAX_PAGES) {
+          guardTriggered = true;
+          reportError(
+            new Error(
+              `Pagination guard triggered in BookingDetailDialog: pageCount=${pageCount}, maxPages=${BOOKING_PAGINATION_MAX_PAGES}, bookingId=${bookingId}, projectId=${project_id ?? "unknown"}`,
+            ),
+            "BookingDetailDialog: pagination safety limit reached while loading competing pending bookings",
+          );
+          break;
+        }
+
         const listRes = await api.get<BookingListResponse>(`/bookings/`, {
           params: {
             project_id,
@@ -387,6 +402,7 @@ export function BookingDetailsDialog({
         collected.push(...(listRes.data.bookings || []));
         hasMore = Boolean(listRes.data.has_more);
         skip += limit;
+        pageCount += 1;
       }
 
       const normalizeTime = (value: string) =>
@@ -406,11 +422,22 @@ export function BookingDetailsDialog({
         );
       });
 
+      if (guardTriggered) {
+        return {
+          count: competingCount,
+          bookings: [],
+        };
+      }
+
       return {
         count: matchedPending.length || competingCount,
         bookings: matchedPending,
       };
     } catch (err: unknown) {
+      reportError(
+        err,
+        `BookingDetailDialog: failed to validate booking state (bookingId=${bookingId})`,
+      );
       setError(getApiErrorMessage(err, "Failed to validate booking state"));
       return null;
     }

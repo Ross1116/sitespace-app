@@ -38,9 +38,9 @@ function SetPasswordForm() {
   const hasCapturedToken = useRef(false);
 
   // 1. Force logout on mount
-  // useEffect(() => {
-  //   if (isAuthenticated) logout();
-  // }, [isAuthenticated, logout]);
+  useEffect(() => {
+    if (isAuthenticated) logout();
+  }, [isAuthenticated, logout]);
 
   // 2. Capture token once, then scrub it from the URL to reduce leakage
   useEffect(() => {

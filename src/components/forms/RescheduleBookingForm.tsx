@@ -30,6 +30,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { getApiErrorMessage } from "@/types";
+import { reportError } from "@/lib/monitoring";
 
 const isAbortError = (error: unknown, signal?: AbortSignal) => {
   if (signal?.aborted) return true;
@@ -121,7 +122,10 @@ export default function RescheduleBookingForm({
       setDuration(diff.toString());
     } catch (err: unknown) {
       if (isAbortError(err, signal)) return;
-      console.error("Failed to fetch booking:", err);
+      reportError(
+        err,
+        "RescheduleBookingForm: failed to fetch booking details",
+      );
       setError(
         getApiErrorMessage(
           err,
@@ -202,7 +206,7 @@ export default function RescheduleBookingForm({
       onSave(); // Refresh parent list
       onClose(); // Close modal
     } catch (err: unknown) {
-      console.error("Update failed:", err);
+      reportError(err, "RescheduleBookingForm: failed to update booking");
       setError(getApiErrorMessage(err, "Failed to reschedule booking"));
     } finally {
       setSubmitting(false);

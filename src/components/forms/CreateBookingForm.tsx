@@ -60,6 +60,9 @@ import {
 import useSWR from "swr";
 import { swrFetcher } from "@/lib/swr";
 import { isAssetUnavailableForBooking } from "@/lib/assetStatus";
+import { reportError } from "@/lib/monitoring";
+import { readStoredProject, StoredProject } from "@/lib/projectStorage";
+import { BOOKING_PAGINATION_MAX_PAGES } from "@/lib/pagination";
 
 // ===== TYPE DEFINITIONS =====
 type CreateBookingFormProps = {
@@ -108,6 +111,20 @@ const getString = (value: unknown): string =>
 
 const getIdString = (value: unknown): string =>
   typeof value === "string" || typeof value === "number" ? String(value) : "";
+
+const mapStoredToApiProject = (
+  storedProject: StoredProject,
+): ApiProject | null => {
+  const projectId = storedProject.id?.trim();
+  if (!projectId) return null;
+
+  return {
+    id: projectId,
+    name: storedProject.name?.trim() || "Selected Project",
+    location: storedProject.location,
+    status: storedProject.status,
+  };
+};
 
 const isAbortError = (error: unknown, signal?: AbortSignal) => {
   if (signal?.aborted) return true;
@@ -556,16 +573,20 @@ export function CreateBookingForm({
 
   // ===== LOAD PROJECT FROM LOCALSTORAGE =====
   useEffect(() => {
-    const projectString = localStorage.getItem(`project_${userId}`);
-    if (projectString) {
-      try {
-        dispatchAsync({
-          type: "SET_PROJECT",
-          project: JSON.parse(projectString) as ApiProject,
-        });
-      } catch (err) {
-        console.error("Error parsing project:", err);
+    const storedProject = readStoredProject(userId);
+    if (storedProject) {
+      const project = mapStoredToApiProject(storedProject);
+      if (!project) {
+        reportError(
+          new Error("Invalid stored project payload"),
+          "CreateBookingForm: unable to map stored project to ApiProject",
+        );
+        return;
       }
+      dispatchAsync({
+        type: "SET_PROJECT",
+        project,
+      });
     }
   }, [userId]);
 
@@ -671,7 +692,7 @@ export function CreateBookingForm({
         });
       } catch (err: unknown) {
         if (isAbortError(err, signal)) return;
-        console.error("Error loading subcontractors:", err);
+        reportError(err, "CreateBookingForm: failed to load subcontractors");
         dispatchAsync({ type: "SET_LOADING_SUBS", loading: false });
       }
     };
@@ -791,9 +812,22 @@ export function CreateBookingForm({
         const limit = 200;
         let skip = 0;
         let hasMore = true;
+        let pageCount = 0;
         const collected: ApiBooking[] = [];
 
         while (hasMore) {
+          if (pageCount >= BOOKING_PAGINATION_MAX_PAGES) {
+            reportError(
+              new Error(
+                `Pagination guard triggered in CreateBookingForm: pageCount=${pageCount}, maxPages=${BOOKING_PAGINATION_MAX_PAGES}, projectId=${project.id}, bookingDate=${bookingDate}`,
+              ),
+              "CreateBookingForm: pagination safety limit reached while loading existing bookings",
+            );
+            throw new Error(
+              "Too many bookings to load for this date — please narrow your search or contact support.",
+            );
+          }
+
           const existing = await api.get<BookingListResponse>(`/bookings/`, {
             params: {
               project_id: project.id,
@@ -807,6 +841,7 @@ export function CreateBookingForm({
           collected.push(...(existing.data.bookings || []));
           hasMore = Boolean(existing.data.has_more);
           skip += limit;
+          pageCount += 1;
         }
 
         existingBookingsForDate = collected;
@@ -1019,7 +1054,7 @@ export function CreateBookingForm({
         });
       }
     } catch (err: unknown) {
-      console.error("Error creating bookings:", err);
+      reportError(err, "CreateBookingForm: failed to create bookings");
       dispatchAsync({
         type: "SET_ERROR",
         error: getApiErrorMessage(err, "Failed to create booking"),

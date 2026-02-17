@@ -38,6 +38,8 @@ import {
   getApiErrorMessage,
   isAxiosError,
 } from "@/types";
+import { reportError } from "@/lib/monitoring";
+import { readStoredProject } from "@/lib/projectStorage";
 
 // ===== TYPE DEFINITIONS (Matching AssetsTable.tsx exactly) =====
 interface Project {
@@ -274,7 +276,6 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
   // Load asset data when modal opens or assetData changes
   useEffect(() => {
     if (assetData) {
-      console.log("Loading asset data:", assetData);
       setAsset({
         ...assetData,
         pendingBookingCapacity:
@@ -287,26 +288,24 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
 
   // Load project from localStorage
   useEffect(() => {
-    const projectString = localStorage.getItem(`project_${userId}`);
-    if (!projectString) {
-      console.error("No project found in localStorage");
+    const parsedProject = readStoredProject(userId);
+    if (!parsedProject) {
       return;
     }
 
-    try {
-      const parsedProject = JSON.parse(projectString);
-      setProject(parsedProject);
+    setProject({
+      id: parsedProject.id,
+      text: parsedProject.name || "",
+    });
 
-      // Update assetProject if not already set
-      if (!asset.assetProject && parsedProject) {
-        setAsset((prev) => ({
-          ...prev,
-          assetProject: parsedProject.id, //  Just the ID string
-        }));
-      }
-    } catch (error) {
-      console.error("Error parsing project:", error);
-    }
+    // Update assetProject if not already set
+    setAsset((prev) => {
+      if (prev.assetProject) return prev;
+      return {
+        ...prev,
+        assetProject: parsedProject.id, //  Just the ID string
+      };
+    });
   }, [userId]);
 
   useEffect(() => {
@@ -493,7 +492,6 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
         ? effectiveMaintenanceEnd.split("T")[0]
         : null;
 
-      console.log("Updating asset:", asset.assetKey, updateRequest);
       const saveUpdatedAsset = async (confirmBookingDenials: boolean) => {
         const response = await api.put<ApiAsset>(
           `/assets/${asset.assetKey}`,
@@ -502,9 +500,6 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
             ? { params: { confirm_booking_denials: true } }
             : undefined,
         );
-
-        console.log("Asset updated successfully:", response.data);
-
         const responseAssetType =
           response.data.type ||
           (response.data as { asset_type?: string }).asset_type ||
@@ -564,7 +559,7 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
         throw updateError;
       }
     } catch (error: unknown) {
-      console.error("Error updating asset:", error);
+      reportError(error, "UpdateAssetForm: failed to update asset");
       setError(getApiErrorMessage(error, "Failed to update asset"));
     } finally {
       setIsSubmitting(false);
@@ -623,7 +618,10 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
       setPendingUpdateRequest(null);
       onClose(false);
     } catch (error: unknown) {
-      console.error("Error confirming impacted booking denials:", error);
+      reportError(
+        error,
+        "UpdateAssetForm: failed to confirm impacted booking denials",
+      );
       setError(getApiErrorMessage(error, "Failed to update asset"));
     } finally {
       setIsSubmitting(false);

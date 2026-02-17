@@ -132,15 +132,17 @@ export const groupBookings = (bookings: TransformedBooking[]) => {
 
   // Sort bookings by date within each month
   Object.keys(groupedBookings).forEach((month) => {
-    groupedBookings[month].sort((a: TransformedBooking, b: TransformedBooking) => {
-      const timeA = new Date(a.bookingTimeDt).getTime();
-      const timeB = new Date(b.bookingTimeDt).getTime();
-      // Secondary sort by time if dates are equal
-      if (timeA === timeB && a.bookingStartTime && b.bookingStartTime) {
-        return a.bookingStartTime.localeCompare(b.bookingStartTime);
-      }
-      return timeA - timeB;
-    });
+    groupedBookings[month].sort(
+      (a: TransformedBooking, b: TransformedBooking) => {
+        const timeA = new Date(a.bookingTimeDt).getTime();
+        const timeB = new Date(b.bookingTimeDt).getTime();
+        // Secondary sort by time if dates are equal
+        if (timeA === timeB && a.bookingStartTime && b.bookingStartTime) {
+          return a.bookingStartTime.localeCompare(b.bookingStartTime);
+        }
+        return timeA - timeB;
+      },
+    );
   });
 
   return groupedBookings;
@@ -150,12 +152,14 @@ export const groupBookingsByMonth = <T extends { booking_date: string }>(
   bookings: T[],
 ) => {
   const groups: Record<string, T[]> = {};
+  const monthFormatter = new Intl.DateTimeFormat(undefined, {
+    month: "long",
+    year: "numeric",
+  });
+
   bookings.forEach((b) => {
     const date = new Date(`${b.booking_date}T00:00:00`);
-    const month = date.toLocaleString("default", {
-      month: "long",
-      year: "numeric",
-    });
+    const month = monthFormatter.format(date);
     if (!groups[month]) groups[month] = [];
     groups[month].push(b);
   });

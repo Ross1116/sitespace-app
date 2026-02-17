@@ -22,6 +22,8 @@ import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { useAuth } from "@/app/context/AuthContext";
 import { getApiErrorMessage } from "@/types";
+import { reportError } from "@/lib/monitoring";
+import { readStoredProject } from "@/lib/projectStorage";
 
 // ===== TYPE DEFINITIONS =====
 interface AssetModalProps {
@@ -107,24 +109,18 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
 
   // Load project from localStorage
   useEffect(() => {
-    const projectString = localStorage.getItem(`project_${userId}`);
-    if (!projectString) {
-      console.error("No project found in localStorage");
+    const parsedProject = readStoredProject(userId);
+    if (!parsedProject) {
       return;
     }
 
-    try {
-      const parsedProject = JSON.parse(projectString);
-      const parsedId = parsedProject.id;
-      setProject(parsedId);
+    const parsedId = parsedProject.id;
+    setProject(parsedId);
 
-      setAsset((prev) => ({
-        ...prev,
-        assetProject: parsedId,
-      }));
-    } catch (error) {
-      console.error("Error parsing project:", error);
-    }
+    setAsset((prev) => ({
+      ...prev,
+      assetProject: parsedId,
+    }));
   }, [userId]);
 
   // Auto-generate asset code when type and title change
@@ -223,7 +219,6 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
 
     try {
       setIsSubmitting(true);
-      console.log("Creating new asset...");
 
       // Build create request matching backend AssetCreate schema
       const createRequest: AssetCreateRequest = {
@@ -246,12 +241,8 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
         createRequest.maintenance_end_date = asset.maintenanceEnddt;
       }
 
-      console.log("Create request:", createRequest);
-
       // Use new backend endpoint
       const response = await api.post("/assets/", createRequest);
-
-      console.log("Asset created successfully:", response.data);
 
       // Call onSave callback
       onSave();
@@ -271,7 +262,7 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
         assetProject: project,
       });
     } catch (error: unknown) {
-      console.error("Error creating asset:", error);
+      reportError(error, "CreateAssetForm: failed to create asset");
       setError(getApiErrorMessage(error, "Failed to create asset"));
     } finally {
       setIsSubmitting(false);

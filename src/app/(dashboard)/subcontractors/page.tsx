@@ -23,6 +23,7 @@ import { ApiProject } from "@/types";
 import useSWR from "swr";
 import { swrFetcher, SWR_CONFIG } from "@/lib/swr";
 import { useRouter } from "next/navigation";
+import { readStoredProject } from "@/lib/projectStorage";
 
 interface SubcontractorFromBackend {
   id: string;
@@ -139,14 +140,8 @@ export default function SubcontractorsPage() {
   // Build project-aware memo (recomputes when projectVersion bumps)
   const projectId = useMemo(() => {
     if (!userId) return null;
-    try {
-      const raw = localStorage.getItem(`project_${userId}`);
-      if (!raw) return null;
-      const proj: ApiProject = JSON.parse(raw);
-      return proj.id ?? proj.project_id ?? null;
-    } catch {
-      return null;
-    }
+    const proj = readStoredProject(userId) as ApiProject | null;
+    return proj?.id ?? proj?.project_id ?? null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, projectVersion]);
 

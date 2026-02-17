@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { reportError } from "@/lib/monitoring";
 
 export async function GET() {
   try {
@@ -112,7 +113,7 @@ export async function GET() {
     const userData = await response.json();
     return NextResponse.json(userData);
   } catch (error) {
-    console.error("Auth check error:", error);
+    reportError(error, "Auth me route: unexpected error");
     return NextResponse.json(
       { message: "Internal server error" },
       { status: 500 },

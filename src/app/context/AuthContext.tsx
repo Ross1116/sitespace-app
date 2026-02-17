@@ -13,6 +13,7 @@ import {
 import { useRouter } from "next/navigation";
 import * as Sentry from "@sentry/nextjs";
 import posthog from "posthog-js";
+import { saveStoredProject } from "@/lib/projectStorage";
 
 // ===== TYPES =====
 type User = {
@@ -86,8 +87,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userData = await checkAuth();
       setUser(userData);
       if (userData) {
-        Sentry.setUser({ id: userData.id, email: userData.email, role: userData.role });
-        posthog.identify(userData.id, { email: userData.email, name: `${userData.first_name} ${userData.last_name}`, role: userData.role });
+        Sentry.setUser({
+          id: userData.id,
+          email: userData.email,
+          role: userData.role,
+        });
+        posthog.identify(userData.id, {
+          email: userData.email,
+          name: `${userData.first_name} ${userData.last_name}`,
+          role: userData.role,
+        });
       }
       setIsInitialized(true);
     };
@@ -126,51 +135,60 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       setUser(userData);
-      Sentry.setUser({ id: userData.id, email: userData.email, role: userData.role });
-      posthog.identify(userData.id, { email: userData.email, name: `${userData.first_name} ${userData.last_name}`, role: userData.role });
+      Sentry.setUser({
+        id: userData.id,
+        email: userData.email,
+        role: userData.role,
+      });
+      posthog.identify(userData.id, {
+        email: userData.email,
+        name: `${userData.first_name} ${userData.last_name}`,
+        role: userData.role,
+      });
 
       // Pre-fetch project so every dashboard page has context immediately
       // Fire-and-forget — don't block the redirect
-      (async () => { try {
-        const projUrl =
-          userData.role === "subcontractor"
-            ? `/subcontractors/${userData.id}/projects`
-            : "/projects/?my_projects=true&limit=100&skip=0";
+      (async () => {
+        try {
+          const projUrl =
+            userData.role === "subcontractor"
+              ? `/subcontractors/${userData.id}/projects`
+              : "/projects/?my_projects=true&limit=100&skip=0";
 
-        const projRes = await fetch(`/api/proxy?path=${encodeURIComponent(projUrl)}`, {
-          credentials: "include",
-        });
+          const projRes = await fetch(
+            `/api/proxy?path=${encodeURIComponent(projUrl)}`,
+            {
+              credentials: "include",
+            },
+          );
 
-        if (projRes.ok) {
-          const projData = await projRes.json();
-          let firstProject = null;
+          if (projRes.ok) {
+            const projData = await projRes.json();
+            let firstProject = null;
 
-          if (userData.role === "subcontractor" && Array.isArray(projData)) {
-            const p = projData[0];
-            if (p) {
-              firstProject = {
-                ...p,
-                id: p.project_id,
-                name: p.project_name,
-                location: p.project_location,
-                status: p.is_active ? "active" : "inactive",
-              };
+            if (userData.role === "subcontractor" && Array.isArray(projData)) {
+              const p = projData[0];
+              if (p) {
+                firstProject = {
+                  ...p,
+                  id: p.project_id,
+                  name: p.project_name,
+                  location: p.project_location,
+                  status: p.is_active ? "active" : "inactive",
+                };
+              }
+            } else {
+              const list = projData.projects || projData;
+              if (Array.isArray(list) && list.length > 0) {
+                firstProject = list[0];
+              }
             }
-          } else {
-            const list = projData.projects || projData;
-            if (Array.isArray(list) && list.length > 0) {
-              firstProject = list[0];
+
+            if (firstProject) {
+              saveStoredProject(userData.id, firstProject);
             }
           }
-
-          if (firstProject) {
-            localStorage.setItem(
-              `project_${userData.id}`,
-              JSON.stringify(firstProject),
-            );
-          }
-        }
-      } catch {
+        } catch {
           // Swallowed — home page will still set it as fallback
         }
       })();

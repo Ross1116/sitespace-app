@@ -23,6 +23,12 @@ import {
 import { Button } from "@/components/ui/button";
 import RescheduleBookingForm from "@/components/forms/RescheduleBookingForm";
 import { ApiBooking, BookingListResponse } from "@/types";
+import { reportError } from "@/lib/monitoring";
+import { BOOKING_PAGINATION_MAX_PAGES } from "@/lib/pagination";
+
+type PaginationGuardError = Error & {
+  __reportedByPaginationGuard?: boolean;
+};
 
 interface BookingCardDropdownProps {
   bookingKey: string;
@@ -116,9 +122,26 @@ export default function BookingCardDropdown({
     const limit = 200;
     let skip = 0;
     let hasMore = true;
+    let pageCount = 0;
     const collected: ApiBooking[] = [];
 
     while (hasMore) {
+      if (pageCount >= BOOKING_PAGINATION_MAX_PAGES) {
+        const guardError: PaginationGuardError = new Error(
+          `Pagination guard triggered in BookingCardDropdown: pageCount=${pageCount}, maxPages=${BOOKING_PAGINATION_MAX_PAGES}, bookingId=${booking.id}, projectId=${project_id ?? "unknown"}`,
+        );
+        guardError.__reportedByPaginationGuard = true;
+        reportError(
+          guardError,
+          "BookingCardDropdown: pagination safety limit reached while loading competing pending bookings",
+        );
+        const userFacingGuardError: PaginationGuardError = new Error(
+          "Too many related bookings to load right now. Please try again or contact support.",
+        );
+        userFacingGuardError.__reportedByPaginationGuard = true;
+        throw userFacingGuardError;
+      }
+
       const response = await api.get<BookingListResponse>(`/bookings/`, {
         params: {
           project_id,
@@ -132,6 +155,7 @@ export default function BookingCardDropdown({
       collected.push(...(response.data.bookings || []));
       hasMore = Boolean(response.data.has_more);
       skip += limit;
+      pageCount += 1;
     }
 
     return collected.filter((entry) => {
@@ -165,6 +189,12 @@ export default function BookingCardDropdown({
         await updateBookingStatus("confirmed");
       }
     } catch (error: unknown) {
+      if (!(error as PaginationGuardError)?.__reportedByPaginationGuard) {
+        reportError(
+          error,
+          "BookingCardDropdown: failed to load booking details for confirm flow",
+        );
+      }
       setErrorMessage(
         getApiErrorMessage(error, "Failed to load booking details"),
       );

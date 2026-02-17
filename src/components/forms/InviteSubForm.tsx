@@ -21,6 +21,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CheckCircle, AlertCircle, UserCheck, UserPlus } from "lucide-react";
 import api from "@/lib/api";
 import { useAuth } from "@/app/context/AuthContext";
+import { reportError } from "@/lib/monitoring";
+import { readStoredProject } from "@/lib/projectStorage";
 
 // ===== TYPE DEFINITIONS =====
 interface ContractorModalProps {
@@ -136,19 +138,13 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
   ];
 
   useEffect(() => {
-    const projectStorageKey = `project_${userId}`;
-    const projectString = localStorage.getItem(projectStorageKey);
+    const project = readStoredProject(userId);
 
-    if (projectString) {
-      try {
-        const project = JSON.parse(projectString);
-        setContractor((prev) => ({
-          ...prev,
-          contractorProjectId: project.id,
-        }));
-      } catch (error) {
-        console.error("Error parsing project:", error);
-      }
+    if (project) {
+      setContractor((prev) => ({
+        ...prev,
+        contractorProjectId: project.id,
+      }));
     }
   }, [userId]);
 
@@ -205,7 +201,10 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
 
       return null;
     } catch (error) {
-      console.error("Error checking subcontractor:", error);
+      reportError(
+        error,
+        "InviteSubForm: failed to check subcontractor existence",
+      );
       throw error;
     }
   };
@@ -245,7 +244,7 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
         }
       }
     } catch (error) {
-      console.error("Error checking email:", error);
+      reportError(error, "InviteSubForm: failed to check subcontractor email");
       setError("Failed to check email. Please try again.");
     } finally {
       setIsCheckingEmail(false);
@@ -268,7 +267,7 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
 
       return isAssigned || false;
     } catch (error) {
-      console.error("Error checking assignment:", error);
+      reportError(error, "InviteSubForm: failed to check project assignment");
       return false;
     }
   };
@@ -333,7 +332,10 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
             `/subcontractors/${subcontractorId}/send-welcome-email`,
           );
         } catch (emailError) {
-          console.error("Error sending welcome email:", emailError);
+          reportError(
+            emailError,
+            "InviteSubForm: failed to send welcome email",
+          );
         }
       }
 
@@ -349,7 +351,7 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
         onClose(false);
       }, 2000);
     } catch (error: unknown) {
-      console.error("Error processing subcontractor:", error);
+      reportError(error, "InviteSubForm: failed to process subcontractor");
 
       // Safe error extraction handling generic 500s or complex 422s
       let errorMessage = "Failed to process request";

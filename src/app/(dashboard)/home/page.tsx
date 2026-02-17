@@ -35,6 +35,7 @@ import type { ApiBooking, ApiProject } from "@/types";
 import type { LucideIcon } from "lucide-react";
 import useSWR from "swr";
 import { swrFetcher, SWR_CONFIG } from "@/lib/swr";
+import { readStoredProject, saveStoredProject } from "@/lib/projectStorage";
 
 // --- Types ---
 type Booking = ApiBooking;
@@ -116,19 +117,12 @@ export default function HomePage() {
   // Set initial project once projects load
   useEffect(() => {
     if (projects.length === 0 || selectedProject) return;
-    const stored = localStorage.getItem(`project_${userId}`);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored) as ApiProject;
-        if (projects.some((p) => p.id === parsed.id)) {
-          setSelectedProject(parsed);
-          return;
-        }
-      } catch {
-        /* invalid JSON */
-      }
+    const parsed = readStoredProject(userId) as ApiProject | null;
+    if (parsed && projects.some((p) => p.id === parsed.id)) {
+      setSelectedProject(parsed);
+      return;
     }
-    localStorage.setItem(`project_${userId}`, JSON.stringify(projects[0]));
+    saveStoredProject(userId, projects[0]);
     setSelectedProject(projects[0]);
   }, [projects, selectedProject, userId]);
 
@@ -207,7 +201,7 @@ export default function HomePage() {
   const handleProjectSelect = (proj: ApiProject) => {
     if (!proj || !proj.id) return;
     setShowProjectSelector(false);
-    localStorage.setItem(`project_${userId}`, JSON.stringify(proj));
+    saveStoredProject(userId, proj);
     setSelectedProject(proj);
   };
 
