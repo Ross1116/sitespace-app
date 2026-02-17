@@ -7,10 +7,13 @@ export type StoredProject = {
   status?: string;
 };
 
-const toStoredProject = (value: unknown): StoredProject | null => {
-  if (!value || typeof value !== "object") return null;
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
 
-  const source = value as Record<string, unknown>;
+const toStoredProject = (value: unknown): StoredProject | null => {
+  if (!isRecord(value)) return null;
+
+  const source = value;
   const rawId = source.id ?? source.project_id;
   const id =
     typeof rawId === "string"

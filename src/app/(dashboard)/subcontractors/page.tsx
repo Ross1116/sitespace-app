@@ -123,8 +123,8 @@ export default function SubcontractorsPage() {
   // Build project-aware memo (recomputes when projectVersion bumps)
   const projectId = useMemo(() => {
     if (!userId) return null;
-    const proj = readStoredProject(userId) as ApiProject | null;
-    return proj?.id ?? proj?.project_id ?? null;
+    const proj = readStoredProject(userId);
+    return proj?.id ?? null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, projectVersion]);
 

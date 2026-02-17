@@ -62,6 +62,19 @@ interface UserProfile {
   user_type: string;
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
+const getAssetCount = (payload: unknown): number => {
+  if (!isRecord(payload)) return 0;
+
+  const total = payload.total;
+  if (typeof total === "number") return total;
+
+  const assets = payload.assets;
+  return Array.isArray(assets) ? assets.length : 0;
+};
+
 // --- Color Palette ---
 const PALETTE = {
   bg: "bg-[var(--page-bg)]",
@@ -132,7 +145,7 @@ export default function HomePage() {
       }
     }
 
-    const parsed = readStoredProject(userId) as ApiProject | null;
+    const parsed = readStoredProject(userId);
     if (parsed) {
       const matchingStored = projects.find(
         (project) => project.id === parsed.id,
@@ -161,10 +174,7 @@ export default function HomePage() {
     swrFetcher,
     SWR_CONFIG,
   );
-  const assetCount =
-    (assetsData as { total?: number; assets?: unknown[] })?.total ||
-    (assetsData as { assets?: unknown[] })?.assets?.length ||
-    0;
+  const assetCount = getAssetCount(assetsData);
 
   // --- SWR: Subcontractors count ---
   const subsUrl = useMemo(() => {
@@ -210,10 +220,8 @@ export default function HomePage() {
   // Close dropdown on outside click
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node)
-      ) {
+      if (!(event.target instanceof Node)) return;
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setShowProjectSelector(false);
       }
     }

@@ -6,6 +6,7 @@ import { groupBookings } from "@/lib/bookingHelpers";
 import BookingCardMobile from "./BookingCardMobile";
 import BookingCardDesktop from "./BookingCardDesktop";
 import BookingHistorySidebar from "./BookingHistorySidebar";
+import { BookingCardActionsProvider } from "./BookingCardActionsContext";
 import { Button } from "@/components/ui/button";
 import type { TransformedBooking } from "@/types";
 
@@ -262,24 +263,27 @@ export default function BookingList({
                             : ""
                         }`}
                       >
-                        <div className="block md:hidden">
-                          <BookingCardMobile
-                            booking={booking}
-                            onActionComplete={onActionComplete}
-                            isDropdownOpen={isDropdownOpen}
-                            onDropdownToggle={handleDropdownToggle}
-                            onViewHistory={handleOpenHistory}
-                          />
-                        </div>
-                        <div className="hidden md:block">
-                          <BookingCardDesktop
-                            booking={booking}
-                            onActionComplete={onActionComplete}
-                            isDropdownOpen={isDropdownOpen}
-                            onDropdownToggle={handleDropdownToggle}
-                            onViewHistory={handleOpenHistory}
-                          />
-                        </div>
+                        <BookingCardActionsProvider
+                          value={{
+                            isDropdownOpen,
+                            toggleDropdown: () =>
+                              handleDropdownToggle(booking.bookingKey),
+                            onActionComplete,
+                          }}
+                        >
+                          <div className="block md:hidden">
+                            <BookingCardMobile
+                              booking={booking}
+                              onViewHistory={handleOpenHistory}
+                            />
+                          </div>
+                          <div className="hidden md:block">
+                            <BookingCardDesktop
+                              booking={booking}
+                              onViewHistory={handleOpenHistory}
+                            />
+                          </div>
+                        </BookingCardActionsProvider>
                       </div>
                     );
                   })}

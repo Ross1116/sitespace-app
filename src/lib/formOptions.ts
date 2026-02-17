@@ -27,6 +27,27 @@ export const TRADE_SPECIALTY_OPTIONS = [
 
 export const QUARTER_HOUR_OPTIONS = ["00", "15", "30", "45"] as const;
 
+export const HOURS_IN_DAY = 24;
+export const MINUTES_PER_HOUR = 60;
+export const DEFAULT_BOOKING_DURATION_MINUTES = 60;
+
+export const MIN_PENDING_BOOKING_CAPACITY = 1;
+export const MAX_PENDING_BOOKING_CAPACITY = 20;
+export const DEFAULT_PENDING_BOOKING_CAPACITY = 5;
+
+export const clampPendingBookingCapacity = (
+  value: number | null | undefined,
+): number => {
+  const safeValue = Number.isFinite(value)
+    ? (value as number)
+    : DEFAULT_PENDING_BOOKING_CAPACITY;
+
+  return Math.min(
+    MAX_PENDING_BOOKING_CAPACITY,
+    Math.max(MIN_PENDING_BOOKING_CAPACITY, safeValue),
+  );
+};
+
 export const BOOKING_DURATION_OPTIONS = [
   15, 30, 45, 60, 90, 120, 180, 240, 300, 360,
 ] as const;

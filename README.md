@@ -25,6 +25,7 @@ Built with **Next.js 16**, **React 19**, **TypeScript**, and **Tailwind CSS 4**.
 ## Features
 
 **Booking Management**
+
 - Create, reschedule, cancel, and track bookings across projects
 - Status workflow: Pending → Confirmed → Completed (or Cancelled/Denied)
 - Role-based actions (managers approve/deny, subcontractors request/withdraw)
@@ -32,24 +33,29 @@ Built with **Next.js 16**, **React 19**, **TypeScript**, and **Tailwind CSS 4**.
 - Search, filter by status tab, and paginate
 
 **Live Multi-Calendar**
+
 - Day view with hourly time grid across multiple assets simultaneously
 - Asset filter sidebar with per-asset booking counts
 - Drag-and-drop support via @dnd-kit
 - Booking detail popup with inline actions (approve, cancel, reschedule, complete)
 - Separate desktop and mobile calendar views
+- Section-level error isolation on high-interaction surfaces
 
 **Asset Management**
+
 - Create, edit, and retire site assets (equipment, tools, vehicles)
 - Status tracking: Available, In Use, Maintenance, Retired
 - Maintenance mode with date ranges
 - Sortable and searchable asset list
 
 **Subcontractor Management**
+
 - Invite subcontractors to projects with auto-generated temporary passwords
 - Track company, trade specialty, contact info, and active status
 - Admin/manager-only access control
 
 **Dashboard**
+
 - Personalized greeting with role badge
 - Project switcher with persistence across sessions
 - Quick-access stat cards (bookings, assets, subcontractors, calendar)
@@ -57,6 +63,7 @@ Built with **Next.js 16**, **React 19**, **TypeScript**, and **Tailwind CSS 4**.
 - Today's schedule mini-calendar
 
 **Authentication & Security**
+
 - JWT-based auth with HTTP-only cookie storage (tokens never touch client JS)
 - Automatic token refresh with rotation
 - CSRF protection (Origin/Referer validation on all mutations)
@@ -69,32 +76,34 @@ Built with **Next.js 16**, **React 19**, **TypeScript**, and **Tailwind CSS 4**.
 - Proxy-based route protection
 
 **General**
+
 - Fully responsive (mobile-first with desktop/mobile component variants)
 - SWR data fetching with shared cache, deduplication, and auto-revalidation
 - Error boundaries at root and dashboard layout level
+- Global API activity loading indicator for in-flight request feedback
 - Landing page with hero, features, pricing, and testimonials
 
 ---
 
 ## Tech Stack
 
-| Category | Technology |
-|---|---|
-| Framework | Next.js 16 (App Router, Turbopack) |
-| Language | TypeScript 5 |
-| UI Library | React 19 |
-| Styling | Tailwind CSS 4, CSS Variables (OKLch) |
-| Components | Radix UI primitives, shadcn/ui (New York style) |
-| Data Fetching | SWR |
-| HTTP Client | Axios |
-| Icons | Lucide React |
-| Dates | date-fns |
-| Drag & Drop | @dnd-kit |
-| Calendar | react-day-picker + custom full-calendar |
-| Command Palette | cmdk |
-| Error Tracking | Sentry |
-| Analytics | PostHog (reverse-proxied), Vercel Speed Insights |
-| Fonts | Geist Sans & Geist Mono |
+| Category        | Technology                                       |
+| --------------- | ------------------------------------------------ |
+| Framework       | Next.js 16 (App Router, Turbopack)               |
+| Language        | TypeScript 5                                     |
+| UI Library      | React 19                                         |
+| Styling         | Tailwind CSS 4, CSS Variables (OKLch)            |
+| Components      | Radix UI primitives, shadcn/ui (New York style)  |
+| Data Fetching   | SWR                                              |
+| HTTP Client     | Axios                                            |
+| Icons           | Lucide React                                     |
+| Dates           | date-fns                                         |
+| Drag & Drop     | @dnd-kit                                         |
+| Calendar        | react-day-picker + custom full-calendar          |
+| Command Palette | cmdk                                             |
+| Error Tracking  | Sentry                                           |
+| Analytics       | PostHog (reverse-proxied), Vercel Speed Insights |
+| Fonts           | Geist Sans & Geist Mono                          |
 
 ---
 
@@ -161,7 +170,7 @@ src/
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 20+ (or 22+/24+)
 - npm, yarn, pnpm, or bun
 
 ### Installation
@@ -227,13 +236,15 @@ All API calls route through `/api/proxy` instead of hitting the backend directly
 ### State Management
 
 - **React Context** for authentication state (`AuthContext`)
+- **Feature-local context** for callback/state de-drilling in booking and multicalendar interaction chains
 - **SWR** for all server data (bookings, assets, subcontractors, projects, profile)
 - **localStorage** only for project selection persistence
 - No external state library (Redux, Zustand, etc.)
 
 ### Data Fetching
 
-All dashboard pages use SWR with a shared config (`lib/swr.ts`):
+All dashboard pages use SWR with a shared config (`src/lib/swr.ts`):
+
 - 5-minute background revalidation interval
 - 30-second request deduplication
 - Automatic revalidation on tab focus and network reconnection
@@ -243,23 +254,24 @@ All dashboard pages use SWR with a shared config (`lib/swr.ts`):
 
 ## Pages & Routes
 
-| Route | Access | Description |
-|---|---|---|
-| `/` | Public | Landing page (hero, features, pricing, testimonials) |
-| `/login` | Guest only | Email/password login |
-| `/register` | Guest only | Account registration with password strength check |
-| `/forgot-password` | Guest only | Request password reset email |
-| `/reset-password` | Guest only | Set new password via token |
-| `/set-password` | Guest only | Initial password setup (invited users) |
-| `/home` | Authenticated | Dashboard with stats, upcoming bookings, schedule |
-| `/bookings` | Authenticated | Booking list with search, tabs, pagination |
-| `/multicalendar` | Authenticated | Live multi-asset calendar view |
-| `/assets` | Admin/Manager | Asset management (CRUD) |
-| `/subcontractors` | Admin/Manager | Subcontractor management and invitations |
+| Route              | Access        | Description                                          |
+| ------------------ | ------------- | ---------------------------------------------------- |
+| `/`                | Public        | Landing page (hero, features, pricing, testimonials) |
+| `/login`           | Guest only    | Email/password login                                 |
+| `/register`        | Guest only    | Account registration with password strength check    |
+| `/forgot-password` | Guest only    | Request password reset email                         |
+| `/reset-password`  | Guest only    | Set new password via token                           |
+| `/set-password`    | Guest only    | Initial password setup (invited users)               |
+| `/home`            | Authenticated | Dashboard with stats, upcoming bookings, schedule    |
+| `/bookings`        | Authenticated | Booking list with search, tabs, pagination           |
+| `/multicalendar`   | Authenticated | Live multi-asset calendar view                       |
+| `/assets`          | Admin/Manager | Asset management (CRUD)                              |
+| `/subcontractors`  | Admin/Manager | Subcontractor management and invitations             |
 
 ### Route Protection
 
 `proxy.ts` handles route protection at the edge:
+
 - Unauthenticated users on protected routes → redirect to `/login`
 - Authenticated users on login/register → redirect to `/home`
 - JWT expiration checked with 60-second buffer
@@ -281,11 +293,11 @@ All dashboard pages use SWR with a shared config (`lib/swr.ts`):
 
 ### Roles
 
-| Role | Capabilities |
-|---|---|
-| Admin | Full access to all features |
-| Manager | Manage bookings, assets, subcontractors within projects |
-| Subcontractor | View/request bookings, manage own bookings |
+| Role          | Capabilities                                            |
+| ------------- | ------------------------------------------------------- |
+| Admin         | Full access to all features                             |
+| Manager       | Manage bookings, assets, subcontractors within projects |
+| Subcontractor | View/request bookings, manage own bookings              |
 
 ---
 
@@ -302,6 +314,7 @@ GET /api/proxy?path=/bookings/my/upcoming
 ```
 
 The proxy at `/api/proxy/route.ts`:
+
 1. Reads the `path` query parameter
 2. Validates against path traversal attacks
 3. Attaches the `Authorization: Bearer <token>` header from cookies
@@ -318,50 +331,52 @@ The proxy at `/api/proxy/route.ts`:
 
 ### Bookings
 
-| Component | Purpose |
-|---|---|
-| `BookingsPage` | Main page orchestrator with search, tabs, pagination |
-| `BookingList` | Renders booking cards with ref-based highlighting |
-| `BookingCardDesktop` | Desktop booking card (memoized, grid layout) |
-| `BookingCardMobile` | Mobile booking card (memoized, compact) |
-| `BookingCardDropdown` | Action menu (confirm, deny, cancel, reschedule, delete) |
-| `BookingHistorySidebar` | Status change timeline (slide-in panel) |
+| Component               | Purpose                                                 |
+| ----------------------- | ------------------------------------------------------- |
+| `BookingsPage`          | Main page orchestrator with search, tabs, pagination    |
+| `BookingList`           | Renders booking cards with ref-based highlighting       |
+| `BookingCardDesktop`    | Desktop booking card (memoized, grid layout)            |
+| `BookingCardMobile`     | Mobile booking card (memoized, compact)                 |
+| `BookingCardDropdown`   | Action menu (confirm, deny, cancel, reschedule, delete) |
+| `BookingHistorySidebar` | Status change timeline (slide-in panel)                 |
 
 ### Multi-Calendar
 
-| Component | Purpose |
-|---|---|
-| `MulticalendarPage` | Page layout with sidebar, calendar, and detail panel |
-| `CalendarHeader` | Date navigation, asset selector, controls |
-| `DesktopView` | Multi-asset hourly time grid with drag-and-drop |
-| `MobileView` | Single-asset calendar for small screens |
-| `AssetFilter` | Checkbox list to toggle asset visibility |
-| `BookingDetailDialog` | Booking popup with inline status actions |
+| Component             | Purpose                                              |
+| --------------------- | ---------------------------------------------------- |
+| `MulticalendarPage`   | Page layout with sidebar, calendar, and detail panel |
+| `CalendarHeader`      | Date navigation, asset selector, controls            |
+| `DesktopView`         | Multi-asset hourly time grid with drag-and-drop      |
+| `MobileView`          | Single-asset calendar for small screens              |
+| `AssetFilter`         | Checkbox list to toggle asset visibility             |
+| `BookingDetailDialog` | Booking popup with inline status actions             |
 
 ### Forms
 
-| Form | Purpose |
-|---|---|
-| `CreateBookingForm` | New booking with asset, date, time, subcontractor (useReducer-based) |
-| `RescheduleBookingForm` | Change date/time of existing booking |
-| `CreateAssetForm` | New asset with type, code, description |
-| `UpdateAssetForm` | Edit asset details, toggle maintenance mode |
-| `InviteSubForm` | Invite subcontractor with crypto-secure generated password |
+| Form                    | Purpose                                                              |
+| ----------------------- | -------------------------------------------------------------------- |
+| `CreateBookingForm`     | New booking with asset, date, time, subcontractor (useReducer-based) |
+| `RescheduleBookingForm` | Change date/time of existing booking                                 |
+| `CreateAssetForm`       | New asset with type, code, description                               |
+| `UpdateAssetForm`       | Edit asset details, toggle maintenance mode                          |
+| `InviteSubForm`         | Invite subcontractor with crypto-secure generated password           |
 
 ### Navigation
 
-| Component | Purpose |
-|---|---|
+| Component | Purpose                                               |
+| --------- | ----------------------------------------------------- |
 | `SideNav` | Fixed sidebar with role-based menu items, collapsible |
-| `TopNav` | Top bar with search, project context, user menu |
+| `TopNav`  | Top bar with search, project context, user menu       |
 
 ---
 
 ## Scripts
 
-| Script | Command | Description |
-|---|---|---|
-| Dev | `npm run dev` | Start dev server with Turbopack |
-| Build | `npm run build` | Production build |
-| Start | `npm start` | Start production server |
-| Lint | `npm run lint` | Run ESLint |
+| Script     | Command              | Description                     |
+| ---------- | -------------------- | ------------------------------- |
+| Dev        | `npm run dev`        | Start dev server with Turbopack |
+| Build      | `npm run build`      | Production build                |
+| Start      | `npm start`          | Start production server         |
+| Lint       | `npm run lint`       | Run ESLint                      |
+| Test       | `npm test`           | Run Vitest test suite           |
+| Test Watch | `npm run test:watch` | Run Vitest in watch mode        |

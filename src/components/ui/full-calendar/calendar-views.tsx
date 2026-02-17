@@ -45,6 +45,7 @@ import { TimeTable } from "./calendar-utils";
 import { AssetCalendar } from "./calendar-context";
 import { CreateBookingForm } from "@/components/forms/CreateBookingForm";
 import { BookingDetailsDialog } from "@/components/multicalendar/BookingDetailDialog";
+import { useMulticalendarActions } from "@/components/multicalendar/MulticalendarActionsContext";
 import {
   DndContext,
   DragEndEvent,
@@ -68,11 +69,64 @@ type MaintenanceAsset = {
   maintenance_end_date?: string;
 };
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
 const toMaintenanceAsset = (value: unknown): MaintenanceAsset => {
-  if (typeof value === "object" && value !== null) {
-    return value as MaintenanceAsset;
+  if (isRecord(value)) {
+    return {
+      status: typeof value.status === "string" ? value.status : undefined,
+      maintenance_start_date:
+        typeof value.maintenance_start_date === "string"
+          ? value.maintenance_start_date
+          : undefined,
+      maintenance_end_date:
+        typeof value.maintenance_end_date === "string"
+          ? value.maintenance_end_date
+          : undefined,
+    };
   }
   return {};
+};
+
+const toDate = (value: unknown): Date | null => {
+  if (value instanceof Date) return value;
+  if (typeof value !== "string") return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const isCalendarColor = (value: unknown): value is CalendarEvent["color"] => {
+  return ["default", "blue", "green", "pink", "purple", "yellow"].includes(
+    String(value),
+  );
+};
+
+const toCalendarEvent = (value: unknown): CalendarEvent | null => {
+  if (!isRecord(value)) return null;
+  if (typeof value.id !== "string") return null;
+
+  const start = toDate(value.start);
+  const end = toDate(value.end);
+  if (!start || !end) return null;
+
+  return {
+    id: value.id,
+    start,
+    end,
+    title: typeof value.title === "string" ? value.title : "",
+    description: typeof value.description === "string" ? value.description : "",
+    color: isCalendarColor(value.color) ? value.color : "default",
+    bookingKey:
+      typeof value.bookingKey === "string" ? value.bookingKey : undefined,
+    bookingTitle:
+      typeof value.bookingTitle === "string" ? value.bookingTitle : undefined,
+    bookingNotes:
+      typeof value.bookingNotes === "string" ? value.bookingNotes : undefined,
+    _originalData: isRecord(value._originalData)
+      ? value._originalData
+      : undefined,
+  };
 };
 
 const getString = (value: unknown): string =>
@@ -122,6 +176,12 @@ export const CalendarDayView = ({
     events: Partial<CalendarEvent>[] | Partial<CalendarEvent>,
   ) => void;
 }) => {
+  const multicalendarActions = useMulticalendarActions();
+  const effectiveOnActionComplete =
+    onActionComplete ?? multicalendarActions?.onActionComplete;
+  const effectiveOnBookingCreated =
+    onBookingCreated ?? multicalendarActions?.onBookingCreated;
+
   const { events, date, setEvents } = useCalendar();
 
   // --- 1. MAINTENANCE LOGIC ---
@@ -201,7 +261,8 @@ export const CalendarDayView = ({
 
     if (snappedMinutes === 0) return;
 
-    const eventData = active.data.current as CalendarEvent;
+    const eventData = toCalendarEvent(active.data.current);
+    if (!eventData) return;
     const oldStart = new Date(eventData.start);
     const oldEnd = new Date(eventData.end);
     const newStart = addMinutes(oldStart, snappedMinutes);
@@ -256,10 +317,9 @@ export const CalendarDayView = ({
     try {
       const bookingId =
         typeof event.bookingKey === "string" ? event.bookingKey : event.id;
-      const originalPayload =
-        typeof event._originalData === "object" && event._originalData !== null
-          ? (event._originalData as { purpose?: unknown; notes?: unknown })
-          : {};
+      const originalPayload = isRecord(event._originalData)
+        ? event._originalData
+        : null;
       const bookingTitle =
         typeof event.bookingTitle === "string" ? event.bookingTitle : "";
       const bookingNotes =
@@ -269,11 +329,11 @@ export const CalendarDayView = ({
         start_time: format(newStart, "HH:mm:ss"),
         end_time: format(newEnd, "HH:mm:ss"),
         purpose:
-          getString(originalPayload.purpose) || bookingTitle || "Rescheduled",
-        notes: getString(originalPayload.notes) || bookingNotes || "",
+          getString(originalPayload?.purpose) || bookingTitle || "Rescheduled",
+        notes: getString(originalPayload?.notes) || bookingNotes || "",
       };
       await api.put(`/bookings/${bookingId}`, payload);
-      onActionComplete?.();
+      effectiveOnActionComplete?.();
     } catch (error) {
       reportError(
         error,
@@ -291,7 +351,7 @@ export const CalendarDayView = ({
   };
 
   const handleActionRefresh = () => {
-    onActionComplete?.();
+    effectiveOnActionComplete?.();
   };
 
   // --- GRID RENDER LOGIC ---
@@ -409,10 +469,10 @@ export const CalendarDayView = ({
               endTime={selectedTimeSlot.end}
               defaultAsset={assetCalendar?.id}
               defaultAssetName={assetCalendar?.name}
-              onSave={() => {
-                // setIsBookingFormOpen(false);
+              onSave={(newEvents) => {
+                effectiveOnBookingCreated?.(newEvents);
                 setTimeout(() => {
-                  onActionComplete?.();
+                  effectiveOnActionComplete?.();
                 }, 200);
               }}
             />
@@ -565,20 +625,27 @@ export const CalendarWeekView = () => {
     if (!setEvents || !events) return;
 
     if (Array.isArray(newEvent)) {
-      const completeEvents = newEvent
-        .filter((event) => event.start && event.title)
-        .map((event) => {
-          const start = event.start as Date;
+      const completeEvents: CalendarEvent[] = [];
+      for (const event of newEvent) {
+        const start = toDate(event.start);
+        const title = typeof event.title === "string" ? event.title : "";
+        if (!start || !title) continue;
 
-          return {
-            id: event.id || Math.random().toString(36).substring(2, 11),
-            start,
-            end: event.end || addHours(start, 1),
-            title: event.title as string,
-            description: event.description || "",
-            color: event.color || "yellow",
-          } as CalendarEvent;
-        });
+        const end = toDate(event.end) || addHours(start, 1);
+        completeEvents.push({
+          ...event,
+          id:
+            typeof event.id === "string"
+              ? event.id
+              : Math.random().toString(36).substring(2, 11),
+          start,
+          end,
+          title,
+          description:
+            typeof event.description === "string" ? event.description : "",
+          color: isCalendarColor(event.color) ? event.color : "yellow",
+        } as CalendarEvent);
+      }
 
       setEvents([...events, ...completeEvents]);
 
@@ -586,14 +653,25 @@ export const CalendarWeekView = () => {
         onEventClick(completeEvents[completeEvents.length - 1]);
       }
     } else {
-      if (newEvent.start && newEvent.title) {
+      const start = toDate(newEvent.start);
+      const title = typeof newEvent.title === "string" ? newEvent.title : "";
+
+      if (start && title) {
+        const end = toDate(newEvent.end) || addHours(start, 1);
         const completeEvent: CalendarEvent = {
-          id: newEvent.id || Math.random().toString(36).substring(2, 11),
-          start: newEvent.start,
-          end: newEvent.end || addHours(newEvent.start, 1),
-          title: newEvent.title,
-          description: newEvent.description || "",
-          color: newEvent.color || "default",
+          ...newEvent,
+          id:
+            typeof newEvent.id === "string"
+              ? newEvent.id
+              : Math.random().toString(36).substring(2, 11),
+          start,
+          end,
+          title,
+          description:
+            typeof newEvent.description === "string"
+              ? newEvent.description
+              : "",
+          color: isCalendarColor(newEvent.color) ? newEvent.color : "yellow",
         };
 
         setEvents([...events, completeEvent]);
@@ -708,7 +786,6 @@ export const CalendarMonthView = () => {
   };
 
   return (
-    // CHANGE 1: Removed 'h-full' from the root div
     <div className="flex flex-col bg-white">
       <div className="grid grid-cols-7 gap-px sticky top-0 bg-white border-b border-slate-100 pb-2">
         {weekDays.map((day, i) => (
@@ -724,8 +801,6 @@ export const CalendarMonthView = () => {
         ))}
       </div>
 
-      {/* CHANGE 2: Removed 'flex-1', 'auto-rows-fr', 'overflow-hidden'. 
-          Added 'mt-2' for spacing if needed. */}
       <div className="grid -mt-px p-px grid-cols-7 gap-px bg-slate-100">
         {monthDates.map((_date) => {
           const currentEvents = events.filter((event) =>
@@ -738,8 +813,6 @@ export const CalendarMonthView = () => {
           return (
             <div
               className={cn(
-                // CHANGE 3: Added 'aspect-square' to ensure cells stay square
-                // Added 'min-h-[60px]' or similar only if you want a minimum size, otherwise aspect-square handles it
                 "aspect-square bg-white relative p-2 text-sm ring-1 ring-slate-100 hover:bg-slate-50 transition-colors cursor-pointer flex flex-col gap-1",
                 !isCurrentMonth && "bg-slate-50/50 text-slate-300",
               )}
@@ -918,11 +991,6 @@ export const EventGroup = ({
     </div>
   );
 };
-
-// type EventGroupSideBySideProps = {
-//   hour: Date;
-//   events: CalendarEvent[];
-// };
 
 const EventGroupSideBySide = ({
   hour,
