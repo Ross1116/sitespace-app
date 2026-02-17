@@ -45,33 +45,44 @@ function ProjectSelector({
   const [searchQuery, setSearchQuery] = useState("");
   const [visibleProjects, setVisibleProjects] = useState<Project[]>(projects);
 
-  useEffect(() => {
-    if (projects.length > 0 && !selectedProject) {
-      setSelectedProject(projects[0].id);
-    }
-
-    // Update filtered projects when projects array changes
-    filterProjects();
-  }, [projects, selectedProject]);
-
-  useEffect(() => {
-    filterProjects();
-  }, [searchQuery, projects]);
-
-  const filterProjects = () => {
+  const getFilteredProjects = () => {
     if (!searchQuery.trim()) {
-      setVisibleProjects(projects);
-      return;
+      return projects;
     }
 
-    const filtered = projects.filter(
+    return projects.filter(
       (project) =>
         project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         project.id.toLowerCase().includes(searchQuery.toLowerCase()),
     );
-
-    setVisibleProjects(filtered);
   };
+
+  useEffect(() => {
+    const filteredProjects = getFilteredProjects();
+    setVisibleProjects(filteredProjects);
+
+    if (projects.length === 0) {
+      if (selectedProject) setSelectedProject(undefined);
+      return;
+    }
+
+    const selectedStillExists =
+      !!selectedProject &&
+      projects.some((project) => project.id === selectedProject);
+    if (selectedStillExists) return;
+
+    const fallbackId = getInitialProject() || projects[0]?.id;
+    if (!fallbackId) return;
+
+    setSelectedProject(fallbackId);
+    const fallbackProject = projects.find(
+      (project) => project.id === fallbackId,
+    );
+    if (fallbackProject && userId) {
+      saveStoredProject(userId, fallbackProject);
+    }
+    onChange?.(fallbackId);
+  }, [projects, searchQuery, selectedProject, onChange, userId]);
 
   const handleChange = (value: string) => {
     setSelectedProject(value);

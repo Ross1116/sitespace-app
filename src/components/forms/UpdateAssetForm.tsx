@@ -299,12 +299,13 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
     });
 
     // Update assetProject if not already set
-    if (!asset.assetProject) {
-      setAsset((prev) => ({
+    setAsset((prev) => {
+      if (prev.assetProject) return prev;
+      return {
         ...prev,
         assetProject: parsedProject.id, //  Just the ID string
-      }));
-    }
+      };
+    });
   }, [userId]);
 
   useEffect(() => {

@@ -1,14 +1,28 @@
 import * as Sentry from "@sentry/nextjs";
 
-export function reportError(error: unknown, context: string) {
+export function reportError(
+  error: unknown,
+  context: string,
+  source?: "frontend" | "server",
+) {
   Sentry.withScope((scope) => {
-    scope.setTag("source", "frontend");
+    const detectedSource =
+      source || (typeof window !== "undefined" ? "frontend" : "server");
+    scope.setTag("source", detectedSource);
     scope.setContext("error_context", { context });
+
     if (error instanceof Error) {
       Sentry.captureException(error);
       return;
     }
-    Sentry.captureException(new Error(context));
+
+    Sentry.withScope((nonErrorScope) => {
+      nonErrorScope.setTag("source", detectedSource);
+      nonErrorScope.setContext("error_context", { context });
+      nonErrorScope.setExtra("nonErrorValue", error ?? null);
+      nonErrorScope.setExtra("nonErrorType", typeof error);
+      Sentry.captureException(new Error(String(error ?? context)));
+    });
   });
 }
 

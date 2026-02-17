@@ -61,7 +61,8 @@ import useSWR from "swr";
 import { swrFetcher } from "@/lib/swr";
 import { isAssetUnavailableForBooking } from "@/lib/assetStatus";
 import { reportError } from "@/lib/monitoring";
-import { readStoredProject } from "@/lib/projectStorage";
+import { readStoredProject, StoredProject } from "@/lib/projectStorage";
+import { BOOKING_PAGINATION_MAX_PAGES } from "@/lib/pagination";
 
 // ===== TYPE DEFINITIONS =====
 type CreateBookingFormProps = {
@@ -110,6 +111,20 @@ const getString = (value: unknown): string =>
 
 const getIdString = (value: unknown): string =>
   typeof value === "string" || typeof value === "number" ? String(value) : "";
+
+const mapStoredToApiProject = (
+  storedProject: StoredProject,
+): ApiProject | null => {
+  const projectId = storedProject.id?.trim();
+  if (!projectId) return null;
+
+  return {
+    id: projectId,
+    name: storedProject.name?.trim() || "Selected Project",
+    location: storedProject.location,
+    status: storedProject.status,
+  };
+};
 
 const isAbortError = (error: unknown, signal?: AbortSignal) => {
   if (signal?.aborted) return true;
@@ -558,11 +573,19 @@ export function CreateBookingForm({
 
   // ===== LOAD PROJECT FROM LOCALSTORAGE =====
   useEffect(() => {
-    const project = readStoredProject(userId);
-    if (project) {
+    const storedProject = readStoredProject(userId);
+    if (storedProject) {
+      const project = mapStoredToApiProject(storedProject);
+      if (!project) {
+        reportError(
+          new Error("Invalid stored project payload"),
+          "CreateBookingForm: unable to map stored project to ApiProject",
+        );
+        return;
+      }
       dispatchAsync({
         type: "SET_PROJECT",
-        project: project as ApiProject,
+        project,
       });
     }
   }, [userId]);
@@ -790,13 +813,18 @@ export function CreateBookingForm({
         let skip = 0;
         let hasMore = true;
         let pageCount = 0;
-        const MAX_PAGES = 25;
         const collected: ApiBooking[] = [];
 
         while (hasMore) {
-          if (pageCount >= MAX_PAGES) {
+          if (pageCount >= BOOKING_PAGINATION_MAX_PAGES) {
+            reportError(
+              new Error(
+                `Pagination guard triggered in CreateBookingForm: pageCount=${pageCount}, maxPages=${BOOKING_PAGINATION_MAX_PAGES}, projectId=${project.id}, bookingDate=${bookingDate}`,
+              ),
+              "CreateBookingForm: pagination safety limit reached while loading existing bookings",
+            );
             throw new Error(
-              "Reached pagination safety limit while loading existing bookings",
+              "Too many bookings to load for this date — please narrow your search or contact support.",
             );
           }
 

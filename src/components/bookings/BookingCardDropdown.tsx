@@ -23,6 +23,8 @@ import {
 import { Button } from "@/components/ui/button";
 import RescheduleBookingForm from "@/components/forms/RescheduleBookingForm";
 import { ApiBooking, BookingListResponse } from "@/types";
+import { reportError } from "@/lib/monitoring";
+import { BOOKING_PAGINATION_MAX_PAGES } from "@/lib/pagination";
 
 interface BookingCardDropdownProps {
   bookingKey: string;
@@ -117,13 +119,18 @@ export default function BookingCardDropdown({
     let skip = 0;
     let hasMore = true;
     let pageCount = 0;
-    const MAX_PAGES = 25;
     const collected: ApiBooking[] = [];
 
     while (hasMore) {
-      if (pageCount >= MAX_PAGES) {
+      if (pageCount >= BOOKING_PAGINATION_MAX_PAGES) {
+        reportError(
+          new Error(
+            `Pagination guard triggered in BookingCardDropdown: pageCount=${pageCount}, maxPages=${BOOKING_PAGINATION_MAX_PAGES}, bookingId=${booking.id}, projectId=${project_id ?? "unknown"}`,
+          ),
+          "BookingCardDropdown: pagination safety limit reached while loading competing pending bookings",
+        );
         throw new Error(
-          "Reached pagination safety limit while loading bookings",
+          "Too many related bookings to load right now. Please try again or contact support.",
         );
       }
 
@@ -174,6 +181,10 @@ export default function BookingCardDropdown({
         await updateBookingStatus("confirmed");
       }
     } catch (error: unknown) {
+      reportError(
+        error,
+        "BookingCardDropdown: failed to load booking details for confirm flow",
+      );
       setErrorMessage(
         getApiErrorMessage(error, "Failed to load booking details"),
       );

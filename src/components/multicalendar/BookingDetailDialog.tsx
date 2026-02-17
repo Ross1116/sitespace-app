@@ -47,6 +47,7 @@ import {
   getApiErrorMessage,
 } from "@/types";
 import { reportError } from "@/lib/monitoring";
+import { BOOKING_PAGINATION_MAX_PAGES } from "@/lib/pagination";
 
 type BookingDetail = Omit<ApiBooking, "manager" | "asset"> & {
   manager?: (ApiManager & { email?: string }) | null;
@@ -372,9 +373,20 @@ export function BookingDetailsDialog({
       const limit = 200;
       let skip = 0;
       let hasMore = true;
+      let pageCount = 0;
       const collected: ApiBooking[] = [];
 
       while (hasMore) {
+        if (pageCount >= BOOKING_PAGINATION_MAX_PAGES) {
+          reportError(
+            new Error(
+              `Pagination guard triggered in BookingDetailDialog: pageCount=${pageCount}, maxPages=${BOOKING_PAGINATION_MAX_PAGES}, bookingId=${bookingId}, projectId=${project_id ?? "unknown"}`,
+            ),
+            "BookingDetailDialog: pagination safety limit reached while loading competing pending bookings",
+          );
+          break;
+        }
+
         const listRes = await api.get<BookingListResponse>(`/bookings/`, {
           params: {
             project_id,
@@ -388,6 +400,7 @@ export function BookingDetailsDialog({
         collected.push(...(listRes.data.bookings || []));
         hasMore = Boolean(listRes.data.has_more);
         skip += limit;
+        pageCount += 1;
       }
 
       const normalizeTime = (value: string) =>

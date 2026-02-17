@@ -1,0 +1,1 @@
+export const BOOKING_PAGINATION_MAX_PAGES = 25;
