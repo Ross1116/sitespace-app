@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "./context/AuthContext";
 import PostHogProvider from "./context/PostHogProvider";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import GlobalNetworkLoadingBar from "@/components/ui/GlobalNetworkLoadingBar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -46,6 +47,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[var(--page-bg)] text-slate-900`}
       >
+        <GlobalNetworkLoadingBar />
         <SpeedInsights />
         <PostHogProvider>
           <AuthProvider>
