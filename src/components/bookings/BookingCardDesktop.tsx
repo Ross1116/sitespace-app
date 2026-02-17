@@ -84,13 +84,16 @@ function BookingCardDesktop({
               <span>{timeRange}</span>
             </div>
 
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500 min-w-0 flex-1">
                 <RoleIcon size={13} className="text-slate-400" />
                 <span className="text-[10px] text-slate-500 uppercase tracking-wide font-bold">
                   Booked by:
                 </span>
-                <span className="truncate max-w-[120px] text-slate-700">
+                <span
+                  className="truncate text-slate-700 min-w-0 flex-1"
+                  title={booking.bookingFor}
+                >
                   {booking.bookingFor}
                 </span>
               </div>
