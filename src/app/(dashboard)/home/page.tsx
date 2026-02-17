@@ -40,17 +40,14 @@ import {
   removeStoredProject,
   saveStoredProject,
 } from "@/lib/projectStorage";
+import {
+  normalizeBookingList,
+  normalizeProjectList,
+} from "@/lib/apiNormalization";
+import { getSubcontractorCount } from "@/lib/subcontractorNormalization";
 
 // --- Types ---
 type Booking = ApiBooking;
-
-interface SubcontractorProjectApi {
-  project_id: string;
-  project_name: string;
-  project_location?: string;
-  is_active?: boolean;
-  [key: string]: unknown;
-}
 
 interface UserProfile {
   id: string;
@@ -106,17 +103,8 @@ export default function HomePage() {
 
   const projects = useMemo<ApiProject[]>(() => {
     if (!projectsRaw) return [];
-    if (user?.role === "subcontractor") {
-      return (projectsRaw as SubcontractorProjectApi[]).map((p) => ({
-        ...p,
-        id: p.project_id,
-        name: p.project_name,
-        location: p.project_location,
-        status: p.is_active ? "active" : "inactive",
-      }));
-    }
-    return (projectsRaw as { projects?: ApiProject[] }).projects || [];
-  }, [projectsRaw, user?.role]);
+    return normalizeProjectList(projectsRaw);
+  }, [projectsRaw]);
 
   // Prevent stale project context when auth session/user changes
   useEffect(() => {
@@ -189,29 +177,25 @@ export default function HomePage() {
   }, [user, projectId]);
 
   const { data: subsData } = useSWR(subsUrl, swrFetcher, SWR_CONFIG);
-  const subcontractorCount = useMemo(() => {
-    if (!subsData) return 0;
-    if (Array.isArray(subsData)) return subsData.length;
-    const d = subsData as { subcontractors?: unknown[]; total?: number };
-    if (d.total) return d.total;
-    if (Array.isArray(d.subcontractors)) return d.subcontractors.length;
-    return 0;
-  }, [subsData]);
+  const subcontractorCount = useMemo(
+    () => getSubcontractorCount(subsData),
+    [subsData],
+  );
 
   // --- SWR: Bookings ---
   const {
     data: bookingsRaw,
     isLoading: loadingBookings,
     error: fetchError,
-  } = useSWR<Booking[]>(
+  } = useSWR<unknown>(
     projectId ? `/bookings/my/upcoming?limit=50&project_id=${projectId}` : null,
     swrFetcher,
     SWR_CONFIG,
   );
 
   const upcomingBookings = useMemo(() => {
-    if (!bookingsRaw || !Array.isArray(bookingsRaw)) return [];
-    return bookingsRaw.filter((b) => {
+    const normalizedBookings = normalizeBookingList(bookingsRaw);
+    return normalizedBookings.filter((b) => {
       const bProjId = b.project?.id || b.project_id;
       const status = (b.status || "").toLowerCase();
       return bProjId === projectId && status !== "denied";

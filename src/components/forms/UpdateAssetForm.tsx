@@ -38,7 +38,7 @@ import {
   getApiErrorMessage,
   isAxiosError,
 } from "@/types";
-import { reportError } from "@/lib/monitoring";
+import { reportError, reportMessage } from "@/lib/monitoring";
 import { readStoredProject } from "@/lib/projectStorage";
 
 // ===== TYPE DEFINITIONS (Matching AssetsTable.tsx exactly) =====
@@ -324,6 +324,7 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
     let isCancelled = false;
 
     void (async () => {
+      const failedBookingIds: string[] = [];
       const results = await Promise.all(
         bookingIdsToFetch.map(async (bookingId) => {
           try {
@@ -340,7 +341,12 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
               bookingId,
               title: resolvedTitle,
             };
-          } catch {
+          } catch (error: unknown) {
+            failedBookingIds.push(bookingId);
+            reportError(
+              error,
+              `UpdateAssetForm: failed to fetch impacted booking title (bookingId=${bookingId})`,
+            );
             return null;
           }
         }),
@@ -352,6 +358,13 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
         (entry): entry is { bookingId: string; title: string } =>
           entry !== null,
       );
+
+      if (failedBookingIds.length > 0) {
+        reportMessage(
+          `UpdateAssetForm: unable to resolve ${failedBookingIds.length} impacted booking title(s)`,
+          "warning",
+        );
+      }
 
       if (titleEntries.length === 0) return;
 

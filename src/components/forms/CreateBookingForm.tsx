@@ -63,6 +63,7 @@ import { isAssetUnavailableForBooking } from "@/lib/assetStatus";
 import { reportError } from "@/lib/monitoring";
 import { readStoredProject, StoredProject } from "@/lib/projectStorage";
 import { BOOKING_PAGINATION_MAX_PAGES } from "@/lib/pagination";
+import { normalizeSubcontractorList } from "@/lib/subcontractorNormalization";
 
 // ===== TYPE DEFINITIONS =====
 type CreateBookingFormProps = {
@@ -103,14 +104,6 @@ type AssetOption = ApiAsset & {
   assetKey: string;
   assetTitle: string;
 };
-
-type SubcontractorSource = Record<string, unknown>;
-
-const getString = (value: unknown): string =>
-  typeof value === "string" ? value : "";
-
-const getIdString = (value: unknown): string =>
-  typeof value === "string" || typeof value === "number" ? String(value) : "";
 
 const mapStoredToApiProject = (
   storedProject: StoredProject,
@@ -633,57 +626,9 @@ export function CreateBookingForm({
           signal,
         });
 
-        let subsData: SubcontractorSource[] = [];
-        if (Array.isArray(response.data)) {
-          subsData = response.data as SubcontractorSource[];
-        } else if (Array.isArray(response.data.subcontractors)) {
-          subsData = response.data.subcontractors as SubcontractorSource[];
-        } else if (Array.isArray(response.data.data)) {
-          subsData = response.data.data as SubcontractorSource[];
-        } else if (
-          response.data.records &&
-          Array.isArray(response.data.records)
-        ) {
-          subsData = response.data.records as SubcontractorSource[];
-        } else {
-          const values = Object.values(response.data || {});
-          const arr = values.find((v) => Array.isArray(v));
-          if (arr) subsData = arr as SubcontractorSource[];
-        }
-
-        const normalizedSubs: Subcontractor[] = subsData.map((sub) => {
-          const name = getString(sub.name);
-          return {
-            id:
-              getIdString(sub.id) ||
-              getIdString(sub.subcontractor_id) ||
-              getIdString(sub.subcontractorKey) ||
-              getIdString(sub.uuid) ||
-              getIdString(sub.key),
-            first_name:
-              getString(sub.first_name) ||
-              getString(sub.firstName) ||
-              (name ? name.split(" ")[0] : ""),
-            last_name:
-              getString(sub.last_name) ||
-              getString(sub.lastName) ||
-              (name ? name.split(" ").slice(1).join(" ") : ""),
-            email:
-              getString(sub.email) ||
-              getString(sub.contractorEmail) ||
-              getString(sub.contact_email),
-            company_name:
-              getString(sub.company_name) ||
-              getString(sub.companyName) ||
-              getString(sub.contractorCompany) ||
-              getString(sub.employer),
-            trade_specialty:
-              getString(sub.trade_specialty) ||
-              getString(sub.tradeSpecialty) ||
-              getString(sub.contractorTrade) ||
-              getString(sub.role),
-          };
-        });
+        const normalizedSubs: Subcontractor[] = normalizeSubcontractorList(
+          response.data,
+        );
 
         dispatchAsync({
           type: "SET_SUBCONTRACTORS",

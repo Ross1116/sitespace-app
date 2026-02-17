@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { reportError } from "@/lib/monitoring";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -60,8 +61,8 @@ export default function Login() {
       } else {
         localStorage.removeItem("rememberedEmail");
       }
-    } catch {
-      // Error is handled by context
+    } catch (error: unknown) {
+      reportError(error, "Login page: login submission failed");
     } finally {
       setIsSubmitting(false);
     }
@@ -71,7 +72,11 @@ export default function Login() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <Loader2 className="h-8 w-8 animate-spin text-slate-400" role="status" aria-label="Loading" />
+        <Loader2
+          className="h-8 w-8 animate-spin text-slate-400"
+          role="status"
+          aria-label="Loading"
+        />
       </div>
     );
   }
@@ -124,7 +129,10 @@ export default function Login() {
 
           {/* Success message for newly registered users */}
           {justRegistered && (
-            <div className="bg-emerald-50 border border-emerald-100 text-emerald-700 px-4 py-3 rounded-lg text-sm font-medium flex items-center gap-2 animate-in slide-in-from-top-2" role="status">
+            <div
+              className="bg-emerald-50 border border-emerald-100 text-emerald-700 px-4 py-3 rounded-lg text-sm font-medium flex items-center gap-2 animate-in slide-in-from-top-2"
+              role="status"
+            >
               <CheckCircle size={18} />
               Account created successfully! Please sign in.
             </div>
@@ -132,7 +140,10 @@ export default function Login() {
 
           {/* Error message */}
           {error && (
-            <div className="bg-red-50 border border-red-100 text-red-600 px-4 py-3 rounded-lg text-sm font-medium animate-in slide-in-from-top-2" role="alert">
+            <div
+              className="bg-red-50 border border-red-100 text-red-600 px-4 py-3 rounded-lg text-sm font-medium animate-in slide-in-from-top-2"
+              role="alert"
+            >
               {error}
             </div>
           )}
@@ -237,4 +248,3 @@ export default function Login() {
     </div>
   );
 }
-
