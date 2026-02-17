@@ -60,60 +60,64 @@ const extractRawSubcontractors = (payload: unknown): RawSubcontractor[] => {
 export function normalizeSubcontractorList(
   payload: unknown,
 ): NormalizedSubcontractor[] {
-  return extractRawSubcontractors(payload).map((sub) => {
-    const name = asString(sub.name);
-
-    const firstName =
-      asString(sub.first_name) ||
-      asString(sub.firstName) ||
-      (name ? name.split(" ")[0] : "");
-    const lastName =
-      asString(sub.last_name) ||
-      asString(sub.lastName) ||
-      (name ? name.split(" ").slice(1).join(" ") : "");
-
-    return {
-      id:
+  return extractRawSubcontractors(payload).reduce<NormalizedSubcontractor[]>(
+    (normalized, sub) => {
+      const resolvedId = (
         asId(sub.id) ||
         asId(sub.subcontractor_id) ||
         asId(sub.subcontractorKey) ||
         asId(sub.uuid) ||
-        asId(sub.key),
-      first_name: firstName,
-      last_name: lastName,
-      email:
-        asString(sub.email) ||
-        asString(sub.contractorEmail) ||
-        asString(sub.contact_email),
-      company_name:
-        asString(sub.company_name) ||
-        asString(sub.companyName) ||
-        asString(sub.contractorCompany) ||
-        asString(sub.employer) ||
-        undefined,
-      trade_specialty:
-        asString(sub.trade_specialty) ||
-        asString(sub.tradeSpecialty) ||
-        asString(sub.contractorTrade) ||
-        asString(sub.role) ||
-        undefined,
-      phone: asString(sub.phone) || asString(sub.contractorPhone) || undefined,
-      is_active: asBoolean(sub.is_active) ?? true,
-      created_at: asString(sub.created_at) || undefined,
-      updated_at: asString(sub.updated_at) || undefined,
-    };
-  });
+        asId(sub.key)
+      ).trim();
+
+      if (!resolvedId) {
+        return normalized;
+      }
+
+      const name = asString(sub.name);
+
+      const firstName =
+        asString(sub.first_name) ||
+        asString(sub.firstName) ||
+        (name ? name.split(" ")[0] : "");
+      const lastName =
+        asString(sub.last_name) ||
+        asString(sub.lastName) ||
+        (name ? name.split(" ").slice(1).join(" ") : "");
+
+      normalized.push({
+        id: resolvedId,
+        first_name: firstName,
+        last_name: lastName,
+        email:
+          asString(sub.email) ||
+          asString(sub.contractorEmail) ||
+          asString(sub.contact_email),
+        company_name:
+          asString(sub.company_name) ||
+          asString(sub.companyName) ||
+          asString(sub.contractorCompany) ||
+          asString(sub.employer) ||
+          undefined,
+        trade_specialty:
+          asString(sub.trade_specialty) ||
+          asString(sub.tradeSpecialty) ||
+          asString(sub.contractorTrade) ||
+          asString(sub.role) ||
+          undefined,
+        phone:
+          asString(sub.phone) || asString(sub.contractorPhone) || undefined,
+        is_active: asBoolean(sub.is_active) ?? true,
+        created_at: asString(sub.created_at) || undefined,
+        updated_at: asString(sub.updated_at) || undefined,
+      });
+
+      return normalized;
+    },
+    [],
+  );
 }
 
 export function getSubcontractorCount(payload: unknown): number {
-  if (
-    typeof payload === "object" &&
-    payload !== null &&
-    "total" in payload &&
-    typeof (payload as { total?: unknown }).total === "number"
-  ) {
-    return (payload as { total: number }).total;
-  }
-
   return normalizeSubcontractorList(payload).length;
 }
