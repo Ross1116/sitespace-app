@@ -374,10 +374,12 @@ export function BookingDetailsDialog({
       let skip = 0;
       let hasMore = true;
       let pageCount = 0;
+      let guardTriggered = false;
       const collected: ApiBooking[] = [];
 
       while (hasMore) {
         if (pageCount >= BOOKING_PAGINATION_MAX_PAGES) {
+          guardTriggered = true;
           reportError(
             new Error(
               `Pagination guard triggered in BookingDetailDialog: pageCount=${pageCount}, maxPages=${BOOKING_PAGINATION_MAX_PAGES}, bookingId=${bookingId}, projectId=${project_id ?? "unknown"}`,
@@ -419,6 +421,13 @@ export function BookingDetailsDialog({
           normalizeTime(booking.end_time) === normalizedEnd
         );
       });
+
+      if (guardTriggered) {
+        return {
+          count: competingCount,
+          bookings: [],
+        };
+      }
 
       return {
         count: matchedPending.length || competingCount,

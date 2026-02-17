@@ -124,7 +124,7 @@ function ProjectSelector({
 
   return (
     <div className="w-full p-1">
-      {showSearch && visibleProjects.length > 3 && (
+      {showSearch && projects.length > 3 && (
         <div className="relative px-4 pt-4 pb-2">
           <Search className="absolute left-6 top-6 h-4 w-4 text-gray-400" />
           <Input
