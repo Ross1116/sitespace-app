@@ -81,7 +81,7 @@ const toApiBooking = (record: UnknownRecord): ApiBooking | null => {
       ? {
           id: assetObjectId,
           name: assetObjectName,
-          asset_code: asString(assetRecord.asset_code) || undefined,
+          asset_code: asString(assetRecord?.asset_code) || undefined,
         }
       : undefined,
     project: projectObjectId && projectObjectName

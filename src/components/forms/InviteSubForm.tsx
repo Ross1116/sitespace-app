@@ -126,7 +126,12 @@ const extractProjectSubcontractorIds = (payload: unknown): string[] => {
 
 const getValidationMessage = (entry: unknown): string => {
   if (typeof entry === "string") return entry;
-  if (Array.isArray(entry)) return JSON.stringify(entry);
+  if (Array.isArray(entry)) {
+    return entry
+      .map((item) => getValidationMessage(item))
+      .filter(Boolean)
+      .join(", ");
+  }
   if (!isRecord(entry) || !("msg" in entry)) return "";
   const msg = entry.msg;
   if (typeof msg === "string") return msg;

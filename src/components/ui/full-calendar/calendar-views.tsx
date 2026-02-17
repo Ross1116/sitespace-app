@@ -633,6 +633,7 @@ export const CalendarWeekView = () => {
 
         const end = toDate(event.end) || addHours(start, 1);
         completeEvents.push({
+          ...event,
           id:
             typeof event.id === "string"
               ? event.id
@@ -643,7 +644,7 @@ export const CalendarWeekView = () => {
           description:
             typeof event.description === "string" ? event.description : "",
           color: isCalendarColor(event.color) ? event.color : "yellow",
-        });
+        } as CalendarEvent);
       }
 
       setEvents([...events, ...completeEvents]);
@@ -658,6 +659,7 @@ export const CalendarWeekView = () => {
       if (start && title) {
         const end = toDate(newEvent.end) || addHours(start, 1);
         const completeEvent: CalendarEvent = {
+          ...newEvent,
           id:
             typeof newEvent.id === "string"
               ? newEvent.id

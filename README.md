@@ -153,7 +153,7 @@ src/
 │   ├── api.ts                      # Axios client with interceptors
 │   ├── rateLimit.ts                # Shared in-memory API rate limiting utility
 │   ├── swr.ts                      # Shared SWR fetcher and config
-│   ├── bookingHelpers.ts           # Date/time formatting utilitiesust
+│   ├── bookingHelpers.ts           # Date/time formatting utilities
 │   ├── multicalendarHelpers.ts     # Calendar view helpers
 │   ├── data.ts                     # App data definitions
 │   ├── landingData.ts              # Landing page content
@@ -243,7 +243,7 @@ All API calls route through `/api/proxy` instead of hitting the backend directly
 
 ### Data Fetching
 
-All dashboard pages use SWR with a shared config (`lib/swr.ts`):
+All dashboard pages use SWR with a shared config (`src/lib/swr.ts`):
 
 - 5-minute background revalidation interval
 - 30-second request deduplication
