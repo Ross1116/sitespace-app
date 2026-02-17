@@ -1,5 +1,6 @@
+"use client";
+
 import { reportError } from "@/lib/monitoring";
-("use client");
 
 import { cn } from "@/lib/utils";
 import {
