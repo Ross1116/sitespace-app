@@ -11,7 +11,7 @@ interface DesktopViewProps {
   currentDate: Date;
   onActionComplete?: () => void;
   onBookingCreated?: (
-    newEvents: Partial<CalendarEvent> | Partial<CalendarEvent>[]
+    newEvents: Partial<CalendarEvent> | Partial<CalendarEvent>[],
   ) => void;
 }
 
@@ -24,17 +24,26 @@ export function DesktopView({
   onActionComplete,
   onBookingCreated,
 }: DesktopViewProps) {
+  const displayedCalendars = assetCalendars.filter((_, index) =>
+    visibleAssets.includes(index),
+  );
+
+  const maxColumns = isCollapsed ? 6 : 4;
+  const dynamicColumnCount = Math.max(
+    1,
+    Math.min(displayedCalendars.length || maxColumns, maxColumns),
+  );
+
   return (
     <div
-      className={`grid ${
-        isCollapsed
-          ? "grid-cols-2 lg:grid-cols-5 xl:grid-cols-6"
-          : "grid-cols-2 lg:grid-cols-4"
-      } flex-1 gap-3 overflow-visible`} // Increased gap for better separation on gray bg
+      className="grid flex-1 gap-3 overflow-visible"
+      style={{
+        gridTemplateColumns: `repeat(${dynamicColumnCount}, minmax(0, 1fr))`,
+      }}
     >
       {loading ? (
         // Create multiple skeleton placeholders
-        Array.from({ length: 4 }).map((_, index) => (
+        Array.from({ length: maxColumns }).map((_, index) => (
           <div
             key={index}
             className="flex flex-col h-full bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm"
@@ -65,8 +74,7 @@ export function DesktopView({
                       className={`relative border-t border-slate-50 ${
                         i % 2 === 0 ? "bg-white" : "bg-slate-50/20"
                       }`}
-                    >
-                    </div>
+                    ></div>
                   ))}
                 </div>
               </div>
@@ -78,41 +86,42 @@ export function DesktopView({
           <p className="text-slate-500 font-medium">No bookings found</p>
         </div>
       ) : (
-        assetCalendars
-          .filter((_, index) => visibleAssets.includes(index))
-          .map((calendar, index) => (
-            <div
-              key={calendar.id || index}
-              className="flex flex-col h-full bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden"
-            >
-              <div className="px-3 py-3 border-b border-slate-100 bg-white sticky top-0 z-10 flex justify-between items-center h-14">
-                <div className="overflow-hidden">
-                  {calendar.name && (
-                    <h2 className="text-sm font-bold text-slate-800 truncate leading-tight" title={calendar.name}>
-                      {calendar.name}
-                    </h2>
-                  )}
-                  <p className="text-[10px] uppercase tracking-wide font-bold text-slate-400 mt-0.5">
-                    {format(currentDate, "EEE, MMM d")}
-                  </p>
-                </div>
-              </div>
-              <div className="flex-1 overflow-hidden relative">
-                <Calendar
-                  key={`desktop-calendar-${calendar.id || index}`}
-                  events={calendar.events}
-                  view="day"
-                  date={currentDate}
-                >
-                  <CalendarDayView
-                    assetCalendar={calendar}
-                    onActionComplete={onActionComplete}
-                    onBookingCreated={onBookingCreated}
-                  />
-                </Calendar>
+        displayedCalendars.map((calendar, index) => (
+          <div
+            key={calendar.id || index}
+            className="flex flex-col h-full bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden"
+          >
+            <div className="px-3 py-3 border-b border-slate-100 bg-white sticky top-0 z-10 flex justify-between items-center h-14">
+              <div className="overflow-hidden">
+                {calendar.name && (
+                  <h2
+                    className="text-sm font-bold text-slate-800 truncate leading-tight"
+                    title={calendar.name}
+                  >
+                    {calendar.name}
+                  </h2>
+                )}
+                <p className="text-[10px] uppercase tracking-wide font-bold text-slate-400 mt-0.5">
+                  {format(currentDate, "EEE, MMM d")}
+                </p>
               </div>
             </div>
-          ))
+            <div className="flex-1 overflow-hidden relative">
+              <Calendar
+                key={`desktop-calendar-${calendar.id || index}`}
+                events={calendar.events}
+                view="day"
+                date={currentDate}
+              >
+                <CalendarDayView
+                  assetCalendar={calendar}
+                  onActionComplete={onActionComplete}
+                  onBookingCreated={onBookingCreated}
+                />
+              </Calendar>
+            </div>
+          </div>
+        ))
       )}
     </div>
   );
