@@ -10,6 +10,7 @@ import { addHours, startOfHour } from "date-fns";
 import { Plus, Search } from "lucide-react";
 import { CreateBookingForm } from "@/components/forms/CreateBookingForm";
 import { Input } from "@/components/ui/input";
+import ComponentErrorBoundary from "@/components/ui/ComponentErrorBoundary";
 import { swrFetcher, SWR_CONFIG } from "@/lib/swr";
 import { combineDateAndTime } from "@/lib/bookingHelpers";
 import { readStoredProject } from "@/lib/projectStorage";
@@ -361,13 +362,19 @@ export default function BookingsPage() {
 
             {/* Booking List */}
             <div className="flex-1">
-              <BookingList
-                bookings={filteredBookings}
-                activeTab={activeTab}
-                loading={isLoading}
-                onActionComplete={() => mutate()}
-                highlightBookingId={highlightBookingId}
-              />
+              <ComponentErrorBoundary
+                context="BookingsPage: bookings list surface render failed"
+                title="Bookings panel unavailable"
+                message="The bookings list encountered an error. You can retry without leaving the page."
+              >
+                <BookingList
+                  bookings={filteredBookings}
+                  activeTab={activeTab}
+                  loading={isLoading}
+                  onActionComplete={() => mutate()}
+                  highlightBookingId={highlightBookingId}
+                />
+              </ComponentErrorBoundary>
             </div>
           </div>
         </div>

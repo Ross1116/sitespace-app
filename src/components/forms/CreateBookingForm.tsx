@@ -64,6 +64,10 @@ import { reportError } from "@/lib/monitoring";
 import { readStoredProject, StoredProject } from "@/lib/projectStorage";
 import { BOOKING_PAGINATION_MAX_PAGES } from "@/lib/pagination";
 import { normalizeSubcontractorList } from "@/lib/subcontractorNormalization";
+import {
+  BOOKING_DURATION_OPTIONS,
+  QUARTER_HOUR_OPTIONS,
+} from "@/lib/formOptions";
 
 // ===== TYPE DEFINITIONS =====
 type CreateBookingFormProps = {
@@ -717,13 +721,41 @@ export function CreateBookingForm({
   const handleSubmit = async (skipPendingConfirmCheck = false) => {
     dispatchAsync({ type: "SET_ERROR", error: null });
 
-    if (!customStartTime || !customEndTime || selectedAssetIds.length === 0) {
+    if (selectedAssetIds.length === 0) {
       dispatchAsync({
         type: "SET_ERROR",
-        error: "Please fill in all required fields",
+        error: "Please select at least one asset",
       });
       return;
     }
+
+    if (!customStartTime || !customEndTime) {
+      dispatchAsync({
+        type: "SET_ERROR",
+        error: "Please select both start and end times",
+      });
+      return;
+    }
+
+    if (
+      !(selectedDate instanceof Date) ||
+      Number.isNaN(selectedDate.getTime())
+    ) {
+      dispatchAsync({
+        type: "SET_ERROR",
+        error: "Please select a valid booking date",
+      });
+      return;
+    }
+
+    if (customEndTime <= customStartTime) {
+      dispatchAsync({
+        type: "SET_ERROR",
+        error: "End time must be later than start time",
+      });
+      return;
+    }
+
     if (!title.trim()) {
       dispatchAsync({
         type: "SET_ERROR",
@@ -731,6 +763,15 @@ export function CreateBookingForm({
       });
       return;
     }
+
+    if (title.trim().length < 3) {
+      dispatchAsync({
+        type: "SET_ERROR",
+        error: "Booking title must be at least 3 characters",
+      });
+      return;
+    }
+
     if (!project) {
       dispatchAsync({ type: "SET_ERROR", error: "No project selected" });
       return;
@@ -1088,6 +1129,7 @@ export function CreateBookingForm({
                   placeholder="Enter title"
                   className="h-9"
                   disabled={isSubmitting}
+                  aria-required="true"
                 />
               </div>
 
@@ -1122,6 +1164,8 @@ export function CreateBookingForm({
                     variant="outline"
                     className="w-full h-9 justify-start text-left text-sm font-normal"
                     disabled={isSubmitting}
+                    aria-required="true"
+                    aria-label="Booking date"
                   >
                     <CalendarIcon className="w-4 h-4 mr-2" />
                     {selectedDate ? format(selectedDate, "PPP") : "Select date"}
@@ -1156,7 +1200,11 @@ export function CreateBookingForm({
                       onValueChange={handleStartHourChange}
                       disabled={isSubmitting}
                     >
-                      <SelectTrigger className="h-9 w-full text-sm">
+                      <SelectTrigger
+                        className="h-9 w-full text-sm"
+                        aria-required="true"
+                        aria-label="Start hour"
+                      >
                         <SelectValue placeholder="Hour" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1182,11 +1230,15 @@ export function CreateBookingForm({
                       onValueChange={handleStartMinuteChange}
                       disabled={isSubmitting}
                     >
-                      <SelectTrigger className="h-9 w-full text-sm">
+                      <SelectTrigger
+                        className="h-9 w-full text-sm"
+                        aria-required="true"
+                        aria-label="Start minute"
+                      >
                         <SelectValue placeholder="Min" />
                       </SelectTrigger>
                       <SelectContent>
-                        {["00", "15", "30", "45"].map((val) => (
+                        {QUARTER_HOUR_OPTIONS.map((val) => (
                           <SelectItem key={val} value={val} className="text-sm">
                             {val}
                           </SelectItem>
@@ -1208,7 +1260,11 @@ export function CreateBookingForm({
                       onValueChange={handleEndHourChange}
                       disabled={isSubmitting}
                     >
-                      <SelectTrigger className="h-9 w-full text-sm">
+                      <SelectTrigger
+                        className="h-9 w-full text-sm"
+                        aria-required="true"
+                        aria-label="End hour"
+                      >
                         <SelectValue placeholder="Hour" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1234,11 +1290,15 @@ export function CreateBookingForm({
                       onValueChange={handleEndMinuteChange}
                       disabled={isSubmitting}
                     >
-                      <SelectTrigger className="h-9 w-full text-sm">
+                      <SelectTrigger
+                        className="h-9 w-full text-sm"
+                        aria-required="true"
+                        aria-label="End minute"
+                      >
                         <SelectValue placeholder="Min" />
                       </SelectTrigger>
                       <SelectContent>
-                        {["00", "15", "30", "45"].map((val) => (
+                        {QUARTER_HOUR_OPTIONS.map((val) => (
                           <SelectItem key={val} value={val} className="text-sm">
                             {val}
                           </SelectItem>
@@ -1262,7 +1322,7 @@ export function CreateBookingForm({
                   <SelectValue placeholder="Select duration" />
                 </SelectTrigger>
                 <SelectContent>
-                  {[15, 30, 45, 60, 90, 120, 180, 240, 300, 360].map((val) => (
+                  {BOOKING_DURATION_OPTIONS.map((val) => (
                     <SelectItem
                       key={val}
                       value={val.toString()}
@@ -1315,7 +1375,11 @@ export function CreateBookingForm({
                       <span className="font-normal">None (Unassigned)</span>
                     </SelectItem>
                     {loadingSubcontractors ? (
-                      <div className="px-2 py-1.5 text-sm text-gray-500">
+                      <div
+                        className="px-2 py-1.5 text-sm text-gray-500"
+                        role="status"
+                        aria-live="polite"
+                      >
                         Loading subcontractors...
                       </div>
                     ) : subcontractors.length === 0 ? (
@@ -1460,9 +1524,14 @@ export function CreateBookingForm({
                 className="h-10 w-full px-4 text-sm sm:w-auto"
               >
                 {isSubmitting ? (
-                  <span className="flex items-center">
+                  <span
+                    className="flex items-center"
+                    role="status"
+                    aria-live="polite"
+                  >
                     <svg
                       className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                      aria-hidden="true"
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"

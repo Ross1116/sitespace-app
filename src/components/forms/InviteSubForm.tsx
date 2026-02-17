@@ -27,6 +27,7 @@ import {
   normalizeSubcontractorList,
   type NormalizedSubcontractor,
 } from "@/lib/subcontractorNormalization";
+import { TRADE_SPECIALTY_OPTIONS } from "@/lib/formOptions";
 
 // ===== TYPE DEFINITIONS =====
 interface ContractorModalProps {
@@ -118,19 +119,6 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
     tradeSpecialty: "",
     contractorProjectId: "",
   });
-
-  const tradeOptions = [
-    { label: "Electrician", value: "electrician" },
-    { label: "Plumber", value: "plumber" },
-    { label: "Carpenter", value: "carpenter" },
-    { label: "Mason", value: "mason" },
-    { label: "Painter", value: "painter" },
-    { label: "HVAC", value: "hvac" },
-    { label: "Roofer", value: "roofer" },
-    { label: "Landscaper", value: "landscaper" },
-    { label: "General Contractor", value: "general" },
-    { label: "Other", value: "other" },
-  ];
 
   useEffect(() => {
     const project = readStoredProject(userId);
@@ -428,6 +416,7 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
                   onChange={handleChange}
                   placeholder="Enter email address"
                   required
+                  aria-required="true"
                   disabled={isSubmitting || emailChecked}
                   className="flex-1"
                 />
@@ -442,26 +431,34 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
                     className="w-full sm:w-auto"
                   >
                     {isCheckingEmail ? (
-                      <svg
-                        className="animate-spin h-4 w-4"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
+                      <span
+                        className="flex items-center"
+                        role="status"
+                        aria-live="polite"
                       >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        ></circle>
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        ></path>
-                      </svg>
+                        <svg
+                          className="animate-spin h-4 w-4"
+                          aria-hidden="true"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
+                        </svg>
+                        <span className="sr-only">Checking email</span>
+                      </span>
                     ) : (
                       "Check"
                     )}
@@ -542,6 +539,7 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
                     onChange={handleChange}
                     placeholder="Enter first name"
                     required
+                    aria-required="true"
                     disabled={isSubmitting}
                   />
                 </div>
@@ -557,6 +555,7 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
                     onChange={handleChange}
                     placeholder="Enter last name"
                     required
+                    aria-required="true"
                     disabled={isSubmitting}
                   />
                 </div>
@@ -602,7 +601,7 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
                       <SelectValue placeholder="Select trade specialty" />
                     </SelectTrigger>
                     <SelectContent>
-                      {tradeOptions.map((trade) => (
+                      {TRADE_SPECIALTY_OPTIONS.map((trade) => (
                         <SelectItem key={trade.value} value={trade.value}>
                           {trade.label}
                         </SelectItem>
@@ -630,9 +629,14 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
               disabled={isSubmitting || !emailChecked}
             >
               {isSubmitting ? (
-                <span className="flex items-center">
+                <span
+                  className="flex items-center"
+                  role="status"
+                  aria-live="polite"
+                >
                   <svg
                     className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                    aria-hidden="true"
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
