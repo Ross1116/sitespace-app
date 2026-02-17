@@ -19,6 +19,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ApiAsset, ApiBooking } from "@/types";
 import useSWR from "swr";
 import { swrFetcher, SWR_CONFIG } from "@/lib/swr";
+import { readStoredProject } from "@/lib/projectStorage";
 import { isAssetRetiredOrOutOfService } from "@/lib/assetStatus";
 
 // ===== INTERFACES =====
@@ -93,14 +94,8 @@ export default function MulticalendarPage() {
   // Read project from localStorage
   const projectId = useMemo(() => {
     if (!userId) return null;
-    try {
-      const raw = localStorage.getItem(`project_${userId}`);
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      return parsed?.id ?? parsed?.project_id ?? null;
-    } catch {
-      return null;
-    }
+    const parsed = readStoredProject(userId);
+    return parsed?.id ?? null;
   }, [userId]);
 
   // Date range: currently viewed date ± 45 days

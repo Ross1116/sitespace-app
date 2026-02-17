@@ -12,6 +12,7 @@ import { CreateBookingForm } from "@/components/forms/CreateBookingForm";
 import { Input } from "@/components/ui/input";
 import { swrFetcher, SWR_CONFIG } from "@/lib/swr";
 import { combineDateAndTime } from "@/lib/bookingHelpers";
+import { readStoredProject } from "@/lib/projectStorage";
 import type {
   ApiBooking,
   BookingListResponse,
@@ -171,20 +172,13 @@ export default function BookingsPage() {
 
   const { user } = useAuth();
   const userId = user?.id;
-  const projectStorageKey = `project_${userId}`;
 
   // Read project ID from localStorage for the SWR key
   const projectId = useMemo(() => {
     if (typeof window === "undefined" || !userId) return null;
-    try {
-      const raw = localStorage.getItem(projectStorageKey);
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      return parsed?.id ?? parsed?.project_id ?? null;
-    } catch {
-      return null;
-    }
-  }, [userId, projectStorageKey]);
+    const parsed = readStoredProject(userId);
+    return parsed?.id ?? null;
+  }, [userId]);
 
   // Redirect if no project selected
   useEffect(() => {

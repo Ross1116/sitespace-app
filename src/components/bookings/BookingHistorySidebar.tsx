@@ -30,6 +30,7 @@ import type {
   TransformedBooking,
 } from "@/types";
 import { getApiErrorMessage, isAxiosError } from "@/types";
+import { reportError } from "@/lib/monitoring";
 
 interface BookingHistorySidebarProps {
   booking: TransformedBooking | null;
@@ -394,11 +395,14 @@ export default function BookingHistorySidebar({
         );
         setAuditTrail(response.data?.history || []);
       } catch (err: unknown) {
-        if (err instanceof Error && err.name === "CanceledError" || signal?.aborted) {
+        if (
+          (err instanceof Error && err.name === "CanceledError") ||
+          signal?.aborted
+        ) {
           return;
         }
 
-        console.error("Error fetching audit trail:", err);
+        reportError(err, "BookingHistorySidebar: failed to fetch audit trail");
         if (isAxiosError(err) && err.response?.status === 403) {
           setError("You don't have permission to view this booking's history.");
         } else if (isAxiosError(err) && err.response?.status === 404) {
@@ -805,4 +809,3 @@ export default function BookingHistorySidebar({
     </>
   );
 }
-

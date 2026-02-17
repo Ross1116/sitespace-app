@@ -116,9 +116,17 @@ export default function BookingCardDropdown({
     const limit = 200;
     let skip = 0;
     let hasMore = true;
+    let pageCount = 0;
+    const MAX_PAGES = 25;
     const collected: ApiBooking[] = [];
 
     while (hasMore) {
+      if (pageCount >= MAX_PAGES) {
+        throw new Error(
+          "Reached pagination safety limit while loading bookings",
+        );
+      }
+
       const response = await api.get<BookingListResponse>(`/bookings/`, {
         params: {
           project_id,
@@ -132,6 +140,7 @@ export default function BookingCardDropdown({
       collected.push(...(response.data.bookings || []));
       hasMore = Boolean(response.data.has_more);
       skip += limit;
+      pageCount += 1;
     }
 
     return collected.filter((entry) => {

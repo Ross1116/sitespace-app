@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
+import { reportError } from "@/lib/monitoring";
 
 const signinSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -59,13 +60,12 @@ export async function POST(request: Request) {
     if (!response.ok) {
       const message =
         data && typeof data === "object" && "detail" in data
-          ? String((data as { detail?: unknown }).detail || "Authentication failed")
+          ? String(
+              (data as { detail?: unknown }).detail || "Authentication failed",
+            )
           : "Authentication failed";
 
-      return NextResponse.json(
-        { message },
-        { status: response.status },
-      );
+      return NextResponse.json({ message }, { status: response.status });
     }
 
     if (!data || typeof data !== "object") {
@@ -115,7 +115,7 @@ export async function POST(request: Request) {
 
     return res;
   } catch (error) {
-    console.error("Signin error:", error);
+    reportError(error, "Auth signin route: unexpected error");
     return NextResponse.json(
       { message: "Internal server error" },
       { status: 500 },

@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/dialog";
 import { TransformedAsset, getApiErrorMessage } from "@/types";
 import { useRouter } from "next/navigation";
+import { readStoredProject } from "@/lib/projectStorage";
 
 interface AssetFromBackend {
   id: string;
@@ -221,19 +222,15 @@ export default function AssetsTable() {
   // Read project from localStorage
   const project = useMemo<Project | undefined>(() => {
     if (typeof window === "undefined" || !userId) return undefined;
-    try {
-      const raw = localStorage.getItem(`project_${userId}`);
-      if (!raw) return undefined;
-      const parsed = JSON.parse(raw);
-      const id = parsed?.id ?? parsed?.project_id;
-      if (!id) return undefined;
-      return {
-        id,
-        text: parsed?.text ?? parsed?.name ?? parsed?.project_name ?? "",
-      };
-    } catch {
+    const parsed = readStoredProject(userId);
+    if (!parsed?.id) {
       return undefined;
     }
+
+    return {
+      id: parsed.id,
+      text: parsed.name || "",
+    };
   }, [userId]);
 
   // --- SWR: fetch assets ---

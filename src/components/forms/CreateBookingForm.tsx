@@ -60,6 +60,8 @@ import {
 import useSWR from "swr";
 import { swrFetcher } from "@/lib/swr";
 import { isAssetUnavailableForBooking } from "@/lib/assetStatus";
+import { reportError } from "@/lib/monitoring";
+import { readStoredProject } from "@/lib/projectStorage";
 
 // ===== TYPE DEFINITIONS =====
 type CreateBookingFormProps = {
@@ -556,16 +558,12 @@ export function CreateBookingForm({
 
   // ===== LOAD PROJECT FROM LOCALSTORAGE =====
   useEffect(() => {
-    const projectString = localStorage.getItem(`project_${userId}`);
-    if (projectString) {
-      try {
-        dispatchAsync({
-          type: "SET_PROJECT",
-          project: JSON.parse(projectString) as ApiProject,
-        });
-      } catch (err) {
-        console.error("Error parsing project:", err);
-      }
+    const project = readStoredProject(userId);
+    if (project) {
+      dispatchAsync({
+        type: "SET_PROJECT",
+        project: project as ApiProject,
+      });
     }
   }, [userId]);
 
@@ -671,7 +669,7 @@ export function CreateBookingForm({
         });
       } catch (err: unknown) {
         if (isAbortError(err, signal)) return;
-        console.error("Error loading subcontractors:", err);
+        reportError(err, "CreateBookingForm: failed to load subcontractors");
         dispatchAsync({ type: "SET_LOADING_SUBS", loading: false });
       }
     };
@@ -791,9 +789,17 @@ export function CreateBookingForm({
         const limit = 200;
         let skip = 0;
         let hasMore = true;
+        let pageCount = 0;
+        const MAX_PAGES = 25;
         const collected: ApiBooking[] = [];
 
         while (hasMore) {
+          if (pageCount >= MAX_PAGES) {
+            throw new Error(
+              "Reached pagination safety limit while loading existing bookings",
+            );
+          }
+
           const existing = await api.get<BookingListResponse>(`/bookings/`, {
             params: {
               project_id: project.id,
@@ -807,6 +813,7 @@ export function CreateBookingForm({
           collected.push(...(existing.data.bookings || []));
           hasMore = Boolean(existing.data.has_more);
           skip += limit;
+          pageCount += 1;
         }
 
         existingBookingsForDate = collected;
@@ -1019,7 +1026,7 @@ export function CreateBookingForm({
         });
       }
     } catch (err: unknown) {
-      console.error("Error creating bookings:", err);
+      reportError(err, "CreateBookingForm: failed to create bookings");
       dispatchAsync({
         type: "SET_ERROR",
         error: getApiErrorMessage(err, "Failed to create booking"),

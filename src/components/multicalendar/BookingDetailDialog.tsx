@@ -46,6 +46,7 @@ import {
   BookingListResponse,
   getApiErrorMessage,
 } from "@/types";
+import { reportError } from "@/lib/monitoring";
 
 type BookingDetail = Omit<ApiBooking, "manager" | "asset"> & {
   manager?: (ApiManager & { email?: string }) | null;
@@ -161,7 +162,7 @@ export function BookingDetailsDialog({
       })();
     } catch (err) {
       if (isAbortError(err, signal)) return;
-      console.error("Error fetching booking details:", err);
+      reportError(err, "BookingDetailDialog: failed to fetch booking details");
       setError("Failed to load booking details.");
       if (!signal?.aborted) setLoading(false);
     }
