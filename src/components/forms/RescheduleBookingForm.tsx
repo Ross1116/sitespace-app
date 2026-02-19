@@ -200,6 +200,18 @@ export default function RescheduleBookingForm({
         throw new Error("Please fill in all date and time fields");
       }
 
+      const startDt = new Date(selectedDate);
+      startDt.setHours(
+        parseInt(startHour, 10),
+        parseInt(startMinute, 10),
+        0,
+        0,
+      );
+
+      if (startDt.getTime() < Date.now()) {
+        throw new Error("Bookings cannot be made in the past");
+      }
+
       // Prepare Payload
       const payload = {
         booking_date: format(selectedDate, "yyyy-MM-dd"),
