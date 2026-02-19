@@ -5,7 +5,8 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/app/context/AuthContext";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Eye, EyeOff, Loader2, LayoutGrid, CheckCircle } from "lucide-react";
+import Image from "next/image";
+import { Eye, EyeOff, Loader2, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -84,7 +85,7 @@ export default function Login() {
   return (
     <div className="flex min-h-screen w-full bg-slate-50 font-sans">
       {/* Left Side - Navy Theme */}
-      <div className="hidden lg:flex w-1/2 bg-[var(--navy)] relative flex-col justify-between p-16 text-white overflow-hidden">
+      <div className="hidden lg:flex w-1/2 bg-[var(--navy)] relative flex-col p-16 text-white overflow-hidden">
         <div className="absolute inset-0 opacity-10 pointer-events-none">
           <svg
             className="h-full w-full"
@@ -94,28 +95,34 @@ export default function Login() {
             <path d="M0 100 C 20 0 50 0 100 100 Z" fill="white" />
           </svg>
         </div>
-
         <div className="z-10">
-          <div className="flex items-center gap-3 mb-12">
-            <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center text-[var(--navy)]">
-              <LayoutGrid size={24} />
-            </div>
-            <span className="text-2xl font-bold tracking-tight">Sitespace</span>
-          </div>
-
-          <h1 className="text-6xl font-bold leading-tight mb-6">
-            Welcome back <br /> to the Demo.
-          </h1>
-
-          <p className="text-slate-400 text-xl max-w-lg leading-relaxed">
-            Experience the future of construction logistics. Log in to access
-            the booking calendar and asset management tools.
-          </p>
+          <Link href="/" className="inline-flex items-center">
+            <Image
+              src="/full-logo-dark.svg"
+              alt="SiteSpace"
+              width={160}
+              height={48}
+              className="h-10 w-auto brightness-0 invert"
+              priority
+            />
+          </Link>
         </div>
 
-        <div className="z-10 flex justify-between items-end text-sm text-slate-500">
-          <p>© 2025 Sitespace Demo.</p>
-          <p>v2.4.0-beta</p>
+        <div className="z-10 flex flex-1 items-center">
+          <div className="max-w-xl">
+            <h1 className="text-5xl font-bold leading-tight mb-5">
+              Welcome back.
+            </h1>
+
+            <p className="text-slate-400 text-lg xl:text-xl max-w-lg leading-relaxed">
+              Experience the future of construction logistics. Log in to access
+              the booking calendar and asset management tools.
+            </p>
+          </div>
+        </div>
+
+        <div className="z-10 text-sm text-slate-500">
+          <p>© 2026 SiteSpace.</p>
         </div>
       </div>
 
@@ -156,7 +163,7 @@ export default function Login() {
               <Input
                 id="email"
                 type="email"
-                placeholder="demo@sitespace.com"
+                placeholder="name@company.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
