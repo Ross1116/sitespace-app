@@ -510,11 +510,8 @@ export default function HomePage() {
                           : "Unknown Manager";
 
                         const assetName = booking.asset?.name?.trim();
-                        const assetCode = booking.asset?.asset_code?.trim();
                         const assetLabel =
                           assetName || booking.asset_id || "Unspecified asset";
-                        const assetCodeSuffix =
-                          assetName && assetCode ? `(${assetCode})` : "";
 
                         const subName = booking.subcontractor
                           ? [
@@ -629,11 +626,6 @@ export default function HomePage() {
                                 <span className="min-w-0 flex-1 text-blue-700 font-semibold truncate">
                                   {assetLabel}
                                 </span>
-                                {assetCodeSuffix && (
-                                  <span className="hidden text-[10px] text-slate-400 font-medium lg:inline">
-                                    {assetCodeSuffix}
-                                  </span>
-                                )}
                               </div>
 
                               <div className="flex min-w-0 items-center gap-1 text-xs font-medium text-slate-400">

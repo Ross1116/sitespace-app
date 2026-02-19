@@ -750,10 +750,27 @@ export function CreateBookingForm({
       return;
     }
 
-    if (customEndTime <= customStartTime) {
+    const buildBookingDateTime = (date: Date, time: Date) => {
+      const merged = new Date(date);
+      merged.setHours(time.getHours(), time.getMinutes(), 0, 0);
+      return merged;
+    };
+
+    const bookingStartDt = buildBookingDateTime(selectedDate, customStartTime);
+    const bookingEndDt = buildBookingDateTime(selectedDate, customEndTime);
+
+    if (bookingEndDt <= bookingStartDt) {
       dispatchAsync({
         type: "SET_ERROR",
         error: "End time must be later than start time",
+      });
+      return;
+    }
+
+    if (bookingStartDt.getTime() < Date.now()) {
+      dispatchAsync({
+        type: "SET_ERROR",
+        error: "Bookings cannot be created in the past",
       });
       return;
     }
@@ -783,8 +800,8 @@ export function CreateBookingForm({
       dispatchAsync({ type: "SET_SUBMITTING", value: true });
 
       const bookingDate = format(selectedDate, "yyyy-MM-dd");
-      const startTimeFormatted = format(customStartTime, "HH:mm:ss");
-      const endTimeFormatted = format(customEndTime, "HH:mm:ss");
+      const startTimeFormatted = format(bookingStartDt, "HH:mm:ss");
+      const endTimeFormatted = format(bookingEndDt, "HH:mm:ss");
 
       const normalizeTime = (timeValue: string) =>
         (timeValue || "").split(":").slice(0, 2).join(":");
