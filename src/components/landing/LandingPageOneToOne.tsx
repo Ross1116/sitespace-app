@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
+import type React from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -566,15 +567,15 @@ export default function LandingPageOneToOne() {
                 badgeLabel="High"
                 badgeStyle={{
                   background:
-                    "color-mix(in oklab, var(--brand-orange) 18%, transparent)",
+                    "color-mix(in oklab, var(--lp-accent) 18%, transparent)",
                   borderColor:
-                    "color-mix(in oklab, var(--brand-orange) 35%, transparent)",
-                  color: "var(--brand-orange)",
+                    "color-mix(in oklab, var(--lp-accent) 35%, transparent)",
+                  color: "var(--lp-accent)",
                 }}
                 fillStyle={{
                   width: "85%",
                   background:
-                    "linear-gradient(90deg, color-mix(in oklab, var(--brand-orange) 65%, white 35%) 0%, var(--brand-orange) 55%, color-mix(in oklab, var(--brand-orange) 70%, black 30%) 100%)",
+                    "linear-gradient(90deg, color-mix(in oklab, var(--lp-accent) 65%, white 35%) 0%, var(--lp-accent) 55%, color-mix(in oklab, var(--lp-accent) 70%, black 30%) 100%)",
                 }}
                 fillWidth="85%"
                 subtitle="Week of Feb 17-21"
@@ -711,7 +712,7 @@ export default function LandingPageOneToOne() {
         </div>
       </section>
 
-      {/* Mobile Experience */}
+      {/* Mobile Experience (disabled)
       <section
         className={styles.sectionSpacing}
         style={{
@@ -840,11 +841,14 @@ export default function LandingPageOneToOne() {
             <HighlightCard
               title="Secure Access"
               iconWrapClassName=""
-              iconWrapStyle={{ background: "rgba(217, 78, 9, 0.2)" }}
+              iconWrapStyle={{
+                background:
+                  "color-mix(in oklab, var(--lp-accent) 20%, transparent)",
+              }}
               icon={
                 <svg
                   className="w-6 h-6"
-                  style={{ color: "var(--brand-orange)" }}
+                  style={{ color: "var(--lp-accent)" }}
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -864,10 +868,11 @@ export default function LandingPageOneToOne() {
           </div>
         </div>
       </section>
+      */}
 
       {/* Coming Soon */}
       <section
-        className={styles.scrollSection}
+        className={styles.sectionSpacing}
         style={{
           background:
             "linear-gradient(180deg, var(--lp-bg-1) 0%, var(--lp-bg-0) 100%)",
@@ -915,7 +920,7 @@ export default function LandingPageOneToOne() {
             </h2>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-16">
+          <div className="mx-auto grid w-full max-w-5xl px-2 md:px-6 md:grid-cols-2 gap-16">
             <div className={styles.fadeIn} data-fade-in>
               <h3 className="text-3xl font-semibold mb-8">
                 For Subcontractors
@@ -1222,7 +1227,8 @@ export default function LandingPageOneToOne() {
                 />
               </div>
               <p className="text-gray-500 text-sm leading-relaxed">
-                AI-powered construction asset management
+                The intelligent asset booking platform designed for the
+                complexities of
                 <br />
                 for the modern job site.
               </p>
@@ -1421,12 +1427,14 @@ function PhoneShot({
   description,
   src,
   alt,
+  variant = "plain",
 }: {
   delay: string;
   title: string;
   description: string;
   src: string;
   alt: string;
+  variant?: "device" | "plain";
 }) {
   return (
     <div
@@ -1434,16 +1442,36 @@ function PhoneShot({
       data-fade-in
       style={{ transitionDelay: delay }}
     >
-      <div
-        className={cn(
-          styles.mobileFrameSmall,
-          styles.appleCard,
-          styles.shine,
-          "mx-auto",
-        )}
-      >
-        <img src={src} alt={alt} />
-      </div>
+      {variant === "device" ? (
+        <div
+          className={cn(
+            styles.mobileFrameSmall,
+            styles.appleCard,
+            styles.shine,
+            "mx-auto",
+          )}
+          style={{ ["--shot" as never]: `url(${src})` } as React.CSSProperties}
+        >
+          <div className={styles.mobileFrameSmallInner}>
+            <img src={src} alt={alt} />
+          </div>
+        </div>
+      ) : (
+        <div
+          className={cn(
+            styles.shotPlain,
+            styles.glassCard,
+            styles.appleCard,
+            styles.shine,
+            "mx-auto",
+          )}
+          style={{ ["--shot" as never]: `url(${src})` } as React.CSSProperties}
+        >
+          <div className={styles.shotPlainInner}>
+            <img src={src} alt={alt} className={styles.shotPlainImg} />
+          </div>
+        </div>
+      )}
       <div className="text-center mt-6">
         <h3 className="text-xl font-semibold mb-2">{title}</h3>
         <p className="text-gray-400 text-sm">{description}</p>
