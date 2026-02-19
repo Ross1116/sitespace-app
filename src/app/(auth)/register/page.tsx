@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useAuth } from "@/app/context/AuthContext";
 import Link from "next/link";
-import { Eye, EyeOff, Loader2, LayoutGrid } from "lucide-react";
+import Image from "next/image";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -91,7 +92,7 @@ export default function Register() {
   return (
     <div className="flex min-h-screen w-full bg-slate-50 font-sans">
       {/* Left Side - Navy Theme */}
-      <div className="hidden lg:flex w-1/2 bg-[var(--navy)] relative flex-col justify-between p-16 text-white overflow-hidden">
+      <div className="hidden lg:flex w-1/2 bg-[var(--navy)] relative flex-col p-16 text-white overflow-hidden">
         {/* Background Curves */}
         <div className="absolute inset-0 opacity-10 pointer-events-none">
           <svg
@@ -104,25 +105,33 @@ export default function Register() {
         </div>
 
         <div className="z-10">
-          <div className="flex items-center gap-3 mb-12">
-            <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center text-[var(--navy)]">
-              <LayoutGrid size={24} />
-            </div>
-            <span className="text-2xl font-bold tracking-tight">Sitespace</span>
+          <Link href="/" className="inline-flex items-center">
+            <Image
+              src="/full-logo-dark.svg"
+              alt="SiteSpace"
+              width={160}
+              height={48}
+              className="h-10 w-auto brightness-0 invert"
+              priority
+            />
+          </Link>
+        </div>
+
+        <div className="z-10 flex flex-1 items-center">
+          <div className="max-w-xl">
+            <h1 className="text-5xl font-bold leading-tight mb-5">
+              Create your account.
+            </h1>
+
+            <p className="text-slate-400 text-lg xl:text-xl max-w-lg leading-relaxed">
+              Join the platform managing complex construction logistics. Explore
+              key workflows and see the efficiency gains.
+            </p>
           </div>
-
-          <h1 className="text-6xl font-bold leading-tight mb-6">
-            Start your free <br /> demo trial.
-          </h1>
-
-          <p className="text-slate-400 text-xl max-w-lg leading-relaxed">
-            Join the platform managing complex construction logistics. Test the
-            features and see the efficiency gains.
-          </p>
         </div>
 
         <div className="z-10 text-sm text-slate-500">
-          <p>© 2025 Sitespace Demo.</p>
+          <p>© 2026 SiteSpace.</p>
         </div>
       </div>
 
@@ -133,9 +142,7 @@ export default function Register() {
             <h2 className="text-3xl font-bold text-slate-900">
               Create Account
             </h2>
-            <p className="text-slate-500 mt-2">
-              Get started with the Sitespace Demo
-            </p>
+            <p className="text-slate-500 mt-2">Get started with SiteSpace</p>
           </div>
 
           {error && (

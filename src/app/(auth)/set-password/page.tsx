@@ -2,18 +2,13 @@
 
 import { useState, useEffect, Suspense, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  CheckCircle,
-  AlertCircle,
-  Eye,
-  EyeOff,
-  UserPlus,
-  Loader2,
-} from "lucide-react";
+import { CheckCircle, AlertCircle, Eye, EyeOff, Loader2 } from "lucide-react";
 import api from "@/lib/api";
 import { useAuth } from "@/app/context/AuthContext";
 import { getApiErrorMessage } from "@/types";
@@ -152,7 +147,7 @@ function SetPasswordForm() {
   return (
     <div className="flex min-h-screen w-full bg-white font-sans">
       {/* Left Side - Welcome Panel */}
-      <div className="hidden lg:flex w-1/2 bg-[var(--navy)] relative flex-col justify-between p-16 text-white overflow-hidden">
+      <div className="hidden lg:flex w-1/2 bg-[var(--navy)] relative flex-col p-16 text-white overflow-hidden">
         <div className="absolute inset-0 opacity-10 pointer-events-none">
           <svg
             className="h-full w-full"
@@ -164,25 +159,33 @@ function SetPasswordForm() {
         </div>
 
         <div className="z-10">
-          <div className="flex items-center gap-3 mb-12">
-            <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center text-[var(--navy)]">
-              <UserPlus size={24} />
-            </div>
-            <span className="text-2xl font-bold tracking-tight">Sitespace</span>
+          <Link href="/" className="inline-flex items-center">
+            <Image
+              src="/full-logo-dark.svg"
+              alt="SiteSpace"
+              width={160}
+              height={48}
+              className="h-10 w-auto brightness-0 invert"
+              priority
+            />
+          </Link>
+        </div>
+
+        <div className="z-10 flex flex-1 items-center">
+          <div className="max-w-xl">
+            <h1 className="text-5xl font-bold leading-tight mb-5">
+              Welcome aboard.
+            </h1>
+
+            <p className="text-slate-400 text-lg xl:text-xl max-w-lg leading-relaxed">
+              Set up your password to activate your account and start
+              collaborating on projects.
+            </p>
           </div>
-
-          <h1 className="text-6xl font-bold leading-tight mb-6">
-            Welcome <br /> Aboard.
-          </h1>
-
-          <p className="text-slate-400 text-xl max-w-lg leading-relaxed">
-            Set up your password to activate your account and start
-            collaborating on projects.
-          </p>
         </div>
 
         <div className="z-10 text-sm text-slate-500">
-          <p>© 2025 Sitespace Demo Environment.</p>
+          <p>© 2026 SiteSpace.</p>
         </div>
       </div>
 
