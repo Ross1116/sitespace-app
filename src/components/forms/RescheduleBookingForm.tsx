@@ -208,6 +208,13 @@ export default function RescheduleBookingForm({
         0,
       );
 
+      const endDt = new Date(selectedDate);
+      endDt.setHours(parseInt(endHour, 10), parseInt(endMinute, 10), 0, 0);
+
+      if (endDt.getTime() <= startDt.getTime()) {
+        throw new Error("End time must be later than start time");
+      }
+
       if (startDt.getTime() < Date.now()) {
         throw new Error("Bookings cannot be made in the past");
       }

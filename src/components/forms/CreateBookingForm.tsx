@@ -750,14 +750,6 @@ export function CreateBookingForm({
       return;
     }
 
-    if (customEndTime <= customStartTime) {
-      dispatchAsync({
-        type: "SET_ERROR",
-        error: "End time must be later than start time",
-      });
-      return;
-    }
-
     const buildBookingDateTime = (date: Date, time: Date) => {
       const merged = new Date(date);
       merged.setHours(time.getHours(), time.getMinutes(), 0, 0);
@@ -767,18 +759,18 @@ export function CreateBookingForm({
     const bookingStartDt = buildBookingDateTime(selectedDate, customStartTime);
     const bookingEndDt = buildBookingDateTime(selectedDate, customEndTime);
 
-    if (bookingStartDt.getTime() < Date.now()) {
-      dispatchAsync({
-        type: "SET_ERROR",
-        error: "Bookings cannot be created in the past",
-      });
-      return;
-    }
-
     if (bookingEndDt <= bookingStartDt) {
       dispatchAsync({
         type: "SET_ERROR",
         error: "End time must be later than start time",
+      });
+      return;
+    }
+
+    if (bookingStartDt.getTime() < Date.now()) {
+      dispatchAsync({
+        type: "SET_ERROR",
+        error: "Bookings cannot be created in the past",
       });
       return;
     }
