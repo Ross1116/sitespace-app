@@ -1230,7 +1230,7 @@ export default function LandingPageOneToOne() {
                 The intelligent asset booking platform designed for the
                 complexities of
                 <br />
-                for the modern job site.
+                the modern job site.
               </p>
             </div>
 
