@@ -17,6 +17,10 @@ import { useSWRConfig } from "swr";
 import { reportError } from "@/lib/monitoring";
 import { saveStoredProject } from "@/lib/projectStorage";
 import { normalizeProjectList } from "@/lib/apiNormalization";
+import {
+  getTelemetryEmailMode,
+  hashEmailForTelemetry,
+} from "@/lib/telemetryPrivacy";
 
 // ===== TYPES =====
 type User = {
@@ -59,6 +63,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { mutate } = useSWRConfig();
   const initAttempted = useRef(false);
 
+  const identifyTelemetryUser = useCallback(async (userData: User) => {
+    const mode = getTelemetryEmailMode();
+    const hashedEmail =
+      mode === "hash" ? await hashEmailForTelemetry(userData.email) : null;
+
+    const fullName =
+      `${userData.first_name ?? ""} ${userData.last_name ?? ""}`.trim();
+
+    Sentry.setUser({
+      id: userData.id,
+      ...(mode === "hash" && hashedEmail ? { email: hashedEmail } : {}),
+      ...(fullName ? { username: fullName } : {}),
+      role: userData.role,
+    });
+
+    posthog.identify(userData.id, {
+      ...(mode === "hash" && hashedEmail ? { email: hashedEmail } : {}),
+      ...(fullName ? { name: fullName } : {}),
+      role: userData.role,
+    });
+  }, []);
+
   // ===== Check auth status via server =====
   const checkAuth = useCallback(async (): Promise<User | null> => {
     try {
@@ -92,22 +118,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userData = await checkAuth();
       setUser(userData);
       if (userData) {
-        Sentry.setUser({
-          id: userData.id,
-          email: userData.email,
-          role: userData.role,
-        });
-        posthog.identify(userData.id, {
-          email: userData.email,
-          name: `${userData.first_name} ${userData.last_name}`,
-          role: userData.role,
-        });
+        await identifyTelemetryUser(userData);
       }
       setIsInitialized(true);
     };
 
     init();
-  }, [checkAuth]);
+  }, [checkAuth, identifyTelemetryUser]);
 
   // ===== Login =====
   const login = useCallback(
@@ -143,16 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await mutate(() => true, undefined, { revalidate: false });
 
       setUser(userData);
-      Sentry.setUser({
-        id: userData.id,
-        email: userData.email,
-        role: userData.role,
-      });
-      posthog.identify(userData.id, {
-        email: userData.email,
-        name: `${userData.first_name} ${userData.last_name}`,
-        role: userData.role,
-      });
+      await identifyTelemetryUser(userData);
 
       // Pre-fetch project so every dashboard page has context immediately
       // Fire-and-forget — don't block the redirect
@@ -188,7 +196,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       router.replace("/home");
     },
-    [router, checkAuth],
+    [router, checkAuth, identifyTelemetryUser],
   );
 
   // ===== Register =====

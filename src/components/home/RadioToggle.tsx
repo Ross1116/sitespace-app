@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
@@ -26,7 +26,7 @@ function ProjectSelector({
   maxHeight = "400px",
   userId,
 }: ProjectSelectorProps) {
-  const getInitialProject = () => {
+  const getInitialProject = useCallback(() => {
     const parsedProject = readStoredProject(userId);
     if (parsedProject) {
       const projectExists = projects.some((p) => p.id === parsedProject.id);
@@ -37,7 +37,7 @@ function ProjectSelector({
 
     // Default to first project if no stored selection or stored selection not found
     return projects.length > 0 ? projects[0].id : undefined;
-  };
+  }, [projects, userId]);
 
   const [selectedProject, setSelectedProject] = useState<string | undefined>(
     () => getInitialProject(),
@@ -45,7 +45,7 @@ function ProjectSelector({
   const [searchQuery, setSearchQuery] = useState("");
   const [visibleProjects, setVisibleProjects] = useState<Project[]>(projects);
 
-  const getFilteredProjects = () => {
+  const getFilteredProjects = useCallback(() => {
     const trimmedLower = searchQuery.trim().toLowerCase();
 
     if (!trimmedLower) {
@@ -57,7 +57,7 @@ function ProjectSelector({
         project.name.toLowerCase().includes(trimmedLower) ||
         project.id.toLowerCase().includes(trimmedLower),
     );
-  };
+  }, [projects, searchQuery]);
 
   useEffect(() => {
     const filteredProjects = getFilteredProjects();
@@ -74,7 +74,7 @@ function ProjectSelector({
     if (selectedStillExists) return;
 
     const fallbackId = getInitialProject() || projects[0]?.id;
-    if (!fallbackId) return;
+    if (!fallbackId || fallbackId === selectedProject) return;
 
     setSelectedProject(fallbackId);
     const fallbackProject = projects.find(
@@ -84,7 +84,14 @@ function ProjectSelector({
       saveStoredProject(userId, fallbackProject);
     }
     onChange?.(fallbackId);
-  }, [projects, searchQuery, selectedProject, onChange, userId]);
+  }, [
+    projects,
+    selectedProject,
+    onChange,
+    userId,
+    getFilteredProjects,
+    getInitialProject,
+  ]);
 
   const handleChange = (value: string) => {
     setSelectedProject(value);

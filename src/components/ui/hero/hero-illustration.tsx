@@ -13,8 +13,8 @@ export function HeroIllustration() {
 
   if (!isClient) {
     return (
-      <div className="relative w-full max-w-lg mx-auto h-[500px] flex items-center justify-center">
-        <div className="w-full h-full bg-slate-100 rounded-lg animate-pulse"></div>
+      <div className="relative w-full max-w-lg mx-auto h-[600px] flex items-center justify-center">
+        <div className="w-full h-[600px] bg-slate-100 rounded-lg animate-pulse"></div>
       </div>
     );
   }

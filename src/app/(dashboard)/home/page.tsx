@@ -232,8 +232,12 @@ export default function HomePage() {
   const handleProjectSelect = (proj: ApiProject) => {
     if (!proj || !proj.id) return;
     setShowProjectSelector(false);
-    saveStoredProject(userId, proj);
     setSelectedProject(proj);
+
+    // userId can be undefined during auth initialization or anonymous views
+    if (userId) {
+      saveStoredProject(userId, proj);
+    }
   };
 
   // --- Derived Data ---
