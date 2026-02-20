@@ -64,25 +64,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const initAttempted = useRef(false);
 
   const identifyTelemetryUser = useCallback(async (userData: User) => {
-    const mode = getTelemetryEmailMode();
-    const hashedEmail =
-      mode === "hash" ? await hashEmailForTelemetry(userData.email) : null;
+    try {
+      const mode = getTelemetryEmailMode();
+      const hashedEmail =
+        mode === "hash" ? await hashEmailForTelemetry(userData.email) : null;
 
-    const fullName =
-      `${userData.first_name ?? ""} ${userData.last_name ?? ""}`.trim();
+      const fullName =
+        `${userData.first_name ?? ""} ${userData.last_name ?? ""}`.trim();
 
-    Sentry.setUser({
-      id: userData.id,
-      ...(mode === "hash" && hashedEmail ? { email: hashedEmail } : {}),
-      ...(fullName ? { username: fullName } : {}),
-      role: userData.role,
-    });
+      Sentry.setUser({
+        id: userData.id,
+        ...(mode === "hash" && hashedEmail ? { email: hashedEmail } : {}),
+        ...(fullName ? { username: fullName } : {}),
+        role: userData.role,
+      });
 
-    posthog.identify(userData.id, {
-      ...(mode === "hash" && hashedEmail ? { email: hashedEmail } : {}),
-      ...(fullName ? { name: fullName } : {}),
-      role: userData.role,
-    });
+      posthog.identify(userData.id, {
+        ...(mode === "hash" && hashedEmail ? { email: hashedEmail } : {}),
+        ...(fullName ? { name: fullName } : {}),
+        role: userData.role,
+      });
+    } catch (error: unknown) {
+      // Telemetry should never block or interrupt auth flow.
+      try {
+        reportError(error, "AuthContext: telemetry identification failed");
+      } catch {
+        // ignore
+      }
+    }
   }, []);
 
   // ===== Check auth status via server =====
@@ -118,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userData = await checkAuth();
       setUser(userData);
       if (userData) {
-        await identifyTelemetryUser(userData);
+        void identifyTelemetryUser(userData);
       }
       setIsInitialized(true);
     };
@@ -160,7 +169,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await mutate(() => true, undefined, { revalidate: false });
 
       setUser(userData);
-      await identifyTelemetryUser(userData);
+      void identifyTelemetryUser(userData);
 
       // Pre-fetch project so every dashboard page has context immediately
       // Fire-and-forget — don't block the redirect

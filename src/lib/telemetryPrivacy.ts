@@ -18,19 +18,24 @@ const toHex = (buffer: ArrayBuffer) =>
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 
-export async function hashEmailForTelemetry(email: string | null | undefined) {
+export async function hashEmailForTelemetry(
+  email: string | null | undefined,
+): Promise<string | null> {
   const normalized = (email || "").trim().toLowerCase();
   if (!normalized) return null;
 
-  // Prefer WebCrypto in the browser (secure + built-in). Fall back to Node crypto.
+  // Prefer WebCrypto in the browser (secure + built-in).
   const webCrypto = (globalThis as unknown as { crypto?: Crypto }).crypto;
   if (webCrypto?.subtle) {
-    const data = new TextEncoder().encode(normalized);
-    const digest = await webCrypto.subtle.digest("SHA-256", data);
-    return toHex(digest);
+    try {
+      const data = new TextEncoder().encode(normalized);
+      const digest = await webCrypto.subtle.digest("SHA-256", data);
+      return toHex(digest);
+    } catch {
+      return null;
+    }
   }
 
-  // Next.js can also execute code on the server during SSR; keep a safe fallback.
-  const { createHash } = await import("crypto");
-  return createHash("sha256").update(normalized).digest("hex");
+  // If WebCrypto isn't available, don't attempt to hash client-side.
+  return null;
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
@@ -45,7 +45,7 @@ function ProjectSelector({
   const [searchQuery, setSearchQuery] = useState("");
   const [visibleProjects, setVisibleProjects] = useState<Project[]>(projects);
 
-  const getFilteredProjects = useCallback(() => {
+  const filteredProjects = useMemo(() => {
     const trimmedLower = searchQuery.trim().toLowerCase();
 
     if (!trimmedLower) {
@@ -60,7 +60,6 @@ function ProjectSelector({
   }, [projects, searchQuery]);
 
   useEffect(() => {
-    const filteredProjects = getFilteredProjects();
     setVisibleProjects(filteredProjects);
 
     if (projects.length === 0) {
@@ -89,7 +88,7 @@ function ProjectSelector({
     selectedProject,
     onChange,
     userId,
-    getFilteredProjects,
+    filteredProjects,
     getInitialProject,
   ]);
 

@@ -8,11 +8,14 @@ describe("bookingHelpers", () => {
   });
 
   it("groups bookings by month and year", () => {
-    const grouped = groupBookingsByMonth([
-      { id: "1", booking_date: "2026-02-17" },
-      { id: "2", booking_date: "2026-02-20" },
-      { id: "3", booking_date: "2026-03-01" },
-    ]);
+    const grouped = groupBookingsByMonth(
+      [
+        { id: "1", booking_date: "2026-02-17" },
+        { id: "2", booking_date: "2026-02-20" },
+        { id: "3", booking_date: "2026-03-01" },
+      ],
+      "en-US",
+    );
 
     expect(Object.keys(grouped)).toContain("February 2026");
     expect(Object.keys(grouped)).toContain("March 2026");
