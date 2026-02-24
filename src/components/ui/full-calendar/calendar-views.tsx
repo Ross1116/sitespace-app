@@ -59,6 +59,8 @@ import { CSS } from "@dnd-kit/utilities";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import api from "@/lib/api";
 import { AlertCircle, Ban, Loader2 } from "lucide-react";
+import { useAuth } from "@/app/context/AuthContext";
+import { isTvUser } from "@/lib/permissions";
 
 const EARLIEST_START_HOUR = 6; // 6:00 AM
 const LATEST_END_HOUR = 20; // 8:00 PM
@@ -183,6 +185,8 @@ export const CalendarDayView = ({
     onBookingCreated ?? multicalendarActions?.onBookingCreated;
 
   const { events, date, setEvents } = useCalendar();
+  const { user } = useAuth();
+  const isReadOnly = isTvUser(user);
 
   // --- 1. MAINTENANCE LOGIC ---
   const asset = toMaintenanceAsset(assetCalendar?.asset);
@@ -252,6 +256,7 @@ export const CalendarDayView = ({
 
   // --- DRAG LOGIC ---
   const handleDragEnd = (e: DragEndEvent) => {
+    if (isReadOnly) return;
     const { active, delta } = e;
     const PIXELS_PER_HOUR = 48;
     const rawMinutesMoved = (delta.y / PIXELS_PER_HOUR) * 60;
@@ -305,6 +310,7 @@ export const CalendarDayView = ({
   };
 
   const confirmReschedule = async () => {
+    if (isReadOnly) return;
     if (!pendingReschedule) return;
     setIsRescheduling(true);
     const { event, newStart, newEnd } = pendingReschedule;
@@ -362,6 +368,7 @@ export const CalendarDayView = ({
   });
 
   const handleTimeSlotClick = (hour: Date) => {
+    if (isReadOnly) return;
     if (isSlotInMaintenance(hour)) return;
 
     const startTime = new Date(hour);
@@ -433,9 +440,12 @@ export const CalendarDayView = ({
                                 ${
                                   underMaintenance
                                     ? "cursor-not-allowed z-30"
-                                    : "cursor-pointer hover:bg-slate-100/60"
+                                    : isReadOnly
+                                      ? "cursor-not-allowed"
+                                      : "cursor-pointer hover:bg-slate-100/60"
                                 }`}
                         onClick={() => handleTimeSlotClick(hour)}
+                        aria-disabled={underMaintenance || isReadOnly}
                       >
                         {underMaintenance && (
                           <div className="h-full flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
@@ -451,7 +461,7 @@ export const CalendarDayView = ({
                       <EventGroupSideBySide
                         hour={hour}
                         events={events || []}
-                        isDisabled={underMaintenance}
+                        isDisabled={underMaintenance || isReadOnly}
                         onEventClick={(id) => setViewingEventId(id)}
                       />
                     </div>
@@ -461,7 +471,7 @@ export const CalendarDayView = ({
             </div>
           </div>
 
-          {isBookingFormOpen && (
+          {isBookingFormOpen && !isReadOnly && (
             <CreateBookingForm
               isOpen={isBookingFormOpen}
               onClose={() => setIsBookingFormOpen(false)}
@@ -572,6 +582,8 @@ export const CalendarDayView = ({
 
 export const CalendarWeekView = () => {
   const { view, date, locale, events, setEvents, onEventClick } = useCalendar();
+  const { user } = useAuth();
+  const isReadOnly = isTvUser(user);
   const [isBookingFormOpen, setIsBookingFormOpen] = useState(false);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<{
     start: Date | null;
@@ -609,6 +621,7 @@ export const CalendarWeekView = () => {
   }, [date]);
 
   const handleTimeSlotClick = (hour: Date) => {
+    if (isReadOnly) return;
     const startTime = new Date(hour);
     const endTime = addHours(startTime, 1);
 
@@ -750,8 +763,14 @@ export const CalendarWeekView = () => {
                 {hours.map((hour) => (
                   <div
                     key={`slot-${hour.toString()}`}
-                    className="border-t border-slate-100 last:border-b w-full h-full cursor-pointer hover:bg-slate-100 transition-colors"
+                    className={cn(
+                      "border-t border-slate-100 last:border-b w-full h-full transition-colors",
+                      isReadOnly
+                        ? "cursor-not-allowed"
+                        : "cursor-pointer hover:bg-slate-100",
+                    )}
                     onClick={() => handleTimeSlotClick(hour)}
+                    aria-disabled={isReadOnly}
                   ></div>
                 ))}
               </div>
@@ -760,7 +779,7 @@ export const CalendarWeekView = () => {
         </div>
       </div>
 
-      {isBookingFormOpen && (
+      {isBookingFormOpen && !isReadOnly && (
         <CreateBookingForm
           isOpen={isBookingFormOpen}
           onClose={() => setIsBookingFormOpen(false)}

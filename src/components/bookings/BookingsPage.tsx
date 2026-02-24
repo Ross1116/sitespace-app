@@ -14,6 +14,7 @@ import ComponentErrorBoundary from "@/components/ui/ComponentErrorBoundary";
 import { swrFetcher, SWR_CONFIG } from "@/lib/swr";
 import { combineDateAndTime } from "@/lib/bookingHelpers";
 import { readStoredProject } from "@/lib/projectStorage";
+import { isTvUser } from "@/lib/permissions";
 import type {
   ApiBooking,
   BookingListResponse,
@@ -173,6 +174,7 @@ export default function BookingsPage() {
 
   const { user } = useAuth();
   const userId = user?.id;
+  const isTv = isTvUser(user);
 
   // Read project ID from localStorage for the SWR key
   const projectId = useMemo(() => {
@@ -183,10 +185,10 @@ export default function BookingsPage() {
 
   // Redirect if no project selected
   useEffect(() => {
-    if (userId && !projectId && typeof window !== "undefined") {
+    if (!isTv && userId && !projectId && typeof window !== "undefined") {
       window.location.href = "/home";
     }
-  }, [userId, projectId]);
+  }, [isTv, userId, projectId]);
 
   // --- SWR: fetch bookings ---
   const swrKey = projectId
@@ -305,12 +307,14 @@ export default function BookingsPage() {
                   </div>
                 </div>
 
-                <Button
-                  onClick={() => setIsBookingFormOpen(true)}
-                  className="h-auto w-full rounded-lg bg-[var(--navy)] px-6 py-3 text-sm font-bold text-white shadow-md shadow-slate-900/10 hover:bg-[var(--navy-hover)] sm:w-auto"
-                >
-                  <Plus className="mr-2 h-4 w-4 stroke-[3]" /> New Booking
-                </Button>
+                {!isTv && (
+                  <Button
+                    onClick={() => setIsBookingFormOpen(true)}
+                    className="h-auto w-full rounded-lg bg-[var(--navy)] px-6 py-3 text-sm font-bold text-white shadow-md shadow-slate-900/10 hover:bg-[var(--navy-hover)] sm:w-auto"
+                  >
+                    <Plus className="mr-2 h-4 w-4 stroke-[3]" /> New Booking
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -379,13 +383,15 @@ export default function BookingsPage() {
           </div>
         </div>
 
-        <CreateBookingForm
-          isOpen={isBookingFormOpen}
-          onClose={handleFormClose}
-          startTime={nextHour}
-          endTime={endHour}
-          onSave={handleSaveBooking}
-        />
+        {!isTv && (
+          <CreateBookingForm
+            isOpen={isBookingFormOpen}
+            onClose={handleFormClose}
+            startTime={nextHour}
+            endTime={endHour}
+            onSave={handleSaveBooking}
+          />
+        )}
       </div>
     </div>
   );
