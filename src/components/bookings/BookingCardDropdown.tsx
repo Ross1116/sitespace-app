@@ -26,6 +26,7 @@ import { ApiBooking, BookingListResponse } from "@/types";
 import { reportError } from "@/lib/monitoring";
 import { BOOKING_PAGINATION_MAX_PAGES } from "@/lib/pagination";
 import { useBookingCardActions } from "./BookingCardActionsContext";
+import { isTvUser } from "@/lib/permissions";
 
 type PaginationGuardError = Error & {
   __reportedByPaginationGuard?: boolean;
@@ -68,6 +69,11 @@ export default function BookingCardDropdown({
   >([]);
 
   const { user } = useAuth();
+  const isTv = isTvUser(user);
+
+  if (isTv) {
+    return null;
+  }
   const hasManagerPrivileges =
     user?.role === "admin" || user?.role === "manager";
   const isMyBooking =

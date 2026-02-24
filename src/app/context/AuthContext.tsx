@@ -203,7 +203,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       })();
 
-      router.replace("/home");
+      const role = (userData.role ?? "").toLowerCase().trim();
+      router.replace(role === "tv" ? "/multicalendar" : "/home");
     },
     [router, checkAuth, identifyTelemetryUser],
   );

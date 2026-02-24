@@ -11,7 +11,7 @@ export type BookingStatus =
 
 export type AssetStatus = "available" | "maintenance" | "retired";
 
-export type UserRole = "admin" | "manager" | "subcontractor";
+export type UserRole = "admin" | "manager" | "subcontractor" | "tv";
 
 // ===== API (BACKEND) TYPES =====
 

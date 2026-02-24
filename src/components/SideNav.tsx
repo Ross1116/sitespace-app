@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/app/context/AuthContext";
+import { normalizeRole } from "@/lib/permissions";
 
 // Define types for menu items
 interface MenuItem {
@@ -76,8 +77,15 @@ const SideNav = () => {
 
   const hasPermission = (item: MenuItem): boolean => {
     if (!user || !isAuthenticated) return false;
+
+    const userRole = normalizeRole(user.role);
+    if (userRole === "tv") {
+      // TV users: read-only display mode (only bookings + live calendar + logout).
+      if (item.label === "Logout") return true;
+      return item.href === "/multicalendar" || item.href === "/bookings";
+    }
+
     if (!item.visible || item.visible.length === 0) return true;
-    const userRole = user.role?.toLowerCase().trim();
     if (!userRole) return false;
     return item.visible.some((role) => role.toLowerCase() === userRole);
   };
