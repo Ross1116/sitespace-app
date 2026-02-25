@@ -118,11 +118,12 @@ export default function MulticalendarPage() {
     return "/projects/?my_projects=true&limit=100&skip=0";
   }, [userId, user?.role, storedProject?.id]);
 
-  const { data: projectsRaw, isLoading: projectsLoading } = useSWR(
-    projectsUrl,
-    swrFetcher,
-    SWR_CONFIG,
-  );
+  const {
+    data: projectsRaw,
+    error: projectsError,
+    isLoading: projectsLoading,
+    mutate: mutateProjects,
+  } = useSWR(projectsUrl, swrFetcher, SWR_CONFIG);
 
   const projects = useMemo<ApiProject[]>(() => {
     if (!projectsRaw) return [];
@@ -205,11 +206,12 @@ export default function MulticalendarPage() {
 
   const error = useMemo(() => {
     if (fetchError) return "Failed to fetch calendar data";
+    if (projectsError) return "Failed to fetch projects";
     // Don't show "No project selected" while projects are still loading
     if (projectsUrl && projectsLoading) return null;
     if (userId && !projectId) return "No project selected";
     return null;
-  }, [fetchError, projectsUrl, projectsLoading, userId, projectId]);
+  }, [fetchError, projectsError, projectsUrl, projectsLoading, userId, projectId]);
 
   const handleActionComplete = () => {
     mutate();
@@ -223,6 +225,7 @@ export default function MulticalendarPage() {
   };
 
   const handleRefresh = () => {
+    mutateProjects();
     mutate();
     mutateAssets();
   };
