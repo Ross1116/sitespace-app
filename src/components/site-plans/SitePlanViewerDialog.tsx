@@ -32,6 +32,7 @@ import {
 import api from "@/lib/api";
 import type { SitePlan } from "@/types";
 import { getApiErrorMessage } from "@/types";
+import { toProxyUrl } from "@/lib/sitePlanUtils";
 import { SitePlanUploadDialog } from "./SitePlanUploadDialog";
 
 interface SitePlanViewerDialogProps {
@@ -42,11 +43,6 @@ interface SitePlanViewerDialogProps {
   projectId: string;
   onUpdated: (plan: SitePlan) => void;
   onDeleted: (planId: string) => void;
-}
-
-function toProxyUrl(backendUrl: string): string {
-  const path = backendUrl.replace(/^\/api/, "");
-  return `/api/proxy?path=${encodeURIComponent(path)}`;
 }
 
 const MIN_SCALE = 0.05;
@@ -410,9 +406,18 @@ export function SitePlanViewerDialog({
 
           {/* Clickable image — click opens the lightbox */}
           <div
+            role="button"
+            tabIndex={0}
+            aria-label={`View ${plan.title} in full screen`}
             className="relative group cursor-zoom-in overflow-hidden bg-slate-900"
             style={{ height: "55vh" }}
             onClick={() => setLightboxOpen(true)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setLightboxOpen(true);
+              }
+            }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img

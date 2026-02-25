@@ -28,6 +28,48 @@ async function tryRefresh(
   }
 }
 
+/** Build a NextResponse from a backend Response, preserving binary content.
+ *  Optionally sets cookies on the resulting response (used after token refresh). */
+async function buildNextResponse(
+  response: Response,
+  cookiesToSet?: Array<Parameters<NextResponse["cookies"]["set"]>>,
+): Promise<NextResponse> {
+  const respContentType = response.headers.get("content-type") || "";
+  const isBinary =
+    respContentType.startsWith("image/") ||
+    respContentType.startsWith("application/pdf") ||
+    respContentType.includes("octet-stream");
+
+  let res: NextResponse;
+
+  if (isBinary) {
+    const buffer = await response.arrayBuffer();
+    const responseHeaders: Record<string, string> = {
+      "Content-Type": respContentType,
+    };
+    const cacheControl = response.headers.get("cache-control");
+    if (cacheControl) responseHeaders["Cache-Control"] = cacheControl;
+    const contentDisposition = response.headers.get("content-disposition");
+    if (contentDisposition)
+      responseHeaders["Content-Disposition"] = contentDisposition;
+    res = new NextResponse(buffer, {
+      status: response.status,
+      headers: responseHeaders,
+    });
+  } else {
+    const data = await response.json().catch(() => null);
+    res = NextResponse.json(data, { status: response.status });
+  }
+
+  if (cookiesToSet) {
+    for (const args of cookiesToSet) {
+      res.cookies.set(...args);
+    }
+  }
+
+  return res;
+}
+
 const PUBLIC_AUTH_PATHS = ["/auth/forgot-password", "/auth/reset-password"];
 
 const PUBLIC_AUTH_LIMIT = 8;
@@ -105,6 +147,10 @@ async function proxyToBackend(
           "proxy route: failed to read multipart request body",
           "server",
         );
+        return NextResponse.json(
+          { message: "Failed to read request body" },
+          { status: 400 },
+        );
       }
     } else {
       try {
@@ -132,29 +178,24 @@ async function proxyToBackend(
       headers.Authorization = `Bearer ${newTokens.access_token}`;
       response = await fetch(targetUrl, { ...fetchOpts, headers });
 
-      // Return response with updated cookies
-      const data = await response.json().catch(() => null);
-      const res = NextResponse.json(data, { status: response.status });
-
-      res.cookies.set("accessToken", newTokens.access_token, {
+      const cookieBase = {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
+        sameSite: "lax" as const,
         path: "/",
-        maxAge: 60 * 60 * 24,
-      });
-
+      };
+      const cookiesToSet: Array<Parameters<NextResponse["cookies"]["set"]>> = [
+        ["accessToken", newTokens.access_token, { ...cookieBase, maxAge: 60 * 60 * 24 }],
+      ];
       if (newTokens.refresh_token) {
-        res.cookies.set("refreshToken", newTokens.refresh_token, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "lax",
-          path: "/",
-          maxAge: 60 * 60 * 24 * 7,
-        });
+        cookiesToSet.push([
+          "refreshToken",
+          newTokens.refresh_token,
+          { ...cookieBase, maxAge: 60 * 60 * 24 * 7 },
+        ]);
       }
 
-      return res;
+      return buildNextResponse(response, cookiesToSet);
     }
 
     // Refresh failed — clear everything
@@ -167,31 +208,7 @@ async function proxyToBackend(
     return res;
   }
 
-  // Handle binary responses (images, PDFs, raw files)
-  const respContentType = response.headers.get("content-type") || "";
-  const isBinaryResponse =
-    respContentType.startsWith("image/") ||
-    respContentType.startsWith("application/pdf") ||
-    respContentType.includes("octet-stream");
-
-  if (isBinaryResponse) {
-    const buffer = await response.arrayBuffer();
-    const responseHeaders: Record<string, string> = {
-      "Content-Type": respContentType,
-    };
-    const cacheControl = response.headers.get("cache-control");
-    if (cacheControl) responseHeaders["Cache-Control"] = cacheControl;
-    const contentDisposition = response.headers.get("content-disposition");
-    if (contentDisposition)
-      responseHeaders["Content-Disposition"] = contentDisposition;
-    return new NextResponse(buffer, {
-      status: response.status,
-      headers: responseHeaders,
-    });
-  }
-
-  const data = await response.json().catch(() => null);
-  return NextResponse.json(data, { status: response.status });
+  return buildNextResponse(response);
 }
 
 export async function GET(req: Request) {

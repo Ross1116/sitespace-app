@@ -7,17 +7,13 @@ import { ImageIcon, Plus } from "lucide-react";
 import useSWR from "swr";
 import { swrFetcher, SWR_CONFIG } from "@/lib/swr";
 import type { SitePlan } from "@/types";
+import { toProxyUrl } from "@/lib/sitePlanUtils";
 import { SitePlanUploadDialog } from "./SitePlanUploadDialog";
 import { SitePlanViewerDialog } from "./SitePlanViewerDialog";
 
 interface SitePlansSectionProps {
   projectId: string;
   canEdit: boolean;
-}
-
-function toProxyUrl(backendUrl: string): string {
-  const path = backendUrl.replace(/^\/api/, "");
-  return `/api/proxy?path=${encodeURIComponent(path)}`;
 }
 
 export function SitePlansSection({ projectId, canEdit }: SitePlansSectionProps) {
@@ -27,6 +23,7 @@ export function SitePlansSection({ projectId, canEdit }: SitePlansSectionProps) 
   const {
     data: plansRaw,
     isLoading,
+    error,
     mutate,
   } = useSWR(
     projectId ? `/site-plans/?project_id=${projectId}` : null,
@@ -60,7 +57,13 @@ export function SitePlansSection({ projectId, canEdit }: SitePlansSectionProps) 
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-[400px]">
-        {isLoading ? (
+        {error && !isLoading ? (
+          <div className="flex flex-col items-center justify-center py-12 px-6 text-center h-full min-h-[400px]">
+            <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg text-sm w-full max-w-xs">
+              Failed to load site plans. Please try again.
+            </div>
+          </div>
+        ) : isLoading ? (
           <div className="p-3">
             <div className="grid grid-cols-2 gap-3">
               {[1, 2].map((i) => (

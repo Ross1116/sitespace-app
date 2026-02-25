@@ -14,6 +14,7 @@ import { AlertCircle, Loader2, RefreshCw, Upload } from "lucide-react";
 import api from "@/lib/api";
 import type { FileUploadResponse, SitePlan } from "@/types";
 import { getApiErrorMessage } from "@/types";
+import { toProxyUrl, validateSitePlanFile } from "@/lib/sitePlanUtils";
 
 interface SitePlanUploadDialogProps {
   isOpen: boolean;
@@ -21,11 +22,6 @@ interface SitePlanUploadDialogProps {
   projectId: string;
   existingPlan?: SitePlan | null;
   onSuccess: (plan: SitePlan) => void;
-}
-
-function toProxyUrl(backendUrl: string): string {
-  const path = backendUrl.replace(/^\/api/, "");
-  return `/api/proxy?path=${encodeURIComponent(path)}`;
 }
 
 export function SitePlanUploadDialog({
@@ -66,6 +62,12 @@ export function SitePlanUploadDialog({
     const file = e.target.files?.[0];
     if (!file) return;
     if (fileInputRef.current) fileInputRef.current.value = "";
+
+    const validationError = validateSitePlanFile(file);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
 
     setError(null);
     setUploading(true);

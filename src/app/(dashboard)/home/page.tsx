@@ -691,41 +691,6 @@ export default function HomePage() {
             )}
           </div>
 
-          {/* RIGHT COL: Today's Schedule (commented out — replaced by Site Plans)
-          <div className="col-span-12 lg:col-span-4 space-y-4">
-            <div className="flex justify-between items-center mb-2">
-              <h2 className="text-xl font-bold text-slate-900">
-                Today&apos;s Schedule
-              </h2>
-            </div>
-
-            <div className="bg-white rounded-2xl shadow-sm p-6 min-h-[400px] border border-slate-100">
-              <SimpleCalendar />
-              <div className="mt-6 space-y-4 relative pl-4 border-l-2 border-slate-100">
-                <div className="absolute top-0 left-[-5px] h-2.5 w-2.5 rounded-full bg-slate-300 border-2 border-white"></div>
-                <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-                  <div className="text-xs text-slate-400 font-bold mb-1">
-                    08:00 AM
-                  </div>
-                  <div className="text-sm font-bold text-slate-800">
-                    Site Opening
-                  </div>
-                </div>
-                <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-                  <div className="text-xs text-slate-400 font-bold mb-1">
-                    10:30 AM
-                  </div>
-                  <div className="text-sm font-bold text-slate-800">
-                    Material Delivery
-                  </div>
-                  <div className="text-xs text-slate-500 mt-1">
-                    Drywall panels - Bay 4
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          */}
         </div>
       </div>
     </div>
@@ -798,42 +763,3 @@ const EmptyBookingsState = () => (
   </div>
 );
 
-const SimpleCalendar = () => {
-  const days = ["M", "T", "W", "T", "F", "S", "S"];
-  const today = new Date().getDate();
-  const startDay = Math.max(1, today - 3);
-  const displayDates = Array.from({ length: 7 }, (_, i) => startDay + i);
-
-  return (
-    <div className="text-xs w-full">
-      <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-2">
-        <span className="font-bold text-slate-800 text-sm">
-          {new Date().toLocaleString("default", {
-            month: "long",
-            year: "numeric",
-          })}
-        </span>
-        <ChevronDown className="h-4 w-4 text-slate-400" />
-      </div>
-      <div className="grid grid-cols-7 gap-1 text-center mb-2 text-slate-400 font-medium">
-        {days.map((d, i) => (
-          <div key={i}>{d}</div>
-        ))}
-      </div>
-      <div className="grid grid-cols-7 gap-1 text-center">
-        {displayDates.map((d) => (
-          <div
-            key={d}
-            className={`h-8 w-8 mx-auto flex items-center justify-center rounded-lg font-medium transition-colors ${
-              d === today
-                ? `${PALETTE.darkNavy} text-white shadow-md`
-                : "text-slate-600 hover:bg-slate-100 cursor-pointer"
-            }`}
-          >
-            {d}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
