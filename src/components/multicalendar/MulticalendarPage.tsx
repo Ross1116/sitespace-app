@@ -17,12 +17,17 @@ import { DesktopView } from "./DesktopView";
 import { AssetFilter } from "./AssetFilter";
 import { MulticalendarActionsProvider } from "./MulticalendarActionsContext";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { ApiAsset, ApiBooking } from "@/types";
+import { ApiAsset, ApiBooking, ApiProject } from "@/types";
 import useSWR from "swr";
 import { swrFetcher, SWR_CONFIG } from "@/lib/swr";
-import { readStoredProject } from "@/lib/projectStorage";
+import {
+  readStoredProject,
+  saveStoredProject,
+  StoredProject,
+} from "@/lib/projectStorage";
 import { isAssetRetiredOrOutOfService } from "@/lib/assetStatus";
 import ComponentErrorBoundary from "@/components/ui/ComponentErrorBoundary";
+import { normalizeProjectList } from "@/lib/apiNormalization";
 
 // ===== INTERFACES =====
 
@@ -93,12 +98,54 @@ export default function MulticalendarPage() {
   const [initialLoad, setInitialLoad] = useState(true);
   const [visibleAssets, setVisibleAssets] = useState<number[]>([]);
 
-  // Read project from localStorage
-  const projectId = useMemo(() => {
-    if (!userId) return null;
-    const parsed = readStoredProject(userId);
-    return parsed?.id ?? null;
+  // Read project from localStorage (stateful so saves update in-session)
+  const [storedProject, setStoredProject] = useState<StoredProject | null>(() =>
+    userId ? readStoredProject(userId) : null,
+  );
+
+  // Re-read from localStorage when userId changes
+  useEffect(() => {
+    setStoredProject(userId ? readStoredProject(userId) : null);
   }, [userId]);
+
+  // Fetch projects if no stored project (handles TV role and first-time users)
+  const projectsUrl = useMemo(() => {
+    if (!userId) return null;
+    // Only fetch if no stored project
+    if (storedProject?.id) return null;
+    if (user?.role === "subcontractor")
+      return `/subcontractors/${userId}/projects`;
+    return "/projects/?my_projects=true&limit=100&skip=0";
+  }, [userId, user?.role, storedProject?.id]);
+
+  const {
+    data: projectsRaw,
+    error: projectsError,
+    isLoading: projectsLoading,
+    mutate: mutateProjects,
+  } = useSWR(projectsUrl, swrFetcher, SWR_CONFIG);
+
+  const projects = useMemo<ApiProject[]>(() => {
+    if (!projectsRaw) return [];
+    return normalizeProjectList(projectsRaw);
+  }, [projectsRaw]);
+
+  // Save first project to localStorage if none exists
+  useEffect(() => {
+    if (!userId || storedProject?.id || projects.length === 0) return;
+    const firstProject = projects[0];
+    if (firstProject?.id) {
+      saveStoredProject(userId, firstProject);
+      setStoredProject(firstProject);
+    }
+  }, [userId, storedProject?.id, projects]);
+
+  // Use stored project or first fetched project
+  const projectId = useMemo(() => {
+    if (storedProject?.id) return storedProject.id;
+    if (projects.length > 0) return projects[0]?.id ?? null;
+    return null;
+  }, [storedProject?.id, projects]);
 
   // Date range: currently viewed date ± 45 days
   const { dateFrom, dateTo } = useMemo(() => {
@@ -159,9 +206,12 @@ export default function MulticalendarPage() {
 
   const error = useMemo(() => {
     if (fetchError) return "Failed to fetch calendar data";
+    if (projectsError) return "Failed to fetch projects";
+    // Don't show "No project selected" while projects are still loading
+    if (projectsUrl && projectsLoading) return null;
     if (userId && !projectId) return "No project selected";
     return null;
-  }, [fetchError, userId, projectId]);
+  }, [fetchError, projectsError, projectsUrl, projectsLoading, userId, projectId]);
 
   const handleActionComplete = () => {
     mutate();
@@ -175,6 +225,7 @@ export default function MulticalendarPage() {
   };
 
   const handleRefresh = () => {
+    mutateProjects();
     mutate();
     mutateAssets();
   };
