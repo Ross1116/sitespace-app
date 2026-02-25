@@ -1,0 +1,99 @@
+/* ---- Gradient text (3-stop with custom positions) ---- */
+.gradient-text {
+  background: linear-gradient(
+    135deg,
+    var(--teal) 0%,
+    var(--brand-blue) 55%,
+    #f59e0b 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.stat-gradient {
+  background: linear-gradient(
+    135deg,
+    var(--brand-blue) 0%,
+    #f59e0b 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ---- Shine sweep on hover (pseudo-element) ---- */
+.shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.shine::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  transition: left 0.6s ease;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.shine:hover::before {
+  left: 100%;
+}
+
+/* ---- Nav link animated underline (pseudo-element) ---- */
+.link-underline {
+  position: relative;
+}
+
+.link-underline::after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background: currentcolor;
+  transition: width 0.3s ease;
+}
+
+.link-underline:hover::after {
+  width: 100%;
+}
+
+/* ---- Hero grid pattern ---- */
+.grid-bg {
+  background-image: linear-gradient(
+      rgba(14, 124, 155, 0.06) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      rgba(14, 124, 155, 0.06) 1px,
+      transparent 1px
+    );
+  background-size: 60px 60px;
+}
+
+/* ---- Hamburger → X animation (combined transforms) ---- */
+.hamburger-open span:nth-child(1) {
+  transform: rotate(45deg) translate(7px, 7px);
+}
+
+.hamburger-open span:nth-child(2) {
+  opacity: 0;
+}
+
+.hamburger-open span:nth-child(3) {
+  transform: rotate(-45deg) translate(7px, -7px);
+}

@@ -1,5 +1,5 @@
-import LandingPageOneToOne from "../components/landing/LandingPageOneToOne";
+import LandingPage from "../components/landing/LandingPage";
 
 export default function HomePage() {
-  return <LandingPageOneToOne />;
+  return <LandingPage />;
 }
