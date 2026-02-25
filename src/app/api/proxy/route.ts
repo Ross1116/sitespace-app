@@ -81,9 +81,13 @@ async function proxyToBackend(
   const query = params.toString();
   const targetUrl = `${process.env.NEXT_PUBLIC_API_URL}${apiPath}${query ? `?${query}` : ""}`;
 
+  // Detect multipart uploads to pass through correctly
+  const incomingContentType = request.headers.get("content-type") || "";
+  const isMultipart = incomingContentType.includes("multipart/form-data");
+
   // Build fetch options
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+    "Content-Type": isMultipart ? incomingContentType : "application/json",
   };
   if (tokens.access) {
     headers.Authorization = `Bearer ${tokens.access}`;
@@ -92,12 +96,28 @@ async function proxyToBackend(
   const fetchOpts: RequestInit = { method, headers };
 
   if (!["GET", "HEAD", "DELETE"].includes(method)) {
-    try {
-      const body = await request.text();
-      if (body) fetchOpts.body = body;
-    } catch (error: unknown) {
-      reportError(error, "proxy route: failed to read request body", "server");
-      /* no body */
+    if (isMultipart) {
+      try {
+        fetchOpts.body = await request.arrayBuffer();
+      } catch (error: unknown) {
+        reportError(
+          error,
+          "proxy route: failed to read multipart request body",
+          "server",
+        );
+      }
+    } else {
+      try {
+        const body = await request.text();
+        if (body) fetchOpts.body = body;
+      } catch (error: unknown) {
+        reportError(
+          error,
+          "proxy route: failed to read request body",
+          "server",
+        );
+        /* no body */
+      }
     }
   }
 
@@ -145,6 +165,29 @@ async function proxyToBackend(
     res.cookies.set("accessToken", "", { path: "/", maxAge: 0 });
     res.cookies.set("refreshToken", "", { path: "/", maxAge: 0 });
     return res;
+  }
+
+  // Handle binary responses (images, PDFs, raw files)
+  const respContentType = response.headers.get("content-type") || "";
+  const isBinaryResponse =
+    respContentType.startsWith("image/") ||
+    respContentType.startsWith("application/pdf") ||
+    respContentType.includes("octet-stream");
+
+  if (isBinaryResponse) {
+    const buffer = await response.arrayBuffer();
+    const responseHeaders: Record<string, string> = {
+      "Content-Type": respContentType,
+    };
+    const cacheControl = response.headers.get("cache-control");
+    if (cacheControl) responseHeaders["Cache-Control"] = cacheControl;
+    const contentDisposition = response.headers.get("content-disposition");
+    if (contentDisposition)
+      responseHeaders["Content-Disposition"] = contentDisposition;
+    return new NextResponse(buffer, {
+      status: response.status,
+      headers: responseHeaders,
+    });
   }
 
   const data = await response.json().catch(() => null);

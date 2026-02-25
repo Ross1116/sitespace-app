@@ -32,6 +32,7 @@ import {
   groupBookingsByMonth,
 } from "@/lib/bookingHelpers";
 import type { ApiBooking, ApiProject } from "@/types";
+import { SitePlansSection } from "@/components/site-plans/SitePlansSection";
 import type { LucideIcon } from "lucide-react";
 import useSWR from "swr";
 import { swrFetcher, SWR_CONFIG } from "@/lib/swr";
@@ -88,6 +89,8 @@ export default function HomePage() {
   const { user } = useAuth();
   const router = useRouter();
   const isSubcontractorUser = user?.role === "subcontractor";
+  const canEditSitePlans =
+    user?.role === "admin" || user?.role === "manager";
 
   const [selectedProject, setSelectedProject] = useState<ApiProject | null>(
     null,
@@ -665,7 +668,30 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* RIGHT COL: Today's Schedule */}
+          {/* RIGHT COL: Site Plans */}
+          <div className="col-span-12 lg:col-span-4 space-y-4">
+            {projectId ? (
+              <SitePlansSection
+                projectId={projectId}
+                canEdit={canEditSitePlans}
+              />
+            ) : (
+              <>
+                <div className="flex justify-between items-center mb-2">
+                  <h2 className="text-xl font-bold text-slate-900">
+                    Site Plans
+                  </h2>
+                </div>
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-100 min-h-[400px] flex items-center justify-center">
+                  <p className="text-sm text-slate-400">
+                    Select a project to view site plans
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* RIGHT COL: Today's Schedule (commented out — replaced by Site Plans)
           <div className="col-span-12 lg:col-span-4 space-y-4">
             <div className="flex justify-between items-center mb-2">
               <h2 className="text-xl font-bold text-slate-900">
@@ -699,6 +725,7 @@ export default function HomePage() {
               </div>
             </div>
           </div>
+          */}
         </div>
       </div>
     </div>

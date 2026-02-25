@@ -220,6 +220,43 @@ export interface AuditTrailResponse {
   history: AuditEntry[];
 }
 
+// ===== SITE PLANS =====
+
+export interface SitePlanFile {
+  id: string;
+  original_filename: string;
+  content_type: string;
+  file_size: number;
+  preview_url: string;
+  image_url: string;
+  raw_url: string;
+}
+
+export interface SitePlan {
+  id: string;
+  title: string;
+  project_id: string;
+  created_at: string;
+  updated_at: string;
+  file: SitePlanFile;
+  created_by: {
+    id: string;
+    email: string;
+    first_name: string;
+    last_name: string;
+    role: string;
+  };
+}
+
+export interface FileUploadResponse {
+  file_id: string;
+  suggested_title: string;
+  original_filename: string;
+  content_type: string;
+  file_size: number;
+  preview_url: string;
+}
+
 // ===== ERROR HANDLING =====
 
 function isRecord(value: unknown): value is Record<string, unknown> {
