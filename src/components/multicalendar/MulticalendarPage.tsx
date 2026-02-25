@@ -20,7 +20,11 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ApiAsset, ApiBooking, ApiProject } from "@/types";
 import useSWR from "swr";
 import { swrFetcher, SWR_CONFIG } from "@/lib/swr";
-import { readStoredProject, saveStoredProject } from "@/lib/projectStorage";
+import {
+  readStoredProject,
+  saveStoredProject,
+  StoredProject,
+} from "@/lib/projectStorage";
 import { isAssetRetiredOrOutOfService } from "@/lib/assetStatus";
 import ComponentErrorBoundary from "@/components/ui/ComponentErrorBoundary";
 import { normalizeProjectList } from "@/lib/apiNormalization";
@@ -94,10 +98,14 @@ export default function MulticalendarPage() {
   const [initialLoad, setInitialLoad] = useState(true);
   const [visibleAssets, setVisibleAssets] = useState<number[]>([]);
 
-  // Read project from localStorage
-  const storedProject = useMemo(() => {
-    if (!userId) return null;
-    return readStoredProject(userId);
+  // Read project from localStorage (stateful so saves update in-session)
+  const [storedProject, setStoredProject] = useState<StoredProject | null>(() =>
+    userId ? readStoredProject(userId) : null,
+  );
+
+  // Re-read from localStorage when userId changes
+  useEffect(() => {
+    setStoredProject(userId ? readStoredProject(userId) : null);
   }, [userId]);
 
   // Fetch projects if no stored project (handles TV role and first-time users)
@@ -110,7 +118,11 @@ export default function MulticalendarPage() {
     return "/projects/?my_projects=true&limit=100&skip=0";
   }, [userId, user?.role, storedProject?.id]);
 
-  const { data: projectsRaw } = useSWR(projectsUrl, swrFetcher, SWR_CONFIG);
+  const { data: projectsRaw, isLoading: projectsLoading } = useSWR(
+    projectsUrl,
+    swrFetcher,
+    SWR_CONFIG,
+  );
 
   const projects = useMemo<ApiProject[]>(() => {
     if (!projectsRaw) return [];
@@ -123,6 +135,7 @@ export default function MulticalendarPage() {
     const firstProject = projects[0];
     if (firstProject?.id) {
       saveStoredProject(userId, firstProject);
+      setStoredProject(firstProject);
     }
   }, [userId, storedProject?.id, projects]);
 
@@ -192,9 +205,11 @@ export default function MulticalendarPage() {
 
   const error = useMemo(() => {
     if (fetchError) return "Failed to fetch calendar data";
+    // Don't show "No project selected" while projects are still loading
+    if (projectsUrl && projectsLoading) return null;
     if (userId && !projectId) return "No project selected";
     return null;
-  }, [fetchError, userId, projectId]);
+  }, [fetchError, projectsUrl, projectsLoading, userId, projectId]);
 
   const handleActionComplete = () => {
     mutate();
