@@ -458,15 +458,16 @@ export function SitePlanViewerDialog({
                 </>
               )}
             </div>
-            <a href={rawUrl} target="_blank" rel="noreferrer">
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-slate-200 text-slate-700"
-              >
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-slate-200 text-slate-700"
+              asChild
+            >
+              <a href={rawUrl} target="_blank" rel="noreferrer">
                 <Download className="h-4 w-4 mr-1.5" /> Download
-              </Button>
-            </a>
+              </a>
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
