@@ -18,6 +18,11 @@ export default function GlobalNetworkLoadingBar() {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
+    if (pathname === "/") {
+      setIsVisible(false);
+      return undefined;
+    }
+
     if (pendingCount > 0) {
       const timeout = window.setTimeout(() => {
         setIsVisible(true);
@@ -30,7 +35,7 @@ export default function GlobalNetworkLoadingBar() {
 
     setIsVisible(false);
     return undefined;
-  }, [pendingCount]);
+  }, [pendingCount, pathname]);
 
   if (pathname === "/") return null;
 

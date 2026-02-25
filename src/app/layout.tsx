@@ -49,20 +49,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <head>
-        <link
-          rel="preload"
-          href="/static/images/Lookaheaddash.jpeg"
-          as="image"
-          type="image/jpeg"
-        />
-        <link
-          rel="preload"
-          href="/full-logo-dark.svg"
-          as="image"
-          type="image/svg+xml"
-        />
-      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[var(--page-bg)] text-slate-900`}
       >

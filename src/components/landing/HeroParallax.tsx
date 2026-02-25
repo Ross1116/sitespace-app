@@ -20,11 +20,10 @@ export function HeroParallax({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <div
-      ref={ref}
-      className="animate-fade-in-up [animation-fill-mode:both] text-left max-md:!text-center"
-    >
-      {children}
+    <div className="animate-fade-in-up [animation-fill-mode:both] text-left max-md:!text-center">
+      <div ref={ref} style={{ willChange: "transform" }}>
+        {children}
+      </div>
     </div>
   );
 }

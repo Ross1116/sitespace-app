@@ -18,9 +18,9 @@ export function ScrollAnimations() {
       { threshold: 0.1, rootMargin: "0px 0px -100px 0px" },
     );
 
-    root
-      .querySelectorAll<HTMLElement>("[data-fade-in]")
-      .forEach((el) => fadeObserver.observe(el));
+    root.querySelectorAll<HTMLElement>("[data-fade-in]").forEach((el) => {
+      fadeObserver.observe(el);
+    });
 
     /* ── Progress bar observer ── */
     const progressObserver = new IntersectionObserver(
@@ -44,28 +44,34 @@ export function ScrollAnimations() {
       { threshold: 0.5 },
     );
 
-    root
-      .querySelectorAll<HTMLElement>("[data-progress]")
-      .forEach((el) => progressObserver.observe(el));
+    root.querySelectorAll<HTMLElement>("[data-progress]").forEach((el) => {
+      progressObserver.observe(el);
+    });
 
     /* ── Smooth scroll for anchor links ── */
     const onAnchor = (e: Event) => {
       const a = e.currentTarget as HTMLAnchorElement;
       const href = a.getAttribute("href") ?? "";
       if (!href.startsWith("#")) return;
-      const el = document.querySelector(href);
+      const id = href.slice(1).trim();
+      if (!id) return;
+      const el = document.getElementById(id);
       if (!el) return;
       e.preventDefault();
       el.scrollIntoView({ behavior: "smooth", block: "start" });
     };
 
     const anchors = root.querySelectorAll<HTMLAnchorElement>('a[href^="#"]');
-    anchors.forEach((a) => a.addEventListener("click", onAnchor));
+    anchors.forEach((a) => {
+      a.addEventListener("click", onAnchor);
+    });
 
     return () => {
       fadeObserver.disconnect();
       progressObserver.disconnect();
-      anchors.forEach((a) => a.removeEventListener("click", onAnchor));
+      anchors.forEach((a) => {
+        a.removeEventListener("click", onAnchor);
+      });
     };
   }, []);
 
