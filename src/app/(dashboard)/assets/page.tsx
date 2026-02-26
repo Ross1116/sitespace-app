@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import useSWR from "swr";
 import { Button } from "@/components/ui/button";
 import {
   X,
@@ -31,7 +30,6 @@ const CreateAssetForm = dynamic(() => import("@/components/forms/CreateAssetForm
 const UpdateAssetModal = dynamic(() => import("@/components/forms/UpdateAssetForm"), { ssr: false });
 import { format, parseISO } from "date-fns";
 import { Input } from "@/components/ui/input";
-import { swrFetcher, SWR_CONFIG } from "@/lib/swr";
 import {
   Dialog,
   DialogContent,
@@ -42,7 +40,8 @@ import {
 } from "@/components/ui/dialog";
 import { TransformedAsset, getApiErrorMessage } from "@/types";
 import { useRouter } from "next/navigation";
-import { readStoredProject } from "@/lib/projectStorage";
+import { useResolvedProjectSelection } from "@/hooks/useResolvedProjectSelection";
+import { useProjectAssets } from "@/hooks/useProjectAssets";
 
 interface AssetFromBackend {
   id: string;
@@ -62,20 +61,7 @@ interface AssetFromBackend {
   pending_booking_capacity?: number;
 }
 
-interface AssetListResponse {
-  assets: AssetFromBackend[];
-  total: number;
-  skip: number;
-  limit: number;
-  has_more: boolean;
-}
-
 type Asset = TransformedAsset;
-
-interface Project {
-  id: string;
-  text: string;
-}
 
 type SortField =
   | "assetTitle"
@@ -210,6 +196,10 @@ export default function AssetsTable() {
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const userId = user?.id;
+  const { projectId, selectedProject } = useResolvedProjectSelection({
+    userId,
+    role: user?.role,
+  });
 
   useEffect(() => {
     if (user?.role === "subcontractor") {
@@ -217,39 +207,18 @@ export default function AssetsTable() {
     }
   }, [user?.role, router]);
 
-  if (user?.role === "subcontractor") {
-    return null;
-  }
-
-  // Read project from localStorage
-  const project = useMemo<Project | undefined>(() => {
-    if (typeof window === "undefined" || !userId) return undefined;
-    const parsed = readStoredProject(userId);
-    if (!parsed?.id) {
-      return undefined;
-    }
-
-    return {
-      id: parsed.id,
-      text: parsed.name || "",
-    };
-  }, [userId]);
-
-  // --- SWR: fetch assets ---
-  const swrKey = project?.id
-    ? `/assets/?project_id=${project.id}&skip=0&limit=100`
-    : null;
+  const projectName = selectedProject?.name || "";
 
   const {
-    data,
+    assets: backendAssets,
     isLoading: loading,
     error: fetchError,
     mutate,
-  } = useSWR<AssetListResponse>(swrKey, swrFetcher, SWR_CONFIG);
+  } = useProjectAssets(projectId);
 
   const allAssets = useMemo(
-    () => (data?.assets || []).map(transformBackendAsset),
-    [data],
+    () => backendAssets.map((asset) => transformBackendAsset(asset)),
+    [backendAssets],
   );
 
   const handleSort = (field: SortField) => {
@@ -357,6 +326,10 @@ export default function AssetsTable() {
     const start = (currentPage - 1) * itemsPerPage;
     return filteredAndSortedAssets.slice(start, start + itemsPerPage);
   }, [filteredAndSortedAssets, currentPage, itemsPerPage]);
+
+  if (user?.role === "subcontractor") {
+    return null;
+  }
 
   const totalPages = Math.ceil(
     (filteredAndSortedAssets?.length || 0) / itemsPerPage,
@@ -498,7 +471,7 @@ export default function AssetsTable() {
               <div className="col-span-1 text-center">Action</div>
             </div>
 
-            {fetchError && (
+            {Boolean(fetchError) && (
               <div
                 className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2.5 rounded-lg text-sm mb-3"
                 role="alert"
@@ -726,7 +699,7 @@ export default function AssetsTable() {
                         </span>
                       </div>
                       <span className="text-sm font-semibold text-slate-900">
-                        {project?.text || "Unknown"}
+                        {projectName || "Unknown"}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">

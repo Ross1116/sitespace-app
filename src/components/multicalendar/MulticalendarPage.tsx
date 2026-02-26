@@ -17,28 +17,19 @@ import { DesktopView } from "./DesktopView";
 import { AssetFilter } from "./AssetFilter";
 import { MulticalendarActionsProvider } from "./MulticalendarActionsContext";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { ApiAsset, ApiBooking, ApiProject } from "@/types";
+import { ApiAsset, ApiBooking } from "@/types";
 import useSWR from "swr";
 import { swrFetcher, SWR_CONFIG } from "@/lib/swr";
-import {
-  readStoredProject,
-  saveStoredProject,
-  StoredProject,
-} from "@/lib/projectStorage";
 import { isAssetRetiredOrOutOfService } from "@/lib/assetStatus";
 import ComponentErrorBoundary from "@/components/ui/ComponentErrorBoundary";
-import { normalizeProjectList } from "@/lib/apiNormalization";
+import { useResolvedProjectSelection } from "@/hooks/useResolvedProjectSelection";
+import { useProjectAssets } from "@/hooks/useProjectAssets";
 
 // ===== INTERFACES =====
 
 interface CalendarDayResponse {
   date: string;
   bookings: ApiBooking[];
-}
-
-interface AssetListResponse {
-  assets: ApiAsset[];
-  total: number;
 }
 
 // ===== HELPER: PROCESS BOOKING TO EVENT =====
@@ -94,72 +85,20 @@ export default function MulticalendarPage() {
 
   const { user, isLoading: authLoading } = useAuth();
   const userId = user?.id;
+  const {
+    projectId,
+    projectsUrl,
+    projectsError,
+    projectsLoading,
+    mutateProjects,
+  } = useResolvedProjectSelection({
+    userId,
+    role: user?.role,
+  });
 
   // Visibility State
   const [initialLoad, setInitialLoad] = useState(true);
   const [visibleAssets, setVisibleAssets] = useState<number[]>([]);
-
-  // Start deterministic for SSR/hydration, then load from localStorage on mount.
-  const [storedProject, setStoredProject] = useState<StoredProject | null>(null);
-
-  // Re-read from localStorage when userId changes
-  useEffect(() => {
-    setStoredProject(userId ? readStoredProject(userId) : null);
-  }, [userId]);
-
-  // Fetch projects for reconciliation and project selector updates.
-  const projectsUrl = useMemo(() => {
-    if (!userId) return null;
-    if (user?.role === "subcontractor")
-      return `/subcontractors/${userId}/projects`;
-    return "/projects/?my_projects=true&limit=100&skip=0";
-  }, [userId, user?.role]);
-
-  const {
-    data: projectsRaw,
-    error: projectsError,
-    isLoading: projectsLoading,
-    mutate: mutateProjects,
-  } = useSWR(projectsUrl, swrFetcher, SWR_CONFIG);
-
-  const projects = useMemo<ApiProject[]>(() => {
-    if (!projectsRaw) return [];
-    return normalizeProjectList(projectsRaw);
-  }, [projectsRaw]);
-
-  // Save first project to localStorage if none exists
-  useEffect(() => {
-    if (!userId || storedProject?.id || projects.length === 0) return;
-    const firstProject = projects[0];
-    if (firstProject?.id) {
-      saveStoredProject(userId, firstProject);
-      setStoredProject(firstProject);
-    }
-  }, [userId, storedProject?.id, projects]);
-
-  // Reconcile stored project against live projects to recover from stale/deleted IDs.
-  useEffect(() => {
-    if (!userId || !storedProject?.id || projects.length === 0) return;
-
-    const stillExists = projects.some((project) => project.id === storedProject.id);
-    if (stillExists) return;
-
-    const fallbackProject = projects[0] ?? null;
-    if (fallbackProject?.id) {
-      saveStoredProject(userId, fallbackProject);
-      setStoredProject(fallbackProject);
-      return;
-    }
-
-    setStoredProject(null);
-  }, [userId, storedProject?.id, projects]);
-
-  // Use stored project or first fetched project
-  const projectId = useMemo(() => {
-    if (storedProject?.id) return storedProject.id;
-    if (projects.length > 0) return projects[0]?.id ?? null;
-    return null;
-  }, [storedProject?.id, projects]);
 
   // Date range: currently viewed date ± 45 days
   const { dateFrom, dateTo } = useMemo(() => {
@@ -174,19 +113,20 @@ export default function MulticalendarPage() {
     };
   }, [currentDate]);
 
-  // --- SWR: Assets ---
-  const { data: assetsData, mutate: mutateAssets } = useSWR<AssetListResponse>(
-    projectId ? `/assets/?project_id=${projectId}&skip=0&limit=100` : null,
-    swrFetcher,
-    SWR_CONFIG,
-  );
+  // --- Assets ---
+  const {
+    assets,
+    error: assetsError,
+    isLoading: assetsLoading,
+    mutate: mutateAssets,
+  } = useProjectAssets(projectId);
 
   const availableAssets = useMemo(
     () =>
-      (assetsData?.assets || [])
+      assets
         .filter((asset) => !isAssetRetiredOrOutOfService(asset.status))
         .sort((a: ApiAsset, b: ApiAsset) => a.name.localeCompare(b.name)),
-    [assetsData],
+    [assets],
   );
 
   // --- SWR: Calendar bookings ---
@@ -219,15 +159,25 @@ export default function MulticalendarPage() {
   }, [calendarData, userId]);
 
   const isPageLoading = loading || authLoading || projectsLoading;
+  const isAssetPanelLoading = isPageLoading || assetsLoading;
 
   const error = useMemo(() => {
     if (fetchError) return "Failed to fetch calendar data";
     if (projectsError) return "Failed to fetch projects";
+    if (assetsError) return "Failed to fetch assets";
     // Don't show "No project selected" while projects are still loading
     if (projectsUrl && projectsLoading) return null;
     if (userId && !projectId) return "No project selected";
     return null;
-  }, [fetchError, projectsError, projectsUrl, projectsLoading, userId, projectId]);
+  }, [
+    fetchError,
+    projectsError,
+    assetsError,
+    projectsUrl,
+    projectsLoading,
+    userId,
+    projectId,
+  ]);
 
   const handleActionComplete = () => {
     mutate();
@@ -343,6 +293,23 @@ export default function MulticalendarPage() {
     <div
       className={`h-full pt-0 px-2 sm:p-6 lg:px-8 grid grid-cols-12 gap-6 ${PAGE_BG}`}
     >
+      {assetsLoading && !isPageLoading && (
+        <div
+          className="col-span-12 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600"
+          role="status"
+          aria-live="polite"
+        >
+          Loading assets...
+        </div>
+      )}
+      {Boolean(assetsError) && (
+        <div
+          className="col-span-12 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800"
+          role="alert"
+        >
+          Failed to load assets. Some asset calendars may be unavailable.
+        </div>
+      )}
       {/* --- LEFT SIDEBAR WRAPPER --- */}
       <div
         className={`${
@@ -380,7 +347,7 @@ export default function MulticalendarPage() {
         {/* Asset Filter */}
         <AssetFilter
           isCollapsed={isCollapsed}
-          loading={isPageLoading}
+          loading={isAssetPanelLoading}
           assetCalendars={assetCalendars}
           visibleAssets={visibleAssets}
           setVisibleAssets={setVisibleAssets}

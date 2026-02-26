@@ -4,7 +4,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Search, CheckCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { readStoredProject, saveStoredProject } from "@/lib/projectStorage";
+import { useProjectSelectionStore } from "@/stores/projectSelectionStore";
 
 interface Project {
   id: string;
@@ -26,24 +26,22 @@ function ProjectSelector({
   maxHeight = "400px",
   userId,
 }: ProjectSelectorProps) {
-  const getInitialProject = useCallback(() => {
-    const parsedProject = readStoredProject(userId);
-    if (parsedProject) {
-      const projectExists = projects.some((p) => p.id === parsedProject.id);
-      if (projectExists) {
-        return parsedProject.id;
-      }
-    }
-
-    // Default to first project if no stored selection or stored selection not found
-    return projects.length > 0 ? projects[0].id : undefined;
-  }, [projects, userId]);
-
-  const [selectedProject, setSelectedProject] = useState<string | undefined>(
-    () => getInitialProject(),
+  const userKey = userId ? String(userId) : null;
+  const selectedProjectId = useProjectSelectionStore((state) =>
+    userKey ? state.selectedProjectIds[userKey] : undefined,
   );
+  const setSelectedProjectId = useProjectSelectionStore(
+    (state) => state.setSelectedProjectId,
+  );
+
+  const [selectedProject, setSelectedProject] = useState<string | undefined>();
   const [searchQuery, setSearchQuery] = useState("");
-  const [visibleProjects, setVisibleProjects] = useState<Project[]>(projects);
+
+  const isValidProjectId = useCallback(
+    (projectId?: string) =>
+      !!projectId && projects.some((project) => project.id === projectId),
+    [projects],
+  );
 
   const filteredProjects = useMemo(() => {
     const trimmedLower = searchQuery.trim().toLowerCase();
@@ -60,64 +58,47 @@ function ProjectSelector({
   }, [projects, searchQuery]);
 
   useEffect(() => {
-    setVisibleProjects(filteredProjects);
-
     if (projects.length === 0) {
       if (selectedProject) setSelectedProject(undefined);
       return;
     }
 
-    const selectedStillExists =
-      !!selectedProject &&
-      projects.some((project) => project.id === selectedProject);
-    if (selectedStillExists) return;
+    const validStoredProjectId = isValidProjectId(selectedProjectId)
+      ? selectedProjectId
+      : undefined;
+    const validSelectedProject = isValidProjectId(selectedProject)
+      ? selectedProject
+      : undefined;
+    const nextProjectId =
+      validStoredProjectId ?? validSelectedProject ?? projects[0].id;
 
-    const fallbackId = getInitialProject() || projects[0]?.id;
-    if (!fallbackId || fallbackId === selectedProject) return;
-
-    setSelectedProject(fallbackId);
-    const fallbackProject = projects.find(
-      (project) => project.id === fallbackId,
-    );
-    if (fallbackProject && userId) {
-      saveStoredProject(userId, fallbackProject);
+    if (nextProjectId !== selectedProject) {
+      setSelectedProject(nextProjectId);
+      onChange?.(nextProjectId);
     }
-    onChange?.(fallbackId);
+
+    if (userKey && nextProjectId !== selectedProjectId) {
+      setSelectedProjectId(userKey, nextProjectId);
+    }
   }, [
+    isValidProjectId,
+    selectedProjectId,
+    setSelectedProjectId,
+    userKey,
     projects,
     selectedProject,
     onChange,
-    userId,
-    filteredProjects,
-    getInitialProject,
   ]);
 
   const handleChange = (value: string) => {
     setSelectedProject(value);
 
-    // Find the selected project object
-    const selectedProjectObj = projects.find((p) => p.id === value);
-
-    // Store the selected project in localStorage using the same key as in getInitialProject
-    if (selectedProjectObj && userId) {
-      saveStoredProject(userId, selectedProjectObj);
+    if (userKey) {
+      setSelectedProjectId(userKey, value);
     }
 
     if (onChange) onChange(value);
   };
-
-  // Set the initial project in localStorage if it doesn't exist yet
-  useEffect(() => {
-    if (projects.length > 0 && userId) {
-      const storedProject = readStoredProject(userId);
-
-      if (!storedProject) {
-        // No project stored yet, store the first project
-        const firstProject = projects[0];
-        saveStoredProject(userId, firstProject);
-      }
-    }
-  }, [projects, userId]);
 
   if (projects.length === 0) {
     return (
@@ -151,7 +132,7 @@ function ProjectSelector({
           onValueChange={handleChange}
           className="flex flex-col w-full"
         >
-          {visibleProjects.map((project) => {
+          {filteredProjects.map((project) => {
             const projectName = project.name;
             const isSelected = project.id === selectedProject;
 

@@ -23,7 +23,7 @@ import api from "@/lib/api";
 import { useAuth } from "@/app/context/AuthContext";
 import { getApiErrorMessage } from "@/types";
 import { reportError } from "@/lib/monitoring";
-import { readStoredProject } from "@/lib/projectStorage";
+import { useProjectSelectionStore } from "@/stores/projectSelectionStore";
 import { ASSET_TYPE_OPTIONS } from "@/lib/formOptions";
 
 // ===== TYPE DEFINITIONS =====
@@ -87,11 +87,13 @@ const generateAssetCode = (assetType: string, assetTitle: string): string => {
 };
 
 const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
-  const [project, setProject] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
   const userId = user?.id;
+  const selectedProjectId = useProjectSelectionStore((state) =>
+    userId ? state.selectedProjectIds[userId] ?? "" : "",
+  );
 
   const [asset, setAsset] = useState<Asset>({
     assetTitle: "",
@@ -106,21 +108,17 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
     assetProject: "",
   });
 
-  // Load project from localStorage
+  // Sync the selected project into the form payload.
   useEffect(() => {
-    const parsedProject = readStoredProject(userId);
-    if (!parsedProject) {
-      return;
-    }
-
-    const parsedId = parsedProject.id;
-    setProject(parsedId);
-
-    setAsset((prev) => ({
-      ...prev,
-      assetProject: parsedId,
-    }));
-  }, [userId]);
+    setAsset((prev) =>
+      prev.assetProject === selectedProjectId
+        ? prev
+        : {
+            ...prev,
+            assetProject: selectedProjectId,
+          },
+    );
+  }, [selectedProjectId]);
 
   // Auto-generate asset code when type and title change
   useEffect(() => {
@@ -258,7 +256,7 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
         assetPoc: "",
         assetStatus: "Operational",
         usageInstructions: "",
-        assetProject: project,
+        assetProject: selectedProjectId,
       });
     } catch (error: unknown) {
       reportError(error, "CreateAssetForm: failed to create asset");

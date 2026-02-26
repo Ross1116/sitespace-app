@@ -18,8 +18,8 @@ import { Input } from "@/components/ui/input";
 import ComponentErrorBoundary from "@/components/ui/ComponentErrorBoundary";
 import { swrFetcher, SWR_CONFIG } from "@/lib/swr";
 import { combineDateAndTime } from "@/lib/bookingHelpers";
-import { readStoredProject } from "@/lib/projectStorage";
 import { isTvUser } from "@/lib/permissions";
+import { useResolvedProjectSelection } from "@/hooks/useResolvedProjectSelection";
 import type {
   ApiBooking,
   BookingListResponse,
@@ -180,20 +180,23 @@ export default function BookingsPage() {
   const { user, isLoading: authLoading } = useAuth();
   const userId = user?.id;
   const isTv = isTvUser(user);
-
-  // Read project ID from localStorage for the SWR key
-  const projectId = useMemo(() => {
-    if (typeof window === "undefined" || !userId) return null;
-    const parsed = readStoredProject(userId);
-    return parsed?.id ?? null;
-  }, [userId]);
+  const { projectId, hasResolvedProjects } = useResolvedProjectSelection({
+    userId,
+    role: user?.role,
+  });
 
   // Redirect if no project selected
   useEffect(() => {
-    if (!isTv && userId && !projectId && typeof window !== "undefined") {
+    if (
+      !isTv &&
+      userId &&
+      hasResolvedProjects &&
+      !projectId &&
+      typeof window !== "undefined"
+    ) {
       window.location.href = "/home";
     }
-  }, [isTv, userId, projectId]);
+  }, [isTv, userId, projectId, hasResolvedProjects]);
 
   // --- SWR: fetch bookings ---
   const swrKey = projectId

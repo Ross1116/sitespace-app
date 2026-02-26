@@ -53,7 +53,6 @@ import {
 import {
   ApiAsset,
   ApiBooking,
-  ApiProject,
   BookingListResponse,
   getApiErrorMessage,
 } from "@/types";
@@ -61,9 +60,10 @@ import useSWR from "swr";
 import { swrFetcher } from "@/lib/swr";
 import { isAssetUnavailableForBooking } from "@/lib/assetStatus";
 import { reportError } from "@/lib/monitoring";
-import { readStoredProject, StoredProject } from "@/lib/projectStorage";
+import { useResolvedProjectSelection } from "@/hooks/useResolvedProjectSelection";
+import { useProjectAssets } from "@/hooks/useProjectAssets";
+import { useProjectSubcontractors } from "@/hooks/useProjectSubcontractors";
 import { BOOKING_PAGINATION_MAX_PAGES } from "@/lib/pagination";
-import { normalizeSubcontractorList } from "@/lib/subcontractorNormalization";
 import {
   BOOKING_DURATION_OPTIONS,
   QUARTER_HOUR_OPTIONS,
@@ -111,34 +111,6 @@ type AssetOption = ApiAsset & {
   assetTitle: string;
 };
 
-const mapStoredToApiProject = (
-  storedProject: StoredProject,
-): ApiProject | null => {
-  const projectId = storedProject.id?.trim();
-  if (!projectId) return null;
-
-  return {
-    id: projectId,
-    name: storedProject.name?.trim() || "Selected Project",
-    location: storedProject.location,
-    status: storedProject.status,
-  };
-};
-
-const isAbortError = (error: unknown, signal?: AbortSignal) => {
-  if (signal?.aborted) return true;
-  if (error instanceof Error && error.name === "CanceledError") return true;
-  if (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    (error as { code?: string }).code === "ERR_CANCELED"
-  ) {
-    return true;
-  }
-  return false;
-};
-
 // ===== CONSOLIDATED STATE =====
 interface TimeState {
   startHour: string;
@@ -167,7 +139,6 @@ interface AsyncState {
   isSubmitting: boolean;
   error: string | null;
   loadingSubcontractors: boolean;
-  project: ApiProject | null;
   subcontractors: Subcontractor[];
   successAlert: { isOpen: boolean; isConfirmed: boolean; count: number };
   partialSuccessAlert: {
@@ -201,9 +172,7 @@ type AssetAction =
 type AsyncAction =
   | { type: "SET_SUBMITTING"; value: boolean }
   | { type: "SET_ERROR"; error: string | null }
-  | { type: "SET_PROJECT"; project: ApiProject }
   | { type: "SET_SUBCONTRACTORS"; subs: Subcontractor[]; loading: boolean }
-  | { type: "SET_LOADING_SUBS"; loading: boolean }
   | { type: "SHOW_SUCCESS"; isConfirmed: boolean; count: number }
   | { type: "DISMISS_SUCCESS" }
   | {
@@ -409,7 +378,6 @@ const initialAsyncState: AsyncState = {
   isSubmitting: false,
   error: null,
   loadingSubcontractors: false,
-  project: null,
   subcontractors: [],
   successAlert: { isOpen: false, isConfirmed: false, count: 0 },
   partialSuccessAlert: {
@@ -425,16 +393,12 @@ function asyncReducer(state: AsyncState, action: AsyncAction): AsyncState {
       return { ...state, isSubmitting: action.value };
     case "SET_ERROR":
       return { ...state, error: action.error };
-    case "SET_PROJECT":
-      return { ...state, project: action.project };
     case "SET_SUBCONTRACTORS":
       return {
         ...state,
         subcontractors: action.subs,
         loadingSubcontractors: action.loading,
       };
-    case "SET_LOADING_SUBS":
-      return { ...state, loadingSubcontractors: action.loading };
     case "SHOW_SUCCESS":
       return {
         ...state,
@@ -488,6 +452,10 @@ export function CreateBookingForm({
   const userId = user?.id;
   const isManager = user?.role === "manager" || user?.role === "admin";
   const isSubcontractor = user?.role === "subcontractor";
+  const { projectId, selectedProject: project } = useResolvedProjectSelection({
+    userId,
+    role: user?.role,
+  });
 
   const [timeState, dispatchTime] = useReducer(timeReducer, initialTimeState);
   const [formState, dispatchForm] = useReducer(formReducer, initialFormState);
@@ -535,7 +503,6 @@ export function CreateBookingForm({
     isSubmitting,
     error,
     loadingSubcontractors,
-    project,
     subcontractors,
     successAlert,
     partialSuccessAlert,
@@ -570,90 +537,70 @@ export function CreateBookingForm({
     onClose();
   }, [resetForm, onClose]);
 
-  // ===== LOAD PROJECT FROM LOCALSTORAGE =====
-  useEffect(() => {
-    const storedProject = readStoredProject(userId);
-    if (storedProject) {
-      const project = mapStoredToApiProject(storedProject);
-      if (!project) {
-        reportError(
-          new Error("Invalid stored project payload"),
-          "CreateBookingForm: unable to map stored project to ApiProject",
-        );
-        return;
-      }
-      dispatchAsync({
-        type: "SET_PROJECT",
-        project,
-      });
-    }
-  }, [userId]);
-
-  // ===== LOAD ASSETS VIA SWR =====
-  const assetSwrKey = useMemo(() => {
-    if (!project?.id) return null;
-    return `/assets/?project_id=${project.id}&skip=0&limit=100`;
-  }, [project]);
-
-  const { data: assetsResponse, error: assetsSwrError } = useSWR<{
-    assets: ApiAsset[];
-  }>(assetSwrKey, swrFetcher);
+  // ===== LOAD ASSETS =====
+  const { assets: projectAssets, error: assetsSwrError } =
+    useProjectAssets(projectId);
+  const {
+    subcontractors: projectSubcontractors,
+    error: subcontractorsError,
+    isLoading: loadingProjectSubcontractors,
+  } = useProjectSubcontractors({
+    userRole: user?.role,
+    projectId,
+    enabled: Boolean(isOpen && isManager && projectId),
+    limit: 100,
+    scope: "managerScoped",
+  });
 
   useEffect(() => {
-    if (assetsResponse) {
-      const normalizedAssets: AssetOption[] = (assetsResponse.assets || [])
-        .filter((asset) => !isAssetUnavailableForBooking(asset.status))
-        .map((asset) => ({
-          ...asset,
-          assetKey: asset.id,
-          assetTitle: asset.name,
-        }));
-      dispatchAsset({ type: "SET_ASSETS", assets: normalizedAssets });
-    } else if (assetsSwrError) {
+    if (assetsSwrError) {
       dispatchAsset({ type: "SET_ASSET_ERROR", error: true });
+      return;
     }
-  }, [assetsResponse, assetsSwrError]);
+    const normalizedAssets: AssetOption[] = projectAssets
+      .filter((asset) => !isAssetUnavailableForBooking(asset.status))
+      .map((asset) => ({
+        ...asset,
+        assetKey: asset.id,
+        assetTitle: asset.name,
+      }));
+    dispatchAsset({ type: "SET_ASSETS", assets: normalizedAssets });
+  }, [projectAssets, assetsSwrError]);
 
   // ===== LOAD SUBCONTRACTORS =====
   useEffect(() => {
-    const controller = new AbortController();
-    const loadSubcontractors = async (signal: AbortSignal) => {
-      if (!project?.id || !isManager) return;
+    if (!isManager || !isOpen) return;
 
-      dispatchAsync({ type: "SET_LOADING_SUBS", loading: true });
-      try {
-        const response = await api.get(`/subcontractors/my-subcontractors`, {
-          params: {
-            skip: 0,
-            limit: 100,
-            is_active: true,
-            project_id: project.id,
-          },
-          signal,
-        });
-
-        const normalizedSubs: Subcontractor[] = normalizeSubcontractorList(
-          response.data,
-        );
-
-        dispatchAsync({
-          type: "SET_SUBCONTRACTORS",
-          subs: normalizedSubs,
-          loading: false,
-        });
-      } catch (err: unknown) {
-        if (isAbortError(err, signal)) return;
-        reportError(err, "CreateBookingForm: failed to load subcontractors");
-        dispatchAsync({ type: "SET_LOADING_SUBS", loading: false });
-      }
-    };
-
-    if (isOpen && project) {
-      loadSubcontractors(controller.signal);
-      return () => controller.abort();
+    if (subcontractorsError) {
+      reportError(
+        subcontractorsError,
+        "CreateBookingForm: failed to load subcontractors",
+      );
+      dispatchAsync({ type: "SET_SUBCONTRACTORS", subs: [], loading: false });
+      return;
     }
-    return undefined;
-  }, [isOpen, project, isManager, userId]);
+
+    const normalizedSubs: Subcontractor[] = projectSubcontractors.map((sub) => ({
+      id: sub.id,
+      first_name: sub.first_name,
+      last_name: sub.last_name,
+      email: sub.email,
+      company_name: sub.company_name,
+      trade_specialty: sub.trade_specialty,
+    }));
+
+    dispatchAsync({
+      type: "SET_SUBCONTRACTORS",
+      subs: normalizedSubs,
+      loading: loadingProjectSubcontractors,
+    });
+  }, [
+    isManager,
+    isOpen,
+    projectSubcontractors,
+    subcontractorsError,
+    loadingProjectSubcontractors,
+  ]);
 
   // ===== AUTO-SELECT SUBCONTRACTOR FOR SUB USERS =====
   useEffect(() => {
@@ -791,7 +738,7 @@ export function CreateBookingForm({
       return;
     }
 
-    if (!project) {
+    if (!projectId) {
       dispatchAsync({ type: "SET_ERROR", error: "No project selected" });
       return;
     }
@@ -824,7 +771,7 @@ export function CreateBookingForm({
           if (pageCount >= BOOKING_PAGINATION_MAX_PAGES) {
             reportError(
               new Error(
-                `Pagination guard triggered in CreateBookingForm: pageCount=${pageCount}, maxPages=${BOOKING_PAGINATION_MAX_PAGES}, projectId=${project.id}, bookingDate=${bookingDate}`,
+                `Pagination guard triggered in CreateBookingForm: pageCount=${pageCount}, maxPages=${BOOKING_PAGINATION_MAX_PAGES}, projectId=${projectId}, bookingDate=${bookingDate}`,
               ),
               "CreateBookingForm: pagination safety limit reached while loading existing bookings",
             );
@@ -835,7 +782,7 @@ export function CreateBookingForm({
 
           const existing = await api.get<BookingListResponse>(`/bookings/`, {
             params: {
-              project_id: project.id,
+              project_id: projectId,
               limit,
               skip,
               date_from: bookingDate,
@@ -946,7 +893,7 @@ export function CreateBookingForm({
       const results = await Promise.allSettled(
         selectedAssetIds.map(async (assetId) => {
           const bookingData: BookingCreateRequest = {
-            project_id: project.id,
+            project_id: projectId,
             asset_id: assetId,
             booking_date: bookingDate,
             start_time: startTimeFormatted,
