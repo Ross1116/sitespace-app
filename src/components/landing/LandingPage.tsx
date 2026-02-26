@@ -1,5 +1,4 @@
 import Image from "next/image";
-import { Suspense } from "react";
 import type React from "react";
 
 import { cn } from "@/lib/utils";
@@ -7,12 +6,14 @@ import { cn } from "@/lib/utils";
 import "./LandingPage.css";
 
 import { NavBar } from "@/components/landing/TopBar";
-import { ScrollAnimations } from "@/components/landing/ScrollAnimations";
-import { HeroOrbs } from "@/components/landing/HeroOrbs";
 import { HeroParallax } from "@/components/landing/HeroParallax";
 import { WatchVideoButton } from "@/components/landing/WatchVideoButton";
-import { LookaheadDashboard } from "@/components/landing/LookaheadPreview";
-import { ShowcaseSection } from "@/components/landing/ShowcaseSection";
+import {
+  ScrollAnimations,
+  HeroOrbs,
+  LookaheadDashboard,
+  ShowcaseSection,
+} from "@/components/landing/ClientDynamics";
 
 const FADE =
   "opacity-0 translate-y-10 transition-all duration-700 ease-in-out data-[visible]:opacity-100 data-[visible]:translate-y-0";
@@ -64,9 +65,7 @@ export default function LandingPage() {
           className="absolute inset-0 z-0 pointer-events-none"
           aria-hidden="true"
         >
-          <Suspense fallback={null}>
-            <HeroOrbs />
-          </Suspense>
+          <HeroOrbs />
         </div>
 
         <div className="relative z-10 max-w-7xl mx-auto px-6 w-full">
