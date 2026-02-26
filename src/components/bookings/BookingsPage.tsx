@@ -19,6 +19,7 @@ import { combineDateAndTime } from "@/lib/bookingHelpers";
 import { isTvUser } from "@/lib/permissions";
 import { useResolvedProjectSelection } from "@/hooks/useResolvedProjectSelection";
 import { useProjectBookingsList } from "@/hooks/useProjectBookingsList";
+import { useUIIntentStore } from "@/stores/uiIntentStore";
 import type {
   ApiBooking,
   TransformedBooking,
@@ -171,8 +172,8 @@ const processRawBookings = (rawBookings: ApiBooking[]) => {
 };
 
 export default function BookingsPage() {
-  const [activeTab, setActiveTab] = useState("Upcoming");
   const [isBookingFormOpen, setIsBookingFormOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("Upcoming");
   const [searchTerm, setSearchTerm] = useState("");
 
   const { user, isLoading: authLoading } = useAuth();
@@ -182,6 +183,32 @@ export default function BookingsPage() {
     userId,
     role: user?.role,
   });
+  const uiScopeKey = useMemo(() => {
+    if (!userId || !projectId) return null;
+    return `${userId}:${projectId}`;
+  }, [userId, projectId]);
+  const hasUIIntentHydrated = useUIIntentStore((state) => state.hasHydrated);
+  const getBookingsIntent = useUIIntentStore((state) => state.getBookingsIntent);
+  const setBookingsActiveTab = useUIIntentStore(
+    (state) => state.setBookingsActiveTab,
+  );
+  const setBookingsSearchTerm = useUIIntentStore(
+    (state) => state.setBookingsSearchTerm,
+  );
+
+  useEffect(() => {
+    if (!hasUIIntentHydrated || !uiScopeKey) return;
+    const persistedIntent = getBookingsIntent(uiScopeKey);
+    const persistedActiveTab = persistedIntent?.activeTab || "Upcoming";
+    const persistedSearchTerm = persistedIntent?.searchTerm || "";
+
+    setActiveTab((current) =>
+      current === persistedActiveTab ? current : persistedActiveTab,
+    );
+    setSearchTerm((current) =>
+      current === persistedSearchTerm ? current : persistedSearchTerm,
+    );
+  }, [hasUIIntentHydrated, uiScopeKey, getBookingsIntent]);
 
   // Redirect if no project selected
   useEffect(() => {
@@ -217,6 +244,26 @@ export default function BookingsPage() {
   const nextHour = startOfHour(addHours(now, 1));
   const endHour = addHours(nextHour, 1);
 
+  const updateActiveTab = useCallback(
+    (nextTab: string) => {
+      setActiveTab(nextTab);
+      if (uiScopeKey) {
+        setBookingsActiveTab(uiScopeKey, nextTab);
+      }
+    },
+    [uiScopeKey, setBookingsActiveTab],
+  );
+
+  const updateSearchTerm = useCallback(
+    (nextSearchTerm: string) => {
+      setSearchTerm(nextSearchTerm);
+      if (uiScopeKey) {
+        setBookingsSearchTerm(uiScopeKey, nextSearchTerm);
+      }
+    },
+    [uiScopeKey, setBookingsSearchTerm],
+  );
+
   // --- AUTO-SWITCH TAB when highlighting ---
   useEffect(() => {
     if (highlightBookingId && allBookings.length > 0) {
@@ -232,17 +279,17 @@ export default function BookingsPage() {
           endDt >= new Date() && status !== "cancelled" && status !== "denied";
 
         if (activeTab === "Upcoming" && !isUpcoming) {
-          setActiveTab("All");
+          updateActiveTab("All");
         }
         if (
           activeTab !== "Upcoming" &&
           activeTab !== "All" &&
           status !== activeTab.toLowerCase()
         ) {
-          setActiveTab("All");
+          updateActiveTab("All");
         }
       } else {
-        setActiveTab("All");
+        updateActiveTab("All");
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -330,7 +377,7 @@ export default function BookingsPage() {
                   aria-label="Search bookings"
                   className="pl-10 bg-slate-50 border-transparent focus:bg-white transition-all rounded-xl h-10 text-sm"
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => updateSearchTerm(e.target.value)}
                 />
                 {searchTerm && (
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
@@ -351,7 +398,7 @@ export default function BookingsPage() {
                 ].map((tab) => (
                   <button
                     key={tab}
-                    onClick={() => setActiveTab(tab)}
+                    onClick={() => updateActiveTab(tab)}
                     className={`
                       px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap
                       ${

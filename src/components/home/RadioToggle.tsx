@@ -28,7 +28,7 @@ function ProjectSelector({
 }: ProjectSelectorProps) {
   const userKey = userId ? String(userId) : null;
   const selectedProjectId = useProjectSelectionStore((state) =>
-    userKey ? state.selectedProjectIds[userKey] : undefined,
+    userKey ? state.getSelectedProjectId(userKey) ?? undefined : undefined,
   );
   const setSelectedProjectId = useProjectSelectionStore(
     (state) => state.setSelectedProjectId,

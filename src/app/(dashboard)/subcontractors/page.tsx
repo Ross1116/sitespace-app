@@ -27,7 +27,7 @@ import {
 } from "@/lib/subcontractorNormalization";
 import { useResolvedProjectSelection } from "@/hooks/useResolvedProjectSelection";
 import { useProjectSubcontractors } from "@/hooks/useProjectSubcontractors";
-import { PROJECT_SELECTION_STORAGE_KEY } from "@/stores/projectSelectionStore";
+import { useProjectSelectionStore } from "@/stores/projectSelectionStore";
 
 interface Contractor {
   contractorKey: string;
@@ -120,32 +120,23 @@ export default function SubcontractorsPage() {
   // Keep store in sync with cross-tab persisted updates.
   useEffect(() => {
     if (!userId) return;
+    const persistApi = useProjectSelectionStore.persist;
+    const storageKey = persistApi.getOptions().name;
+
+    const syncFromStore = async () => {
+      await persistApi.rehydrate();
+      const incomingId =
+        useProjectSelectionStore.getState().getSelectedProjectId(userId);
+
+      if (incomingId !== selectedProjectId) {
+        setProjectId(incomingId);
+        setCurrentPage(1);
+      }
+    };
 
     const handler = (e: StorageEvent) => {
-      if (e.key !== PROJECT_SELECTION_STORAGE_KEY) return;
-
-      const raw = e.newValue;
-      if (!raw) {
-        if (selectedProjectId) {
-          setProjectId(null);
-        }
-        setCurrentPage(1);
-        return;
-      }
-
-      try {
-        const parsed = JSON.parse(raw) as {
-          state?: { selectedProjectIds?: Record<string, string> };
-        };
-        const incomingId = parsed?.state?.selectedProjectIds?.[userId] ?? null;
-
-        if (incomingId !== selectedProjectId) {
-          setProjectId(incomingId);
-          setCurrentPage(1);
-        }
-      } catch {
-        // Ignore malformed persisted payloads.
-      }
+      if (e.key !== storageKey && e.key !== null) return;
+      void syncFromStore();
     };
 
     window.addEventListener("storage", handler);
