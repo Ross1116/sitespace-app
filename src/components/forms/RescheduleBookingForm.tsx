@@ -93,6 +93,17 @@ export default function RescheduleBookingForm({
     async (signal?: AbortSignal) => {
       setLoading(true);
       setError(null);
+      setTitle("");
+      setNotes("");
+      setProjectId(null);
+      setAssetName("");
+      setAssetCode("");
+      setSelectedDate(new Date());
+      setStartHour("");
+      setStartMinute("");
+      setEndHour("");
+      setEndMinute("");
+      setDuration(DEFAULT_BOOKING_DURATION_MINUTES.toString());
       try {
         const booking = await fetchBookingById(bookingId, signal);
         if (signal?.aborted) return;
@@ -105,6 +116,9 @@ export default function RescheduleBookingForm({
         if (booking.asset) {
           setAssetName(booking.asset.name);
           setAssetCode(booking.asset.asset_code || "");
+        } else {
+          setAssetName("");
+          setAssetCode("");
         }
 
         // 2. Set Date

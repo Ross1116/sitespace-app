@@ -198,7 +198,13 @@ export async function fetchBookingsForDate({
       isRecord(response.data) && typeof response.data.limit === "number"
         ? response.data.limit
         : undefined;
-    skip += responseLimit ?? normalized.bookings.length;
+    const safeStep =
+      typeof responseLimit === "number" && responseLimit > 0
+        ? responseLimit
+        : normalized.bookings.length > 0
+          ? normalized.bookings.length
+          : 1;
+    skip += safeStep;
     pageCount += 1;
   }
 

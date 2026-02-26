@@ -101,6 +101,7 @@ export default function BookingCardDropdown({
       onActionComplete?.();
     } catch (error: unknown) {
       setErrorMessage(getApiErrorMessage(error, "Failed to update booking"));
+      reportError(error, "BookingCardDropdown: failed to update booking");
     } finally {
       setIsLoading(false);
       if (isOpen) onToggle();
@@ -118,6 +119,7 @@ export default function BookingCardDropdown({
       onActionComplete?.();
     } catch (error: unknown) {
       setErrorMessage(getApiErrorMessage(error, "Failed to delete booking"));
+      reportError(error, "BookingCardDropdown: failed to delete booking");
     } finally {
       setIsLoading(false);
       if (isOpen) onToggle();
@@ -335,6 +337,7 @@ export default function BookingCardDropdown({
                   normalizedStatus === "pending" ? "denied" : "cancelled",
                 )
               }
+              disabled={isLoading}
             >
               Yes, Confirm
             </Button>
@@ -366,6 +369,7 @@ export default function BookingCardDropdown({
             <Button
               variant="destructive"
               onClick={handleDeleteBooking}
+              disabled={isLoading}
               className="w-full sm:w-auto"
             >
               Yes, Delete
