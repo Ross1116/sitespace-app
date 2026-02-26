@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   Calendar,
   CalendarCurrentDate,
@@ -23,6 +23,7 @@ import ComponentErrorBoundary from "@/components/ui/ComponentErrorBoundary";
 import { useResolvedProjectSelection } from "@/hooks/useResolvedProjectSelection";
 import { useProjectAssets } from "@/hooks/useProjectAssets";
 import { useCalendarBookingsQuery } from "@/hooks/bookings/useBookingsData";
+import { useUIIntentStore } from "@/stores/uiIntentStore";
 
 // ===== HELPER: PROCESS BOOKING TO EVENT =====
 const processBookingToEvent = (
@@ -87,10 +88,19 @@ export default function MulticalendarPage() {
     userId,
     role: user?.role,
   });
+  const uiScopeKey = useMemo(() => {
+    if (!userId || !projectId) return null;
+    return `${userId}:${projectId}`;
+  }, [userId, projectId]);
+  const hasUIIntentHydrated = useUIIntentStore((state) => state.hasHydrated);
+  const setMulticalendarVisibleAssetIds = useUIIntentStore(
+    (state) => state.setMulticalendarVisibleAssetIds,
+  );
 
   // Visibility State
   const [initialLoad, setInitialLoad] = useState(true);
   const [visibleAssets, setVisibleAssets] = useState<number[]>([]);
+  const lastSentVisibleIdsRef = useRef<string[]>([]);
 
   // Date range: currently viewed date ± 45 days
   const { dateFrom, dateTo } = useMemo(() => {
@@ -231,21 +241,78 @@ export default function MulticalendarPage() {
   }, [availableAssets, bookings]);
 
   useEffect(() => {
+    setInitialLoad(true);
+    setVisibleAssets([]);
+    setSelectedAssetIndex(0);
+    lastSentVisibleIdsRef.current = [];
+  }, [uiScopeKey]);
+
+  useEffect(() => {
     if (initialLoad && assetCalendars.length > 0) {
+      if (uiScopeKey && !hasUIIntentHydrated) {
+        return;
+      }
+
+      const persistedVisibleAssetIds =
+        uiScopeKey && hasUIIntentHydrated
+          ? (useUIIntentStore.getState().getMulticalendarIntent(uiScopeKey)?.visibleAssetIds ?? [])
+          : [];
+      const persistedVisibleIndices = persistedVisibleAssetIds
+        .map((assetId) =>
+          assetCalendars.findIndex((calendar) => calendar.id === assetId),
+        )
+        .filter((index) => index >= 0);
+
       const indicesWithBookings = assetCalendars
         .map((cal, index) => (cal.events.length > 0 ? index : -1))
         .filter((index) => index !== -1);
 
       let newVisibleAssets: number[] = [];
-      if (indicesWithBookings.length > 0) {
+      if (persistedVisibleIndices.length > 0) {
+        newVisibleAssets = Array.from(new Set(persistedVisibleIndices));
+      } else if (indicesWithBookings.length > 0) {
         newVisibleAssets = indicesWithBookings.slice(0, 6);
       } else {
         newVisibleAssets = assetCalendars.map((_, i) => i).slice(0, 6);
       }
+
       setVisibleAssets(newVisibleAssets);
+      setSelectedAssetIndex((currentIndex) =>
+        newVisibleAssets.includes(currentIndex)
+          ? currentIndex
+          : (newVisibleAssets[0] ?? 0),
+      );
       setInitialLoad(false);
     }
-  }, [assetCalendars, initialLoad]);
+  }, [
+    assetCalendars,
+    initialLoad,
+    hasUIIntentHydrated,
+    uiScopeKey,
+  ]);
+
+  useEffect(() => {
+    if (initialLoad || !uiScopeKey) return;
+    const visibleAssetIds = visibleAssets
+      .map((index) => assetCalendars[index]?.id)
+      .filter(
+        (assetId): assetId is string =>
+          typeof assetId === "string" && assetId.trim().length > 0,
+      );
+    const prev = lastSentVisibleIdsRef.current;
+    const changed =
+      prev.length !== visibleAssetIds.length ||
+      visibleAssetIds.some((id, i) => id !== prev[i]);
+    if (!changed) return;
+    lastSentVisibleIdsRef.current = visibleAssetIds;
+    setMulticalendarVisibleAssetIds(uiScopeKey, visibleAssetIds);
+  }, [
+    initialLoad,
+    uiScopeKey,
+    visibleAssets,
+    assetCalendars,
+    setMulticalendarVisibleAssetIds,
+  ]);
 
   const selectedCalendar = assetCalendars[selectedAssetIndex] || {
     id: "",
@@ -348,7 +415,11 @@ export default function MulticalendarPage() {
           isCollapsed ? "col-span-12" : "col-span-12 xl:col-span-9"
         } h-full flex flex-col bg-slate-50 border border-slate-200 shadow-sm rounded-2xl transition-all duration-600`}
       >
-        <Calendar date={currentDate} onDateChange={setCurrentDate} view="day">
+        <Calendar
+          date={currentDate}
+          onDateChange={setCurrentDate}
+          view="day"
+        >
           <CalendarHeader
             isCollapsed={isCollapsed}
             loading={isPageLoading}

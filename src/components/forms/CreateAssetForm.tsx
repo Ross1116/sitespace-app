@@ -92,7 +92,7 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
   const { user } = useAuth();
   const userId = user?.id;
   const selectedProjectId = useProjectSelectionStore((state) =>
-    userId ? state.selectedProjectIds[userId] ?? "" : "",
+    userId ? state.getSelectedProjectId(userId) ?? "" : "",
   );
 
   const [asset, setAsset] = useState<Asset>({

@@ -154,7 +154,7 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
   const { user } = useAuth();
   const userId = user?.id;
   const selectedProjectId = useProjectSelectionStore((state) =>
-    userId ? state.selectedProjectIds[userId] ?? "" : "",
+    userId ? state.getSelectedProjectId(userId) ?? "" : "",
   );
 
   const [contractor, setContractor] = useState<Contractor>({

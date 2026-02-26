@@ -202,8 +202,8 @@ export function AuthProvider({
 
             const store = useProjectSelectionStore.getState();
             const existingProjectId = userData.id
-              ? store.selectedProjectIds[userData.id]
-              : undefined;
+              ? store.getSelectedProjectId(userData.id)
+              : null;
 
             if (userData.id && firstProject?.id && !existingProjectId) {
               store.setSelectedProjectId(userData.id, firstProject.id);

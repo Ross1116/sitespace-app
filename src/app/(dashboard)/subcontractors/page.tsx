@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import {
   X,
   Plus,
@@ -27,7 +27,7 @@ import {
 } from "@/lib/subcontractorNormalization";
 import { useResolvedProjectSelection } from "@/hooks/useResolvedProjectSelection";
 import { useProjectSubcontractors } from "@/hooks/useProjectSubcontractors";
-import { PROJECT_SELECTION_STORAGE_KEY } from "@/stores/projectSelectionStore";
+import { useProjectSelectionStore } from "@/stores/projectSelectionStore";
 
 interface Contractor {
   contractorKey: string;
@@ -117,40 +117,40 @@ export default function SubcontractorsPage() {
     setCurrentPage(1);
   }, [projectId]);
 
+  // Keep a ref to the latest selectedProjectId so the storage-event handler
+  // never closes over a stale value.
+  const selectedProjectIdRef = useRef(selectedProjectId);
+  useEffect(() => {
+    selectedProjectIdRef.current = selectedProjectId;
+  }, [selectedProjectId]);
+
   // Keep store in sync with cross-tab persisted updates.
   useEffect(() => {
     if (!userId) return;
+    const persistApi = useProjectSelectionStore.persist;
+    const storageKey = persistApi.getOptions().name;
+
+    const syncFromStore = async () => {
+      await persistApi.rehydrate();
+      const incomingId =
+        useProjectSelectionStore.getState().getSelectedProjectId(userId);
+
+      if (incomingId !== selectedProjectIdRef.current) {
+        setProjectId(incomingId);
+        setCurrentPage(1);
+      }
+    };
 
     const handler = (e: StorageEvent) => {
-      if (e.key !== PROJECT_SELECTION_STORAGE_KEY) return;
-
-      const raw = e.newValue;
-      if (!raw) {
-        if (selectedProjectId) {
-          setProjectId(null);
-        }
-        setCurrentPage(1);
-        return;
-      }
-
-      try {
-        const parsed = JSON.parse(raw) as {
-          state?: { selectedProjectIds?: Record<string, string> };
-        };
-        const incomingId = parsed?.state?.selectedProjectIds?.[userId] ?? null;
-
-        if (incomingId !== selectedProjectId) {
-          setProjectId(incomingId);
-          setCurrentPage(1);
-        }
-      } catch {
-        // Ignore malformed persisted payloads.
-      }
+      if (e.key !== storageKey && e.key !== null) return;
+      syncFromStore().catch((err) =>
+        console.error("syncFromStore failed on storage event", err),
+      );
     };
 
     window.addEventListener("storage", handler);
     return () => window.removeEventListener("storage", handler);
-  }, [userId, selectedProjectId, setProjectId]);
+  }, [userId, setProjectId]);
 
   // SWR — role-based endpoint
   const {
