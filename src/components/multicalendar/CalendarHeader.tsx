@@ -5,6 +5,7 @@ import {
   AlertCircle,
   CalendarDays,
   SlidersHorizontal,
+  Loader2,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import {
@@ -35,6 +36,7 @@ import { AssetCalendar } from "@/lib/multicalendarHelpers";
 interface CalendarHeaderProps {
   isCollapsed: boolean;
   loading: boolean;
+  isRefreshing?: boolean;
   assetCalendars: AssetCalendar[];
   visibleAssets: number[];
   setVisibleAssets: React.Dispatch<React.SetStateAction<number[]>>;
@@ -48,6 +50,7 @@ interface CalendarHeaderProps {
 export function CalendarHeader({
   isCollapsed,
   loading,
+  isRefreshing = false,
   assetCalendars,
   visibleAssets,
   setVisibleAssets,
@@ -60,7 +63,6 @@ export function CalendarHeader({
   const { date, setDate } = useCalendar();
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [isAssetFilterOpen, setIsAssetFilterOpen] = useState(false);
-  const [isRefreshAnimating, setIsRefreshAnimating] = useState(false);
   const allAssetIndices = useMemo(
     () => assetCalendars.map((_, index) => index),
     [assetCalendars],
@@ -68,9 +70,7 @@ export function CalendarHeader({
 
   const handleRefreshClick = () => {
     if (!onRefresh) return;
-    setIsRefreshAnimating(true);
     onRefresh();
-    setTimeout(() => setIsRefreshAnimating(false), 800);
   };
 
   const toggleVisibleAsset = (index: number) => {
@@ -113,16 +113,16 @@ export function CalendarHeader({
             variant="ghost"
             size="sm"
             onClick={handleRefreshClick}
-            disabled={loading}
+            disabled={loading || isRefreshing}
             className="h-8 w-8 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-100"
             title="Refresh bookings"
             aria-label="Refresh bookings"
           >
-            <RefreshCw
-              size={16}
-              className={loading || isRefreshAnimating ? "animate-spin" : ""}
-              aria-hidden="true"
-            />
+            {loading || isRefreshing ? (
+              <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+            ) : (
+              <RefreshCw size={16} aria-hidden="true" />
+            )}
             <span className="sr-only">Refresh</span>
           </Button>
         )}
@@ -191,21 +191,11 @@ export function CalendarHeader({
           </div>
         )}
 
-        {/* Loading indicator */}
-        {loading && (
-          <div
-            className="flex items-center gap-2 text-sm text-slate-500"
-            role="status"
-            aria-live="polite"
-            aria-label="Loading calendar data"
-          >
-            <div
-              className="w-3.5 h-3.5 border-2 border-[var(--navy)] border-t-transparent rounded-full animate-spin"
-              aria-hidden="true"
-            />
-            <span className="hidden sm:inline font-medium">Loading...</span>
-            <span className="sr-only">Loading calendar data</span>
-          </div>
+        {/* Loading announced for assistive tech; visual spinner is on refresh button */}
+        {(loading || isRefreshing) && (
+          <span className="sr-only" role="status" aria-live="polite">
+            Loading calendar data
+          </span>
         )}
       </div>
 

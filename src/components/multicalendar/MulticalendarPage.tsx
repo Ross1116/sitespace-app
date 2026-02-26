@@ -90,6 +90,7 @@ export default function MulticalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedAssetIndex, setSelectedAssetIndex] = useState(0);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const { user, isLoading: authLoading } = useAuth();
   const userId = user?.id;
@@ -98,10 +99,8 @@ export default function MulticalendarPage() {
   const [initialLoad, setInitialLoad] = useState(true);
   const [visibleAssets, setVisibleAssets] = useState<number[]>([]);
 
-  // Read project from localStorage (stateful so saves update in-session)
-  const [storedProject, setStoredProject] = useState<StoredProject | null>(() =>
-    userId ? readStoredProject(userId) : null,
-  );
+  // Start deterministic for SSR/hydration, then load from localStorage on mount.
+  const [storedProject, setStoredProject] = useState<StoredProject | null>(null);
 
   // Re-read from localStorage when userId changes
   useEffect(() => {
@@ -226,10 +225,10 @@ export default function MulticalendarPage() {
     mutate();
   };
 
-  const handleRefresh = () => {
-    mutateProjects();
-    mutate();
-    mutateAssets();
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await Promise.allSettled([mutateProjects(), mutate(), mutateAssets()]);
+    setIsRefreshing(false);
   };
 
   const assetCalendars: AssetCalendar[] = useMemo(() => {
@@ -383,6 +382,7 @@ export default function MulticalendarPage() {
           <CalendarHeader
             isCollapsed={isCollapsed}
             loading={isPageLoading}
+            isRefreshing={isRefreshing}
             assetCalendars={assetCalendars}
             visibleAssets={visibleAssets}
             setVisibleAssets={setVisibleAssets}

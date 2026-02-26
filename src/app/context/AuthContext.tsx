@@ -23,7 +23,7 @@ import {
 } from "@/lib/telemetryPrivacy";
 
 // ===== TYPES =====
-type User = {
+export type User = {
   id: string;
   email: string;
   first_name?: string;
@@ -55,9 +55,16 @@ type RegisterData = {
 // ===== CONTEXT =====
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isInitialized, setIsInitialized] = useState(false);
+export function AuthProvider({
+  children,
+  initialUser,
+}: {
+  children: ReactNode;
+  initialUser?: User | null;
+}) {
+  const [user, setUser] = useState<User | null>(initialUser ?? null);
+  // Start initialized if the server confirmed a real user — skips the client-side auth fetch
+  const [isInitialized, setIsInitialized] = useState(!!initialUser);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const { mutate } = useSWRConfig();
@@ -123,6 +130,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (initAttempted.current) return;
     initAttempted.current = true;
 
+    // Server already confirmed a real user — skip the round-trip, just run telemetry
+    if (initialUser) {
+      void identifyTelemetryUser(initialUser);
+      return;
+    }
+
     const init = async () => {
       const userData = await checkAuth();
       setUser(userData);
@@ -133,7 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     init();
-  }, [checkAuth, identifyTelemetryUser]);
+  }, [checkAuth, identifyTelemetryUser, initialUser]);
 
   // ===== Login =====
   const login = useCallback(
