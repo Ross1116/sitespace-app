@@ -40,9 +40,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { TransformedAsset, getApiErrorMessage } from "@/types";
+import { ApiProject, TransformedAsset, getApiErrorMessage } from "@/types";
 import { useRouter } from "next/navigation";
-import { readStoredProject } from "@/lib/projectStorage";
+import { normalizeProjectList } from "@/lib/apiNormalization";
+import { useProjectSelectionStore } from "@/stores/projectSelectionStore";
 
 interface AssetFromBackend {
   id: string;
@@ -71,11 +72,6 @@ interface AssetListResponse {
 }
 
 type Asset = TransformedAsset;
-
-interface Project {
-  id: string;
-  text: string;
-}
 
 type SortField =
   | "assetTitle"
@@ -210,6 +206,15 @@ export default function AssetsTable() {
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const userId = user?.id;
+  const selectedProjectId = useProjectSelectionStore((state) =>
+    userId ? state.selectedProjectIds[userId] ?? null : null,
+  );
+  const setSelectedProjectId = useProjectSelectionStore(
+    (state) => state.setSelectedProjectId,
+  );
+  const clearSelectedProjectId = useProjectSelectionStore(
+    (state) => state.clearSelectedProjectId,
+  );
 
   useEffect(() => {
     if (user?.role === "subcontractor") {
@@ -221,23 +226,65 @@ export default function AssetsTable() {
     return null;
   }
 
-  // Read project from localStorage
-  const project = useMemo<Project | undefined>(() => {
-    if (typeof window === "undefined" || !userId) return undefined;
-    const parsed = readStoredProject(userId);
-    if (!parsed?.id) {
-      return undefined;
+  const projectsUrl = useMemo(() => {
+    if (!userId) return null;
+    if (user?.role === "subcontractor")
+      return `/subcontractors/${userId}/projects`;
+    return "/projects/?my_projects=true&limit=100&skip=0";
+  }, [userId, user?.role]);
+
+  const { data: projectsRaw, error: projectsError } = useSWR(
+    projectsUrl,
+    swrFetcher,
+    SWR_CONFIG,
+  );
+
+  const projects = useMemo<ApiProject[]>(() => {
+    if (!projectsRaw) return [];
+    return normalizeProjectList(projectsRaw);
+  }, [projectsRaw]);
+
+  const hasResolvedProjects = projectsRaw !== undefined || Boolean(projectsError);
+  const projectId = useMemo(() => {
+    if (!hasResolvedProjects) return selectedProjectId;
+    if (
+      selectedProjectId &&
+      projects.some((project) => project.id === selectedProjectId)
+    ) {
+      return selectedProjectId;
+    }
+    return projects[0]?.id ?? null;
+  }, [hasResolvedProjects, selectedProjectId, projects]);
+
+  useEffect(() => {
+    if (!userId || !hasResolvedProjects) return;
+
+    if (!projectId) {
+      if (selectedProjectId) {
+        clearSelectedProjectId(userId);
+      }
+      return;
     }
 
-    return {
-      id: parsed.id,
-      text: parsed.name || "",
-    };
-  }, [userId]);
+    if (projectId === selectedProjectId) return;
+    setSelectedProjectId(userId, projectId);
+  }, [
+    userId,
+    projectId,
+    selectedProjectId,
+    hasResolvedProjects,
+    clearSelectedProjectId,
+    setSelectedProjectId,
+  ]);
+
+  const projectName =
+    projectId && projects.length > 0
+      ? projects.find((project) => project.id === projectId)?.name || ""
+      : "";
 
   // --- SWR: fetch assets ---
-  const swrKey = project?.id
-    ? `/assets/?project_id=${project.id}&skip=0&limit=100`
+  const swrKey = projectId
+    ? `/assets/?project_id=${projectId}&skip=0&limit=100`
     : null;
 
   const {
@@ -726,7 +773,7 @@ export default function AssetsTable() {
                         </span>
                       </div>
                       <span className="text-sm font-semibold text-slate-900">
-                        {project?.text || "Unknown"}
+                        {projectName || "Unknown"}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">

@@ -15,9 +15,9 @@ import * as Sentry from "@sentry/nextjs";
 import posthog from "posthog-js";
 import { useSWRConfig } from "swr";
 import { reportError } from "@/lib/monitoring";
-import { saveStoredProject } from "@/lib/projectStorage";
 import { normalizeProjectList } from "@/lib/apiNormalization";
 import type { AuthUser } from "@/types/auth";
+import { useProjectSelectionStore } from "@/stores/projectSelectionStore";
 import {
   getTelemetryEmailMode,
   hashEmailForTelemetry,
@@ -200,8 +200,10 @@ export function AuthProvider({
             const projData = await projRes.json();
             const firstProject = normalizeProjectList(projData)[0] ?? null;
 
-            if (firstProject) {
-              saveStoredProject(userData.id, firstProject);
+            if (firstProject?.id) {
+              useProjectSelectionStore
+                .getState()
+                .setSelectedProjectId(userData.id, firstProject.id);
             }
           }
         } catch (error: unknown) {
@@ -273,24 +275,6 @@ export function AuthProvider({
 
     // Clear in-memory SWR cache so a different user never sees stale items
     await mutate(() => true, undefined, { revalidate: false });
-
-    // Clear any cached data from localStorage
-    if (typeof window !== "undefined") {
-      const keysToRemove: string[] = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (
-          key?.startsWith("project_") ||
-          key?.startsWith("bookings_") ||
-          key?.startsWith("assets_") ||
-          key?.startsWith("subcontractors_") ||
-          key?.startsWith("home_")
-        ) {
-          keysToRemove.push(key);
-        }
-      }
-      keysToRemove.forEach((key) => localStorage.removeItem(key));
-    }
 
     router.replace("/login");
   }, [router]);

@@ -39,7 +39,7 @@ import {
   isAxiosError,
 } from "@/types";
 import { reportError, reportMessage } from "@/lib/monitoring";
-import { readStoredProject } from "@/lib/projectStorage";
+import { useProjectSelectionStore } from "@/stores/projectSelectionStore";
 import {
   ASSET_TYPE_OPTIONS,
   MIN_PENDING_BOOKING_CAPACITY,
@@ -49,11 +49,6 @@ import {
 } from "@/lib/formOptions";
 
 // ===== TYPE DEFINITIONS (Matching AssetsTable.tsx exactly) =====
-interface Project {
-  id: string;
-  text: string;
-}
-
 interface AssetModalProps {
   isOpen: boolean;
   onClose: (open: boolean) => void;
@@ -250,7 +245,6 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
   onSave,
   assetData,
 }) => {
-  const [project, setProject] = useState<Project | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [impactDialogOpen, setImpactDialogOpen] = useState<boolean>(false);
@@ -263,6 +257,9 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
   >({});
   const { user } = useAuth();
   const userId = user?.id;
+  const selectedProjectId = useProjectSelectionStore((state) =>
+    userId ? state.selectedProjectIds[userId] ?? "" : "",
+  );
   const { confirmedCount, otherCount } =
     getImpactedBookingBreakdown(impactData);
 
@@ -296,27 +293,17 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
     }
   }, [assetData]);
 
-  // Load project from localStorage
+  // Keep asset project aligned with selected project when asset has none yet.
   useEffect(() => {
-    const parsedProject = readStoredProject(userId);
-    if (!parsedProject) {
-      return;
-    }
-
-    setProject({
-      id: parsedProject.id,
-      text: parsedProject.name || "",
-    });
-
-    // Update assetProject if not already set
+    if (!selectedProjectId) return;
     setAsset((prev) => {
       if (prev.assetProject) return prev;
       return {
         ...prev,
-        assetProject: parsedProject.id, //  Just the ID string
+        assetProject: selectedProjectId,
       };
     });
-  }, [userId]);
+  }, [selectedProjectId]);
 
   useEffect(() => {
     if (!impactDialogOpen || !impactData) return;

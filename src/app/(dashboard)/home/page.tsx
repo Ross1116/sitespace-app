@@ -37,15 +37,11 @@ import type { LucideIcon } from "lucide-react";
 import useSWR from "swr";
 import { swrFetcher, SWR_CONFIG } from "@/lib/swr";
 import {
-  readStoredProject,
-  removeStoredProject,
-  saveStoredProject,
-} from "@/lib/projectStorage";
-import {
   normalizeBookingList,
   normalizeProjectList,
 } from "@/lib/apiNormalization";
 import { getSubcontractorCount } from "@/lib/subcontractorNormalization";
+import { useProjectSelectionStore } from "@/stores/projectSelectionStore";
 
 // --- Types ---
 type Booking = ApiBooking;
@@ -92,12 +88,18 @@ export default function HomePage() {
   const canEditSitePlans =
     user?.role === "admin" || user?.role === "manager";
 
-  const [selectedProject, setSelectedProject] = useState<ApiProject | null>(
-    null,
-  );
   const [showProjectSelector, setShowProjectSelector] = useState(false);
 
   const userId = user?.id;
+  const selectedProjectId = useProjectSelectionStore((state) =>
+    userId ? state.selectedProjectIds[userId] ?? null : null,
+  );
+  const setSelectedProjectId = useProjectSelectionStore(
+    (state) => state.setSelectedProjectId,
+  );
+  const clearSelectedProjectId = useProjectSelectionStore(
+    (state) => state.clearSelectedProjectId,
+  );
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // --- SWR: Profile ---
@@ -126,54 +128,45 @@ export default function HomePage() {
     return normalizeProjectList(projectsRaw);
   }, [projectsRaw]);
 
-  // Prevent stale project context when auth session/user changes
-  useEffect(() => {
-    setSelectedProject(null);
-  }, [userId]);
+  const hasResolvedProjects = projectsRaw !== undefined || Boolean(projectsError);
 
-  // Set/validate project once projects load
+  const projectId = useMemo(() => {
+    if (!hasResolvedProjects) return selectedProjectId;
+    if (selectedProjectId && projects.some((project) => project.id === selectedProjectId)) {
+      return selectedProjectId;
+    }
+    return projects[0]?.id ?? null;
+  }, [hasResolvedProjects, projects, selectedProjectId]);
+
+  const selectedProject = useMemo<ApiProject | null>(() => {
+    if (!projectId) return null;
+    return projects.find((project) => project.id === projectId) ?? null;
+  }, [projectId, projects]);
+
+  // Reconcile persisted selection with live project list.
   useEffect(() => {
-    if (projects.length === 0) {
-      if (selectedProject) {
-        setSelectedProject(null);
-        removeStoredProject(userId);
+    if (!hasResolvedProjects) return;
+    if (!userId) return;
+
+    if (!projectId) {
+      if (selectedProjectId) {
+        clearSelectedProjectId(userId);
       }
       return;
     }
 
-    const currentProjectId = selectedProject?.id || selectedProject?.project_id;
-    if (currentProjectId) {
-      const matchingCurrent = projects.find(
-        (project) => project.id === currentProjectId,
-      );
-      if (matchingCurrent) {
-        setSelectedProject(matchingCurrent);
-        return;
-      }
-    }
-
-    const parsed = readStoredProject(userId);
-    if (parsed) {
-      const matchingStored = projects.find(
-        (project) => project.id === parsed.id,
-      );
-      if (matchingStored) {
-        setSelectedProject(matchingStored);
-        saveStoredProject(userId, matchingStored);
-        return;
-      }
-    }
-
-    const fallbackProject = projects[0];
-    if (!fallbackProject) {
+    if (projectId === selectedProjectId) {
       return;
     }
-
-    saveStoredProject(userId, fallbackProject);
-    setSelectedProject(fallbackProject);
-  }, [projects, selectedProject, userId]);
-
-  const projectId = selectedProject?.id || selectedProject?.project_id || null;
+    setSelectedProjectId(userId, projectId);
+  }, [
+    userId,
+    projectId,
+    selectedProjectId,
+    hasResolvedProjects,
+    clearSelectedProjectId,
+    setSelectedProjectId,
+  ]);
 
   // True while we have a user but haven't resolved a project yet —
   // prevents the empty state from flashing before data arrives.
@@ -247,12 +240,8 @@ export default function HomePage() {
   const handleProjectSelect = (proj: ApiProject) => {
     if (!proj || !proj.id) return;
     setShowProjectSelector(false);
-    setSelectedProject(proj);
-
-    // userId can be undefined during auth initialization or anonymous views
-    if (userId) {
-      saveStoredProject(userId, proj);
-    }
+    if (!userId) return;
+    setSelectedProjectId(userId, proj.id);
   };
 
   // --- Derived Data ---

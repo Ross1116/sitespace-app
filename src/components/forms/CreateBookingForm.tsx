@@ -61,7 +61,8 @@ import useSWR from "swr";
 import { swrFetcher } from "@/lib/swr";
 import { isAssetUnavailableForBooking } from "@/lib/assetStatus";
 import { reportError } from "@/lib/monitoring";
-import { readStoredProject, StoredProject } from "@/lib/projectStorage";
+import { normalizeProjectList } from "@/lib/apiNormalization";
+import { useProjectSelectionStore } from "@/stores/projectSelectionStore";
 import { BOOKING_PAGINATION_MAX_PAGES } from "@/lib/pagination";
 import { normalizeSubcontractorList } from "@/lib/subcontractorNormalization";
 import {
@@ -111,20 +112,6 @@ type AssetOption = ApiAsset & {
   assetTitle: string;
 };
 
-const mapStoredToApiProject = (
-  storedProject: StoredProject,
-): ApiProject | null => {
-  const projectId = storedProject.id?.trim();
-  if (!projectId) return null;
-
-  return {
-    id: projectId,
-    name: storedProject.name?.trim() || "Selected Project",
-    location: storedProject.location,
-    status: storedProject.status,
-  };
-};
-
 const isAbortError = (error: unknown, signal?: AbortSignal) => {
   if (signal?.aborted) return true;
   if (error instanceof Error && error.name === "CanceledError") return true;
@@ -167,7 +154,6 @@ interface AsyncState {
   isSubmitting: boolean;
   error: string | null;
   loadingSubcontractors: boolean;
-  project: ApiProject | null;
   subcontractors: Subcontractor[];
   successAlert: { isOpen: boolean; isConfirmed: boolean; count: number };
   partialSuccessAlert: {
@@ -201,7 +187,6 @@ type AssetAction =
 type AsyncAction =
   | { type: "SET_SUBMITTING"; value: boolean }
   | { type: "SET_ERROR"; error: string | null }
-  | { type: "SET_PROJECT"; project: ApiProject }
   | { type: "SET_SUBCONTRACTORS"; subs: Subcontractor[]; loading: boolean }
   | { type: "SET_LOADING_SUBS"; loading: boolean }
   | { type: "SHOW_SUCCESS"; isConfirmed: boolean; count: number }
@@ -409,7 +394,6 @@ const initialAsyncState: AsyncState = {
   isSubmitting: false,
   error: null,
   loadingSubcontractors: false,
-  project: null,
   subcontractors: [],
   successAlert: { isOpen: false, isConfirmed: false, count: 0 },
   partialSuccessAlert: {
@@ -425,8 +409,6 @@ function asyncReducer(state: AsyncState, action: AsyncAction): AsyncState {
       return { ...state, isSubmitting: action.value };
     case "SET_ERROR":
       return { ...state, error: action.error };
-    case "SET_PROJECT":
-      return { ...state, project: action.project };
     case "SET_SUBCONTRACTORS":
       return {
         ...state,
@@ -488,6 +470,15 @@ export function CreateBookingForm({
   const userId = user?.id;
   const isManager = user?.role === "manager" || user?.role === "admin";
   const isSubcontractor = user?.role === "subcontractor";
+  const selectedProjectId = useProjectSelectionStore((state) =>
+    userId ? state.selectedProjectIds[userId] ?? null : null,
+  );
+  const setSelectedProjectId = useProjectSelectionStore(
+    (state) => state.setSelectedProjectId,
+  );
+  const clearSelectedProjectId = useProjectSelectionStore(
+    (state) => state.clearSelectedProjectId,
+  );
 
   const [timeState, dispatchTime] = useReducer(timeReducer, initialTimeState);
   const [formState, dispatchForm] = useReducer(formReducer, initialFormState);
@@ -535,7 +526,6 @@ export function CreateBookingForm({
     isSubmitting,
     error,
     loadingSubcontractors,
-    project,
     subcontractors,
     successAlert,
     partialSuccessAlert,
@@ -570,30 +560,67 @@ export function CreateBookingForm({
     onClose();
   }, [resetForm, onClose]);
 
-  // ===== LOAD PROJECT FROM LOCALSTORAGE =====
-  useEffect(() => {
-    const storedProject = readStoredProject(userId);
-    if (storedProject) {
-      const project = mapStoredToApiProject(storedProject);
-      if (!project) {
-        reportError(
-          new Error("Invalid stored project payload"),
-          "CreateBookingForm: unable to map stored project to ApiProject",
-        );
-        return;
-      }
-      dispatchAsync({
-        type: "SET_PROJECT",
-        project,
-      });
+  const projectsUrl = useMemo(() => {
+    if (!userId) return null;
+    if (user?.role === "subcontractor")
+      return `/subcontractors/${userId}/projects`;
+    return "/projects/?my_projects=true&limit=100&skip=0";
+  }, [userId, user?.role]);
+
+  const { data: projectsRaw, error: projectsError } = useSWR(
+    projectsUrl,
+    swrFetcher,
+  );
+
+  const projects = useMemo<ApiProject[]>(() => {
+    if (!projectsRaw) return [];
+    return normalizeProjectList(projectsRaw);
+  }, [projectsRaw]);
+
+  const hasResolvedProjects = projectsRaw !== undefined || Boolean(projectsError);
+  const projectId = useMemo(() => {
+    if (!hasResolvedProjects) return selectedProjectId;
+    if (
+      selectedProjectId &&
+      projects.some((project) => project.id === selectedProjectId)
+    ) {
+      return selectedProjectId;
     }
-  }, [userId]);
+    return projects[0]?.id ?? null;
+  }, [hasResolvedProjects, selectedProjectId, projects]);
+
+  const project = useMemo<ApiProject | null>(() => {
+    if (!projectId) return null;
+    return projects.find((candidate) => candidate.id === projectId) ?? null;
+  }, [projectId, projects]);
+
+  // Reconcile persisted project selection against live projects.
+  useEffect(() => {
+    if (!userId || !hasResolvedProjects) return;
+
+    if (!projectId) {
+      if (selectedProjectId) {
+        clearSelectedProjectId(userId);
+      }
+      return;
+    }
+
+    if (projectId === selectedProjectId) return;
+    setSelectedProjectId(userId, projectId);
+  }, [
+    userId,
+    projectId,
+    selectedProjectId,
+    hasResolvedProjects,
+    clearSelectedProjectId,
+    setSelectedProjectId,
+  ]);
 
   // ===== LOAD ASSETS VIA SWR =====
   const assetSwrKey = useMemo(() => {
-    if (!project?.id) return null;
-    return `/assets/?project_id=${project.id}&skip=0&limit=100`;
-  }, [project]);
+    if (!projectId) return null;
+    return `/assets/?project_id=${projectId}&skip=0&limit=100`;
+  }, [projectId]);
 
   const { data: assetsResponse, error: assetsSwrError } = useSWR<{
     assets: ApiAsset[];
@@ -618,7 +645,7 @@ export function CreateBookingForm({
   useEffect(() => {
     const controller = new AbortController();
     const loadSubcontractors = async (signal: AbortSignal) => {
-      if (!project?.id || !isManager) return;
+      if (!projectId || !isManager) return;
 
       dispatchAsync({ type: "SET_LOADING_SUBS", loading: true });
       try {
@@ -627,7 +654,7 @@ export function CreateBookingForm({
             skip: 0,
             limit: 100,
             is_active: true,
-            project_id: project.id,
+            project_id: projectId,
           },
           signal,
         });
@@ -648,12 +675,12 @@ export function CreateBookingForm({
       }
     };
 
-    if (isOpen && project) {
+    if (isOpen && projectId) {
       loadSubcontractors(controller.signal);
       return () => controller.abort();
     }
     return undefined;
-  }, [isOpen, project, isManager, userId]);
+  }, [isOpen, projectId, isManager]);
 
   // ===== AUTO-SELECT SUBCONTRACTOR FOR SUB USERS =====
   useEffect(() => {
@@ -791,7 +818,7 @@ export function CreateBookingForm({
       return;
     }
 
-    if (!project) {
+    if (!projectId) {
       dispatchAsync({ type: "SET_ERROR", error: "No project selected" });
       return;
     }
@@ -824,7 +851,7 @@ export function CreateBookingForm({
           if (pageCount >= BOOKING_PAGINATION_MAX_PAGES) {
             reportError(
               new Error(
-                `Pagination guard triggered in CreateBookingForm: pageCount=${pageCount}, maxPages=${BOOKING_PAGINATION_MAX_PAGES}, projectId=${project.id}, bookingDate=${bookingDate}`,
+                `Pagination guard triggered in CreateBookingForm: pageCount=${pageCount}, maxPages=${BOOKING_PAGINATION_MAX_PAGES}, projectId=${projectId}, bookingDate=${bookingDate}`,
               ),
               "CreateBookingForm: pagination safety limit reached while loading existing bookings",
             );
@@ -835,7 +862,7 @@ export function CreateBookingForm({
 
           const existing = await api.get<BookingListResponse>(`/bookings/`, {
             params: {
-              project_id: project.id,
+              project_id: projectId,
               limit,
               skip,
               date_from: bookingDate,
@@ -946,7 +973,7 @@ export function CreateBookingForm({
       const results = await Promise.allSettled(
         selectedAssetIds.map(async (assetId) => {
           const bookingData: BookingCreateRequest = {
-            project_id: project.id,
+            project_id: projectId,
             asset_id: assetId,
             booking_date: bookingDate,
             start_time: startTimeFormatted,

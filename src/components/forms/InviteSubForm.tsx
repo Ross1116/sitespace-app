@@ -22,7 +22,7 @@ import { CheckCircle, AlertCircle, UserCheck, UserPlus } from "lucide-react";
 import api from "@/lib/api";
 import { useAuth } from "@/app/context/AuthContext";
 import { reportError } from "@/lib/monitoring";
-import { readStoredProject } from "@/lib/projectStorage";
+import { useProjectSelectionStore } from "@/stores/projectSelectionStore";
 import {
   normalizeSubcontractorList,
   type NormalizedSubcontractor,
@@ -153,6 +153,9 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
   const [success, setSuccess] = useState<string | null>(null);
   const { user } = useAuth();
   const userId = user?.id;
+  const selectedProjectId = useProjectSelectionStore((state) =>
+    userId ? state.selectedProjectIds[userId] ?? "" : "",
+  );
 
   const [contractor, setContractor] = useState<Contractor>({
     firstName: "",
@@ -161,19 +164,16 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
     contractorPhone: "",
     companyName: "",
     tradeSpecialty: "",
-    contractorProjectId: "",
+    contractorProjectId: selectedProjectId,
   });
 
   useEffect(() => {
-    const project = readStoredProject(userId);
-
-    if (project) {
-      setContractor((prev) => ({
-        ...prev,
-        contractorProjectId: project.id,
-      }));
-    }
-  }, [userId]);
+    if (!selectedProjectId) return;
+    setContractor((prev) => ({
+      ...prev,
+      contractorProjectId: prev.contractorProjectId || selectedProjectId,
+    }));
+  }, [selectedProjectId]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -188,10 +188,10 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
         contractorPhone: "",
         companyName: "",
         tradeSpecialty: "",
-        contractorProjectId: contractor.contractorProjectId,
+        contractorProjectId: selectedProjectId,
       });
     }
-  }, [isOpen]);
+  }, [isOpen, selectedProjectId]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;

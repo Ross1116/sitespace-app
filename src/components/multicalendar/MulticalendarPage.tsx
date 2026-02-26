@@ -20,14 +20,10 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ApiAsset, ApiBooking, ApiProject } from "@/types";
 import useSWR from "swr";
 import { swrFetcher, SWR_CONFIG } from "@/lib/swr";
-import {
-  readStoredProject,
-  saveStoredProject,
-  StoredProject,
-} from "@/lib/projectStorage";
 import { isAssetRetiredOrOutOfService } from "@/lib/assetStatus";
 import ComponentErrorBoundary from "@/components/ui/ComponentErrorBoundary";
 import { normalizeProjectList } from "@/lib/apiNormalization";
+import { useProjectSelectionStore } from "@/stores/projectSelectionStore";
 
 // ===== INTERFACES =====
 
@@ -94,18 +90,19 @@ export default function MulticalendarPage() {
 
   const { user, isLoading: authLoading } = useAuth();
   const userId = user?.id;
+  const selectedProjectId = useProjectSelectionStore((state) =>
+    userId ? state.selectedProjectIds[userId] ?? null : null,
+  );
+  const setSelectedProjectId = useProjectSelectionStore(
+    (state) => state.setSelectedProjectId,
+  );
+  const clearSelectedProjectId = useProjectSelectionStore(
+    (state) => state.clearSelectedProjectId,
+  );
 
   // Visibility State
   const [initialLoad, setInitialLoad] = useState(true);
   const [visibleAssets, setVisibleAssets] = useState<number[]>([]);
-
-  // Start deterministic for SSR/hydration, then load from localStorage on mount.
-  const [storedProject, setStoredProject] = useState<StoredProject | null>(null);
-
-  // Re-read from localStorage when userId changes
-  useEffect(() => {
-    setStoredProject(userId ? readStoredProject(userId) : null);
-  }, [userId]);
 
   // Fetch projects for reconciliation and project selector updates.
   const projectsUrl = useMemo(() => {
@@ -127,39 +124,39 @@ export default function MulticalendarPage() {
     return normalizeProjectList(projectsRaw);
   }, [projectsRaw]);
 
-  // Save first project to localStorage if none exists
-  useEffect(() => {
-    if (!userId || storedProject?.id || projects.length === 0) return;
-    const firstProject = projects[0];
-    if (firstProject?.id) {
-      saveStoredProject(userId, firstProject);
-      setStoredProject(firstProject);
+  const hasResolvedProjects = projectsRaw !== undefined || Boolean(projectsError);
+
+  // Use persisted selection when valid; otherwise fallback to first fetched project.
+  const projectId = useMemo(() => {
+    if (!hasResolvedProjects) return selectedProjectId;
+    if (selectedProjectId && projects.some((project) => project.id === selectedProjectId)) {
+      return selectedProjectId;
     }
-  }, [userId, storedProject?.id, projects]);
+    if (projects.length > 0) return projects[0]?.id ?? null;
+    return null;
+  }, [hasResolvedProjects, selectedProjectId, projects]);
 
-  // Reconcile stored project against live projects to recover from stale/deleted IDs.
+  // Reconcile persisted selection against live project list.
   useEffect(() => {
-    if (!userId || !storedProject?.id || projects.length === 0) return;
+    if (!userId || !hasResolvedProjects) return;
 
-    const stillExists = projects.some((project) => project.id === storedProject.id);
-    if (stillExists) return;
-
-    const fallbackProject = projects[0] ?? null;
-    if (fallbackProject?.id) {
-      saveStoredProject(userId, fallbackProject);
-      setStoredProject(fallbackProject);
+    if (!projectId) {
+      if (selectedProjectId) {
+        clearSelectedProjectId(userId);
+      }
       return;
     }
 
-    setStoredProject(null);
-  }, [userId, storedProject?.id, projects]);
-
-  // Use stored project or first fetched project
-  const projectId = useMemo(() => {
-    if (storedProject?.id) return storedProject.id;
-    if (projects.length > 0) return projects[0]?.id ?? null;
-    return null;
-  }, [storedProject?.id, projects]);
+    if (projectId === selectedProjectId) return;
+    setSelectedProjectId(userId, projectId);
+  }, [
+    userId,
+    projectId,
+    selectedProjectId,
+    hasResolvedProjects,
+    clearSelectedProjectId,
+    setSelectedProjectId,
+  ]);
 
   // Date range: currently viewed date ± 45 days
   const { dateFrom, dateTo } = useMemo(() => {

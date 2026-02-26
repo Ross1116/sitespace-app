@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { reportError } from "@/lib/monitoring";
 import { AuthFormMotion } from "@/components/auth/AuthFormMotion";
+import { useAuthPreferencesStore } from "@/stores/authPreferencesStore";
 
 export function LoginForm({ justRegistered }: { justRegistered: boolean }) {
   const [email, setEmail] = useState("");
@@ -20,6 +21,15 @@ export function LoginForm({ justRegistered }: { justRegistered: boolean }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { login, error, clearError, isAuthenticated } = useAuth();
+  const rememberedEmail = useAuthPreferencesStore(
+    (state) => state.rememberedEmail,
+  );
+  const setRememberedEmail = useAuthPreferencesStore(
+    (state) => state.setRememberedEmail,
+  );
+  const clearRememberedEmail = useAuthPreferencesStore(
+    (state) => state.clearRememberedEmail,
+  );
   const router = useRouter();
 
   useEffect(() => {
@@ -27,12 +37,11 @@ export function LoginForm({ justRegistered }: { justRegistered: boolean }) {
   }, [isAuthenticated, router]);
 
   useEffect(() => {
-    const savedEmail = localStorage.getItem("rememberedEmail");
-    if (savedEmail) {
-      setEmail(savedEmail);
+    if (rememberedEmail) {
+      setEmail((currentEmail) => currentEmail || rememberedEmail);
       setRememberEmail(true);
     }
-  }, []);
+  }, [rememberedEmail]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -46,9 +55,9 @@ export function LoginForm({ justRegistered }: { justRegistered: boolean }) {
     try {
       await login(email, password);
       if (rememberEmail) {
-        localStorage.setItem("rememberedEmail", email);
+        setRememberedEmail(email);
       } else {
-        localStorage.removeItem("rememberedEmail");
+        clearRememberedEmail();
       }
     } catch (err: unknown) {
       reportError(err, "Login page: login submission failed");

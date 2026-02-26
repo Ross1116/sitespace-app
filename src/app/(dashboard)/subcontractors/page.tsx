@@ -25,11 +25,12 @@ import { ApiProject } from "@/types";
 import useSWR from "swr";
 import { swrFetcher, SWR_CONFIG } from "@/lib/swr";
 import { useRouter } from "next/navigation";
-import { readStoredProject } from "@/lib/projectStorage";
+import { normalizeProjectList } from "@/lib/apiNormalization";
 import {
   normalizeSubcontractorList,
   type NormalizedSubcontractor,
 } from "@/lib/subcontractorNormalization";
+import { useProjectSelectionStore } from "@/stores/projectSelectionStore";
 
 interface Contractor {
   contractorKey: string;
@@ -103,6 +104,15 @@ export default function SubcontractorsPage() {
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const userId = user?.id;
+  const selectedProjectId = useProjectSelectionStore((state) =>
+    userId ? state.selectedProjectIds[userId] ?? null : null,
+  );
+  const setSelectedProjectId = useProjectSelectionStore(
+    (state) => state.setSelectedProjectId,
+  );
+  const clearSelectedProjectId = useProjectSelectionStore(
+    (state) => state.clearSelectedProjectId,
+  );
 
   useEffect(() => {
     if (user?.role === "subcontractor") {
@@ -110,25 +120,97 @@ export default function SubcontractorsPage() {
     }
   }, [user?.role, router]);
 
-  // Re-read project on cross-tab changes
-  const [projectVersion, setProjectVersion] = useState(0);
+  const projectsUrl = useMemo(() => {
+    if (!userId) return null;
+    if (user?.role === "subcontractor")
+      return `/subcontractors/${userId}/projects`;
+    return "/projects/?my_projects=true&limit=100&skip=0";
+  }, [userId, user?.role]);
+
+  const { data: projectsRaw, error: projectsError } = useSWR(
+    projectsUrl,
+    swrFetcher,
+    SWR_CONFIG,
+  );
+
+  const projects = useMemo<ApiProject[]>(() => {
+    if (!projectsRaw) return [];
+    return normalizeProjectList(projectsRaw);
+  }, [projectsRaw]);
+
+  const hasResolvedProjects = projectsRaw !== undefined || Boolean(projectsError);
+  const projectId = useMemo(() => {
+    if (!hasResolvedProjects) return selectedProjectId;
+    if (
+      selectedProjectId &&
+      projects.some((project) => project.id === selectedProjectId)
+    ) {
+      return selectedProjectId;
+    }
+    return projects[0]?.id ?? null;
+  }, [hasResolvedProjects, selectedProjectId, projects]);
+
   useEffect(() => {
+    if (!userId || !hasResolvedProjects) return;
+
+    if (!projectId) {
+      if (selectedProjectId) {
+        clearSelectedProjectId(userId);
+      }
+      return;
+    }
+
+    if (projectId === selectedProjectId) return;
+    setSelectedProjectId(userId, projectId);
+  }, [
+    userId,
+    projectId,
+    selectedProjectId,
+    hasResolvedProjects,
+    clearSelectedProjectId,
+    setSelectedProjectId,
+  ]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [projectId]);
+
+  // Keep store in sync with cross-tab persisted updates.
+  useEffect(() => {
+    if (!userId) return;
+
     const handler = (e: StorageEvent) => {
-      if (!userId || e.key !== `project_${userId}`) return;
-      setProjectVersion((v) => v + 1);
-      setCurrentPage(1);
+      if (e.key !== "project-selection-v1") return;
+
+      const raw = e.newValue;
+      if (!raw) {
+        clearSelectedProjectId(userId);
+        setCurrentPage(1);
+        return;
+      }
+
+      try {
+        const parsed = JSON.parse(raw) as {
+          state?: { selectedProjectIds?: Record<string, string> };
+        };
+        const incomingId = parsed?.state?.selectedProjectIds?.[userId] ?? null;
+        const currentId =
+          useProjectSelectionStore.getState().selectedProjectIds[userId] ?? null;
+
+        if (incomingId && incomingId !== currentId) {
+          setSelectedProjectId(userId, incomingId);
+        } else if (!incomingId && currentId) {
+          clearSelectedProjectId(userId);
+        }
+        setCurrentPage(1);
+      } catch {
+        // Ignore malformed persisted payloads.
+      }
     };
+
     window.addEventListener("storage", handler);
     return () => window.removeEventListener("storage", handler);
-  }, [userId]);
-
-  // Build project-aware memo (recomputes when projectVersion bumps)
-  const projectId = useMemo(() => {
-    if (!userId) return null;
-    const proj = readStoredProject(userId);
-    return proj?.id ?? null;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, projectVersion]);
+  }, [userId, clearSelectedProjectId, setSelectedProjectId]);
 
   // SWR — role-based endpoint
   const swrKey = useMemo(() => {
