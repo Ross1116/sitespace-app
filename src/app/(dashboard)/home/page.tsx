@@ -115,7 +115,11 @@ export default function HomePage() {
     return "/projects/?my_projects=true&limit=100&skip=0";
   }, [userId, user?.role]);
 
-  const { data: projectsRaw } = useSWR(projectsUrl, swrFetcher, SWR_CONFIG);
+  const {
+    data: projectsRaw,
+    error: projectsError,
+    isLoading: projectsLoading,
+  } = useSWR(projectsUrl, swrFetcher, SWR_CONFIG);
 
   const projects = useMemo<ApiProject[]>(() => {
     if (!projectsRaw) return [];
@@ -173,7 +177,11 @@ export default function HomePage() {
 
   // True while we have a user but haven't resolved a project yet —
   // prevents the empty state from flashing before data arrives.
-  const isDataLoading = !!userId && projectId === null && projectsRaw === undefined;
+  const isDataLoading =
+    !!userId &&
+    projectId === null &&
+    !projectsError &&
+    (projectsLoading || projectsRaw === undefined);
 
   // --- SWR: Assets count ---
   const { data: assetsData } = useSWR(
@@ -485,7 +493,7 @@ export default function HomePage() {
             )}
 
             <div className="bg-white rounded-2xl shadow-sm p-5 sm:p-6 min-h-[400px] border border-slate-100 flex flex-col">
-              {loadingBookings || isDataLoading ? (
+              {loadingBookings || isDataLoading || authLoading ? (
                 <div className="space-y-4">
                   {[1, 2, 3, 4].map((i) => (
                     <Skeleton key={i} className="h-24 w-full rounded-xl" />

@@ -5,7 +5,6 @@ import { AuthProvider } from "./context/AuthContext";
 import PostHogProvider from "./context/PostHogProvider";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import GlobalNetworkLoadingBar from "@/components/ui/GlobalNetworkLoadingBar";
-import { getServerUser } from "@/lib/serverAuth";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -43,13 +42,11 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const initialUser = await getServerUser();
-
   return (
     <html lang="en">
       <body
@@ -58,7 +55,7 @@ export default async function RootLayout({
         <GlobalNetworkLoadingBar />
         <SpeedInsights />
         <PostHogProvider>
-          <AuthProvider initialUser={initialUser}>{children}</AuthProvider>
+          <AuthProvider>{children}</AuthProvider>
         </PostHogProvider>
       </body>
     </html>

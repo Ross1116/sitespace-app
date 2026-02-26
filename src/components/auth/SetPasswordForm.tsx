@@ -24,6 +24,7 @@ export function SetPasswordForm({ initialToken }: { initialToken: string | null 
   const router = useRouter();
   const { isAuthenticated, logout } = useAuth();
   const hasScrubbed = useRef(false);
+  const redirectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [token] = useState(initialToken);
   const [tokenValid] = useState(Boolean(initialToken));
@@ -47,6 +48,14 @@ export function SetPasswordForm({ initialToken }: { initialToken: string | null 
     window.history.replaceState({}, "", window.location.pathname);
   }, [token]);
 
+  useEffect(() => {
+    return () => {
+      if (redirectTimeoutRef.current) {
+        clearTimeout(redirectTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password !== confirmPassword) {
@@ -62,7 +71,10 @@ export function SetPasswordForm({ initialToken }: { initialToken: string | null 
     try {
       await api.post("/auth/reset-password", { token, password, confirm_password: confirmPassword });
       setStatus({ type: "success", message: "Account activated successfully! Redirecting..." });
-      setTimeout(() => router.push("/login"), 2000);
+      if (redirectTimeoutRef.current) {
+        clearTimeout(redirectTimeoutRef.current);
+      }
+      redirectTimeoutRef.current = setTimeout(() => router.push("/login"), 2000);
     } catch (error: unknown) {
       setStatus({ type: "error", message: getApiErrorMessage(error, "Invitation link expired or invalid.") });
     }
@@ -129,6 +141,8 @@ export function SetPasswordForm({ initialToken }: { initialToken: string | null 
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-pressed={showPassword}
               >
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>

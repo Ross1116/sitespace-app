@@ -64,7 +64,7 @@ export function AuthProvider({
 }) {
   const [user, setUser] = useState<User | null>(initialUser ?? null);
   // Start initialized if the server confirmed a real user — skips the client-side auth fetch
-  const [isInitialized, setIsInitialized] = useState(!!initialUser);
+  const [isInitialized, setIsInitialized] = useState(initialUser !== undefined);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const { mutate } = useSWRConfig();
@@ -131,8 +131,10 @@ export function AuthProvider({
     initAttempted.current = true;
 
     // Server already confirmed a real user — skip the round-trip, just run telemetry
-    if (initialUser) {
-      void identifyTelemetryUser(initialUser);
+    if (initialUser !== undefined) {
+      if (initialUser) {
+        void identifyTelemetryUser(initialUser);
+      }
       return;
     }
 

@@ -203,7 +203,7 @@ export default function MulticalendarPage() {
       .map((booking) => processBookingToEvent(booking, userId));
   }, [calendarData, userId]);
 
-  const isPageLoading = loading || authLoading;
+  const isPageLoading = loading || authLoading || projectsLoading;
 
   const error = useMemo(() => {
     if (fetchError) return "Failed to fetch calendar data";

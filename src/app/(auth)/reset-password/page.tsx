@@ -5,10 +5,12 @@ import { ResetPasswordForm } from "@/components/auth/ResetPasswordForm";
 export default async function ResetPasswordPage({
   searchParams,
 }: {
-  searchParams: Promise<{ token?: string }>;
+  searchParams: Promise<{ token?: string | string[] }>;
 }) {
   const params = await searchParams;
-  const token = params.token ?? null;
+  const token = Array.isArray(params.token)
+    ? (params.token[0] ?? null)
+    : (params.token ?? null);
 
   return (
     <div className="flex min-h-screen w-full bg-white font-sans">
