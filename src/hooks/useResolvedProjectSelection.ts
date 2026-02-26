@@ -102,6 +102,28 @@ export function useResolvedProjectSelection({
     setSelectedProjectId,
   ]);
 
+  // Keep the store in sync when another tab writes a new project selection to
+  // localStorage. Calling rehydrate() is enough — Zustand's reactive
+  // subscription handles the rest (selectedProjectId → projectId → re-render).
+  useEffect(() => {
+    if (!userKey) return;
+    const persistApi = useProjectSelectionStore.persist;
+    const storageKey = persistApi.getOptions().name;
+
+    const handler = (e: StorageEvent) => {
+      if (e.key !== storageKey && e.key !== null) return;
+      void Promise.resolve(persistApi.rehydrate()).catch((err: unknown) =>
+        console.error(
+          "useResolvedProjectSelection: rehydrate failed on storage event",
+          err,
+        ),
+      );
+    };
+
+    window.addEventListener("storage", handler);
+    return () => window.removeEventListener("storage", handler);
+  }, [userKey]);
+
   const projectBootstrapLoading =
     Boolean(userKey) &&
     projectId === null &&
