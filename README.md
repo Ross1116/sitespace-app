@@ -95,6 +95,7 @@ Built with **Next.js 16**, **React 19**, **TypeScript**, and **Tailwind CSS 4**.
 | Styling         | Tailwind CSS 4, CSS Variables (OKLch)            |
 | Components      | Radix UI primitives, shadcn/ui (New York style)  |
 | Data Fetching   | SWR                                              |
+| Client State    | React Context + Zustand                          |
 | HTTP Client     | Axios                                            |
 | Icons           | Lucide React                                     |
 | Dates           | date-fns                                         |
@@ -138,7 +139,8 @@ src/
 │   │   └── AuthContext.tsx         # Global auth state, session timeout
 │   ├── layout.tsx                  # Root layout (AuthProvider, fonts)
 │   ├── page.tsx                    # Landing page
-│   └── unauthorized/page.tsx
+│   ├── not-found.tsx
+│   └── global-error.tsx
 ├── components/
 │   ├── bookings/                   # Booking list, cards, dropdowns, history
 │   ├── multicalendar/              # Calendar views, asset filter, header
@@ -147,19 +149,29 @@ src/
 │   ├── landing/                    # Landing page sections
 │   ├── ui/                         # shadcn/ui components + custom full-calendar
 │   ├── SideNav.tsx                 # Sidebar navigation
-│   ├── TopNav.tsx                  # Top navigation bar
-│   └── ProtectedRoute.tsx          # Route protection wrapper
+│   └── TopNav.tsx                  # Top navigation bar
+├── hooks/
+│   ├── bookings/                   # Unified bookings domain keys/queries/mutations
+│   ├── useResolvedProjectSelection.ts
+│   ├── useProjectBookingsList.ts
+│   ├── useProjectAssets.ts
+│   └── useProjectSubcontractors.ts
 ├── lib/
 │   ├── api.ts                      # Axios client with interceptors
+│   ├── apiNormalization.ts         # API payload normalization helpers
 │   ├── rateLimit.ts                # Shared in-memory API rate limiting utility
 │   ├── swr.ts                      # Shared SWR fetcher and config
 │   ├── bookingHelpers.ts           # Date/time formatting utilities
 │   ├── multicalendarHelpers.ts     # Calendar view helpers
-│   ├── data.ts                     # App data definitions
+│   ├── serverAuth.ts               # Server-side auth helper
 │   ├── landingData.ts              # Landing page content
 │   └── utils.ts                    # cn() Tailwind class merge utility
+├── stores/
+│   ├── projectSelectionStore.ts    # Persisted per-user selected project
+│   └── authPreferencesStore.ts     # Persisted auth UI preferences
 ├── types/
 │   ├── index.ts                    # Shared TypeScript interfaces
+│   ├── auth.ts                     # Shared auth user type
 │   └── images.d.ts                 # Image module declarations
 └── proxy.ts                         # Auth + CSRF proxy
 ```
@@ -208,6 +220,13 @@ NEXT_PUBLIC_API_URL=https://your-backend-api.com/api
 
 # Frontend app URL
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Sentry (optional)
+SENTRY_AUTH_TOKEN=
+
+# PostHog (optional)
+NEXT_PUBLIC_POSTHOG_KEY=
+NEXT_PUBLIC_POSTHOG_HOST=https://eu.i.posthog.com
 ```
 
 The backend is a Python API deployed on Railway. The `NEXT_PUBLIC_API_URL` should point to the `/api` base path of that service.
@@ -237,9 +256,10 @@ All API calls route through `/api/proxy` instead of hitting the backend directly
 
 - **React Context** for authentication state (`AuthContext`)
 - **Feature-local context** for callback/state de-drilling in booking and multicalendar interaction chains
-- **SWR** for all server data (bookings, assets, subcontractors, projects, profile)
-- **localStorage** only for project selection persistence
-- No external state library (Redux, Zustand, etc.)
+- **Zustand stores** for lightweight persisted client state:
+  - `projectSelectionStore` (per-user selected project)
+  - `authPreferencesStore` (remembered login email)
+- **SWR** for server data caching/revalidation (bookings, assets, subcontractors, projects, profile)
 
 ### Data Fetching
 
@@ -249,6 +269,7 @@ All dashboard pages use SWR with a shared config (`src/lib/swr.ts`):
 - 30-second request deduplication
 - Automatic revalidation on tab focus and network reconnection
 - Shared cache across components (same key = same data)
+- Bookings reads/writes are centralized in `src/hooks/bookings/` with shared keys, conflict helpers, and coordinated invalidation/optimistic updates
 
 ---
 

@@ -87,12 +87,15 @@ export default function BookingCardDropdown({
     | "cancelled"
     | "denied";
 
-  const handleUpdateBookingStatus = async (newStatus: BookingStatusType) => {
+  const handleUpdateBookingStatus = async (
+    newStatus: BookingStatusType,
+    projectIdParam: string | null = resolvedProjectId,
+  ) => {
     setIsLoading(true);
     try {
       await updateBookingStatus({
         bookingId: bookingKey,
-        projectId: resolvedProjectId,
+        projectId: projectIdParam,
         status: newStatus,
       });
       onActionComplete?.();
@@ -142,7 +145,7 @@ export default function BookingCardDropdown({
         setIsConfirmModalOpen(true);
       } else {
         setCompetingPendingBookings([]);
-        await handleUpdateBookingStatus("confirmed");
+        await handleUpdateBookingStatus("confirmed", currentProjectId);
       }
     } catch (error: unknown) {
       reportError(

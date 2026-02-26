@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -89,6 +89,60 @@ export default function RescheduleBookingForm({
     DEFAULT_BOOKING_DURATION_MINUTES.toString(),
   );
 
+  const fetchBookingDetails = useCallback(
+    async (signal?: AbortSignal) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const booking = await fetchBookingById(bookingId, signal);
+        if (signal?.aborted) return;
+
+        // 1. Set Basic Info
+        setTitle(booking.purpose || booking.notes?.split("\n")[0] || "Booking");
+        setNotes(booking.notes || "");
+        setProjectId(booking.project_id ?? null);
+
+        if (booking.asset) {
+          setAssetName(booking.asset.name);
+          setAssetCode(booking.asset.asset_code || "");
+        }
+
+        // 2. Set Date
+        const dateObj = new Date(booking.booking_date);
+        setSelectedDate(dateObj);
+
+        // 3. Parse Times (Backend sends "HH:mm:ss")
+        const startDate = parse(booking.start_time, "HH:mm:ss", new Date());
+        const endDate = parse(booking.end_time, "HH:mm:ss", new Date());
+
+        setStartHour(format(startDate, "HH"));
+        setStartMinute(format(startDate, "mm"));
+
+        setEndHour(format(endDate, "HH"));
+        setEndMinute(format(endDate, "mm"));
+
+        // 4. Calculate Duration
+        const diff = differenceInMinutes(endDate, startDate);
+        setDuration(diff.toString());
+      } catch (err: unknown) {
+        if (isAbortError(err, signal)) return;
+        reportError(
+          err,
+          "RescheduleBookingForm: failed to fetch booking details",
+        );
+        setError(
+          getApiErrorMessage(
+            err,
+            "Failed to load booking details. Please try again.",
+          ),
+        );
+      } finally {
+        if (!signal?.aborted) setLoading(false);
+      }
+    },
+    [bookingId],
+  );
+
   // Fetch Booking Details on Open
   useEffect(() => {
     const controller = new AbortController();
@@ -96,58 +150,7 @@ export default function RescheduleBookingForm({
       fetchBookingDetails(controller.signal);
     }
     return () => controller.abort();
-  }, [isOpen, bookingId]);
-
-  const fetchBookingDetails = async (signal?: AbortSignal) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const booking = await fetchBookingById(bookingId, signal);
-      if (signal?.aborted) return;
-
-      // 1. Set Basic Info
-      setTitle(booking.purpose || booking.notes?.split("\n")[0] || "Booking");
-      setNotes(booking.notes || "");
-      setProjectId(booking.project_id ?? null);
-
-      if (booking.asset) {
-        setAssetName(booking.asset.name);
-        setAssetCode(booking.asset.asset_code || "");
-      }
-
-      // 2. Set Date
-      const dateObj = new Date(booking.booking_date);
-      setSelectedDate(dateObj);
-
-      // 3. Parse Times (Backend sends "HH:mm:ss")
-      const startDate = parse(booking.start_time, "HH:mm:ss", new Date());
-      const endDate = parse(booking.end_time, "HH:mm:ss", new Date());
-
-      setStartHour(format(startDate, "HH"));
-      setStartMinute(format(startDate, "mm"));
-
-      setEndHour(format(endDate, "HH"));
-      setEndMinute(format(endDate, "mm"));
-
-      // 4. Calculate Duration
-      const diff = differenceInMinutes(endDate, startDate);
-      setDuration(diff.toString());
-    } catch (err: unknown) {
-      if (isAbortError(err, signal)) return;
-      reportError(
-        err,
-        "RescheduleBookingForm: failed to fetch booking details",
-      );
-      setError(
-        getApiErrorMessage(
-          err,
-          "Failed to load booking details. Please try again.",
-        ),
-      );
-    } finally {
-      if (!signal?.aborted) setLoading(false);
-    }
-  };
+  }, [isOpen, bookingId, fetchBookingDetails]);
 
   // --- Time Logic Handlers ---
 

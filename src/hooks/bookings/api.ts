@@ -194,7 +194,11 @@ export async function fetchBookingsForDate({
     const normalized = normalizeBookingListResponse(response.data, limit, skip);
     collected.push(...normalized.bookings);
     hasMore = normalized.has_more;
-    skip += limit;
+    const responseLimit =
+      isRecord(response.data) && typeof response.data.limit === "number"
+        ? response.data.limit
+        : undefined;
+    skip += responseLimit ?? normalized.bookings.length;
     pageCount += 1;
   }
 
@@ -263,15 +267,16 @@ export async function fetchCompetingPendingBookingsForBooking(
   booking: ApiBooking,
   context: string,
 ): Promise<ApiBooking[]> {
-  const { booking_date, start_time, end_time, asset_id, project_id, id } =
+  const { booking_date, start_time, end_time, asset_id, project_id, project, id } =
     booking;
+  const effectiveProjectId = project_id ?? project?.id ?? null;
 
-  if (!booking_date || !start_time || !end_time || !asset_id || !project_id) {
+  if (!booking_date || !start_time || !end_time || !asset_id || !effectiveProjectId) {
     return [];
   }
 
   const sameDateBookings = await fetchBookingsForDate({
-    projectId: project_id,
+    projectId: effectiveProjectId,
     bookingDate: booking_date,
     context,
   });

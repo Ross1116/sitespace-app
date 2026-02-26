@@ -71,7 +71,7 @@ export const bookingsKeys = {
 };
 
 export const isBookingsDomainKey = (key: unknown): key is string =>
-  typeof key === "string" && key.startsWith("/bookings");
+  typeof key === "string" && /^\/bookings(\/|$)/.test(key);
 
 export const isBookingsCollectionKey = (key: unknown): key is string => {
   if (!isBookingsDomainKey(key)) return false;
