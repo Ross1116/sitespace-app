@@ -45,11 +45,14 @@ import {
   ApiManager,
   AuditEntry,
   AuditTrailResponse,
-  BookingListResponse,
   getApiErrorMessage,
 } from "@/types";
 import { reportError } from "@/lib/monitoring";
-import { BOOKING_PAGINATION_MAX_PAGES } from "@/lib/pagination";
+import {
+  fetchBookingById,
+  fetchCompetingPendingBookingsForBooking,
+} from "@/hooks/bookings/api";
+import { useBookingMutations } from "@/hooks/bookings/useBookingMutations";
 
 type BookingDetail = Omit<ApiBooking, "manager" | "asset"> & {
   manager?: (ApiManager & { email?: string }) | null;
@@ -102,6 +105,7 @@ export function BookingDetailsDialog({
   onActionComplete,
 }: BookingDetailsDialogProps) {
   const { user } = useAuth();
+  const { updateBookingStatus, deleteBooking } = useBookingMutations();
 
   // Data States
   const [data, setData] = useState<BookingDetail | null>(null);
@@ -138,11 +142,12 @@ export function BookingDetailsDialog({
     setLoading(true);
     setCreatedByEntry(null);
     try {
-      const res = await api.get<BookingDetail>(`/bookings/${bookingId}`, {
-        signal,
-      });
+      if (!bookingId) {
+        throw new Error("Missing booking id");
+      }
+      const booking = await fetchBookingById(bookingId, signal);
       if (signal?.aborted) return;
-      setData(res.data);
+      setData(booking);
       setLoading(false);
 
       void (async () => {
@@ -329,9 +334,13 @@ export function BookingDetailsDialog({
   const handleUpdateStatus = async (newStatus: string) => {
     setActionLoading(true);
     try {
-      // API LOGIC: Always send UPPERCASE to satisfy Backend Enums
-      await api.patch(`/bookings/${bookingId}/status`, {
-        status: newStatus.toUpperCase(),
+      if (!bookingId) {
+        throw new Error("Missing booking id");
+      }
+      await updateBookingStatus({
+        bookingId,
+        projectId: data?.project_id ?? null,
+        status: newStatus,
       });
       setConfirmAction({ ...confirmAction, isOpen: false });
       if (onActionComplete) onActionComplete();
@@ -346,8 +355,12 @@ export function BookingDetailsDialog({
   const handleDelete = async () => {
     setActionLoading(true);
     try {
-      await api.delete(`/bookings/${bookingId}`, {
-        params: { hard_delete: true },
+      if (!bookingId) {
+        throw new Error("Missing booking id");
+      }
+      await deleteBooking({
+        bookingId,
+        projectId: data?.project_id ?? null,
       });
       setConfirmAction({ ...confirmAction, isOpen: false });
       if (onActionComplete) onActionComplete();
@@ -364,78 +377,23 @@ export function BookingDetailsDialog({
     bookings: ApiBooking[];
   } | null> => {
     try {
-      const res = await api.get<BookingDetail>(`/bookings/${bookingId}`);
-      setData(res.data);
-      const competingCount = res.data.competing_pending_count ?? 0;
+      if (!bookingId) return null;
+      const booking = await fetchBookingById(bookingId);
+      setData(booking);
+      const competingCount = booking.competing_pending_count ?? 0;
 
       if (competingCount === 0) {
         return { count: 0, bookings: [] };
       }
 
-      const { booking_date, start_time, end_time, asset_id, project_id } =
-        res.data;
+      const { booking_date, start_time, end_time, asset_id } = booking;
       if (!booking_date || !start_time || !end_time || !asset_id) {
         return { count: competingCount, bookings: [] };
       }
-
-      const limit = 200;
-      let skip = 0;
-      let hasMore = true;
-      let pageCount = 0;
-      let guardTriggered = false;
-      const collected: ApiBooking[] = [];
-
-      while (hasMore) {
-        if (pageCount >= BOOKING_PAGINATION_MAX_PAGES) {
-          guardTriggered = true;
-          reportError(
-            new Error(
-              `Pagination guard triggered in BookingDetailDialog: pageCount=${pageCount}, maxPages=${BOOKING_PAGINATION_MAX_PAGES}, bookingId=${bookingId}, projectId=${project_id ?? "unknown"}`,
-            ),
-            "BookingDetailDialog: pagination safety limit reached while loading competing pending bookings",
-          );
-          break;
-        }
-
-        const listRes = await api.get<BookingListResponse>(`/bookings/`, {
-          params: {
-            project_id,
-            date_from: booking_date,
-            date_to: booking_date,
-            limit,
-            skip,
-          },
-        });
-
-        collected.push(...(listRes.data.bookings || []));
-        hasMore = Boolean(listRes.data.has_more);
-        skip += limit;
-        pageCount += 1;
-      }
-
-      const normalizeTime = (value: string) =>
-        value.split(":").slice(0, 2).join(":");
-      const normalizedStart = normalizeTime(start_time);
-      const normalizedEnd = normalizeTime(end_time);
-
-      const matchedPending = collected.filter((booking) => {
-        const status = (booking.status || "").toLowerCase();
-        return (
-          status === "pending" &&
-          booking.id !== bookingId &&
-          booking.asset_id === asset_id &&
-          booking.booking_date === booking_date &&
-          normalizeTime(booking.start_time) === normalizedStart &&
-          normalizeTime(booking.end_time) === normalizedEnd
-        );
-      });
-
-      if (guardTriggered) {
-        return {
-          count: competingCount,
-          bookings: [],
-        };
-      }
+      const matchedPending = await fetchCompetingPendingBookingsForBooking(
+        booking,
+        "BookingDetailDialog",
+      );
 
       return {
         count: matchedPending.length || competingCount,

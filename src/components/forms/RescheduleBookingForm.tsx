@@ -20,7 +20,6 @@ import {
 } from "@/components/ui/select";
 import { format, addMinutes, parse, differenceInMinutes } from "date-fns";
 import { CalendarIcon, Clock, AlertTriangle } from "lucide-react";
-import api from "@/lib/api";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -31,6 +30,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { getApiErrorMessage } from "@/types";
 import { reportError } from "@/lib/monitoring";
+import { fetchBookingById } from "@/hooks/bookings/api";
+import { useBookingMutations } from "@/hooks/bookings/useBookingMutations";
 import {
   BOOKING_DURATION_OPTIONS,
   QUARTER_HOUR_OPTIONS,
@@ -66,9 +67,11 @@ export default function RescheduleBookingForm({
   bookingId,
   onSave,
 }: RescheduleBookingFormProps) {
+  const { updateBooking } = useBookingMutations();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [projectId, setProjectId] = useState<string | null>(null);
 
   // Form State
   const [title, setTitle] = useState("");
@@ -99,17 +102,17 @@ export default function RescheduleBookingForm({
     setLoading(true);
     setError(null);
     try {
-      const response = await api.get(`/bookings/${bookingId}`, { signal });
+      const booking = await fetchBookingById(bookingId, signal);
       if (signal?.aborted) return;
-      const booking = response.data;
 
       // 1. Set Basic Info
       setTitle(booking.purpose || booking.notes?.split("\n")[0] || "Booking");
       setNotes(booking.notes || "");
+      setProjectId(booking.project_id ?? null);
 
       if (booking.asset) {
         setAssetName(booking.asset.name);
-        setAssetCode(booking.asset.asset_code);
+        setAssetCode(booking.asset.asset_code || "");
       }
 
       // 2. Set Date
@@ -229,7 +232,11 @@ export default function RescheduleBookingForm({
       };
 
       // Call Update API
-      await api.put(`/bookings/${bookingId}`, payload);
+      await updateBooking({
+        bookingId,
+        projectId,
+        payload,
+      });
 
       onSave(); // Refresh parent list
       onClose(); // Close modal

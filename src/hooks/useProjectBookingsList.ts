@@ -1,8 +1,7 @@
 "use client";
 
-import useSWR from "swr";
-import { swrFetcher, SWR_CONFIG } from "@/lib/swr";
 import type { ApiBooking, BookingListResponse } from "@/types";
+import { useBookingsListQuery } from "@/hooks/bookings/useBookingsData";
 
 type Params = {
   projectId: string | null;
@@ -25,19 +24,15 @@ export function useProjectBookingsList({
   limit = 1000,
   skip = 0,
 }: Params): Result {
-  const swrKey =
-    enabled && projectId
-      ? `/bookings/?project_id=${encodeURIComponent(projectId)}&limit=${limit}&skip=${skip}`
-      : null;
-
-  const { data, isLoading, error, mutate } = useSWR<BookingListResponse>(
-    swrKey,
-    swrFetcher,
-    SWR_CONFIG,
-  );
+  const { data, bookings, isLoading, error, mutate } = useBookingsListQuery({
+    projectId,
+    enabled,
+    limit,
+    skip,
+  });
 
   return {
-    bookings: data?.bookings ?? [],
+    bookings,
     data,
     isLoading,
     error,

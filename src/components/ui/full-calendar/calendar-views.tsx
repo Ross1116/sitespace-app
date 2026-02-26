@@ -65,10 +65,10 @@ import {
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
-import api from "@/lib/api";
 import { AlertCircle, Ban, Loader2 } from "lucide-react";
 import { useAuth } from "@/app/context/AuthContext";
 import { isTvUser } from "@/lib/permissions";
+import { useBookingMutations } from "@/hooks/bookings/useBookingMutations";
 
 const EARLIEST_START_HOUR = 6; // 6:00 AM
 const LATEST_END_HOUR = 20; // 8:00 PM
@@ -194,6 +194,7 @@ export const CalendarDayView = ({
 
   const { events, date, setEvents } = useCalendar();
   const { user } = useAuth();
+  const { updateBooking } = useBookingMutations();
   const isReadOnly = isTvUser(user);
 
   // --- 1. MAINTENANCE LOGIC ---
@@ -346,7 +347,11 @@ export const CalendarDayView = ({
           getString(originalPayload?.purpose) || bookingTitle || "Rescheduled",
         notes: getString(originalPayload?.notes) || bookingNotes || "",
       };
-      await api.put(`/bookings/${bookingId}`, payload);
+      await updateBooking({
+        bookingId,
+        projectId: getString(originalPayload?.project_id) || null,
+        payload,
+      });
       effectiveOnActionComplete?.();
     } catch (error) {
       reportError(

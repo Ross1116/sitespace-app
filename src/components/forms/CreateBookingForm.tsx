@@ -31,7 +31,6 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { useAuth } from "@/app/context/AuthContext";
-import api from "@/lib/api";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -53,17 +52,20 @@ import {
 import {
   ApiAsset,
   ApiBooking,
-  BookingListResponse,
   getApiErrorMessage,
 } from "@/types";
-import useSWR from "swr";
-import { swrFetcher } from "@/lib/swr";
 import { isAssetUnavailableForBooking } from "@/lib/assetStatus";
 import { reportError } from "@/lib/monitoring";
 import { useResolvedProjectSelection } from "@/hooks/useResolvedProjectSelection";
 import { useProjectAssets } from "@/hooks/useProjectAssets";
 import { useProjectSubcontractors } from "@/hooks/useProjectSubcontractors";
-import { BOOKING_PAGINATION_MAX_PAGES } from "@/lib/pagination";
+import {
+  BookingCreatePayload,
+  fetchBookingsForDate,
+  getCompetingPendingBookingsForAssets,
+  getDuplicateAssetIdsForSubcontractor,
+} from "@/hooks/bookings/api";
+import { useBookingMutations } from "@/hooks/bookings/useBookingMutations";
 import {
   BOOKING_DURATION_OPTIONS,
   QUARTER_HOUR_OPTIONS,
@@ -83,17 +85,6 @@ type CreateBookingFormProps = {
   defaultAsset?: string;
   defaultAssetName?: string;
 };
-
-interface BookingCreateRequest {
-  project_id?: string;
-  subcontractor_id?: string;
-  asset_id: string;
-  booking_date: string;
-  start_time: string;
-  end_time: string;
-  notes?: string;
-  purpose?: string;
-}
 
 type BookingDetail = ApiBooking;
 
@@ -456,6 +447,7 @@ export function CreateBookingForm({
     userId,
     role: user?.role,
   });
+  const { createBookings } = useBookingMutations();
 
   const [timeState, dispatchTime] = useReducer(timeReducer, initialTimeState);
   const [formState, dispatchForm] = useReducer(formReducer, initialFormState);
@@ -750,9 +742,6 @@ export function CreateBookingForm({
       const startTimeFormatted = format(bookingStartDt, "HH:mm:ss");
       const endTimeFormatted = format(bookingEndDt, "HH:mm:ss");
 
-      const normalizeTime = (timeValue: string) =>
-        (timeValue || "").split(":").slice(0, 2).join(":");
-
       const targetSubcontractorId = isSubcontractor
         ? userId
         : selectedSubcontractor || undefined;
@@ -760,60 +749,22 @@ export function CreateBookingForm({
       let existingBookingsForDate: ApiBooking[] | null = null;
       const getExistingBookingsForDate = async () => {
         if (existingBookingsForDate) return existingBookingsForDate;
-
-        const limit = 200;
-        let skip = 0;
-        let hasMore = true;
-        let pageCount = 0;
-        const collected: ApiBooking[] = [];
-
-        while (hasMore) {
-          if (pageCount >= BOOKING_PAGINATION_MAX_PAGES) {
-            reportError(
-              new Error(
-                `Pagination guard triggered in CreateBookingForm: pageCount=${pageCount}, maxPages=${BOOKING_PAGINATION_MAX_PAGES}, projectId=${projectId}, bookingDate=${bookingDate}`,
-              ),
-              "CreateBookingForm: pagination safety limit reached while loading existing bookings",
-            );
-            throw new Error(
-              "Too many bookings to load for this date — please narrow your search or contact support.",
-            );
-          }
-
-          const existing = await api.get<BookingListResponse>(`/bookings/`, {
-            params: {
-              project_id: projectId,
-              limit,
-              skip,
-              date_from: bookingDate,
-              date_to: bookingDate,
-            },
-          });
-
-          collected.push(...(existing.data.bookings || []));
-          hasMore = Boolean(existing.data.has_more);
-          skip += limit;
-          pageCount += 1;
-        }
-
-        existingBookingsForDate = collected;
-        return collected;
+        existingBookingsForDate = await fetchBookingsForDate({
+          projectId,
+          bookingDate,
+          context: "CreateBookingForm",
+        });
+        return existingBookingsForDate;
       };
 
       if (isManager && !skipPendingConfirmCheck) {
         const existingBookings = await getExistingBookingsForDate();
-        const normalizedStart = normalizeTime(startTimeFormatted);
-        const normalizedEnd = normalizeTime(endTimeFormatted);
-
-        const competingPendingBookings = existingBookings.filter((booking) => {
-          const status = (booking.status || "").toLowerCase();
-          return (
-            status === "pending" &&
-            booking.booking_date === bookingDate &&
-            normalizeTime(booking.start_time) === normalizedStart &&
-            normalizeTime(booking.end_time) === normalizedEnd &&
-            selectedAssetIds.includes(booking.asset_id)
-          );
+        const competingPendingBookings = getCompetingPendingBookingsForAssets({
+          bookings: existingBookings,
+          bookingDate,
+          startTime: startTimeFormatted,
+          endTime: endTimeFormatted,
+          assetIds: selectedAssetIds,
         });
 
         if (competingPendingBookings.length > 0) {
@@ -853,24 +804,14 @@ export function CreateBookingForm({
 
       if (targetSubcontractorId) {
         const existingBookings = await getExistingBookingsForDate();
-
-        const normalizedStart = normalizeTime(startTimeFormatted);
-        const normalizedEnd = normalizeTime(endTimeFormatted);
-        const duplicateAssetIds = new Set(
-          existingBookings
-            .filter((booking) => {
-              const status = (booking.status || "").toLowerCase();
-              if (status === "cancelled" || status === "denied") return false;
-              return (
-                booking.subcontractor_id === targetSubcontractorId &&
-                booking.booking_date === bookingDate &&
-                normalizeTime(booking.start_time) === normalizedStart &&
-                normalizeTime(booking.end_time) === normalizedEnd &&
-                selectedAssetIds.includes(booking.asset_id)
-              );
-            })
-            .map((booking) => booking.asset_id),
-        );
+        const duplicateAssetIds = getDuplicateAssetIdsForSubcontractor({
+          bookings: existingBookings,
+          bookingDate,
+          startTime: startTimeFormatted,
+          endTime: endTimeFormatted,
+          targetSubcontractorId,
+          assetIds: selectedAssetIds,
+        });
 
         if (duplicateAssetIds.size > 0) {
           const blockedAssetNames = selectedAssetIds
@@ -889,26 +830,23 @@ export function CreateBookingForm({
         }
       }
 
-      // Use Promise.allSettled instead of Promise.all
-      const results = await Promise.allSettled(
-        selectedAssetIds.map(async (assetId) => {
-          const bookingData: BookingCreateRequest = {
-            project_id: projectId,
-            asset_id: assetId,
-            booking_date: bookingDate,
-            start_time: startTimeFormatted,
-            end_time: endTimeFormatted,
-            purpose: title,
-            notes: description,
-            subcontractor_id: selectedSubcontractor || undefined,
-          };
-          const response = await api.post<BookingDetail>(
-            "/bookings/",
-            bookingData,
-          );
-          return { ...response.data, _requestedAssetId: assetId };
+      const bookingPayloads: BookingCreatePayload[] = selectedAssetIds.map(
+        (assetId) => ({
+          project_id: projectId,
+          asset_id: assetId,
+          booking_date: bookingDate,
+          start_time: startTimeFormatted,
+          end_time: endTimeFormatted,
+          purpose: title,
+          notes: description,
+          subcontractor_id: targetSubcontractorId || undefined,
         }),
       );
+
+      const results = await createBookings({
+        projectId,
+        payloads: bookingPayloads,
+      });
 
       // Separate successes and failures
       const succeeded: BookingDetail[] = [];

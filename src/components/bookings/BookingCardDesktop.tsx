@@ -165,6 +165,7 @@ function BookingCardDesktop({
                 bookingKey={booking.bookingKey}
                 bookingStatus={booking.bookingStatus}
                 subcontractorId={booking.subcontractorId}
+                projectId={booking._originalData?.project_id ?? null}
               />
             </div>
           </div>

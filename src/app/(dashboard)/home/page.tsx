@@ -36,11 +36,11 @@ import { SitePlansSection } from "@/components/site-plans/SitePlansSection";
 import type { LucideIcon } from "lucide-react";
 import useSWR from "swr";
 import { swrFetcher, SWR_CONFIG } from "@/lib/swr";
-import { normalizeBookingList } from "@/lib/apiNormalization";
 import { getSubcontractorCount } from "@/lib/subcontractorNormalization";
 import { useResolvedProjectSelection } from "@/hooks/useResolvedProjectSelection";
 import { useProjectAssets } from "@/hooks/useProjectAssets";
 import { useProjectSubcontractors } from "@/hooks/useProjectSubcontractors";
+import { useUpcomingBookingsQuery } from "@/hooks/bookings/useBookingsData";
 
 // --- Types ---
 type Booking = ApiBooking;
@@ -113,25 +113,24 @@ export default function HomePage() {
     [subsData],
   );
 
-  // --- SWR: Bookings ---
+  // --- Upcoming bookings ---
   const {
-    data: bookingsRaw,
+    bookings: upcomingBookingsRaw,
     isLoading: loadingBookings,
     error: fetchError,
-  } = useSWR<unknown>(
-    projectId ? `/bookings/my/upcoming?limit=50&project_id=${projectId}` : null,
-    swrFetcher,
-    SWR_CONFIG,
-  );
+  } = useUpcomingBookingsQuery({
+    projectId,
+    enabled: Boolean(projectId),
+    limit: 50,
+  });
 
   const upcomingBookings = useMemo(() => {
-    const normalizedBookings = normalizeBookingList(bookingsRaw);
-    return normalizedBookings.filter((b) => {
+    return upcomingBookingsRaw.filter((b) => {
       const bProjId = b.project?.id || b.project_id;
       const status = (b.status || "").toLowerCase();
       return bProjId === projectId && status !== "denied";
     });
-  }, [bookingsRaw, projectId]);
+  }, [upcomingBookingsRaw, projectId]);
 
   // --- Navigate to bookings page ---
   const handleBookingClick = (bookingId: string) => {
@@ -384,7 +383,7 @@ export default function HomePage() {
               <div className="flex p-1 gap-1"></div>
             </div>
 
-            {fetchError && (
+            {Boolean(fetchError) && (
               <div
                 className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2.5 rounded-lg text-sm"
                 role="alert"
