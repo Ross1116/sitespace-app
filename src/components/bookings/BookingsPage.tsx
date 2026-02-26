@@ -19,10 +19,8 @@ import ComponentErrorBoundary from "@/components/ui/ComponentErrorBoundary";
 import { swrFetcher, SWR_CONFIG } from "@/lib/swr";
 import { combineDateAndTime } from "@/lib/bookingHelpers";
 import { isTvUser } from "@/lib/permissions";
-import { normalizeProjectList } from "@/lib/apiNormalization";
-import { useProjectSelectionStore } from "@/stores/projectSelectionStore";
+import { useResolvedProjectSelection } from "@/hooks/useResolvedProjectSelection";
 import type {
-  ApiProject,
   ApiBooking,
   BookingListResponse,
   TransformedBooking,
@@ -182,66 +180,10 @@ export default function BookingsPage() {
   const { user, isLoading: authLoading } = useAuth();
   const userId = user?.id;
   const isTv = isTvUser(user);
-  const selectedProjectId = useProjectSelectionStore((state) =>
-    userId ? state.selectedProjectIds[userId] ?? null : null,
-  );
-  const setSelectedProjectId = useProjectSelectionStore(
-    (state) => state.setSelectedProjectId,
-  );
-  const clearSelectedProjectId = useProjectSelectionStore(
-    (state) => state.clearSelectedProjectId,
-  );
-
-  const projectsUrl = useMemo(() => {
-    if (!userId) return null;
-    if (user?.role === "subcontractor")
-      return `/subcontractors/${userId}/projects`;
-    return "/projects/?my_projects=true&limit=100&skip=0";
-  }, [userId, user?.role]);
-
-  const { data: projectsRaw, error: projectsError } = useSWR(
-    projectsUrl,
-    swrFetcher,
-    SWR_CONFIG,
-  );
-
-  const projects = useMemo<ApiProject[]>(() => {
-    if (!projectsRaw) return [];
-    return normalizeProjectList(projectsRaw);
-  }, [projectsRaw]);
-
-  const hasResolvedProjects = projectsRaw !== undefined || Boolean(projectsError);
-  const projectId = useMemo(() => {
-    if (!hasResolvedProjects) return selectedProjectId;
-    if (
-      selectedProjectId &&
-      projects.some((project) => project.id === selectedProjectId)
-    ) {
-      return selectedProjectId;
-    }
-    return projects[0]?.id ?? null;
-  }, [hasResolvedProjects, selectedProjectId, projects]);
-
-  useEffect(() => {
-    if (!userId || !hasResolvedProjects) return;
-
-    if (!projectId) {
-      if (selectedProjectId) {
-        clearSelectedProjectId(userId);
-      }
-      return;
-    }
-
-    if (projectId === selectedProjectId) return;
-    setSelectedProjectId(userId, projectId);
-  }, [
+  const { projectId, hasResolvedProjects } = useResolvedProjectSelection({
     userId,
-    projectId,
-    selectedProjectId,
-    hasResolvedProjects,
-    clearSelectedProjectId,
-    setSelectedProjectId,
-  ]);
+    role: user?.role,
+  });
 
   // Redirect if no project selected
   useEffect(() => {

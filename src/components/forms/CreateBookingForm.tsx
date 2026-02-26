@@ -53,7 +53,6 @@ import {
 import {
   ApiAsset,
   ApiBooking,
-  ApiProject,
   BookingListResponse,
   getApiErrorMessage,
 } from "@/types";
@@ -61,10 +60,10 @@ import useSWR from "swr";
 import { swrFetcher } from "@/lib/swr";
 import { isAssetUnavailableForBooking } from "@/lib/assetStatus";
 import { reportError } from "@/lib/monitoring";
-import { normalizeProjectList } from "@/lib/apiNormalization";
-import { useProjectSelectionStore } from "@/stores/projectSelectionStore";
+import { useResolvedProjectSelection } from "@/hooks/useResolvedProjectSelection";
+import { useProjectAssets } from "@/hooks/useProjectAssets";
+import { useProjectSubcontractors } from "@/hooks/useProjectSubcontractors";
 import { BOOKING_PAGINATION_MAX_PAGES } from "@/lib/pagination";
-import { normalizeSubcontractorList } from "@/lib/subcontractorNormalization";
 import {
   BOOKING_DURATION_OPTIONS,
   QUARTER_HOUR_OPTIONS,
@@ -110,20 +109,6 @@ interface Subcontractor {
 type AssetOption = ApiAsset & {
   assetKey: string;
   assetTitle: string;
-};
-
-const isAbortError = (error: unknown, signal?: AbortSignal) => {
-  if (signal?.aborted) return true;
-  if (error instanceof Error && error.name === "CanceledError") return true;
-  if (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    (error as { code?: string }).code === "ERR_CANCELED"
-  ) {
-    return true;
-  }
-  return false;
 };
 
 // ===== CONSOLIDATED STATE =====
@@ -188,7 +173,6 @@ type AsyncAction =
   | { type: "SET_SUBMITTING"; value: boolean }
   | { type: "SET_ERROR"; error: string | null }
   | { type: "SET_SUBCONTRACTORS"; subs: Subcontractor[]; loading: boolean }
-  | { type: "SET_LOADING_SUBS"; loading: boolean }
   | { type: "SHOW_SUCCESS"; isConfirmed: boolean; count: number }
   | { type: "DISMISS_SUCCESS" }
   | {
@@ -415,8 +399,6 @@ function asyncReducer(state: AsyncState, action: AsyncAction): AsyncState {
         subcontractors: action.subs,
         loadingSubcontractors: action.loading,
       };
-    case "SET_LOADING_SUBS":
-      return { ...state, loadingSubcontractors: action.loading };
     case "SHOW_SUCCESS":
       return {
         ...state,
@@ -470,15 +452,10 @@ export function CreateBookingForm({
   const userId = user?.id;
   const isManager = user?.role === "manager" || user?.role === "admin";
   const isSubcontractor = user?.role === "subcontractor";
-  const selectedProjectId = useProjectSelectionStore((state) =>
-    userId ? state.selectedProjectIds[userId] ?? null : null,
-  );
-  const setSelectedProjectId = useProjectSelectionStore(
-    (state) => state.setSelectedProjectId,
-  );
-  const clearSelectedProjectId = useProjectSelectionStore(
-    (state) => state.clearSelectedProjectId,
-  );
+  const { projectId, selectedProject: project } = useResolvedProjectSelection({
+    userId,
+    role: user?.role,
+  });
 
   const [timeState, dispatchTime] = useReducer(timeReducer, initialTimeState);
   const [formState, dispatchForm] = useReducer(formReducer, initialFormState);
@@ -560,127 +537,70 @@ export function CreateBookingForm({
     onClose();
   }, [resetForm, onClose]);
 
-  const projectsUrl = useMemo(() => {
-    if (!userId) return null;
-    if (user?.role === "subcontractor")
-      return `/subcontractors/${userId}/projects`;
-    return "/projects/?my_projects=true&limit=100&skip=0";
-  }, [userId, user?.role]);
+  // ===== LOAD ASSETS =====
+  const { assets: projectAssets, error: assetsSwrError } =
+    useProjectAssets(projectId);
+  const {
+    subcontractors: projectSubcontractors,
+    error: subcontractorsError,
+    isLoading: loadingProjectSubcontractors,
+  } = useProjectSubcontractors({
+    userRole: user?.role,
+    projectId,
+    enabled: Boolean(isOpen && isManager && projectId),
+    limit: 100,
+    scope: "managerScoped",
+  });
 
-  const { data: projectsRaw, error: projectsError } = useSWR(
-    projectsUrl,
-    swrFetcher,
-  );
-
-  const projects = useMemo<ApiProject[]>(() => {
-    if (!projectsRaw) return [];
-    return normalizeProjectList(projectsRaw);
-  }, [projectsRaw]);
-
-  const hasResolvedProjects = projectsRaw !== undefined || Boolean(projectsError);
-  const projectId = useMemo(() => {
-    if (!hasResolvedProjects) return selectedProjectId;
-    if (
-      selectedProjectId &&
-      projects.some((project) => project.id === selectedProjectId)
-    ) {
-      return selectedProjectId;
-    }
-    return projects[0]?.id ?? null;
-  }, [hasResolvedProjects, selectedProjectId, projects]);
-
-  const project = useMemo<ApiProject | null>(() => {
-    if (!projectId) return null;
-    return projects.find((candidate) => candidate.id === projectId) ?? null;
-  }, [projectId, projects]);
-
-  // Reconcile persisted project selection against live projects.
   useEffect(() => {
-    if (!userId || !hasResolvedProjects) return;
-
-    if (!projectId) {
-      if (selectedProjectId) {
-        clearSelectedProjectId(userId);
-      }
+    if (assetsSwrError) {
+      dispatchAsset({ type: "SET_ASSET_ERROR", error: true });
       return;
     }
-
-    if (projectId === selectedProjectId) return;
-    setSelectedProjectId(userId, projectId);
-  }, [
-    userId,
-    projectId,
-    selectedProjectId,
-    hasResolvedProjects,
-    clearSelectedProjectId,
-    setSelectedProjectId,
-  ]);
-
-  // ===== LOAD ASSETS VIA SWR =====
-  const assetSwrKey = useMemo(() => {
-    if (!projectId) return null;
-    return `/assets/?project_id=${projectId}&skip=0&limit=100`;
-  }, [projectId]);
-
-  const { data: assetsResponse, error: assetsSwrError } = useSWR<{
-    assets: ApiAsset[];
-  }>(assetSwrKey, swrFetcher);
-
-  useEffect(() => {
-    if (assetsResponse) {
-      const normalizedAssets: AssetOption[] = (assetsResponse.assets || [])
-        .filter((asset) => !isAssetUnavailableForBooking(asset.status))
-        .map((asset) => ({
-          ...asset,
-          assetKey: asset.id,
-          assetTitle: asset.name,
-        }));
-      dispatchAsset({ type: "SET_ASSETS", assets: normalizedAssets });
-    } else if (assetsSwrError) {
-      dispatchAsset({ type: "SET_ASSET_ERROR", error: true });
-    }
-  }, [assetsResponse, assetsSwrError]);
+    const normalizedAssets: AssetOption[] = projectAssets
+      .filter((asset) => !isAssetUnavailableForBooking(asset.status))
+      .map((asset) => ({
+        ...asset,
+        assetKey: asset.id,
+        assetTitle: asset.name,
+      }));
+    dispatchAsset({ type: "SET_ASSETS", assets: normalizedAssets });
+  }, [projectAssets, assetsSwrError]);
 
   // ===== LOAD SUBCONTRACTORS =====
   useEffect(() => {
-    const controller = new AbortController();
-    const loadSubcontractors = async (signal: AbortSignal) => {
-      if (!projectId || !isManager) return;
+    if (!isManager || !isOpen) return;
 
-      dispatchAsync({ type: "SET_LOADING_SUBS", loading: true });
-      try {
-        const response = await api.get(`/subcontractors/my-subcontractors`, {
-          params: {
-            skip: 0,
-            limit: 100,
-            is_active: true,
-            project_id: projectId,
-          },
-          signal,
-        });
-
-        const normalizedSubs: Subcontractor[] = normalizeSubcontractorList(
-          response.data,
-        );
-
-        dispatchAsync({
-          type: "SET_SUBCONTRACTORS",
-          subs: normalizedSubs,
-          loading: false,
-        });
-      } catch (err: unknown) {
-        if (isAbortError(err, signal)) return;
-        reportError(err, "CreateBookingForm: failed to load subcontractors");
-        dispatchAsync({ type: "SET_LOADING_SUBS", loading: false });
-      }
-    };
-
-    if (isOpen && projectId) {
-      loadSubcontractors(controller.signal);
-      return () => controller.abort();
+    if (subcontractorsError) {
+      reportError(
+        subcontractorsError,
+        "CreateBookingForm: failed to load subcontractors",
+      );
+      dispatchAsync({ type: "SET_SUBCONTRACTORS", subs: [], loading: false });
+      return;
     }
-    return undefined;
-  }, [isOpen, projectId, isManager]);
+
+    const normalizedSubs: Subcontractor[] = projectSubcontractors.map((sub) => ({
+      id: sub.id,
+      first_name: sub.first_name,
+      last_name: sub.last_name,
+      email: sub.email,
+      company_name: sub.company_name,
+      trade_specialty: sub.trade_specialty,
+    }));
+
+    dispatchAsync({
+      type: "SET_SUBCONTRACTORS",
+      subs: normalizedSubs,
+      loading: loadingProjectSubcontractors,
+    });
+  }, [
+    isManager,
+    isOpen,
+    projectSubcontractors,
+    subcontractorsError,
+    loadingProjectSubcontractors,
+  ]);
 
   // ===== AUTO-SELECT SUBCONTRACTOR FOR SUB USERS =====
   useEffect(() => {

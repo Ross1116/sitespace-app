@@ -17,24 +17,19 @@ import { DesktopView } from "./DesktopView";
 import { AssetFilter } from "./AssetFilter";
 import { MulticalendarActionsProvider } from "./MulticalendarActionsContext";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { ApiAsset, ApiBooking, ApiProject } from "@/types";
+import { ApiAsset, ApiBooking } from "@/types";
 import useSWR from "swr";
 import { swrFetcher, SWR_CONFIG } from "@/lib/swr";
 import { isAssetRetiredOrOutOfService } from "@/lib/assetStatus";
 import ComponentErrorBoundary from "@/components/ui/ComponentErrorBoundary";
-import { normalizeProjectList } from "@/lib/apiNormalization";
-import { useProjectSelectionStore } from "@/stores/projectSelectionStore";
+import { useResolvedProjectSelection } from "@/hooks/useResolvedProjectSelection";
+import { useProjectAssets } from "@/hooks/useProjectAssets";
 
 // ===== INTERFACES =====
 
 interface CalendarDayResponse {
   date: string;
   bookings: ApiBooking[];
-}
-
-interface AssetListResponse {
-  assets: ApiAsset[];
-  total: number;
 }
 
 // ===== HELPER: PROCESS BOOKING TO EVENT =====
@@ -90,73 +85,20 @@ export default function MulticalendarPage() {
 
   const { user, isLoading: authLoading } = useAuth();
   const userId = user?.id;
-  const selectedProjectId = useProjectSelectionStore((state) =>
-    userId ? state.selectedProjectIds[userId] ?? null : null,
-  );
-  const setSelectedProjectId = useProjectSelectionStore(
-    (state) => state.setSelectedProjectId,
-  );
-  const clearSelectedProjectId = useProjectSelectionStore(
-    (state) => state.clearSelectedProjectId,
-  );
+  const {
+    projectId,
+    projectsUrl,
+    projectsError,
+    projectsLoading,
+    mutateProjects,
+  } = useResolvedProjectSelection({
+    userId,
+    role: user?.role,
+  });
 
   // Visibility State
   const [initialLoad, setInitialLoad] = useState(true);
   const [visibleAssets, setVisibleAssets] = useState<number[]>([]);
-
-  // Fetch projects for reconciliation and project selector updates.
-  const projectsUrl = useMemo(() => {
-    if (!userId) return null;
-    if (user?.role === "subcontractor")
-      return `/subcontractors/${userId}/projects`;
-    return "/projects/?my_projects=true&limit=100&skip=0";
-  }, [userId, user?.role]);
-
-  const {
-    data: projectsRaw,
-    error: projectsError,
-    isLoading: projectsLoading,
-    mutate: mutateProjects,
-  } = useSWR(projectsUrl, swrFetcher, SWR_CONFIG);
-
-  const projects = useMemo<ApiProject[]>(() => {
-    if (!projectsRaw) return [];
-    return normalizeProjectList(projectsRaw);
-  }, [projectsRaw]);
-
-  const hasResolvedProjects = projectsRaw !== undefined || Boolean(projectsError);
-
-  // Use persisted selection when valid; otherwise fallback to first fetched project.
-  const projectId = useMemo(() => {
-    if (!hasResolvedProjects) return selectedProjectId;
-    if (selectedProjectId && projects.some((project) => project.id === selectedProjectId)) {
-      return selectedProjectId;
-    }
-    if (projects.length > 0) return projects[0]?.id ?? null;
-    return null;
-  }, [hasResolvedProjects, selectedProjectId, projects]);
-
-  // Reconcile persisted selection against live project list.
-  useEffect(() => {
-    if (!userId || !hasResolvedProjects) return;
-
-    if (!projectId) {
-      if (selectedProjectId) {
-        clearSelectedProjectId(userId);
-      }
-      return;
-    }
-
-    if (projectId === selectedProjectId) return;
-    setSelectedProjectId(userId, projectId);
-  }, [
-    userId,
-    projectId,
-    selectedProjectId,
-    hasResolvedProjects,
-    clearSelectedProjectId,
-    setSelectedProjectId,
-  ]);
 
   // Date range: currently viewed date ± 45 days
   const { dateFrom, dateTo } = useMemo(() => {
@@ -171,19 +113,15 @@ export default function MulticalendarPage() {
     };
   }, [currentDate]);
 
-  // --- SWR: Assets ---
-  const { data: assetsData, mutate: mutateAssets } = useSWR<AssetListResponse>(
-    projectId ? `/assets/?project_id=${projectId}&skip=0&limit=100` : null,
-    swrFetcher,
-    SWR_CONFIG,
-  );
+  // --- Assets ---
+  const { assets, mutate: mutateAssets } = useProjectAssets(projectId);
 
   const availableAssets = useMemo(
     () =>
-      (assetsData?.assets || [])
+      assets
         .filter((asset) => !isAssetRetiredOrOutOfService(asset.status))
         .sort((a: ApiAsset, b: ApiAsset) => a.name.localeCompare(b.name)),
-    [assetsData],
+    [assets],
   );
 
   // --- SWR: Calendar bookings ---

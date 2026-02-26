@@ -36,12 +36,11 @@ import { SitePlansSection } from "@/components/site-plans/SitePlansSection";
 import type { LucideIcon } from "lucide-react";
 import useSWR from "swr";
 import { swrFetcher, SWR_CONFIG } from "@/lib/swr";
-import {
-  normalizeBookingList,
-  normalizeProjectList,
-} from "@/lib/apiNormalization";
+import { normalizeBookingList } from "@/lib/apiNormalization";
 import { getSubcontractorCount } from "@/lib/subcontractorNormalization";
-import { useProjectSelectionStore } from "@/stores/projectSelectionStore";
+import { useResolvedProjectSelection } from "@/hooks/useResolvedProjectSelection";
+import { useProjectAssets } from "@/hooks/useProjectAssets";
+import { useProjectSubcontractors } from "@/hooks/useProjectSubcontractors";
 
 // --- Types ---
 type Booking = ApiBooking;
@@ -58,19 +57,6 @@ interface UserProfile {
   role: string;
   user_type: string;
 }
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null;
-
-const getAssetCount = (payload: unknown): number => {
-  if (!isRecord(payload)) return 0;
-
-  const total = payload.total;
-  if (typeof total === "number") return total;
-
-  const assets = payload.assets;
-  return Array.isArray(assets) ? assets.length : 0;
-};
 
 // --- Color Palette ---
 const PALETTE = {
@@ -91,16 +77,18 @@ export default function HomePage() {
   const [showProjectSelector, setShowProjectSelector] = useState(false);
 
   const userId = user?.id;
-  const selectedProjectId = useProjectSelectionStore((state) =>
-    userId ? state.selectedProjectIds[userId] ?? null : null,
-  );
-  const setSelectedProjectId = useProjectSelectionStore(
-    (state) => state.setSelectedProjectId,
-  );
-  const clearSelectedProjectId = useProjectSelectionStore(
-    (state) => state.clearSelectedProjectId,
-  );
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const {
+    projects,
+    projectId,
+    selectedProject,
+    projectBootstrapLoading: isDataLoading,
+    setProjectId,
+  } = useResolvedProjectSelection({
+    userId,
+    role: user?.role,
+  });
 
   // --- SWR: Profile ---
   const { data: profile } = useSWR<UserProfile>(
@@ -109,92 +97,17 @@ export default function HomePage() {
     SWR_CONFIG,
   );
 
-  // --- SWR: Projects list ---
-  const projectsUrl = useMemo(() => {
-    if (!userId) return null;
-    if (user?.role === "subcontractor")
-      return `/subcontractors/${userId}/projects`;
-    return "/projects/?my_projects=true&limit=100&skip=0";
-  }, [userId, user?.role]);
+  // --- Assets count ---
+  const { assets: projectAssets, data: assetsData } = useProjectAssets(projectId);
+  const assetCount = assetsData?.total ?? projectAssets.length;
 
-  const {
-    data: projectsRaw,
-    error: projectsError,
-    isLoading: projectsLoading,
-  } = useSWR(projectsUrl, swrFetcher, SWR_CONFIG);
-
-  const projects = useMemo<ApiProject[]>(() => {
-    if (!projectsRaw) return [];
-    return normalizeProjectList(projectsRaw);
-  }, [projectsRaw]);
-
-  const hasResolvedProjects = projectsRaw !== undefined || Boolean(projectsError);
-
-  const projectId = useMemo(() => {
-    if (!hasResolvedProjects) return selectedProjectId;
-    if (selectedProjectId && projects.some((project) => project.id === selectedProjectId)) {
-      return selectedProjectId;
-    }
-    return projects[0]?.id ?? null;
-  }, [hasResolvedProjects, projects, selectedProjectId]);
-
-  const selectedProject = useMemo<ApiProject | null>(() => {
-    if (!projectId) return null;
-    return projects.find((project) => project.id === projectId) ?? null;
-  }, [projectId, projects]);
-
-  // Reconcile persisted selection with live project list.
-  useEffect(() => {
-    if (!hasResolvedProjects) return;
-    if (!userId) return;
-
-    if (!projectId) {
-      if (selectedProjectId) {
-        clearSelectedProjectId(userId);
-      }
-      return;
-    }
-
-    if (projectId === selectedProjectId) {
-      return;
-    }
-    setSelectedProjectId(userId, projectId);
-  }, [
-    userId,
+  // --- Subcontractors count ---
+  const { data: subsData } = useProjectSubcontractors({
+    userRole: user?.role,
     projectId,
-    selectedProjectId,
-    hasResolvedProjects,
-    clearSelectedProjectId,
-    setSelectedProjectId,
-  ]);
-
-  // True while we have a user but haven't resolved a project yet —
-  // prevents the empty state from flashing before data arrives.
-  const isDataLoading =
-    !!userId &&
-    projectId === null &&
-    !projectsError &&
-    (projectsLoading || projectsRaw === undefined);
-
-  // --- SWR: Assets count ---
-  const { data: assetsData } = useSWR(
-    projectId ? `/assets/?project_id=${projectId}&limit=100` : null,
-    swrFetcher,
-    SWR_CONFIG,
-  );
-  const assetCount = getAssetCount(assetsData);
-
-  // --- SWR: Subcontractors count ---
-  const subsUrl = useMemo(() => {
-    if (!user || user.role === "subcontractor" || !projectId) return null;
-    const endpoint =
-      user.role === "admin"
-        ? "/subcontractors/"
-        : "/subcontractors/my-subcontractors";
-    return `${endpoint}?project_id=${projectId}&limit=100&is_active=true`;
-  }, [user, projectId]);
-
-  const { data: subsData } = useSWR(subsUrl, swrFetcher, SWR_CONFIG);
+    enabled: Boolean(user),
+    limit: 100,
+  });
   const subcontractorCount = useMemo(
     () => getSubcontractorCount(subsData),
     [subsData],
@@ -240,8 +153,7 @@ export default function HomePage() {
   const handleProjectSelect = (proj: ApiProject) => {
     if (!proj || !proj.id) return;
     setShowProjectSelector(false);
-    if (!userId) return;
-    setSelectedProjectId(userId, proj.id);
+    setProjectId(proj.id);
   };
 
   // --- Derived Data ---

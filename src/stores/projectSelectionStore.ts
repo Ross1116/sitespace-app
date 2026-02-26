@@ -3,6 +3,8 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
+export const PROJECT_SELECTION_STORAGE_KEY = "project-selection-v1";
+
 type ProjectSelectionStore = {
   selectedProjectIds: Record<string, string>;
   setSelectedProjectId: (userId: string, projectId: string) => void;
@@ -28,7 +30,7 @@ export const useProjectSelectionStore = create<ProjectSelectionStore>()(
         }),
     }),
     {
-      name: "project-selection-v1",
+      name: PROJECT_SELECTION_STORAGE_KEY,
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ selectedProjectIds: state.selectedProjectIds }),
     },

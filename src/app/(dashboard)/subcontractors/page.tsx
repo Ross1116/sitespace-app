@@ -21,16 +21,13 @@ const SubFormModal = dynamic(() => import("@/components/forms/InviteSubForm"), {
 import { useAuth } from "@/app/context/AuthContext";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
-import { ApiProject } from "@/types";
-import useSWR from "swr";
-import { swrFetcher, SWR_CONFIG } from "@/lib/swr";
 import { useRouter } from "next/navigation";
-import { normalizeProjectList } from "@/lib/apiNormalization";
 import {
-  normalizeSubcontractorList,
   type NormalizedSubcontractor,
 } from "@/lib/subcontractorNormalization";
-import { useProjectSelectionStore } from "@/stores/projectSelectionStore";
+import { useResolvedProjectSelection } from "@/hooks/useResolvedProjectSelection";
+import { useProjectSubcontractors } from "@/hooks/useProjectSubcontractors";
+import { PROJECT_SELECTION_STORAGE_KEY } from "@/stores/projectSelectionStore";
 
 interface Contractor {
   contractorKey: string;
@@ -104,72 +101,17 @@ export default function SubcontractorsPage() {
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const userId = user?.id;
-  const selectedProjectId = useProjectSelectionStore((state) =>
-    userId ? state.selectedProjectIds[userId] ?? null : null,
-  );
-  const setSelectedProjectId = useProjectSelectionStore(
-    (state) => state.setSelectedProjectId,
-  );
-  const clearSelectedProjectId = useProjectSelectionStore(
-    (state) => state.clearSelectedProjectId,
-  );
+  const { projectId, selectedProjectId, setProjectId } =
+    useResolvedProjectSelection({
+      userId,
+      role: user?.role,
+    });
 
   useEffect(() => {
     if (user?.role === "subcontractor") {
       router.replace("/home");
     }
   }, [user?.role, router]);
-
-  const projectsUrl = useMemo(() => {
-    if (!userId) return null;
-    if (user?.role === "subcontractor")
-      return `/subcontractors/${userId}/projects`;
-    return "/projects/?my_projects=true&limit=100&skip=0";
-  }, [userId, user?.role]);
-
-  const { data: projectsRaw, error: projectsError } = useSWR(
-    projectsUrl,
-    swrFetcher,
-    SWR_CONFIG,
-  );
-
-  const projects = useMemo<ApiProject[]>(() => {
-    if (!projectsRaw) return [];
-    return normalizeProjectList(projectsRaw);
-  }, [projectsRaw]);
-
-  const hasResolvedProjects = projectsRaw !== undefined || Boolean(projectsError);
-  const projectId = useMemo(() => {
-    if (!hasResolvedProjects) return selectedProjectId;
-    if (
-      selectedProjectId &&
-      projects.some((project) => project.id === selectedProjectId)
-    ) {
-      return selectedProjectId;
-    }
-    return projects[0]?.id ?? null;
-  }, [hasResolvedProjects, selectedProjectId, projects]);
-
-  useEffect(() => {
-    if (!userId || !hasResolvedProjects) return;
-
-    if (!projectId) {
-      if (selectedProjectId) {
-        clearSelectedProjectId(userId);
-      }
-      return;
-    }
-
-    if (projectId === selectedProjectId) return;
-    setSelectedProjectId(userId, projectId);
-  }, [
-    userId,
-    projectId,
-    selectedProjectId,
-    hasResolvedProjects,
-    clearSelectedProjectId,
-    setSelectedProjectId,
-  ]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -180,11 +122,13 @@ export default function SubcontractorsPage() {
     if (!userId) return;
 
     const handler = (e: StorageEvent) => {
-      if (e.key !== "project-selection-v1") return;
+      if (e.key !== PROJECT_SELECTION_STORAGE_KEY) return;
 
       const raw = e.newValue;
       if (!raw) {
-        clearSelectedProjectId(userId);
+        if (selectedProjectId) {
+          setProjectId(null);
+        }
         setCurrentPage(1);
         return;
       }
@@ -194,15 +138,11 @@ export default function SubcontractorsPage() {
           state?: { selectedProjectIds?: Record<string, string> };
         };
         const incomingId = parsed?.state?.selectedProjectIds?.[userId] ?? null;
-        const currentId =
-          useProjectSelectionStore.getState().selectedProjectIds[userId] ?? null;
 
-        if (incomingId && incomingId !== currentId) {
-          setSelectedProjectId(userId, incomingId);
-        } else if (!incomingId && currentId) {
-          clearSelectedProjectId(userId);
+        if (incomingId !== selectedProjectId) {
+          setProjectId(incomingId);
+          setCurrentPage(1);
         }
-        setCurrentPage(1);
       } catch {
         // Ignore malformed persisted payloads.
       }
@@ -210,34 +150,24 @@ export default function SubcontractorsPage() {
 
     window.addEventListener("storage", handler);
     return () => window.removeEventListener("storage", handler);
-  }, [userId, clearSelectedProjectId, setSelectedProjectId]);
+  }, [userId, selectedProjectId, setProjectId]);
 
   // SWR — role-based endpoint
-  const swrKey = useMemo(() => {
-    if (!user || user.role === "subcontractor") return null;
-    const endpoint =
-      user.role === "admin"
-        ? "/subcontractors/"
-        : "/subcontractors/my-subcontractors";
-    const params = new URLSearchParams({
-      skip: "0",
-      limit: "1000",
-      is_active: "true",
-    });
-    if (projectId) params.set("project_id", projectId);
-    return `${endpoint}?${params.toString()}`;
-  }, [user, projectId]);
-
   const {
-    data,
+    subcontractors,
     isLoading: loading,
     error: fetchError,
     mutate,
-  } = useSWR<unknown>(swrKey, swrFetcher, SWR_CONFIG);
+  } = useProjectSubcontractors({
+    userRole: user?.role,
+    projectId,
+    enabled: Boolean(user),
+    limit: 1000,
+  });
 
   const allSubs = useMemo(
-    () => normalizeSubcontractorList(data).map(transformBackendSubcontractor),
-    [data],
+    () => subcontractors.map(transformBackendSubcontractor),
+    [subcontractors],
   );
 
   const handleSort = (field: SortField) => {
@@ -726,3 +656,4 @@ export default function SubcontractorsPage() {
     </div>
   );
 }
+

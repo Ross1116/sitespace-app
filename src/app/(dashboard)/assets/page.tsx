@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import useSWR from "swr";
 import { Button } from "@/components/ui/button";
 import {
   X,
@@ -31,7 +30,6 @@ const CreateAssetForm = dynamic(() => import("@/components/forms/CreateAssetForm
 const UpdateAssetModal = dynamic(() => import("@/components/forms/UpdateAssetForm"), { ssr: false });
 import { format, parseISO } from "date-fns";
 import { Input } from "@/components/ui/input";
-import { swrFetcher, SWR_CONFIG } from "@/lib/swr";
 import {
   Dialog,
   DialogContent,
@@ -40,10 +38,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ApiProject, TransformedAsset, getApiErrorMessage } from "@/types";
+import { TransformedAsset, getApiErrorMessage } from "@/types";
 import { useRouter } from "next/navigation";
-import { normalizeProjectList } from "@/lib/apiNormalization";
-import { useProjectSelectionStore } from "@/stores/projectSelectionStore";
+import { useResolvedProjectSelection } from "@/hooks/useResolvedProjectSelection";
+import { useProjectAssets } from "@/hooks/useProjectAssets";
 
 interface AssetFromBackend {
   id: string;
@@ -61,14 +59,6 @@ interface AssetFromBackend {
   maintenance_start_date?: string;
   maintenance_end_date?: string;
   pending_booking_capacity?: number;
-}
-
-interface AssetListResponse {
-  assets: AssetFromBackend[];
-  total: number;
-  skip: number;
-  limit: number;
-  has_more: boolean;
 }
 
 type Asset = TransformedAsset;
@@ -206,15 +196,10 @@ export default function AssetsTable() {
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const userId = user?.id;
-  const selectedProjectId = useProjectSelectionStore((state) =>
-    userId ? state.selectedProjectIds[userId] ?? null : null,
-  );
-  const setSelectedProjectId = useProjectSelectionStore(
-    (state) => state.setSelectedProjectId,
-  );
-  const clearSelectedProjectId = useProjectSelectionStore(
-    (state) => state.clearSelectedProjectId,
-  );
+  const { projectId, selectedProject } = useResolvedProjectSelection({
+    userId,
+    role: user?.role,
+  });
 
   useEffect(() => {
     if (user?.role === "subcontractor") {
@@ -226,77 +211,18 @@ export default function AssetsTable() {
     return null;
   }
 
-  const projectsUrl = useMemo(() => {
-    if (!userId) return null;
-    if (user?.role === "subcontractor")
-      return `/subcontractors/${userId}/projects`;
-    return "/projects/?my_projects=true&limit=100&skip=0";
-  }, [userId, user?.role]);
-
-  const { data: projectsRaw, error: projectsError } = useSWR(
-    projectsUrl,
-    swrFetcher,
-    SWR_CONFIG,
-  );
-
-  const projects = useMemo<ApiProject[]>(() => {
-    if (!projectsRaw) return [];
-    return normalizeProjectList(projectsRaw);
-  }, [projectsRaw]);
-
-  const hasResolvedProjects = projectsRaw !== undefined || Boolean(projectsError);
-  const projectId = useMemo(() => {
-    if (!hasResolvedProjects) return selectedProjectId;
-    if (
-      selectedProjectId &&
-      projects.some((project) => project.id === selectedProjectId)
-    ) {
-      return selectedProjectId;
-    }
-    return projects[0]?.id ?? null;
-  }, [hasResolvedProjects, selectedProjectId, projects]);
-
-  useEffect(() => {
-    if (!userId || !hasResolvedProjects) return;
-
-    if (!projectId) {
-      if (selectedProjectId) {
-        clearSelectedProjectId(userId);
-      }
-      return;
-    }
-
-    if (projectId === selectedProjectId) return;
-    setSelectedProjectId(userId, projectId);
-  }, [
-    userId,
-    projectId,
-    selectedProjectId,
-    hasResolvedProjects,
-    clearSelectedProjectId,
-    setSelectedProjectId,
-  ]);
-
-  const projectName =
-    projectId && projects.length > 0
-      ? projects.find((project) => project.id === projectId)?.name || ""
-      : "";
-
-  // --- SWR: fetch assets ---
-  const swrKey = projectId
-    ? `/assets/?project_id=${projectId}&skip=0&limit=100`
-    : null;
+  const projectName = selectedProject?.name || "";
 
   const {
-    data,
+    assets: backendAssets,
     isLoading: loading,
     error: fetchError,
     mutate,
-  } = useSWR<AssetListResponse>(swrKey, swrFetcher, SWR_CONFIG);
+  } = useProjectAssets(projectId);
 
   const allAssets = useMemo(
-    () => (data?.assets || []).map(transformBackendAsset),
-    [data],
+    () => backendAssets.map((asset) => transformBackendAsset(asset)),
+    [backendAssets],
   );
 
   const handleSort = (field: SortField) => {
@@ -545,7 +471,7 @@ export default function AssetsTable() {
               <div className="col-span-1 text-center">Action</div>
             </div>
 
-            {fetchError && (
+            {Boolean(fetchError) && (
               <div
                 className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2.5 rounded-lg text-sm mb-3"
                 role="alert"
