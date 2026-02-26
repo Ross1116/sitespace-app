@@ -32,9 +32,9 @@ export default function DashboardLayout({
   // Show spinner while auth is initializing (instead of blank flash)
   if (isLoading || !isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--page-bg)]">
         <Loader2
-          className="h-8 w-8 animate-spin text-slate-400"
+          className="h-8 w-8 animate-spin text-[var(--teal)]"
           aria-label="Loading"
           role="status"
         />
