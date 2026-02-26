@@ -1,14 +1,8 @@
 import "server-only";
 import { cookies } from "next/headers";
+import type { AuthUser } from "@/types/auth";
 
-export type ServerUser = {
-  id: string;
-  email: string;
-  first_name?: string;
-  last_name?: string;
-  role?: string;
-  user_type?: string;
-};
+export type ServerUser = AuthUser;
 
 const AUTH_ME_TIMEOUT_MS = 3000;
 
@@ -16,8 +10,18 @@ const AUTH_ME_TIMEOUT_MS = 3000;
  * Reads the accessToken httpOnly cookie and fetches the user from the backend.
  * Returns null if unauthenticated or if the token is expired.
  * Falls back gracefully; client-side AuthContext handles token refresh.
+ * Throws when NEXT_PUBLIC_API_URL is not configured.
  */
 export async function getServerUser(): Promise<ServerUser | null> {
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+  if (!apiBaseUrl) {
+    const configError = new Error(
+      "serverAuth: NEXT_PUBLIC_API_URL is required but missing",
+    );
+    console.error(configError.message);
+    throw configError;
+  }
+
   try {
     const cookieStore = await cookies();
     const accessToken = cookieStore.get("accessToken")?.value;
@@ -28,7 +32,7 @@ export async function getServerUser(): Promise<ServerUser | null> {
 
     let res: Response;
     try {
-      res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
+      res = await fetch(`${apiBaseUrl}/auth/me`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",

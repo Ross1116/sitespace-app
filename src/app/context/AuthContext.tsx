@@ -17,20 +17,14 @@ import { useSWRConfig } from "swr";
 import { reportError } from "@/lib/monitoring";
 import { saveStoredProject } from "@/lib/projectStorage";
 import { normalizeProjectList } from "@/lib/apiNormalization";
+import type { AuthUser } from "@/types/auth";
 import {
   getTelemetryEmailMode,
   hashEmailForTelemetry,
 } from "@/lib/telemetryPrivacy";
 
 // ===== TYPES =====
-export type User = {
-  id: string;
-  email: string;
-  first_name?: string;
-  last_name?: string;
-  role?: string;
-  user_type?: string;
-};
+export type User = AuthUser;
 
 type AuthContextType = {
   user: User | null;

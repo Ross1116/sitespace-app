@@ -107,15 +107,13 @@ export default function MulticalendarPage() {
     setStoredProject(userId ? readStoredProject(userId) : null);
   }, [userId]);
 
-  // Fetch projects if no stored project (handles TV role and first-time users)
+  // Fetch projects for reconciliation and project selector updates.
   const projectsUrl = useMemo(() => {
     if (!userId) return null;
-    // Only fetch if no stored project
-    if (storedProject?.id) return null;
     if (user?.role === "subcontractor")
       return `/subcontractors/${userId}/projects`;
     return "/projects/?my_projects=true&limit=100&skip=0";
-  }, [userId, user?.role, storedProject?.id]);
+  }, [userId, user?.role]);
 
   const {
     data: projectsRaw,
@@ -137,6 +135,23 @@ export default function MulticalendarPage() {
       saveStoredProject(userId, firstProject);
       setStoredProject(firstProject);
     }
+  }, [userId, storedProject?.id, projects]);
+
+  // Reconcile stored project against live projects to recover from stale/deleted IDs.
+  useEffect(() => {
+    if (!userId || !storedProject?.id || projects.length === 0) return;
+
+    const stillExists = projects.some((project) => project.id === storedProject.id);
+    if (stillExists) return;
+
+    const fallbackProject = projects[0] ?? null;
+    if (fallbackProject?.id) {
+      saveStoredProject(userId, fallbackProject);
+      setStoredProject(fallbackProject);
+      return;
+    }
+
+    setStoredProject(null);
   }, [userId, storedProject?.id, projects]);
 
   // Use stored project or first fetched project
