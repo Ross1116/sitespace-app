@@ -8,7 +8,12 @@ import BookingList from "./BookingList";
 import { Button } from "@/components/ui/button";
 import { addHours, startOfHour } from "date-fns";
 import { Plus, Search } from "lucide-react";
-import { CreateBookingForm } from "@/components/forms/CreateBookingForm";
+import dynamic from "next/dynamic";
+
+const CreateBookingForm = dynamic(
+  () => import("@/components/forms/CreateBookingForm").then((m) => ({ default: m.CreateBookingForm })),
+  { ssr: false },
+);
 import { Input } from "@/components/ui/input";
 import ComponentErrorBoundary from "@/components/ui/ComponentErrorBoundary";
 import { swrFetcher, SWR_CONFIG } from "@/lib/swr";
@@ -291,7 +296,7 @@ export default function BookingsPage() {
                 <div className="flex w-full gap-3 sm:w-auto">
                   <div className="flex min-w-0 flex-1 flex-col items-center justify-center rounded-xl bg-[var(--navy)] px-4 py-2.5 text-white shadow-md shadow-slate-900/10 sm:min-w-[110px] sm:flex-none sm:px-5">
                     <span className="text-2xl font-bold leading-none">
-                      {allBookings.length}
+                      {authLoading || isLoading ? "—" : allBookings.length}
                     </span>
                     <span className="text-[10px] font-medium opacity-80 uppercase tracking-wide">
                       Total
@@ -299,7 +304,7 @@ export default function BookingsPage() {
                   </div>
                   <div className="flex min-w-0 flex-1 flex-col items-center justify-center rounded-xl bg-[var(--brand-orange)] px-4 py-2.5 text-white shadow-md shadow-orange-900/10 sm:min-w-[110px] sm:flex-none sm:px-5">
                     <span className="text-2xl font-bold leading-none">
-                      {pendingCount}
+                      {authLoading || isLoading ? "—" : pendingCount}
                     </span>
                     <span className="text-[10px] font-medium opacity-90 uppercase tracking-wide">
                       Pending

@@ -15,7 +15,9 @@ import {
   ChevronDown,
   ChevronsUpDown,
 } from "lucide-react";
-import SubFormModal from "@/components/forms/InviteSubForm";
+import dynamic from "next/dynamic";
+
+const SubFormModal = dynamic(() => import("@/components/forms/InviteSubForm"), { ssr: false });
 import { useAuth } from "@/app/context/AuthContext";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";

@@ -43,8 +43,16 @@ import {
 import { getDaysInMonth, generateWeekdays } from "./calendar-helpers";
 import { TimeTable } from "./calendar-utils";
 import { AssetCalendar } from "./calendar-context";
-import { CreateBookingForm } from "@/components/forms/CreateBookingForm";
-import { BookingDetailsDialog } from "@/components/multicalendar/BookingDetailDialog";
+import dynamic from "next/dynamic";
+
+const CreateBookingForm = dynamic(
+  () => import("@/components/forms/CreateBookingForm").then((m) => ({ default: m.CreateBookingForm })),
+  { ssr: false },
+);
+const BookingDetailsDialog = dynamic(
+  () => import("@/components/multicalendar/BookingDetailDialog").then((m) => ({ default: m.BookingDetailsDialog })),
+  { ssr: false },
+);
 import { useMulticalendarActions } from "@/components/multicalendar/MulticalendarActionsContext";
 import {
   DndContext,
