@@ -57,10 +57,17 @@ const toApiBooking = (record: UnknownRecord): ApiBooking | null => {
 
   const assetRecord = toOptionalRecord(record.asset);
   const projectRecord = toOptionalRecord(record.project);
+  const managerRecord = toOptionalRecord(record.manager);
+  const subcontractorRecord = toOptionalRecord(record.subcontractor);
+  const createdByRecord = toOptionalRecord(record.created_by);
   const assetObjectId = assetRecord ? asId(assetRecord.id) : "";
   const assetObjectName = assetRecord ? asString(assetRecord.name) : "";
   const projectObjectId = projectRecord ? asId(projectRecord.id) : "";
   const projectObjectName = projectRecord ? asString(projectRecord.name) : "";
+  const managerObjectId = managerRecord ? asId(managerRecord.id) : "";
+  const subcontractorObjectId = subcontractorRecord
+    ? asId(subcontractorRecord.id)
+    : "";
 
   return {
     id,
@@ -72,6 +79,13 @@ const toApiBooking = (record: UnknownRecord): ApiBooking | null => {
     start_time: startTime,
     end_time: endTime,
     status: status || "pending",
+    created_by_id: asId(record.created_by_id) || undefined,
+    created_by_name: asString(record.created_by_name) || undefined,
+    created_by_role: asString(record.created_by_role) || undefined,
+    booked_by_name: asString(record.booked_by_name) || undefined,
+    booked_by_role: asString(record.booked_by_role) || undefined,
+    requested_by_name: asString(record.requested_by_name) || undefined,
+    requested_by_role: asString(record.requested_by_role) || undefined,
     notes: asString(record.notes) || null,
     purpose: asString(record.purpose) || null,
     title: asString(record.title) || undefined,
@@ -88,6 +102,32 @@ const toApiBooking = (record: UnknownRecord): ApiBooking | null => {
       ? {
           id: projectObjectId,
           name: projectObjectName,
+        }
+      : undefined,
+    manager: managerObjectId
+      ? {
+          id: managerObjectId,
+          first_name: asString(managerRecord?.first_name),
+          last_name: asString(managerRecord?.last_name),
+          full_name: asString(managerRecord?.full_name) || undefined,
+        }
+      : undefined,
+    subcontractor: subcontractorObjectId
+      ? {
+          id: subcontractorObjectId,
+          company_name: asString(subcontractorRecord?.company_name) || undefined,
+          first_name: asString(subcontractorRecord?.first_name),
+          last_name: asString(subcontractorRecord?.last_name),
+        }
+      : undefined,
+    created_by: createdByRecord
+      ? {
+          id: asId(createdByRecord.id) || undefined,
+          first_name: asString(createdByRecord.first_name) || undefined,
+          last_name: asString(createdByRecord.last_name) || undefined,
+          full_name: asString(createdByRecord.full_name) || undefined,
+          email: asString(createdByRecord.email) || undefined,
+          role: asString(createdByRecord.role) || undefined,
         }
       : undefined,
     competing_pending_count:

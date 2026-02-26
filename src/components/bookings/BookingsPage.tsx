@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
-import useSWR from "swr";
 import { useAuth } from "@/app/context/AuthContext";
 import BookingList from "./BookingList";
 import { Button } from "@/components/ui/button";
@@ -16,13 +15,12 @@ const CreateBookingForm = dynamic(
 );
 import { Input } from "@/components/ui/input";
 import ComponentErrorBoundary from "@/components/ui/ComponentErrorBoundary";
-import { swrFetcher, SWR_CONFIG } from "@/lib/swr";
 import { combineDateAndTime } from "@/lib/bookingHelpers";
 import { isTvUser } from "@/lib/permissions";
 import { useResolvedProjectSelection } from "@/hooks/useResolvedProjectSelection";
+import { useProjectBookingsList } from "@/hooks/useProjectBookingsList";
 import type {
   ApiBooking,
-  BookingListResponse,
   TransformedBooking,
 } from "@/types";
 
@@ -198,20 +196,17 @@ export default function BookingsPage() {
     }
   }, [isTv, userId, projectId, hasResolvedProjects]);
 
-  // --- SWR: fetch bookings ---
-  const swrKey = projectId
-    ? `/bookings/?project_id=${projectId}&limit=1000&skip=0`
-    : null;
-
-  const { data, isLoading, mutate } = useSWR<BookingListResponse>(
-    swrKey,
-    swrFetcher,
-    SWR_CONFIG,
-  );
+  // --- Bookings ---
+  const { bookings, isLoading, mutate } = useProjectBookingsList({
+    projectId,
+    enabled: true,
+    limit: 1000,
+    skip: 0,
+  });
 
   const allBookings = useMemo(
-    () => processRawBookings(data?.bookings || []),
-    [data],
+    () => processRawBookings(bookings),
+    [bookings],
   );
 
   // --- READ HIGHLIGHT PARAM ---
