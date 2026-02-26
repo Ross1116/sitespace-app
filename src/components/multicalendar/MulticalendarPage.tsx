@@ -244,6 +244,7 @@ export default function MulticalendarPage() {
     setInitialLoad(true);
     setVisibleAssets([]);
     setSelectedAssetIndex(0);
+    lastSentVisibleIdsRef.current = [];
   }, [uiScopeKey]);
 
   useEffect(() => {
