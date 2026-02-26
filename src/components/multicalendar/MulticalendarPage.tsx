@@ -114,7 +114,12 @@ export default function MulticalendarPage() {
   }, [currentDate]);
 
   // --- Assets ---
-  const { assets, mutate: mutateAssets } = useProjectAssets(projectId);
+  const {
+    assets,
+    error: assetsError,
+    isLoading: assetsLoading,
+    mutate: mutateAssets,
+  } = useProjectAssets(projectId);
 
   const availableAssets = useMemo(
     () =>
@@ -154,15 +159,25 @@ export default function MulticalendarPage() {
   }, [calendarData, userId]);
 
   const isPageLoading = loading || authLoading || projectsLoading;
+  const isAssetPanelLoading = isPageLoading || assetsLoading;
 
   const error = useMemo(() => {
     if (fetchError) return "Failed to fetch calendar data";
     if (projectsError) return "Failed to fetch projects";
+    if (assetsError) return "Failed to fetch assets";
     // Don't show "No project selected" while projects are still loading
     if (projectsUrl && projectsLoading) return null;
     if (userId && !projectId) return "No project selected";
     return null;
-  }, [fetchError, projectsError, projectsUrl, projectsLoading, userId, projectId]);
+  }, [
+    fetchError,
+    projectsError,
+    assetsError,
+    projectsUrl,
+    projectsLoading,
+    userId,
+    projectId,
+  ]);
 
   const handleActionComplete = () => {
     mutate();
@@ -278,6 +293,23 @@ export default function MulticalendarPage() {
     <div
       className={`h-full pt-0 px-2 sm:p-6 lg:px-8 grid grid-cols-12 gap-6 ${PAGE_BG}`}
     >
+      {assetsLoading && !isPageLoading && (
+        <div
+          className="col-span-12 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600"
+          role="status"
+          aria-live="polite"
+        >
+          Loading assets...
+        </div>
+      )}
+      {Boolean(assetsError) && (
+        <div
+          className="col-span-12 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800"
+          role="alert"
+        >
+          Failed to load assets. Some asset calendars may be unavailable.
+        </div>
+      )}
       {/* --- LEFT SIDEBAR WRAPPER --- */}
       <div
         className={`${
@@ -315,7 +347,7 @@ export default function MulticalendarPage() {
         {/* Asset Filter */}
         <AssetFilter
           isCollapsed={isCollapsed}
-          loading={isPageLoading}
+          loading={isAssetPanelLoading}
           assetCalendars={assetCalendars}
           visibleAssets={visibleAssets}
           setVisibleAssets={setVisibleAssets}

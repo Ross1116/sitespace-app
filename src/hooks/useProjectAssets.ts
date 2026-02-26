@@ -23,7 +23,7 @@ type Result = {
 
 export function useProjectAssets(projectId: string | null): Result {
   const swrKey = projectId
-    ? `/assets/?project_id=${projectId}&skip=0&limit=100`
+    ? `/assets/?project_id=${encodeURIComponent(projectId)}&skip=0&limit=100`
     : null;
 
   const { data, error, isLoading, mutate } = useSWR<AssetListResponse>(

@@ -200,10 +200,13 @@ export function AuthProvider({
             const projData = await projRes.json();
             const firstProject = normalizeProjectList(projData)[0] ?? null;
 
-            if (firstProject?.id) {
-              useProjectSelectionStore
-                .getState()
-                .setSelectedProjectId(userData.id, firstProject.id);
+            const store = useProjectSelectionStore.getState();
+            const existingProjectId = userData.id
+              ? store.selectedProjectIds[userData.id]
+              : undefined;
+
+            if (userData.id && firstProject?.id && !existingProjectId) {
+              store.setSelectedProjectId(userData.id, firstProject.id);
             }
           }
         } catch (error: unknown) {

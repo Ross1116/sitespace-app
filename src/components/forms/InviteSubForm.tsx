@@ -168,11 +168,14 @@ const SubFormModal: React.FC<ContractorModalProps> = ({
   });
 
   useEffect(() => {
-    if (!selectedProjectId) return;
-    setContractor((prev) => ({
-      ...prev,
-      contractorProjectId: prev.contractorProjectId || selectedProjectId,
-    }));
+    setContractor((prev) =>
+      prev.contractorProjectId === selectedProjectId
+        ? prev
+        : {
+            ...prev,
+            contractorProjectId: selectedProjectId,
+          },
+    );
   }, [selectedProjectId]);
 
   useEffect(() => {

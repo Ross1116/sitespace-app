@@ -110,11 +110,14 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
 
   // Sync the selected project into the form payload.
   useEffect(() => {
-    if (!selectedProjectId) return;
-    setAsset((prev) => ({
-      ...prev,
-      assetProject: prev.assetProject || selectedProjectId,
-    }));
+    setAsset((prev) =>
+      prev.assetProject === selectedProjectId
+        ? prev
+        : {
+            ...prev,
+            assetProject: selectedProjectId,
+          },
+    );
   }, [selectedProjectId]);
 
   // Auto-generate asset code when type and title change

@@ -207,10 +207,6 @@ export default function AssetsTable() {
     }
   }, [user?.role, router]);
 
-  if (user?.role === "subcontractor") {
-    return null;
-  }
-
   const projectName = selectedProject?.name || "";
 
   const {
@@ -330,6 +326,10 @@ export default function AssetsTable() {
     const start = (currentPage - 1) * itemsPerPage;
     return filteredAndSortedAssets.slice(start, start + itemsPerPage);
   }, [filteredAndSortedAssets, currentPage, itemsPerPage]);
+
+  if (user?.role === "subcontractor") {
+    return null;
+  }
 
   const totalPages = Math.ceil(
     (filteredAndSortedAssets?.length || 0) / itemsPerPage,
