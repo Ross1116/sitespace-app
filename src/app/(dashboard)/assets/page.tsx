@@ -25,8 +25,10 @@ import {
 } from "lucide-react";
 import api from "@/lib/api";
 import { useAuth } from "@/app/context/AuthContext";
-import CreateAssetForm from "@/components/forms/CreateAssetForm";
-import UpdateAssetModal from "@/components/forms/UpdateAssetForm";
+import dynamic from "next/dynamic";
+
+const CreateAssetForm = dynamic(() => import("@/components/forms/CreateAssetForm"), { ssr: false });
+const UpdateAssetModal = dynamic(() => import("@/components/forms/UpdateAssetForm"), { ssr: false });
 import { format, parseISO } from "date-fns";
 import { Input } from "@/components/ui/input";
 import { swrFetcher, SWR_CONFIG } from "@/lib/swr";
@@ -205,7 +207,7 @@ export default function AssetsTable() {
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   const itemsPerPage = 7;
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const userId = user?.id;
 
@@ -427,7 +429,7 @@ export default function AssetsTable() {
                 <div className="flex gap-3 w-full sm:w-auto">
                   <div className="bg-[var(--navy)] text-white rounded-xl px-5 py-2 flex flex-col items-center justify-center min-w-[110px] shadow-md shadow-slate-900/10">
                     <span className="text-2xl font-bold leading-none">
-                      {allAssets?.length ?? 0}
+                      {authLoading || loading ? "—" : (allAssets?.length ?? 0)}
                     </span>
                     <span className="text-[10px] font-medium opacity-80 uppercase tracking-wide">
                       Total Assets
@@ -435,7 +437,7 @@ export default function AssetsTable() {
                   </div>
                   <div className="bg-[var(--brand-orange)] text-white rounded-xl px-5 py-2 flex flex-col items-center justify-center min-w-[110px] shadow-md shadow-orange-900/10">
                     <span className="text-2xl font-bold leading-none">
-                      {maintenanceCount}
+                      {authLoading || loading ? "—" : maintenanceCount}
                     </span>
                     <span className="text-[10px] font-medium opacity-90 uppercase tracking-wide">
                       Maintenance
@@ -507,7 +509,7 @@ export default function AssetsTable() {
 
             {/* Rows */}
             <div className="space-y-3 flex-1">
-              {loading ? (
+              {loading || authLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <div
                     key={i}

@@ -17,20 +17,14 @@ import { useSWRConfig } from "swr";
 import { reportError } from "@/lib/monitoring";
 import { saveStoredProject } from "@/lib/projectStorage";
 import { normalizeProjectList } from "@/lib/apiNormalization";
+import type { AuthUser } from "@/types/auth";
 import {
   getTelemetryEmailMode,
   hashEmailForTelemetry,
 } from "@/lib/telemetryPrivacy";
 
 // ===== TYPES =====
-type User = {
-  id: string;
-  email: string;
-  first_name?: string;
-  last_name?: string;
-  role?: string;
-  user_type?: string;
-};
+export type User = AuthUser;
 
 type AuthContextType = {
   user: User | null;
@@ -55,9 +49,16 @@ type RegisterData = {
 // ===== CONTEXT =====
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isInitialized, setIsInitialized] = useState(false);
+export function AuthProvider({
+  children,
+  initialUser,
+}: {
+  children: ReactNode;
+  initialUser?: User | null;
+}) {
+  const [user, setUser] = useState<User | null>(initialUser ?? null);
+  // Start initialized if the server confirmed a real user — skips the client-side auth fetch
+  const [isInitialized, setIsInitialized] = useState(initialUser !== undefined);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const { mutate } = useSWRConfig();
@@ -123,6 +124,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (initAttempted.current) return;
     initAttempted.current = true;
 
+    // Server already confirmed a real user — skip the round-trip, just run telemetry
+    if (initialUser !== undefined) {
+      if (initialUser) {
+        void identifyTelemetryUser(initialUser);
+      }
+      return;
+    }
+
     const init = async () => {
       const userData = await checkAuth();
       setUser(userData);
@@ -133,7 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     init();
-  }, [checkAuth, identifyTelemetryUser]);
+  }, [checkAuth, identifyTelemetryUser, initialUser]);
 
   // ===== Login =====
   const login = useCallback(

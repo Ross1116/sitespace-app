@@ -86,7 +86,7 @@ const PALETTE = {
 };
 
 export default function HomePage() {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const isSubcontractorUser = user?.role === "subcontractor";
   const canEditSitePlans =
@@ -115,7 +115,11 @@ export default function HomePage() {
     return "/projects/?my_projects=true&limit=100&skip=0";
   }, [userId, user?.role]);
 
-  const { data: projectsRaw } = useSWR(projectsUrl, swrFetcher, SWR_CONFIG);
+  const {
+    data: projectsRaw,
+    error: projectsError,
+    isLoading: projectsLoading,
+  } = useSWR(projectsUrl, swrFetcher, SWR_CONFIG);
 
   const projects = useMemo<ApiProject[]>(() => {
     if (!projectsRaw) return [];
@@ -170,6 +174,14 @@ export default function HomePage() {
   }, [projects, selectedProject, userId]);
 
   const projectId = selectedProject?.id || selectedProject?.project_id || null;
+
+  // True while we have a user but haven't resolved a project yet —
+  // prevents the empty state from flashing before data arrives.
+  const isDataLoading =
+    !!userId &&
+    projectId === null &&
+    !projectsError &&
+    (projectsLoading || projectsRaw === undefined);
 
   // --- SWR: Assets count ---
   const { data: assetsData } = useSWR(
@@ -421,7 +433,7 @@ export default function HomePage() {
           >
             <QuickAccessCard
               title="Calendar"
-              count={upcomingBookings.length}
+              count={authLoading || isDataLoading ? "—" : upcomingBookings.length}
               subtitle={`${eventsTodayCount} events today`}
               icon={Calendar}
               bgColor={PALETTE.darkNavy}
@@ -430,7 +442,7 @@ export default function HomePage() {
             {!isSubcontractorUser && (
               <QuickAccessCard
                 title="Assets"
-                count={assetCount}
+                count={authLoading || isDataLoading ? "—" : assetCount}
                 subtitle={`${
                   assetCount > 0 ? "Active on site" : "No assets active"
                 }`}
@@ -442,7 +454,7 @@ export default function HomePage() {
             {!isSubcontractorUser && (
               <QuickAccessCard
                 title="Subcontractor"
-                count={subcontractorCount}
+                count={authLoading || isDataLoading ? "—" : subcontractorCount}
                 subtitle={`${subcontractorCount} Active`}
                 icon={Users}
                 bgColor={PALETTE.blue}
@@ -451,7 +463,7 @@ export default function HomePage() {
             )}
             <QuickAccessCard
               title="Bookings"
-              count={upcomingBookings.length}
+              count={authLoading || isDataLoading ? "—" : upcomingBookings.length}
               subtitle={`${pendingBookingsCount} Pending`}
               icon={ListChecks}
               bgColor={PALETTE.teal}
@@ -481,7 +493,7 @@ export default function HomePage() {
             )}
 
             <div className="bg-white rounded-2xl shadow-sm p-5 sm:p-6 min-h-[400px] border border-slate-100 flex flex-col">
-              {loadingBookings ? (
+              {loadingBookings || isDataLoading || authLoading ? (
                 <div className="space-y-4">
                   {[1, 2, 3, 4].map((i) => (
                     <Skeleton key={i} className="h-24 w-full rounded-xl" />
@@ -700,7 +712,7 @@ export default function HomePage() {
 // --- Sub-Components ---
 interface QuickAccessCardProps {
   title: string;
-  count: number;
+  count: number | string;
   subtitle: string;
   icon: LucideIcon;
   bgColor: string;

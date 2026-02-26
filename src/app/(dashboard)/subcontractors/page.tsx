@@ -15,7 +15,9 @@ import {
   ChevronDown,
   ChevronsUpDown,
 } from "lucide-react";
-import SubFormModal from "@/components/forms/InviteSubForm";
+import dynamic from "next/dynamic";
+
+const SubFormModal = dynamic(() => import("@/components/forms/InviteSubForm"), { ssr: false });
 import { useAuth } from "@/app/context/AuthContext";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
@@ -98,7 +100,7 @@ export default function SubcontractorsPage() {
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   const itemsPerPage = 7;
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const userId = user?.id;
 
@@ -355,7 +357,7 @@ export default function SubcontractorsPage() {
 
             {/* Rows */}
             <div className="space-y-3 flex-1">
-              {loading ? (
+              {loading || authLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <div
                     key={i}

@@ -76,9 +76,12 @@ const SideNav = () => {
   ];
 
   const hasPermission = (item: MenuItem): boolean => {
-    if (!user || !isAuthenticated) return false;
+    // While auth is loading show universal items so the sidebar isn't empty.
+    if (!isAuthenticated) {
+      return !item.visible || item.visible.length === 0;
+    }
 
-    const userRole = normalizeRole(user.role);
+    const userRole = normalizeRole(user?.role);
     if (userRole === "tv") {
       // TV users: read-only display mode (only bookings + live calendar + logout).
       if (item.label === "Logout") return true;

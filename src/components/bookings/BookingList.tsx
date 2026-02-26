@@ -5,7 +5,9 @@ import { Calendar } from "lucide-react";
 import { groupBookings } from "@/lib/bookingHelpers";
 import BookingCardMobile from "./BookingCardMobile";
 import BookingCardDesktop from "./BookingCardDesktop";
-import BookingHistorySidebar from "./BookingHistorySidebar";
+import dynamic from "next/dynamic";
+
+const BookingHistorySidebar = dynamic(() => import("./BookingHistorySidebar"), { ssr: false });
 import { BookingCardActionsProvider } from "./BookingCardActionsContext";
 import { Button } from "@/components/ui/button";
 import type { TransformedBooking } from "@/types";

@@ -37,7 +37,9 @@ import {
 import { format } from "date-fns";
 import api from "@/lib/api";
 import { useAuth } from "@/app/context/AuthContext";
-import RescheduleBookingForm from "@/components/forms/RescheduleBookingForm";
+import dynamic from "next/dynamic";
+
+const RescheduleBookingForm = dynamic(() => import("@/components/forms/RescheduleBookingForm"), { ssr: false });
 import {
   ApiBooking,
   ApiManager,

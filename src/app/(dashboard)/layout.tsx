@@ -29,7 +29,6 @@ export default function DashboardLayout({
     router.replace("/multicalendar");
   }, [isAuthenticated, isLoading, pathname, router, user]);
 
-  // Show spinner while auth is initializing (instead of blank flash)
   if (isLoading || !isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--page-bg)]">

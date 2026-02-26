@@ -90,33 +90,30 @@ export default function MulticalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedAssetIndex, setSelectedAssetIndex] = useState(0);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const userId = user?.id;
 
   // Visibility State
   const [initialLoad, setInitialLoad] = useState(true);
   const [visibleAssets, setVisibleAssets] = useState<number[]>([]);
 
-  // Read project from localStorage (stateful so saves update in-session)
-  const [storedProject, setStoredProject] = useState<StoredProject | null>(() =>
-    userId ? readStoredProject(userId) : null,
-  );
+  // Start deterministic for SSR/hydration, then load from localStorage on mount.
+  const [storedProject, setStoredProject] = useState<StoredProject | null>(null);
 
   // Re-read from localStorage when userId changes
   useEffect(() => {
     setStoredProject(userId ? readStoredProject(userId) : null);
   }, [userId]);
 
-  // Fetch projects if no stored project (handles TV role and first-time users)
+  // Fetch projects for reconciliation and project selector updates.
   const projectsUrl = useMemo(() => {
     if (!userId) return null;
-    // Only fetch if no stored project
-    if (storedProject?.id) return null;
     if (user?.role === "subcontractor")
       return `/subcontractors/${userId}/projects`;
     return "/projects/?my_projects=true&limit=100&skip=0";
-  }, [userId, user?.role, storedProject?.id]);
+  }, [userId, user?.role]);
 
   const {
     data: projectsRaw,
@@ -138,6 +135,23 @@ export default function MulticalendarPage() {
       saveStoredProject(userId, firstProject);
       setStoredProject(firstProject);
     }
+  }, [userId, storedProject?.id, projects]);
+
+  // Reconcile stored project against live projects to recover from stale/deleted IDs.
+  useEffect(() => {
+    if (!userId || !storedProject?.id || projects.length === 0) return;
+
+    const stillExists = projects.some((project) => project.id === storedProject.id);
+    if (stillExists) return;
+
+    const fallbackProject = projects[0] ?? null;
+    if (fallbackProject?.id) {
+      saveStoredProject(userId, fallbackProject);
+      setStoredProject(fallbackProject);
+      return;
+    }
+
+    setStoredProject(null);
   }, [userId, storedProject?.id, projects]);
 
   // Use stored project or first fetched project
@@ -204,6 +218,8 @@ export default function MulticalendarPage() {
       .map((booking) => processBookingToEvent(booking, userId));
   }, [calendarData, userId]);
 
+  const isPageLoading = loading || authLoading || projectsLoading;
+
   const error = useMemo(() => {
     if (fetchError) return "Failed to fetch calendar data";
     if (projectsError) return "Failed to fetch projects";
@@ -224,10 +240,10 @@ export default function MulticalendarPage() {
     mutate();
   };
 
-  const handleRefresh = () => {
-    mutateProjects();
-    mutate();
-    mutateAssets();
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await Promise.allSettled([mutateProjects(), mutate(), mutateAssets()]);
+    setIsRefreshing(false);
   };
 
   const assetCalendars: AssetCalendar[] = useMemo(() => {
@@ -301,7 +317,7 @@ export default function MulticalendarPage() {
 
   if (
     error &&
-    !loading &&
+    !isPageLoading &&
     bookings.length === 0 &&
     availableAssets.length === 0
   ) {
@@ -364,7 +380,7 @@ export default function MulticalendarPage() {
         {/* Asset Filter */}
         <AssetFilter
           isCollapsed={isCollapsed}
-          loading={loading}
+          loading={isPageLoading}
           assetCalendars={assetCalendars}
           visibleAssets={visibleAssets}
           setVisibleAssets={setVisibleAssets}
@@ -380,7 +396,8 @@ export default function MulticalendarPage() {
         <Calendar date={currentDate} onDateChange={setCurrentDate} view="day">
           <CalendarHeader
             isCollapsed={isCollapsed}
-            loading={loading}
+            loading={isPageLoading}
+            isRefreshing={isRefreshing}
             assetCalendars={assetCalendars}
             visibleAssets={visibleAssets}
             setVisibleAssets={setVisibleAssets}
@@ -435,14 +452,14 @@ export default function MulticalendarPage() {
             >
               <div className="md:hidden">
                 <MobileView
-                  loading={loading}
+                  loading={isPageLoading}
                   selectedCalendar={selectedCalendar}
                   currentDate={currentDate}
                 />
               </div>
               <div className="hidden md:block flex-1 overflow-hidden">
                 <DesktopView
-                  loading={loading}
+                  loading={isPageLoading}
                   isCollapsed={isCollapsed}
                   assetCalendars={assetCalendars}
                   visibleAssets={visibleAssets}
