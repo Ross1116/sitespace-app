@@ -93,9 +93,6 @@ export default function MulticalendarPage() {
     return `${userId}:${projectId}`;
   }, [userId, projectId]);
   const hasUIIntentHydrated = useUIIntentStore((state) => state.hasHydrated);
-  const getMulticalendarIntent = useUIIntentStore(
-    (state) => state.getMulticalendarIntent,
-  );
   const setMulticalendarVisibleAssetIds = useUIIntentStore(
     (state) => state.setMulticalendarVisibleAssetIds,
   );
@@ -256,7 +253,7 @@ export default function MulticalendarPage() {
 
       const persistedVisibleAssetIds =
         uiScopeKey && hasUIIntentHydrated
-          ? (getMulticalendarIntent(uiScopeKey)?.visibleAssetIds ?? [])
+          ? (useUIIntentStore.getState().getMulticalendarIntent(uiScopeKey)?.visibleAssetIds ?? [])
           : [];
       const persistedVisibleIndices = persistedVisibleAssetIds
         .map((assetId) =>
@@ -290,7 +287,6 @@ export default function MulticalendarPage() {
     initialLoad,
     hasUIIntentHydrated,
     uiScopeKey,
-    getMulticalendarIntent,
   ]);
 
   useEffect(() => {

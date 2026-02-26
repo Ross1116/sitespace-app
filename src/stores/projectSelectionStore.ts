@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import { isRecord } from "@/lib/typeGuards";
 
 export const PROJECT_SELECTION_STORAGE_KEY = "project-selection-v1";
 const PROJECT_SELECTION_STORE_VERSION = 1;
@@ -9,9 +10,6 @@ const PROJECT_SELECTION_STORE_VERSION = 1;
 type PersistedProjectSelectionState = {
   selectedProjectIds?: Record<string, unknown>;
 };
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null;
 
 const toStringRecord = (value: unknown): Record<string, string> => {
   if (!isRecord(value)) return {};
@@ -85,7 +83,8 @@ export const useProjectSelectionStore = create<ProjectSelectionStore>()(
             error,
           );
         }
-        state?.setHasHydrated(true);
+        // Always mark hydration complete, even if state is undefined on error.
+        (state ?? useProjectSelectionStore.getState()).setHasHydrated(true);
       },
     },
   ),

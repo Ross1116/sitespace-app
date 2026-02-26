@@ -188,7 +188,6 @@ export default function BookingsPage() {
     return `${userId}:${projectId}`;
   }, [userId, projectId]);
   const hasUIIntentHydrated = useUIIntentStore((state) => state.hasHydrated);
-  const getBookingsIntent = useUIIntentStore((state) => state.getBookingsIntent);
   const setBookingsActiveTab = useUIIntentStore(
     (state) => state.setBookingsActiveTab,
   );
@@ -198,7 +197,7 @@ export default function BookingsPage() {
 
   useEffect(() => {
     if (!hasUIIntentHydrated || !uiScopeKey) return;
-    const persistedIntent = getBookingsIntent(uiScopeKey);
+    const persistedIntent = useUIIntentStore.getState().getBookingsIntent(uiScopeKey);
     const persistedActiveTab = persistedIntent?.activeTab || "Upcoming";
     const persistedSearchTerm = persistedIntent?.searchTerm || "";
 
@@ -208,7 +207,7 @@ export default function BookingsPage() {
     setSearchTerm((current) =>
       current === persistedSearchTerm ? current : persistedSearchTerm,
     );
-  }, [hasUIIntentHydrated, uiScopeKey, getBookingsIntent]);
+  }, [hasUIIntentHydrated, uiScopeKey]);
 
   // Redirect if no project selected
   useEffect(() => {

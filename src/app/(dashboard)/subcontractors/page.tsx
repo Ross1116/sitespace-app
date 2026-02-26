@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import {
   X,
   Plus,
@@ -117,6 +117,13 @@ export default function SubcontractorsPage() {
     setCurrentPage(1);
   }, [projectId]);
 
+  // Keep a ref to the latest selectedProjectId so the storage-event handler
+  // never closes over a stale value.
+  const selectedProjectIdRef = useRef(selectedProjectId);
+  useEffect(() => {
+    selectedProjectIdRef.current = selectedProjectId;
+  }, [selectedProjectId]);
+
   // Keep store in sync with cross-tab persisted updates.
   useEffect(() => {
     if (!userId) return;
@@ -128,7 +135,7 @@ export default function SubcontractorsPage() {
       const incomingId =
         useProjectSelectionStore.getState().getSelectedProjectId(userId);
 
-      if (incomingId !== selectedProjectId) {
+      if (incomingId !== selectedProjectIdRef.current) {
         setProjectId(incomingId);
         setCurrentPage(1);
       }
@@ -136,12 +143,14 @@ export default function SubcontractorsPage() {
 
     const handler = (e: StorageEvent) => {
       if (e.key !== storageKey && e.key !== null) return;
-      void syncFromStore();
+      syncFromStore().catch((err) =>
+        console.error("syncFromStore failed on storage event", err),
+      );
     };
 
     window.addEventListener("storage", handler);
     return () => window.removeEventListener("storage", handler);
-  }, [userId, selectedProjectId, setProjectId]);
+  }, [userId, setProjectId]);
 
   // SWR — role-based endpoint
   const {

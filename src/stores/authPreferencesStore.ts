@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import { isRecord } from "@/lib/typeGuards";
 
 const AUTH_PREFERENCES_STORAGE_KEY = "auth-preferences-v1";
 const AUTH_PREFERENCES_STORE_VERSION = 1;
@@ -9,9 +10,6 @@ const AUTH_PREFERENCES_STORE_VERSION = 1;
 type PersistedAuthPreferencesState = {
   rememberedEmail?: unknown;
 };
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null;
 
 const extractRememberedEmail = (persistedState: unknown): string => {
   if (!isRecord(persistedState)) return "";
