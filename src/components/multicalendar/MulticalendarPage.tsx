@@ -91,7 +91,7 @@ export default function MulticalendarPage() {
   const [selectedAssetIndex, setSelectedAssetIndex] = useState(0);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const userId = user?.id;
 
   // Visibility State
@@ -204,6 +204,8 @@ export default function MulticalendarPage() {
       .map((booking) => processBookingToEvent(booking, userId));
   }, [calendarData, userId]);
 
+  const isPageLoading = loading || authLoading;
+
   const error = useMemo(() => {
     if (fetchError) return "Failed to fetch calendar data";
     if (projectsError) return "Failed to fetch projects";
@@ -301,7 +303,7 @@ export default function MulticalendarPage() {
 
   if (
     error &&
-    !loading &&
+    !isPageLoading &&
     bookings.length === 0 &&
     availableAssets.length === 0
   ) {
@@ -364,7 +366,7 @@ export default function MulticalendarPage() {
         {/* Asset Filter */}
         <AssetFilter
           isCollapsed={isCollapsed}
-          loading={loading}
+          loading={isPageLoading}
           assetCalendars={assetCalendars}
           visibleAssets={visibleAssets}
           setVisibleAssets={setVisibleAssets}
@@ -380,7 +382,7 @@ export default function MulticalendarPage() {
         <Calendar date={currentDate} onDateChange={setCurrentDate} view="day">
           <CalendarHeader
             isCollapsed={isCollapsed}
-            loading={loading}
+            loading={isPageLoading}
             assetCalendars={assetCalendars}
             visibleAssets={visibleAssets}
             setVisibleAssets={setVisibleAssets}
@@ -435,14 +437,14 @@ export default function MulticalendarPage() {
             >
               <div className="md:hidden">
                 <MobileView
-                  loading={loading}
+                  loading={isPageLoading}
                   selectedCalendar={selectedCalendar}
                   currentDate={currentDate}
                 />
               </div>
               <div className="hidden md:block flex-1 overflow-hidden">
                 <DesktopView
-                  loading={loading}
+                  loading={isPageLoading}
                   isCollapsed={isCollapsed}
                   assetCalendars={assetCalendars}
                   visibleAssets={visibleAssets}

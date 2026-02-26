@@ -172,7 +172,7 @@ export default function BookingsPage() {
   const [isBookingFormOpen, setIsBookingFormOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const userId = user?.id;
   const isTv = isTvUser(user);
 
@@ -374,7 +374,7 @@ export default function BookingsPage() {
                 <BookingList
                   bookings={filteredBookings}
                   activeTab={activeTab}
-                  loading={isLoading}
+                  loading={isLoading || authLoading}
                   onActionComplete={() => mutate()}
                   highlightBookingId={highlightBookingId}
                 />

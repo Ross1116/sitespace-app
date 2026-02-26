@@ -171,6 +171,10 @@ export default function HomePage() {
 
   const projectId = selectedProject?.id || selectedProject?.project_id || null;
 
+  // True while we have a user but haven't resolved a project yet —
+  // prevents the empty state from flashing before data arrives.
+  const isDataLoading = !!userId && projectId === null && projectsRaw === undefined;
+
   // --- SWR: Assets count ---
   const { data: assetsData } = useSWR(
     projectId ? `/assets/?project_id=${projectId}&limit=100` : null,
@@ -481,7 +485,7 @@ export default function HomePage() {
             )}
 
             <div className="bg-white rounded-2xl shadow-sm p-5 sm:p-6 min-h-[400px] border border-slate-100 flex flex-col">
-              {loadingBookings ? (
+              {loadingBookings || isDataLoading ? (
                 <div className="space-y-4">
                   {[1, 2, 3, 4].map((i) => (
                     <Skeleton key={i} className="h-24 w-full rounded-xl" />
