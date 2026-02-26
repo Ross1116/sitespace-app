@@ -86,7 +86,7 @@ const PALETTE = {
 };
 
 export default function HomePage() {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const isSubcontractorUser = user?.role === "subcontractor";
   const canEditSitePlans =
@@ -425,7 +425,7 @@ export default function HomePage() {
           >
             <QuickAccessCard
               title="Calendar"
-              count={upcomingBookings.length}
+              count={authLoading || isDataLoading ? "—" : upcomingBookings.length}
               subtitle={`${eventsTodayCount} events today`}
               icon={Calendar}
               bgColor={PALETTE.darkNavy}
@@ -434,7 +434,7 @@ export default function HomePage() {
             {!isSubcontractorUser && (
               <QuickAccessCard
                 title="Assets"
-                count={assetCount}
+                count={authLoading || isDataLoading ? "—" : assetCount}
                 subtitle={`${
                   assetCount > 0 ? "Active on site" : "No assets active"
                 }`}
@@ -446,7 +446,7 @@ export default function HomePage() {
             {!isSubcontractorUser && (
               <QuickAccessCard
                 title="Subcontractor"
-                count={subcontractorCount}
+                count={authLoading || isDataLoading ? "—" : subcontractorCount}
                 subtitle={`${subcontractorCount} Active`}
                 icon={Users}
                 bgColor={PALETTE.blue}
@@ -455,7 +455,7 @@ export default function HomePage() {
             )}
             <QuickAccessCard
               title="Bookings"
-              count={upcomingBookings.length}
+              count={authLoading || isDataLoading ? "—" : upcomingBookings.length}
               subtitle={`${pendingBookingsCount} Pending`}
               icon={ListChecks}
               bgColor={PALETTE.teal}
@@ -704,7 +704,7 @@ export default function HomePage() {
 // --- Sub-Components ---
 interface QuickAccessCardProps {
   title: string;
-  count: number;
+  count: number | string;
   subtitle: string;
   icon: LucideIcon;
   bgColor: string;
