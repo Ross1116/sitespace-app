@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Calendar,
   X,
@@ -9,7 +9,6 @@ import {
   Trash2,
   Edit,
 } from "lucide-react";
-import api from "@/lib/api";
 import { getApiErrorMessage } from "@/types";
 import { useAuth } from "@/app/context/AuthContext";
 import {
@@ -22,35 +21,28 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import RescheduleBookingForm from "@/components/forms/RescheduleBookingForm";
-import { ApiBooking, BookingListResponse } from "@/types";
+import { ApiBooking } from "@/types";
 import { reportError } from "@/lib/monitoring";
-import { BOOKING_PAGINATION_MAX_PAGES } from "@/lib/pagination";
 import { useBookingCardActions } from "./BookingCardActionsContext";
 import { isTvUser } from "@/lib/permissions";
-
-type PaginationGuardError = Error & {
-  __reportedByPaginationGuard?: boolean;
-};
-
-const isPaginationGuardError = (
-  error: unknown,
-): error is PaginationGuardError => {
-  if (!(error instanceof Error)) {
-    return false;
-  }
-  return Reflect.get(error, "__reportedByPaginationGuard") === true;
-};
+import {
+  fetchBookingById,
+  fetchCompetingPendingBookingsForBooking,
+} from "@/hooks/bookings/api";
+import { useBookingMutations } from "@/hooks/bookings/useBookingMutations";
 
 interface BookingCardDropdownProps {
   bookingKey: string;
   bookingStatus: string;
   subcontractorId?: string;
+  projectId?: string | null;
 }
 
 export default function BookingCardDropdown({
   bookingKey,
   bookingStatus,
   subcontractorId,
+  projectId,
 }: BookingCardDropdownProps) {
   const {
     isDropdownOpen: isOpen,
@@ -64,9 +56,17 @@ export default function BookingCardDropdown({
   const [isRescheduleFormOpen, setIsRescheduleFormOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [competingPendingCount, setCompetingPendingCount] = useState(0);
+  const [resolvedProjectId, setResolvedProjectId] = useState<string | null>(
+    projectId ?? null,
+  );
   const [competingPendingBookings, setCompetingPendingBookings] = useState<
     ApiBooking[]
   >([]);
+  const { updateBookingStatus, deleteBooking } = useBookingMutations();
+
+  useEffect(() => {
+    setResolvedProjectId(projectId ?? null);
+  }, [projectId]);
 
   const { user } = useAuth();
   const isTv = isTvUser(user);
@@ -87,15 +87,21 @@ export default function BookingCardDropdown({
     | "cancelled"
     | "denied";
 
-  const updateBookingStatus = async (newStatus: BookingStatusType) => {
+  const handleUpdateBookingStatus = async (
+    newStatus: BookingStatusType,
+    projectIdParam: string | null = resolvedProjectId,
+  ) => {
     setIsLoading(true);
     try {
-      await api.patch(`/bookings/${bookingKey}/status`, {
-        status: newStatus.toUpperCase(),
+      await updateBookingStatus({
+        bookingId: bookingKey,
+        projectId: projectIdParam,
+        status: newStatus,
       });
       onActionComplete?.();
     } catch (error: unknown) {
       setErrorMessage(getApiErrorMessage(error, "Failed to update booking"));
+      reportError(error, "BookingCardDropdown: failed to update booking");
     } finally {
       setIsLoading(false);
       if (isOpen) onToggle();
@@ -103,15 +109,17 @@ export default function BookingCardDropdown({
     }
   };
 
-  const deleteBooking = async () => {
+  const handleDeleteBooking = async () => {
     setIsLoading(true);
     try {
-      await api.delete(`/bookings/${bookingKey}`, {
-        data: { hard_delete: true },
+      await deleteBooking({
+        bookingId: bookingKey,
+        projectId: resolvedProjectId,
       });
       onActionComplete?.();
     } catch (error: unknown) {
       setErrorMessage(getApiErrorMessage(error, "Failed to delete booking"));
+      reportError(error, "BookingCardDropdown: failed to delete booking");
     } finally {
       setIsLoading(false);
       if (isOpen) onToggle();
@@ -119,81 +127,19 @@ export default function BookingCardDropdown({
     }
   };
 
-  const confirmBooking = () => updateBookingStatus("confirmed");
-  const completeBooking = () => updateBookingStatus("completed");
-
-  const fetchCompetingPendingBookings = async (
-    booking: ApiBooking,
-  ): Promise<ApiBooking[]> => {
-    const { booking_date, start_time, end_time, asset_id, project_id } =
-      booking;
-    if (!booking_date || !start_time || !end_time || !asset_id) return [];
-
-    const normalizeTime = (value: string) =>
-      value.split(":").slice(0, 2).join(":");
-    const normalizedStart = normalizeTime(start_time);
-    const normalizedEnd = normalizeTime(end_time);
-
-    const limit = 200;
-    let skip = 0;
-    let hasMore = true;
-    let pageCount = 0;
-    const collected: ApiBooking[] = [];
-
-    while (hasMore) {
-      if (pageCount >= BOOKING_PAGINATION_MAX_PAGES) {
-        const guardError: PaginationGuardError = new Error(
-          `Pagination guard triggered in BookingCardDropdown: pageCount=${pageCount}, maxPages=${BOOKING_PAGINATION_MAX_PAGES}, bookingId=${booking.id}, projectId=${project_id ?? "unknown"}`,
-        );
-        guardError.__reportedByPaginationGuard = true;
-        reportError(
-          guardError,
-          "BookingCardDropdown: pagination safety limit reached while loading competing pending bookings",
-        );
-        const userFacingGuardError: PaginationGuardError = new Error(
-          "Too many related bookings to load right now. Please try again or contact support.",
-        );
-        userFacingGuardError.__reportedByPaginationGuard = true;
-        throw userFacingGuardError;
-      }
-
-      const response = await api.get<BookingListResponse>(`/bookings/`, {
-        params: {
-          project_id,
-          date_from: booking_date,
-          date_to: booking_date,
-          limit,
-          skip,
-        },
-      });
-
-      collected.push(...(response.data.bookings || []));
-      hasMore = Boolean(response.data.has_more);
-      skip += limit;
-      pageCount += 1;
-    }
-
-    return collected.filter((entry) => {
-      const status = (entry.status || "").toLowerCase();
-      return (
-        status === "pending" &&
-        entry.id !== bookingKey &&
-        entry.asset_id === asset_id &&
-        entry.booking_date === booking_date &&
-        normalizeTime(entry.start_time) === normalizedStart &&
-        normalizeTime(entry.end_time) === normalizedEnd
-      );
-    });
-  };
+  const completeBooking = () => handleUpdateBookingStatus("completed");
 
   const handleConfirmClick = async () => {
     setIsLoading(true);
     try {
-      const response = await api.get<ApiBooking>(`/bookings/${bookingKey}`);
-      const competingCount = response.data.competing_pending_count ?? 0;
+      const booking = await fetchBookingById(bookingKey);
+      const currentProjectId = booking.project_id ?? resolvedProjectId ?? null;
+      setResolvedProjectId(currentProjectId);
+      const competingCount = booking.competing_pending_count ?? 0;
       if (competingCount > 0) {
-        const pendingBookings = await fetchCompetingPendingBookings(
-          response.data,
+        const pendingBookings = await fetchCompetingPendingBookingsForBooking(
+          booking,
+          "BookingCardDropdown",
         );
         setCompetingPendingBookings(pendingBookings);
         setCompetingPendingCount(competingCount);
@@ -201,15 +147,13 @@ export default function BookingCardDropdown({
         setIsConfirmModalOpen(true);
       } else {
         setCompetingPendingBookings([]);
-        await updateBookingStatus("confirmed");
+        await handleUpdateBookingStatus("confirmed", currentProjectId);
       }
     } catch (error: unknown) {
-      if (!isPaginationGuardError(error)) {
-        reportError(
-          error,
-          "BookingCardDropdown: failed to load booking details for confirm flow",
-        );
-      }
+      reportError(
+        error,
+        "BookingCardDropdown: failed to load booking details for confirm flow",
+      );
       setErrorMessage(
         getApiErrorMessage(error, "Failed to load booking details"),
       );
@@ -389,10 +333,11 @@ export default function BookingCardDropdown({
               variant="destructive"
               className="w-full sm:w-auto"
               onClick={() =>
-                updateBookingStatus(
+                handleUpdateBookingStatus(
                   normalizedStatus === "pending" ? "denied" : "cancelled",
                 )
               }
+              disabled={isLoading}
             >
               Yes, Confirm
             </Button>
@@ -423,7 +368,8 @@ export default function BookingCardDropdown({
             </Button>
             <Button
               variant="destructive"
-              onClick={deleteBooking}
+              onClick={handleDeleteBooking}
+              disabled={isLoading}
               className="w-full sm:w-auto"
             >
               Yes, Delete
@@ -471,7 +417,7 @@ export default function BookingCardDropdown({
               className="w-full bg-[var(--navy)] text-white hover:bg-[var(--navy-hover)] sm:w-auto"
               onClick={async () => {
                 setIsConfirmModalOpen(false);
-                await updateBookingStatus("confirmed");
+                await handleUpdateBookingStatus("confirmed");
               }}
               disabled={isLoading}
             >

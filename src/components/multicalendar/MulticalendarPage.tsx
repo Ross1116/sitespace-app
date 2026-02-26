@@ -18,19 +18,11 @@ import { AssetFilter } from "./AssetFilter";
 import { MulticalendarActionsProvider } from "./MulticalendarActionsContext";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ApiAsset, ApiBooking } from "@/types";
-import useSWR from "swr";
-import { swrFetcher, SWR_CONFIG } from "@/lib/swr";
 import { isAssetRetiredOrOutOfService } from "@/lib/assetStatus";
 import ComponentErrorBoundary from "@/components/ui/ComponentErrorBoundary";
 import { useResolvedProjectSelection } from "@/hooks/useResolvedProjectSelection";
 import { useProjectAssets } from "@/hooks/useProjectAssets";
-
-// ===== INTERFACES =====
-
-interface CalendarDayResponse {
-  date: string;
-  bookings: ApiBooking[];
-}
+import { useCalendarBookingsQuery } from "@/hooks/bookings/useBookingsData";
 
 // ===== HELPER: PROCESS BOOKING TO EVENT =====
 const processBookingToEvent = (
@@ -129,22 +121,18 @@ export default function MulticalendarPage() {
     [assets],
   );
 
-  // --- SWR: Calendar bookings ---
   const {
-    data: calendarData,
+    calendarData,
     isLoading: loading,
     error: fetchError,
     mutate,
-  } = useSWR<CalendarDayResponse[]>(
-    projectId
-      ? `/bookings/calendar?date_from=${dateFrom}&date_to=${dateTo}&project_id=${projectId}`
-      : null,
-    swrFetcher,
-    {
-      ...SWR_CONFIG,
-      refreshInterval: 30_000,
-    },
-  );
+  } = useCalendarBookingsQuery({
+    projectId,
+    enabled: Boolean(projectId),
+    dateFrom,
+    dateTo,
+    refreshInterval: 30_000,
+  });
 
   const bookings = useMemo<CalendarEvent[]>(() => {
     if (!calendarData) return [];
