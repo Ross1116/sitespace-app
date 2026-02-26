@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   Calendar,
   CalendarCurrentDate,
@@ -100,6 +100,7 @@ export default function MulticalendarPage() {
   // Visibility State
   const [initialLoad, setInitialLoad] = useState(true);
   const [visibleAssets, setVisibleAssets] = useState<number[]>([]);
+  const lastSentVisibleIdsRef = useRef<string[]>([]);
 
   // Date range: currently viewed date ± 45 days
   const { dateFrom, dateTo } = useMemo(() => {
@@ -297,6 +298,12 @@ export default function MulticalendarPage() {
         (assetId): assetId is string =>
           typeof assetId === "string" && assetId.trim().length > 0,
       );
+    const prev = lastSentVisibleIdsRef.current;
+    const changed =
+      prev.length !== visibleAssetIds.length ||
+      visibleAssetIds.some((id, i) => id !== prev[i]);
+    if (!changed) return;
+    lastSentVisibleIdsRef.current = visibleAssetIds;
     setMulticalendarVisibleAssetIds(uiScopeKey, visibleAssetIds);
   }, [
     initialLoad,

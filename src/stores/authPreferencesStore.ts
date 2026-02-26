@@ -63,7 +63,8 @@ export const useAuthPreferencesStore = create<AuthPreferencesStore>()(
             error,
           );
         }
-        state?.setHasHydrated(true);
+        // Always mark hydration complete, even if state is undefined on error.
+        (state ?? useAuthPreferencesStore.getState()).setHasHydrated(true);
       },
     },
   ),
