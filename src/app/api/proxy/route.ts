@@ -49,6 +49,8 @@ async function buildNextResponse(
     };
     const cacheControl = response.headers.get("cache-control");
     if (cacheControl) responseHeaders["Cache-Control"] = cacheControl;
+    const etag = response.headers.get("etag");
+    if (etag) responseHeaders["ETag"] = etag;
     const contentDisposition = response.headers.get("content-disposition");
     if (contentDisposition)
       responseHeaders["Content-Disposition"] = contentDisposition;
@@ -56,6 +58,8 @@ async function buildNextResponse(
       status: response.status,
       headers: responseHeaders,
     });
+  } else if (response.status === 204 || response.status === 304) {
+    res = new NextResponse(null, { status: response.status });
   } else {
     const data = await response.json().catch(() => null);
     res = NextResponse.json(data, { status: response.status });

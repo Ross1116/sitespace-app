@@ -106,6 +106,7 @@ export function SitePlansSection({ projectId, canEdit }: SitePlansSectionProps) 
                     <img
                       src={toProxyUrl(plan.file.preview_url)}
                       alt={plan.title}
+                      loading="lazy"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                   </div>
