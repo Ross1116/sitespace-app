@@ -42,7 +42,14 @@ async function buildNextResponse(
 
   let res: NextResponse;
 
-  if (isBinary) {
+  if (response.status === 204 || response.status === 304) {
+    const noBodyHeaders: Record<string, string> = {};
+    const cacheControl = response.headers.get("cache-control");
+    if (cacheControl) noBodyHeaders["Cache-Control"] = cacheControl;
+    const etag = response.headers.get("etag");
+    if (etag) noBodyHeaders["ETag"] = etag;
+    res = new NextResponse(null, { status: response.status, headers: noBodyHeaders });
+  } else if (isBinary) {
     const buffer = await response.arrayBuffer();
     const responseHeaders: Record<string, string> = {
       "Content-Type": respContentType,
@@ -58,8 +65,6 @@ async function buildNextResponse(
       status: response.status,
       headers: responseHeaders,
     });
-  } else if (response.status === 204 || response.status === 304) {
-    res = new NextResponse(null, { status: response.status });
   } else {
     const data = await response.json().catch(() => null);
     res = NextResponse.json(data, { status: response.status });
