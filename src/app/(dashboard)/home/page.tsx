@@ -169,13 +169,23 @@ export default function HomePage() {
           <div className="flex flex-col">
             <p className="text-sm text-slate-500">Welcome back,</p>
             <p className="text-lg md:text-xl font-semibold text-slate-900 capitalize">
-              {user?.first_name ? `${user.first_name} 👋` : "User 👋"}
+              {authLoading ? (
+                <Skeleton className="h-6 w-32" />
+              ) : user?.first_name ? (
+                `${user.first_name} 👋`
+              ) : (
+                "User 👋"
+              )}
             </p>
             <div className="flex items-center gap-2 mt-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-500 px-2 py-0.5 rounded">
-                {user?.role || "Member"}
-              </span>
-              {user?.company_name && (
+              {authLoading ? (
+                <Skeleton className="h-4 w-14" />
+              ) : (
+                <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-500 px-2 py-0.5 rounded">
+                  {user?.role || "Member"}
+                </span>
+              )}
+              {!authLoading && user?.company_name && (
                 <>
                   <span className="w-1 h-1 rounded-full bg-slate-300"></span>
                   <span className="text-xs text-slate-500 font-medium truncate max-w-[150px] sm:max-w-xs">
@@ -189,17 +199,26 @@ export default function HomePage() {
 
         <div className="flex items-center gap-3 pl-4 border-l border-slate-100">
           <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 font-bold border border-slate-200 shadow-sm text-sm">
-            {user?.first_name?.charAt(0) || user?.email?.charAt(0) || "U"}
+            {authLoading ? "" : user?.first_name?.charAt(0) || user?.email?.charAt(0) || "U"}
           </div>
           <div className="hidden sm:flex flex-col leading-tight max-w-xs">
-            <p className="text-sm font-bold text-slate-900 truncate">
-              {user
-                ? `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim() || user.email
-                : "Loading..."}
-            </p>
-            <p className="text-xs text-slate-500 truncate">
-              {user?.email}
-            </p>
+            {authLoading ? (
+              <>
+                <Skeleton className="h-4 w-28 mb-1" />
+                <Skeleton className="h-3 w-36" />
+              </>
+            ) : (
+              <>
+                <p className="text-sm font-bold text-slate-900 truncate">
+                  {user
+                    ? `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim() || user.email
+                    : "—"}
+                </p>
+                <p className="text-xs text-slate-500 truncate">
+                  {user?.email}
+                </p>
+              </>
+            )}
           </div>
         </div>
       </div>

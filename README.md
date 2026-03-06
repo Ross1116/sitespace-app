@@ -259,7 +259,8 @@ All API calls route through `/api/proxy` instead of hitting the backend directly
 - **Zustand stores** for lightweight persisted client state:
   - `projectSelectionStore` (per-user selected project)
   - `authPreferencesStore` (remembered login email)
-- **SWR** for server data caching/revalidation (bookings, assets, subcontractors, projects, profile)
+- **SWR** for server data caching/revalidation (bookings, assets, subcontractors, projects)
+  - User/profile identity data is provided by `AuthContext` (populated from `/api/auth/me` on init and login), not SWR — eliminates a duplicate API call on every dashboard page load
 
 ### Data Fetching
 
