@@ -5,4 +5,5 @@ export type AuthUser = {
   last_name?: string;
   role?: string;
   user_type?: string;
+  company_name?: string | null;
 };
