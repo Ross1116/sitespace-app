@@ -78,7 +78,7 @@ Built with **Next.js 16**, **React 19**, **TypeScript**, and **Tailwind CSS 4**.
 **General**
 
 - Fully responsive (mobile-first with desktop/mobile component variants)
-- SWR data fetching with shared cache, deduplication, and auto-revalidation
+- SWR data fetching with shared cache, 60-second deduplication, and background revalidation
 - Error boundaries at root and dashboard layout level
 - Global API activity loading indicator for in-flight request feedback
 - Landing page with hero, features, pricing, and testimonials
@@ -266,10 +266,13 @@ All API calls route through `/api/proxy` instead of hitting the backend directly
 All dashboard pages use SWR with a shared config (`src/lib/swr.ts`):
 
 - 5-minute background revalidation interval
-- 30-second request deduplication
-- Automatic revalidation on tab focus and network reconnection
+- 60-second request deduplication window
+- Automatic revalidation on network reconnect (tab-focus revalidation is disabled — see note below)
 - Shared cache across components (same key = same data)
 - Bookings reads/writes are centralized in `src/hooks/bookings/` with shared keys, conflict helpers, and coordinated invalidation/optimistic updates
+- `useCalendarBookingsQuery` overrides `refreshInterval` to 30 s for the live multi-calendar view
+
+**SWR config trade-off** — `revalidateOnFocus` is disabled. Previously, every tab-switch fired 6+ simultaneous API requests (N+1 issue, Sentry #99236617). Data freshness is maintained by the 5-minute background poll and by `useBookingMutations` calling `mutate()` after every write. If you need immediate freshness after a context switch, trigger a manual `mutate()` call or rely on the next poll cycle. The full rationale is documented in `src/lib/swr.ts`.
 
 ---
 

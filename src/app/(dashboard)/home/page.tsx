@@ -193,8 +193,8 @@ export default function HomePage() {
           </div>
           <div className="hidden sm:flex flex-col leading-tight max-w-xs">
             <p className="text-sm font-bold text-slate-900 truncate">
-              {user?.first_name
-                ? `${user.first_name} ${user.last_name ?? ""}`.trim()
+              {user
+                ? `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim() || user.email
                 : "Loading..."}
             </p>
             <p className="text-xs text-slate-500 truncate">
