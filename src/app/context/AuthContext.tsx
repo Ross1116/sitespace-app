@@ -96,10 +96,11 @@ export function AuthProvider({
   }, []);
 
   // ===== Check auth status via server =====
-  const checkAuth = useCallback(async (): Promise<User | null> => {
+  const checkAuth = useCallback(async (signal?: AbortSignal): Promise<User | null> => {
     try {
       const res = await fetch("/api/auth/me", {
         credentials: "include", // sends HTTP-only cookies
+        signal,
       });
 
       if (!res.ok) return null;
@@ -112,8 +113,17 @@ export function AuthProvider({
         last_name: userData.last_name,
         role: userData.role,
         user_type: userData.user_type,
+        company_name: userData.company_name ?? null,
       };
     } catch (error: unknown) {
+      // Abort (component unmount during navigation) and network errors are not
+      // actionable — suppress them from Sentry to avoid noise.
+      if (error instanceof DOMException && error.name === "AbortError") {
+        return null;
+      }
+      if (error instanceof TypeError) {
+        return null;
+      }
       reportError(error, "AuthContext: failed to check auth status");
       return null;
     }
@@ -132,8 +142,11 @@ export function AuthProvider({
       return;
     }
 
+    const controller = new AbortController();
+
     const init = async () => {
-      const userData = await checkAuth();
+      const userData = await checkAuth(controller.signal);
+      if (controller.signal.aborted) return;
       setUser(userData);
       if (userData) {
         void identifyTelemetryUser(userData);
@@ -142,6 +155,7 @@ export function AuthProvider({
     };
 
     init();
+    return () => controller.abort();
   }, [checkAuth, identifyTelemetryUser, initialUser]);
 
   // ===== Login =====

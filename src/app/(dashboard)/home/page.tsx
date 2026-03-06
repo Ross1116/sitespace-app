@@ -34,8 +34,6 @@ import {
 import type { ApiBooking, ApiProject } from "@/types";
 import { SitePlansSection } from "@/components/site-plans/SitePlansSection";
 import type { LucideIcon } from "lucide-react";
-import useSWR from "swr";
-import { swrFetcher, SWR_CONFIG } from "@/lib/swr";
 import { getSubcontractorCount } from "@/lib/subcontractorNormalization";
 import { useResolvedProjectSelection } from "@/hooks/useResolvedProjectSelection";
 import { useProjectAssets } from "@/hooks/useProjectAssets";
@@ -44,19 +42,6 @@ import { useUpcomingBookingsQuery } from "@/hooks/bookings/useBookingsData";
 
 // --- Types ---
 type Booking = ApiBooking;
-
-interface UserProfile {
-  id: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  company_name: string | null;
-  trade_specialty: string | null;
-  phone: string | null;
-  is_active: boolean;
-  role: string;
-  user_type: string;
-}
 
 // --- Color Palette ---
 const PALETTE = {
@@ -89,13 +74,6 @@ export default function HomePage() {
     userId,
     role: user?.role,
   });
-
-  // --- SWR: Profile ---
-  const { data: profile } = useSWR<UserProfile>(
-    userId ? "/auth/me" : null,
-    swrFetcher,
-    SWR_CONFIG,
-  );
 
   // --- Assets count ---
   const { assets: projectAssets, data: assetsData } = useProjectAssets(projectId);
@@ -191,21 +169,17 @@ export default function HomePage() {
           <div className="flex flex-col">
             <p className="text-sm text-slate-500">Welcome back,</p>
             <p className="text-lg md:text-xl font-semibold text-slate-900 capitalize">
-              {profile?.first_name
-                ? `${profile.first_name} 👋`
-                : user?.first_name
-                  ? `${user.first_name} 👋`
-                  : "User 👋"}
+              {user?.first_name ? `${user.first_name} 👋` : "User 👋"}
             </p>
             <div className="flex items-center gap-2 mt-1">
               <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-500 px-2 py-0.5 rounded">
-                {profile?.role || user?.role || "Member"}
+                {user?.role || "Member"}
               </span>
-              {profile?.company_name && (
+              {user?.company_name && (
                 <>
                   <span className="w-1 h-1 rounded-full bg-slate-300"></span>
                   <span className="text-xs text-slate-500 font-medium truncate max-w-[150px] sm:max-w-xs">
-                    {profile.company_name}
+                    {user.company_name}
                   </span>
                 </>
               )}
@@ -215,16 +189,16 @@ export default function HomePage() {
 
         <div className="flex items-center gap-3 pl-4 border-l border-slate-100">
           <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 font-bold border border-slate-200 shadow-sm text-sm">
-            {profile?.first_name?.charAt(0) || user?.email?.charAt(0) || "U"}
+            {user?.first_name?.charAt(0) || user?.email?.charAt(0) || "U"}
           </div>
           <div className="hidden sm:flex flex-col leading-tight max-w-xs">
             <p className="text-sm font-bold text-slate-900 truncate">
-              {profile?.first_name
-                ? `${profile.first_name} ${profile.last_name}`
+              {user?.first_name
+                ? `${user.first_name} ${user.last_name ?? ""}`.trim()
                 : "Loading..."}
             </p>
             <p className="text-xs text-slate-500 truncate">
-              {profile?.email || user?.email}
+              {user?.email}
             </p>
           </div>
         </div>
