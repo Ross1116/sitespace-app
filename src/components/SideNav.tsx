@@ -14,6 +14,7 @@ import {
   LogOut,
   Menu,
   X,
+  BarChart3,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/app/context/AuthContext";
@@ -58,6 +59,12 @@ const SideNav = () => {
       icon: HardHat,
       label: "Assets",
       href: "/assets",
+      visible: ["admin", "manager"],
+    },
+    {
+      icon: BarChart3,
+      label: "Lookahead",
+      href: "/lookahead",
       visible: ["admin", "manager"],
     },
     { icon: CalendarRange, label: "Bookings", href: "/bookings", visible: [] },

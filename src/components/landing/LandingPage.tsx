@@ -1,5 +1,6 @@
 import Image from "next/image";
 import type React from "react";
+import { Upload, BrainCircuit, BellRing, ShieldCheck } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -7,12 +8,14 @@ import "./LandingPage.css";
 
 import { NavBar } from "@/components/landing/TopBar";
 import { HeroParallax } from "@/components/landing/HeroParallax";
-import { WatchVideoButton } from "@/components/landing/WatchVideoButton";
+// import { WatchVideoButton } from "@/components/landing/WatchVideoButton";
 import {
   ScrollAnimations,
   HeroOrbs,
   LookaheadDashboard,
   ShowcaseSection,
+  DemoRequestCTA,
+  DemoModalProvider,
 } from "@/components/landing/ClientDynamics";
 
 const FADE =
@@ -39,6 +42,7 @@ export default function LandingPage() {
   const year = new Date().getFullYear();
 
   return (
+    <DemoModalProvider>
     <div
       id="landing-root"
       className="scroll-smooth overflow-x-hidden text-[rgb(245,245,247)] min-h-screen relative bg-[linear-gradient(180deg,#000_0%,#0a0a14_20%,#050510_40%,#0a0a14_60%,#000_80%,#000_100%)]"
@@ -83,13 +87,11 @@ export default function LandingPage() {
                 Program driven predictive logistics intelligence tool
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
-                <a
-                  href="#demo"
-                  className="shine bg-amber-500 text-black rounded-full px-6 py-3 text-[17px] font-semibold inline-flex items-center justify-center hover:scale-[1.02] transition-transform"
-                >
-                  Book a Demo
-                </a>
-                <WatchVideoButton />
+                <DemoRequestCTA
+                  label="Book a Demo"
+                  className="cursor-pointer shine bg-amber-500 text-black rounded-full px-6 py-3 text-[17px] font-semibold inline-flex items-center justify-center hover:scale-[1.02] transition-transform"
+                />
+                {/* <WatchVideoButton /> */}
               </div>
             </HeroParallax>
 
@@ -249,56 +251,58 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="px-6 py-16 md:py-[120px]">
+      <section className="relative px-6 pt-24 pb-16 md:pt-[160px] md:pb-[120px]">
+        {/* Faint separator from the dashboard above */}
+        <div
+          className="absolute top-0 inset-x-0 h-px"
+          style={{
+            background:
+              "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%)",
+          }}
+          aria-hidden="true"
+        />
         <div className="max-w-5xl mx-auto">
-          <div className="grid md:grid-cols-2 gap-12">
+          <div className={cn(FADE, "text-center mb-16")} data-fade-in>
+            <div className={cn(BADGE, "mb-6")}>⚙️ How It Works</div>
+            <h2 className={cn(LARGE, "mb-4")}>
+              Built for the way
+              <br />
+              <span className="gradient-text">you build</span>
+            </h2>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6">
             <FeatureBlurb
-              title={
-                <>
-                  Program
-                  <br />
-                  Integration
-                </>
-              }
+              icon={<Upload size={22} className="text-[rgba(14,124,155,1)]" />}
+              accent="rgba(14,124,155,1)"
+              title="Program Integration"
               delay="0s"
             >
-              Upload from Primavera P6, MS Project, or PDF. We analyze upcoming
+              Upload from Primavera P6, MS Project, or PDF. We analyse upcoming
               milestones and identify asset needs automatically.
             </FeatureBlurb>
             <FeatureBlurb
-              title={
-                <>
-                  Smart
-                  <br />
-                  Forecasting
-                </>
-              }
+              icon={<BrainCircuit size={22} className="text-amber-400" />}
+              accent="rgba(245,158,11,1)"
+              title="Smart Forecasting"
               delay="0.1s"
             >
               AI identifies which activities need cranes, bays, or hoists.
               Predicts congestion weeks in advance, not after it happens.
             </FeatureBlurb>
             <FeatureBlurb
-              title={
-                <>
-                  Proactive
-                  <br />
-                  Alerts
-                </>
-              }
+              icon={<BellRing size={22} className="text-[rgba(14,124,155,1)]" />}
+              accent="rgba(14,124,155,1)"
+              title="Proactive Alerts"
               delay="0.2s"
             >
               Neutral, actionable notifications. Weekly digests keep teams
               informed without overwhelming them.
             </FeatureBlurb>
             <FeatureBlurb
-              title={
-                <>
-                  Zero
-                  <br />
-                  Risk
-                </>
-              }
+              icon={<ShieldCheck size={22} className="text-amber-400" />}
+              accent="rgba(245,158,11,1)"
+              title="Zero Risk"
               delay="0.3s"
             >
               Read-only program access. No edits, no overrides. Complete audit
@@ -418,18 +422,14 @@ export default function LandingPage() {
               Join forward-thinking teams already using AI to plan smarter.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-              <button
-                type="button"
-                className="bg-amber-500 text-black rounded-full px-6 py-3 text-[17px] font-semibold hover:scale-[1.02] transition-transform"
-              >
-                Schedule a Demo
-              </button>
-              <button
-                type="button"
-                className="bg-transparent text-amber-500 border-2 border-amber-500 rounded-full px-[22px] py-[10px] text-[17px] font-semibold hover:bg-amber-500 hover:text-black transition-colors"
-              >
-                Contact Sales
-              </button>
+              <DemoRequestCTA
+                label="Schedule a Demo"
+                className="cursor-pointer bg-amber-500 text-black rounded-full px-6 py-3 text-[17px] font-semibold hover:scale-[1.02] transition-transform"
+              />
+              <DemoRequestCTA
+                label="Contact Sales"
+                className="cursor-pointer bg-transparent text-amber-500 border-2 border-amber-500 rounded-full px-[22px] py-[10px] text-[17px] font-semibold hover:bg-amber-500 hover:text-black transition-colors"
+              />
             </div>
             <p className="text-gray-600 text-sm">
               Australian-hosted · Enterprise-ready · Implementation support
@@ -495,6 +495,7 @@ export default function LandingPage() {
         </div>
       </footer>
     </div>
+    </DemoModalProvider>
   );
 }
 
@@ -612,20 +613,45 @@ function BenefitItem({
 }
 
 function FeatureBlurb({
+  icon,
+  accent,
   title,
   children,
   delay,
 }: {
-  title: React.ReactNode;
+  icon: React.ReactNode;
+  accent: string;
+  title: string;
   children: React.ReactNode;
   delay: string;
 }) {
   return (
-    <div className={FADE} data-fade-in style={{ transitionDelay: delay }}>
-      <h3 className={cn(MEDIUM, "mb-4")}>{title}</h3>
-      <p className="text-lg text-gray-400 font-normal leading-relaxed">
-        {children}
-      </p>
+    <div
+      className={cn(
+        FADE,
+        "group relative rounded-2xl border border-white/10 bg-white/[0.03] p-7 md:p-8 overflow-hidden",
+        "hover:bg-white/[0.06] hover:border-white/20 transition-all duration-300",
+      )}
+      data-fade-in
+      style={{ transitionDelay: delay }}
+    >
+      {/* Corner radial accent */}
+      <div
+        className="absolute -top-10 -right-10 w-40 h-40 rounded-full opacity-[0.08] pointer-events-none transition-opacity duration-300 group-hover:opacity-[0.14]"
+        style={{ background: `radial-gradient(circle, ${accent}, transparent 70%)` }}
+        aria-hidden="true"
+      />
+
+      {/* Icon pill */}
+      <div
+        className="w-11 h-11 rounded-xl flex items-center justify-center mb-5 shrink-0"
+        style={{ background: `color-mix(in srgb, ${accent} 15%, transparent)` }}
+      >
+        {icon}
+      </div>
+
+      <h3 className="text-xl font-semibold mb-3">{title}</h3>
+      <p className="text-gray-400 leading-relaxed">{children}</p>
     </div>
   );
 }

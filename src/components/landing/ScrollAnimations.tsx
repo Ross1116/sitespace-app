@@ -13,14 +13,24 @@ export function ScrollAnimations() {
         for (const entry of entries) {
           if (!entry.isIntersecting) continue;
           (entry.target as HTMLElement).setAttribute("data-visible", "");
+          fadeObserver.unobserve(entry.target);
         }
       },
       { threshold: 0.1, rootMargin: "0px 0px -100px 0px" },
     );
 
-    root.querySelectorAll<HTMLElement>("[data-fade-in]").forEach((el) => {
+    const observeFadeEl = (el: HTMLElement) => {
+      // Already revealed — skip
+      if (el.hasAttribute("data-visible")) return;
+      // Already scrolled past — reveal immediately without animation delay
+      if (el.getBoundingClientRect().bottom < 0) {
+        el.setAttribute("data-visible", "");
+        return;
+      }
       fadeObserver.observe(el);
-    });
+    };
+
+    root.querySelectorAll<HTMLElement>("[data-fade-in]").forEach(observeFadeEl);
 
     /* ── Progress bar observer ── */
     const progressObserver = new IntersectionObserver(
@@ -48,6 +58,28 @@ export function ScrollAnimations() {
       progressObserver.observe(el);
     });
 
+    /* ── MutationObserver: pick up data-fade-in nodes added after initial load ── */
+    // Needed for dynamic() chunks (LookaheadDashboard, ShowcaseSection) that load
+    // after ScrollAnimations has already run its initial querySelectorAll.
+    const mutationObserver = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        for (const node of mutation.addedNodes) {
+          if (!(node instanceof HTMLElement)) continue;
+          if (node.hasAttribute("data-fade-in")) observeFadeEl(node);
+          node
+            .querySelectorAll<HTMLElement>("[data-fade-in]")
+            .forEach(observeFadeEl);
+          // Also pick up any new progress elements
+          if (node.hasAttribute("data-progress")) progressObserver.observe(node);
+          node
+            .querySelectorAll<HTMLElement>("[data-progress]")
+            .forEach((el) => progressObserver.observe(el));
+        }
+      }
+    });
+
+    mutationObserver.observe(root, { childList: true, subtree: true });
+
     /* ── Smooth scroll for anchor links ── */
     const onAnchor = (e: Event) => {
       const a = e.currentTarget as HTMLAnchorElement;
@@ -69,6 +101,7 @@ export function ScrollAnimations() {
     return () => {
       fadeObserver.disconnect();
       progressObserver.disconnect();
+      mutationObserver.disconnect();
       anchors.forEach((a) => {
         a.removeEventListener("click", onAnchor);
       });

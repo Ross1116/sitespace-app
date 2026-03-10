@@ -6,6 +6,13 @@ import { isRecord } from "@/lib/typeGuards";
 
 export type CalendarMode = "day" | "week";
 
+export type LookaheadWindowSize = "2W" | "4W" | "6W";
+const DEFAULT_LOOKAHEAD_WINDOW: LookaheadWindowSize = "4W";
+
+export type LookaheadIntent = {
+  windowSize: LookaheadWindowSize;
+};
+
 const UI_INTENT_STORAGE_KEY = "ui-intent-v1";
 const UI_INTENT_STORE_VERSION = 1;
 const DEFAULT_BOOKINGS_TAB = "Upcoming";
@@ -24,8 +31,10 @@ export type MulticalendarIntent = {
 type PersistedUIIntentState = {
   bookingsByScope?: unknown;
   multicalendarByScope?: unknown;
+  lookaheadByScope?: unknown;
   bookingsScopeAccess?: unknown;
   multicalendarScopeAccess?: unknown;
+  lookaheadScopeAccess?: unknown;
 };
 
 const toBookingsIntentRecord = (
@@ -92,6 +101,28 @@ const toNumberRecord = (value: unknown): Record<string, number> => {
   );
 };
 
+const toLookaheadIntentRecord = (
+  value: unknown,
+): Record<string, LookaheadIntent> => {
+  if (!isRecord(value)) return {};
+
+  const entries = Object.entries(value)
+    .map(([scopeKey, rawIntent]) => {
+      if (!isRecord(rawIntent)) return null;
+      const isValidWindow = (v: unknown): v is LookaheadWindowSize =>
+        v === "2W" || v === "4W" || v === "6W";
+      const windowSize = isValidWindow(rawIntent.windowSize)
+        ? rawIntent.windowSize
+        : DEFAULT_LOOKAHEAD_WINDOW;
+      return [scopeKey, { windowSize }] as const;
+    })
+    .filter(
+      (entry): entry is readonly [string, LookaheadIntent] => Boolean(entry),
+    );
+
+  return Object.fromEntries(entries);
+};
+
 const extractPersistedState = (
   persistedState: unknown,
 ): PersistedUIIntentState => {
@@ -128,8 +159,10 @@ type UIIntentStore = {
   hasHydrated: boolean;
   bookingsByScope: Record<string, BookingsIntent>;
   multicalendarByScope: Record<string, MulticalendarIntent>;
+  lookaheadByScope: Record<string, LookaheadIntent>;
   bookingsScopeAccess: Record<string, number>;
   multicalendarScopeAccess: Record<string, number>;
+  lookaheadScopeAccess: Record<string, number>;
   setHasHydrated: (value: boolean) => void;
   getBookingsIntent: (scopeKey: string) => BookingsIntent | null;
   setBookingsActiveTab: (scopeKey: string, activeTab: string) => void;
@@ -143,6 +176,11 @@ type UIIntentStore = {
     scopeKey: string,
     visibleAssetIds: string[],
   ) => void;
+  getLookaheadIntent: (scopeKey: string) => LookaheadIntent | null;
+  setLookaheadWindowSize: (
+    scopeKey: string,
+    windowSize: LookaheadWindowSize,
+  ) => void;
 };
 
 export const useUIIntentStore = create<UIIntentStore>()(
@@ -151,8 +189,10 @@ export const useUIIntentStore = create<UIIntentStore>()(
       hasHydrated: false,
       bookingsByScope: {},
       multicalendarByScope: {},
+      lookaheadByScope: {},
       bookingsScopeAccess: {},
       multicalendarScopeAccess: {},
+      lookaheadScopeAccess: {},
       setHasHydrated: (value: boolean) => set({ hasHydrated: value }),
       getBookingsIntent: (scopeKey: string): BookingsIntent | null =>
         get().bookingsByScope[scopeKey] ?? null,
@@ -192,6 +232,24 @@ export const useUIIntentStore = create<UIIntentStore>()(
           };
           const pruned = pruneOldScopes(updatedMap, updatedAccess);
           return { bookingsByScope: pruned.map, bookingsScopeAccess: pruned.access };
+        }),
+      getLookaheadIntent: (scopeKey: string): LookaheadIntent | null =>
+        get().lookaheadByScope[scopeKey] ?? null,
+      setLookaheadWindowSize: (scopeKey: string, windowSize: LookaheadWindowSize) =>
+        set((state) => {
+          const previous = state.lookaheadByScope[scopeKey] ?? {
+            windowSize: DEFAULT_LOOKAHEAD_WINDOW,
+          };
+          const updatedMap = {
+            ...state.lookaheadByScope,
+            [scopeKey]: { ...previous, windowSize },
+          };
+          const updatedAccess = {
+            ...state.lookaheadScopeAccess,
+            [scopeKey]: Date.now(),
+          };
+          const pruned = pruneOldScopes(updatedMap, updatedAccess);
+          return { lookaheadByScope: pruned.map, lookaheadScopeAccess: pruned.access };
         }),
       getMulticalendarIntent: (scopeKey: string): MulticalendarIntent | null =>
         get().multicalendarByScope[scopeKey] ?? null,
@@ -252,8 +310,10 @@ export const useUIIntentStore = create<UIIntentStore>()(
       partialize: (state) => ({
         bookingsByScope: state.bookingsByScope,
         multicalendarByScope: state.multicalendarByScope,
+        lookaheadByScope: state.lookaheadByScope,
         bookingsScopeAccess: state.bookingsScopeAccess,
         multicalendarScopeAccess: state.multicalendarScopeAccess,
+        lookaheadScopeAccess: state.lookaheadScopeAccess,
       }),
       migrate: (persistedState) => {
         const state = extractPersistedState(persistedState);
@@ -262,8 +322,10 @@ export const useUIIntentStore = create<UIIntentStore>()(
           multicalendarByScope: toMulticalendarIntentRecord(
             state.multicalendarByScope,
           ),
+          lookaheadByScope: toLookaheadIntentRecord(state.lookaheadByScope),
           bookingsScopeAccess: toNumberRecord(state.bookingsScopeAccess),
           multicalendarScopeAccess: toNumberRecord(state.multicalendarScopeAccess),
+          lookaheadScopeAccess: toNumberRecord(state.lookaheadScopeAccess),
         };
       },
       onRehydrateStorage: () => (state, error) => {
