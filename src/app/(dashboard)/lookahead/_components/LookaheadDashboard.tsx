@@ -277,6 +277,7 @@ export default function LookaheadDashboard() {
   // ── project switcher ─────────────────────────────────────────────────────────
   const handleProjectSelect = (proj: ApiProject) => {
     if (!proj?.id) return;
+    stopPolling();
     setShowProjectSelector(false);
     setProjectId(proj.id);
     setUploadPhase({ kind: "idle" });
@@ -533,7 +534,10 @@ export default function LookaheadDashboard() {
                     uploadPhase.kind === "uploading" ||
                     uploadPhase.kind === "polling"
                   }
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => {
+                    if (fileInputRef.current) fileInputRef.current.value = "";
+                    fileInputRef.current?.click();
+                  }}
                   className="bg-[var(--navy)] hover:bg-[var(--navy-hover)] text-white rounded-lg px-5 py-5 h-auto text-sm font-bold shadow-md shadow-slate-900/10 flex items-center gap-2 w-full sm:w-auto"
                 >
                   {uploadPhase.kind === "uploading" ||

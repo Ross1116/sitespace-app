@@ -2,13 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 const contactSchema = z.object({
-  name:        z.string().min(2),
-  email:       z.string().email(),
-  company:     z.string().min(1),
-  role:        z.string().min(1),
-  phone:       z.string().optional(),
-  projectSize: z.string().optional(),
-  message:     z.string().optional(),
+  name:        z.string().min(2).max(100),
+  email:       z.string().email().max(254),
+  company:     z.string().min(1).max(100),
+  role:        z.string().min(1).max(100),
+  phone:       z.string().max(20).optional(),
+  projectSize: z.string().max(50).optional(),
+  message:     z.string().max(2000).optional(),
 });
 
 function escapeHtml(str: string): string {
@@ -93,6 +93,14 @@ export async function POST(req: NextRequest) {
     }
     console.debug("[contact] Delivery skipped — sandbox mode but MAILTRAP_INBOX_ID not set");
     return NextResponse.json({ ok: true });
+  }
+
+  if (process.env.NODE_ENV === "production" && useSandbox) {
+    console.warn(
+      "[contact] WARNING: MAILTRAP_USE_SANDBOX is unset or true in production — " +
+      "emails will be delivered to the Mailtrap sandbox, not to real recipients. " +
+      "Set MAILTRAP_USE_SANDBOX=false to enable live delivery.",
+    );
   }
 
   const url = useSandbox
