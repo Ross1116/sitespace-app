@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useEffect, useState, useCallback } from "react";
 
 import { cn } from "@/lib/utils";
+import { DemoRequestCTA } from "@/components/landing/ContactModal";
 
 export function NavBar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -92,13 +93,10 @@ export function NavBar() {
               >
                 Sign In
               </Link>
-              <a
-                href="#demo"
-                className="shine bg-amber-500 text-black rounded-full px-5 py-2.5 text-sm font-semibold inline-flex items-center justify-center hover:scale-[1.02] transition-transform"
-                onClick={smoothScroll}
-              >
-                Book a Demo
-              </a>
+              <DemoRequestCTA
+                label="Book a Demo"
+                className="cursor-pointer shine bg-amber-500 text-black rounded-full px-5 py-2.5 text-sm font-semibold inline-flex items-center justify-center hover:scale-[1.02] transition-transform"
+              />
             </div>
 
             {/* Hamburger */}
@@ -157,13 +155,10 @@ export function NavBar() {
         >
           Sign In
         </Link>
-        <a
-          href="#demo"
-          className="block mt-5 w-full text-center bg-amber-500 text-black rounded-full px-6 py-3 text-lg font-semibold"
-          onClick={smoothScroll}
-        >
-          Book a Demo
-        </a>
+        <DemoRequestCTA
+          label="Book a Demo"
+          className="cursor-pointer block mt-5 w-full text-center bg-amber-500 text-black rounded-full px-6 py-3 text-lg font-semibold hover:bg-amber-400 transition-colors"
+        />
       </div>
     </>
   );

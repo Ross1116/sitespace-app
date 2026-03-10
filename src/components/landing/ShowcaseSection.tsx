@@ -60,7 +60,7 @@ export function ShowcaseSection() {
               key={tab.key}
               type="button"
               className={cn(
-                "px-6 py-3 rounded-full text-sm font-semibold border transition-all duration-300",
+                "px-6 py-3 rounded-full text-sm font-semibold border transition-all duration-300 cursor-pointer",
                 view === tab.key
                   ? "bg-[var(--brand-blue)] border-[var(--brand-blue)] text-white"
                   : "bg-white/5 border-white/10 text-gray-400 hover:bg-white/[0.08] hover:border-white/20 hover:text-[rgb(245,245,247)]",
