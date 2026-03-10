@@ -126,7 +126,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         from:     { email: fromEmail, name: fromName },
         to:       [{ email: toEmail }],
-        reply_to: [{ email: data.email, name: data.name }],
+        reply_to: { email: data.email, name: data.name },
         subject:  `Demo request — ${data.name} (${data.company})`,
         html:     buildEmailHtml(data),
         text:     "Please view this email in an HTML compatible client.",
