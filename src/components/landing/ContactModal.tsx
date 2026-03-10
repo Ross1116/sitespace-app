@@ -39,11 +39,13 @@ const DemoModalCtx = createContext<{ openModal: () => void } | null>(null);
 
 // ── sub-components ────────────────────────────────────────────────────────────
 function Field({
+  id,
   label,
   required,
   error,
   children,
 }: {
+  id: string;
   label: string;
   required?: boolean;
   error?: string;
@@ -51,13 +53,13 @@ function Field({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-[13px] font-semibold text-gray-300">
+      <label htmlFor={id} className="text-[13px] font-semibold text-gray-300">
         {label}
         {required && <span className="text-amber-400 ml-1">*</span>}
       </label>
       {children}
       {error && (
-        <p className="text-[11px] text-red-400 flex items-center gap-1">
+        <p id={`${id}-error`} className="text-[11px] text-red-400 flex items-center gap-1">
           <AlertCircle size={11} />
           {error}
         </p>
@@ -74,7 +76,7 @@ const selectCls =
 
 // ── form content ──────────────────────────────────────────────────────────────
 function ContactModalContent({ onClose }: { onClose: () => void }) {
-  const [fields, setFields] = useState<Partial<ContactFields>>({});
+  const [fields, setFields] = useState<Partial<ContactFields>>({ name: "", email: "", company: "", role: "" });
   const [errors, setErrors] = useState<
     Partial<Record<keyof ContactFields, string>>
   >({});
@@ -156,43 +158,55 @@ function ContactModalContent({ onClose }: { onClose: () => void }) {
   return (
     <form onSubmit={handleSubmit} noValidate>
       <div className="grid sm:grid-cols-2 gap-4">
-        <Field label="Full Name" required error={errors.name}>
+        <Field id="cf-name" label="Full Name" required error={errors.name}>
           <input
+            id="cf-name"
             type="text"
             autoComplete="name"
             placeholder="Alex Smith"
             value={fields.name ?? ""}
             onChange={set("name")}
+            aria-invalid={!!errors.name}
+            aria-describedby={errors.name ? "cf-name-error" : undefined}
             className={inputCls}
           />
         </Field>
 
-        <Field label="Work Email" required error={errors.email}>
+        <Field id="cf-email" label="Work Email" required error={errors.email}>
           <input
+            id="cf-email"
             type="email"
             autoComplete="email"
             placeholder="alex@company.com.au"
             value={fields.email ?? ""}
             onChange={set("email")}
+            aria-invalid={!!errors.email}
+            aria-describedby={errors.email ? "cf-email-error" : undefined}
             className={inputCls}
           />
         </Field>
 
-        <Field label="Company" required error={errors.company}>
+        <Field id="cf-company" label="Company" required error={errors.company}>
           <input
+            id="cf-company"
             type="text"
             autoComplete="organization"
             placeholder="Your company"
             value={fields.company ?? ""}
             onChange={set("company")}
+            aria-invalid={!!errors.company}
+            aria-describedby={errors.company ? "cf-company-error" : undefined}
             className={inputCls}
           />
         </Field>
 
-        <Field label="Your Role" required error={errors.role}>
+        <Field id="cf-role" label="Your Role" required error={errors.role}>
           <select
+            id="cf-role"
             value={fields.role ?? ""}
             onChange={set("role")}
+            aria-invalid={!!errors.role}
+            aria-describedby={errors.role ? "cf-role-error" : undefined}
             className={selectCls}
           >
             <option value="" disabled>
@@ -206,21 +220,27 @@ function ContactModalContent({ onClose }: { onClose: () => void }) {
           </select>
         </Field>
 
-        <Field label="Phone" error={errors.phone}>
+        <Field id="cf-phone" label="Phone" error={errors.phone}>
           <input
+            id="cf-phone"
             type="tel"
             autoComplete="tel"
             placeholder="+61 4xx xxx xxx"
             value={fields.phone ?? ""}
             onChange={set("phone")}
+            aria-invalid={!!errors.phone}
+            aria-describedby={errors.phone ? "cf-phone-error" : undefined}
             className={inputCls}
           />
         </Field>
 
-        <Field label="Project Size" error={errors.projectSize}>
+        <Field id="cf-project-size" label="Project Size" error={errors.projectSize}>
           <select
+            id="cf-project-size"
             value={fields.projectSize ?? ""}
             onChange={set("projectSize")}
+            aria-invalid={!!errors.projectSize}
+            aria-describedby={errors.projectSize ? "cf-project-size-error" : undefined}
             className={selectCls}
           >
             <option value="">Select size… (optional)</option>
@@ -235,14 +255,18 @@ function ContactModalContent({ onClose }: { onClose: () => void }) {
 
       <div className="mt-4">
         <Field
+          id="cf-message"
           label="Anything else you'd like us to know?"
           error={errors.message}
         >
           <textarea
+            id="cf-message"
             rows={3}
             placeholder="Tell us about your project, timeline, or specific challenges…"
             value={fields.message ?? ""}
             onChange={set("message")}
+            aria-invalid={!!errors.message}
+            aria-describedby={errors.message ? "cf-message-error" : undefined}
             className={`${inputCls} resize-none`}
           />
         </Field>

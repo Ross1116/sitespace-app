@@ -137,6 +137,7 @@ export default function LookaheadDashboard() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollingGenerationRef = useRef(0);
 
   const userId = user?.id;
 
@@ -163,9 +164,7 @@ export default function LookaheadDashboard() {
   useEffect(() => {
     if (!hasUIIntentHydrated || !uiScopeKey) return;
     const persisted = useUIIntentStore.getState().getLookaheadIntent(uiScopeKey);
-    if (persisted?.windowSize) {
-      setWindowSizeLocal(persisted.windowSize);
-    }
+    setWindowSizeLocal(persisted?.windowSize ?? "4W");
   }, [hasUIIntentHydrated, uiScopeKey]);
 
   const setWindowSize = useCallback(
@@ -191,6 +190,7 @@ export default function LookaheadDashboard() {
       clearInterval(pollingRef.current);
       pollingRef.current = null;
     }
+    pollingGenerationRef.current += 1;
   }, []);
 
   useEffect(() => () => stopPolling(), [stopPolling]);
@@ -198,8 +198,10 @@ export default function LookaheadDashboard() {
   const startPolling = useCallback(
     (uploadId: string) => {
       stopPolling();
+      const generation = ++pollingGenerationRef.current;
       let attempts = 0;
       pollingRef.current = setInterval(async () => {
+        if (pollingGenerationRef.current !== generation) return;
         attempts += 1;
         if (attempts > POLL_MAX_ATTEMPTS) {
           stopPolling();
@@ -211,6 +213,7 @@ export default function LookaheadDashboard() {
         }
         try {
           const status = await fetchUploadStatus(uploadId);
+          if (pollingGenerationRef.current !== generation) return;
           if (status.status !== "processing") {
             stopPolling();
             setUploadPhase({ kind: "done", result: status });
@@ -219,6 +222,7 @@ export default function LookaheadDashboard() {
             void mutateVersions();
           }
         } catch {
+          if (pollingGenerationRef.current !== generation) return;
           stopPolling();
           setUploadPhase({
             kind: "error",
@@ -402,6 +406,11 @@ export default function LookaheadDashboard() {
       minute: "2-digit",
     });
   }, [latestVersion]);
+
+  // Reset dismissed alerts whenever a new version becomes the latest so fresh anomalies show
+  useEffect(() => {
+    setDismissedAlerts(new Set());
+  }, [latestVersion?.upload_id]);
 
   // ─── render ──────────────────────────────────────────────────────────────────
   return (

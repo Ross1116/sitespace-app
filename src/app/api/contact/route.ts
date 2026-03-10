@@ -82,12 +82,16 @@ export async function POST(req: NextRequest) {
       console.error("[contact] MAILTRAP_TOKEN or CONTACT_TO_EMAIL not configured in production");
       return NextResponse.json({ error: "Email service not configured" }, { status: 500 });
     }
-    console.info("[contact] Demo request received (no Mailtrap token configured):", data);
+    console.debug("[contact] Delivery skipped — no credentials configured (dev/sandbox mode)");
     return NextResponse.json({ ok: true });
   }
 
   if (useSandbox && !inboxId) {
-    console.warn("[contact] MAILTRAP_USE_SANDBOX=true but MAILTRAP_INBOX_ID not set");
+    if (process.env.NODE_ENV === "production") {
+      console.error("[contact] MAILTRAP_USE_SANDBOX=true but MAILTRAP_INBOX_ID not set in production");
+      return NextResponse.json({ error: "Email service not configured" }, { status: 500 });
+    }
+    console.debug("[contact] Delivery skipped — sandbox mode but MAILTRAP_INBOX_ID not set");
     return NextResponse.json({ ok: true });
   }
 

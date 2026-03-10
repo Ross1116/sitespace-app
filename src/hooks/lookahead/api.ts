@@ -73,9 +73,11 @@ export async function uploadProgramme(
   if (!response.ok) {
     const payload = await response.json().catch(() => null);
     const detail =
-      typeof payload?.detail === "string"
-        ? payload.detail
-        : "Upload failed. Please try again.";
+      typeof payload?.message === "string"
+        ? payload.message
+        : typeof payload?.detail === "string"
+          ? payload.detail
+          : "Upload failed. Please try again.";
     throw new Error(detail);
   }
 
