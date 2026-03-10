@@ -35,4 +35,4 @@ export const ShowcaseSection = dynamic(
   },
 );
 
-export { DemoRequestCTA } from "./ContactModal";
+export { DemoRequestCTA, DemoModalProvider } from "./ContactModal";

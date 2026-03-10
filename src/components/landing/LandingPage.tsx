@@ -15,6 +15,7 @@ import {
   LookaheadDashboard,
   ShowcaseSection,
   DemoRequestCTA,
+  DemoModalProvider,
 } from "@/components/landing/ClientDynamics";
 
 const FADE =
@@ -41,6 +42,7 @@ export default function LandingPage() {
   const year = new Date().getFullYear();
 
   return (
+    <DemoModalProvider>
     <div
       id="landing-root"
       className="scroll-smooth overflow-x-hidden text-[rgb(245,245,247)] min-h-screen relative bg-[linear-gradient(180deg,#000_0%,#0a0a14_20%,#050510_40%,#0a0a14_60%,#000_80%,#000_100%)]"
@@ -493,6 +495,7 @@ export default function LandingPage() {
         </div>
       </footer>
     </div>
+    </DemoModalProvider>
   );
 }
 

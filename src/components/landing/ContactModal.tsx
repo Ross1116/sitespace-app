@@ -1,7 +1,7 @@
 "use client";
 
 import * as Dialog from "@radix-ui/react-dialog";
-import { useState } from "react";
+import { createContext, useContext, useState } from "react";
 import { z } from "zod";
 import { X, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 
@@ -33,6 +33,9 @@ const PROJECT_SIZES = [
   "Large  (200+ units / commercial)",
   "Infrastructure / civil",
 ];
+
+// ── shared modal context ───────────────────────────────────────────────────────
+const DemoModalCtx = createContext<{ openModal: () => void } | null>(null);
 
 // ── sub-components ────────────────────────────────────────────────────────────
 function Field({
@@ -69,7 +72,7 @@ const inputCls =
 const selectCls =
   "w-full bg-[#0d0d1a] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500/60 transition-colors appearance-none cursor-pointer";
 
-// ── main modal ────────────────────────────────────────────────────────────────
+// ── form content ──────────────────────────────────────────────────────────────
 function ContactModalContent({ onClose }: { onClose: () => void }) {
   const [fields, setFields] = useState<Partial<ContactFields>>({});
   const [errors, setErrors] = useState<
@@ -275,7 +278,53 @@ function ContactModalContent({ onClose }: { onClose: () => void }) {
   );
 }
 
-// ── exported trigger component ────────────────────────────────────────────────
+// ── single shared modal provider ──────────────────────────────────────────────
+// All DemoRequestCTA buttons on the page share this one Dialog.Root so there
+// is never more than one scroll-lock being managed at a time.
+export function DemoModalProvider({ children }: { children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <DemoModalCtx.Provider value={{ openModal: () => setOpen(true) }}>
+      {children}
+      <Dialog.Root open={open} onOpenChange={setOpen}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-black/75 transition-opacity duration-250 ease-out data-[state=closed]:opacity-0 data-[state=open]:opacity-100" />
+          <Dialog.Content
+            className="fixed left-1/2 top-1/2 z-50 w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-white/10 bg-[#0a0a14] p-6 shadow-2xl max-h-[90vh] overflow-y-auto data-[state=closed]:opacity-0 data-[state=open]:opacity-100 data-[state=open]:scale-100 data-[state=closed]:scale-[0.93]"
+            style={{
+              transition: "opacity 220ms ease, scale 300ms cubic-bezier(0.16,1,0.3,1)",
+            }}
+          >
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <Dialog.Title className="text-xl font-bold text-white">
+                  Book a Demo
+                </Dialog.Title>
+                <Dialog.Description className="text-sm text-gray-400 mt-1">
+                  Tell us about your project and we&apos;ll reach out within one
+                  to three business days.
+                </Dialog.Description>
+              </div>
+              <Dialog.Close asChild>
+                <button
+                  className="text-gray-600 hover:text-white transition-colors mt-0.5 flex-shrink-0 cursor-pointer"
+                  aria-label="Close"
+                >
+                  <X size={18} />
+                </button>
+              </Dialog.Close>
+            </div>
+
+            <ContactModalContent onClose={() => setOpen(false)} />
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+    </DemoModalCtx.Provider>
+  );
+}
+
+// ── trigger button ─────────────────────────────────────────────────────────────
 export function DemoRequestCTA({
   label = "Book a Demo",
   className,
@@ -283,42 +332,14 @@ export function DemoRequestCTA({
   label?: string;
   className?: string;
 }) {
-  const [open, setOpen] = useState(false);
-
+  const ctx = useContext(DemoModalCtx);
   return (
-    <Dialog.Root open={open} onOpenChange={setOpen}>
-      <Dialog.Trigger asChild>
-        <button type="button" className={className}>
-          {label}
-        </button>
-      </Dialog.Trigger>
-
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-white/10 bg-[#0a0a14] p-6 shadow-2xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=open]:slide-in-from-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-top-[48%] max-h-[90vh] overflow-y-auto">
-          <div className="flex items-start justify-between mb-6">
-            <div>
-              <Dialog.Title className="text-xl font-bold text-white">
-                Book a Demo
-              </Dialog.Title>
-              <Dialog.Description className="text-sm text-gray-400 mt-1">
-                Tell us about your project and we&apos;ll reach out within one
-                to three business days.
-              </Dialog.Description>
-            </div>
-            <Dialog.Close asChild>
-              <button
-                className="text-gray-600 hover:text-white transition-colors mt-0.5 flex-shrink-0"
-                aria-label="Close"
-              >
-                <X size={18} />
-              </button>
-            </Dialog.Close>
-          </div>
-
-          <ContactModalContent onClose={() => setOpen(false)} />
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+    <button
+      type="button"
+      className={className}
+      onClick={() => ctx?.openModal()}
+    >
+      {label}
+    </button>
   );
 }
