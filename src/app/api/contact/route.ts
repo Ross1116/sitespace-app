@@ -11,15 +11,24 @@ const contactSchema = z.object({
   message:     z.string().optional(),
 });
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function buildEmailHtml(data: z.infer<typeof contactSchema>): string {
   const rows = [
-    ["Name",         data.name],
-    ["Email",        data.email],
-    ["Company",      data.company],
-    ["Role",         data.role],
-    ["Phone",        data.phone        ?? "—"],
-    ["Project Size", data.projectSize  ?? "—"],
-    ["Message",      data.message      ?? "—"],
+    ["Name",         escapeHtml(data.name)],
+    ["Email",        escapeHtml(data.email)],
+    ["Company",      escapeHtml(data.company)],
+    ["Role",         escapeHtml(data.role)],
+    ["Phone",        data.phone        ? escapeHtml(data.phone)        : "—"],
+    ["Project Size", data.projectSize  ? escapeHtml(data.projectSize)  : "—"],
+    ["Message",      data.message      ? escapeHtml(data.message)      : "—"],
   ];
 
   const tableRows = rows
@@ -69,6 +78,10 @@ export async function POST(req: NextRequest) {
   const fromName   = process.env.FROM_NAME  ?? "SiteSpace";
 
   if (!apiToken || !toEmail) {
+    if (process.env.NODE_ENV === "production") {
+      console.error("[contact] MAILTRAP_TOKEN or CONTACT_TO_EMAIL not configured in production");
+      return NextResponse.json({ error: "Email service not configured" }, { status: 500 });
+    }
     console.info("[contact] Demo request received (no Mailtrap token configured):", data);
     return NextResponse.json({ ok: true });
   }
@@ -89,19 +102,36 @@ export async function POST(req: NextRequest) {
       : { Authorization: `Bearer ${apiToken}` }),
   };
 
-  const mailtrapRes = await fetch(url, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      from:     { email: fromEmail, name: fromName },
-      to:       [{ email: toEmail }],
-      reply_to: [{ email: data.email, name: data.name }],
-      subject:  `Demo request — ${data.name} (${data.company})`,
-      html:     buildEmailHtml(data),
-      text:     "Please view this email in an HTML compatible client.",
-      category: "Transactional",
-    }),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+
+  let mailtrapRes: Response;
+  try {
+    mailtrapRes = await fetch(url, {
+      method: "POST",
+      headers,
+      signal: controller.signal,
+      body: JSON.stringify({
+        from:     { email: fromEmail, name: fromName },
+        to:       [{ email: toEmail }],
+        reply_to: [{ email: data.email, name: data.name }],
+        subject:  `Demo request — ${data.name} (${data.company})`,
+        html:     buildEmailHtml(data),
+        text:     "Please view this email in an HTML compatible client.",
+        category: "Transactional",
+      }),
+    });
+  } catch (err) {
+    clearTimeout(timeout);
+    const isTimeout = err instanceof Error && err.name === "AbortError";
+    console.error("[contact] Mailtrap fetch error:", err);
+    return NextResponse.json(
+      { error: isTimeout ? "Email service timed out. Please try again." : "Failed to send email. Please try again." },
+      { status: 500 },
+    );
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!mailtrapRes.ok) {
     const errBody = (await mailtrapRes.json().catch(() => ({}))) as { message?: string };

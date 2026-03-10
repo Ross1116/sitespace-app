@@ -4,4 +4,5 @@ export const lookaheadKeys = {
   history: (projectId: string): string => `/lookahead/${projectId}/history`,
   versions: (projectId: string): string => `/programmes/${projectId}`,
   uploadStatus: (uploadId: string): string => `/programmes/${uploadId}/status`,
+  deleteVersion: (uploadId: string): string => `/programmes/${uploadId}`,
 };

@@ -45,7 +45,7 @@ export async function fetchUploadStatus(
 }
 
 export async function deleteProgrammeVersion(uploadId: string): Promise<void> {
-  await api.delete(`/programmes/${uploadId}`);
+  await api.delete(lookaheadKeys.deleteVersion(uploadId));
 }
 
 /**

@@ -289,9 +289,9 @@ export function DemoModalProvider({ children }: { children: React.ReactNode }) {
       {children}
       <Dialog.Root open={open} onOpenChange={setOpen}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-50 bg-black/75 transition-opacity duration-250 ease-out data-[state=closed]:opacity-0 data-[state=open]:opacity-100" />
+          <Dialog.Overlay className="fixed inset-0 z-[100] bg-black/75 transition-opacity duration-250 ease-out data-[state=closed]:opacity-0 data-[state=open]:opacity-100" />
           <Dialog.Content
-            className="fixed left-1/2 top-1/2 z-50 w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-white/10 bg-[#0a0a14] p-6 shadow-2xl max-h-[90vh] overflow-y-auto data-[state=closed]:opacity-0 data-[state=open]:opacity-100 data-[state=open]:scale-100 data-[state=closed]:scale-[0.93]"
+            className="fixed left-1/2 top-1/2 z-[100] w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-white/10 bg-[#0a0a14] p-6 shadow-2xl max-h-[90vh] overflow-y-auto data-[state=closed]:opacity-0 data-[state=open]:opacity-100 data-[state=open]:scale-100 data-[state=closed]:scale-[0.93]"
             style={{
               transition: "opacity 220ms ease, scale 300ms cubic-bezier(0.16,1,0.3,1)",
             }}
@@ -333,11 +333,17 @@ export function DemoRequestCTA({
   className?: string;
 }) {
   const ctx = useContext(DemoModalCtx);
+  if (!ctx) {
+    if (process.env.NODE_ENV !== "production") {
+      console.error("DemoRequestCTA must be rendered inside DemoModalProvider");
+    }
+    return null;
+  }
   return (
     <button
       type="button"
       className={className}
-      onClick={() => ctx?.openModal()}
+      onClick={() => ctx.openModal()}
     >
       {label}
     </button>

@@ -114,6 +114,8 @@ const LEVEL_LABEL: Record<DemandLevel, string> = {
 };
 
 // ── upload state machine ──────────────────────────────────────────────────────
+const POLL_MAX_ATTEMPTS = 60; // 60 × 2 s = 2 min max
+
 type UploadPhase =
   | { kind: "idle" }
   | { kind: "uploading" }
@@ -196,7 +198,17 @@ export default function LookaheadDashboard() {
   const startPolling = useCallback(
     (uploadId: string) => {
       stopPolling();
+      let attempts = 0;
       pollingRef.current = setInterval(async () => {
+        attempts += 1;
+        if (attempts > POLL_MAX_ATTEMPTS) {
+          stopPolling();
+          setUploadPhase({
+            kind: "error",
+            message: "Upload is taking too long. Please refresh and try again.",
+          });
+          return;
+        }
         try {
           const status = await fetchUploadStatus(uploadId);
           if (status.status !== "processing") {
@@ -234,7 +246,7 @@ export default function LookaheadDashboard() {
             : prev,
         );
       } catch (err) {
-        console.error("Delete failed:", getApiErrorMessage(err));
+        setUploadPhase({ kind: "error", message: getApiErrorMessage(err) });
       } finally {
         setDeletingId(null);
       }
