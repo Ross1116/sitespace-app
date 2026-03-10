@@ -343,3 +343,70 @@ export function getApiErrorMessage(
 export function isAxiosError(error: unknown): error is AxiosError {
   return error instanceof AxiosError;
 }
+
+// ===== PROGRAMME & LOOKAHEAD =====
+
+export type ProgrammeUploadStatus = "processing" | "committed" | "degraded";
+
+export type DemandLevel = "low" | "medium" | "high" | "critical";
+
+export interface LookaheadRow {
+  asset_type: string;
+  week_start: string;
+  demand_hours: number;
+  booked_hours: number;
+  demand_level: DemandLevel;
+  gap_hours: number;
+}
+
+export interface LookaheadSnapshotResponse {
+  project_id: string;
+  snapshot_id?: string;
+  snapshot_date?: string;
+  timezone?: string | null;
+  rows: LookaheadRow[];
+  message?: string;
+}
+
+export interface LookaheadAnomalyFlags {
+  demand_spike_over_100pct?: boolean;
+  mapping_changes_over_40pct?: boolean;
+  activity_count_delta_over_30pct?: boolean;
+  mapping_change_ratio?: number;
+  activity_count_delta_ratio?: number;
+}
+
+export interface LookaheadAlertsResponse {
+  project_id: string;
+  snapshot_id?: string;
+  snapshot_date?: string;
+  alerts: LookaheadAnomalyFlags;
+}
+
+export interface ProgrammeVersion {
+  upload_id: string;
+  version_number: number;
+  file_name: string;
+  status: ProgrammeUploadStatus;
+  completeness_score: number;
+  created_at: string | null;
+}
+
+export interface UploadStatusResponse {
+  upload_id: string;
+  status: ProgrammeUploadStatus;
+  completeness_score: number;
+  completeness_notes: {
+    missing_fields: string[];
+    notes: string;
+  } | null;
+  version_number: number;
+  file_name: string;
+  created_at: string | null;
+}
+
+export interface UploadAcceptedResponse {
+  upload_id: string;
+  status: "processing";
+  message: string;
+}
