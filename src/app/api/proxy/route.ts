@@ -55,7 +55,10 @@ async function buildNextResponse(
       "Content-Type": respContentType,
     };
     const cacheControl = response.headers.get("cache-control");
-    if (cacheControl) responseHeaders["Cache-Control"] = cacheControl;
+    // Always set a cache header for binary assets. Falls back to a 1-hour
+    // private cache if the backend omits one, preventing N repeated proxy
+    // requests for the same images within a session (Sentry issue #99236617).
+    responseHeaders["Cache-Control"] = cacheControl ?? "private, max-age=3600";
     const etag = response.headers.get("etag");
     if (etag) responseHeaders["ETag"] = etag;
     const contentDisposition = response.headers.get("content-disposition");
@@ -148,19 +151,12 @@ async function proxyToBackend(
 
   if (!["GET", "HEAD", "DELETE"].includes(method)) {
     if (isMultipart) {
-      try {
-        fetchOpts.body = await request.arrayBuffer();
-      } catch (error: unknown) {
-        reportError(
-          error,
-          "proxy route: failed to read multipart request body",
-          "server",
-        );
-        return NextResponse.json(
-          { message: "Failed to read request body" },
-          { status: 400 },
-        );
-      }
+      // Stream the body directly to the backend instead of buffering it as an
+      // ArrayBuffer. This avoids holding the entire file in memory on the
+      // Vercel function and halves the effective transfer time for large uploads.
+      fetchOpts.body = request.body;
+      // Node/undici requires duplex: "half" when the request has a streaming body.
+      (fetchOpts as RequestInit & { duplex: string }).duplex = "half";
     } else {
       try {
         const body = await request.text();
