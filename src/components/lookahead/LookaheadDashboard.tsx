@@ -46,8 +46,14 @@ export default function LookaheadDashboard() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollingGenerationRef = useRef(0);
+  const projectIdRef = useRef(projectId);
 
   const userId = user?.id;
+
+  // Keep projectIdRef in sync so async callbacks can read the live value
+  useEffect(() => {
+    projectIdRef.current = projectId;
+  }, [projectId]);
 
   // ── zustand: persisted window size ─────────────────────────────────────────
   const hasUIIntentHydrated = useUIIntentStore((state) => state.hasHydrated);
@@ -164,11 +170,11 @@ export default function LookaheadDashboard() {
       try {
         const result = await uploadProgramme(targetProject, file);
         // Discard result if the user switched projects while uploading
-        if (pollingGenerationRef.current !== 0 && targetProject !== projectId) return;
+        if (targetProject !== projectIdRef.current) return;
         setUploadPhase({ kind: "polling", uploadId: result.upload_id });
         startPolling(result.upload_id);
       } catch (err) {
-        if (targetProject !== projectId) return;
+        if (targetProject !== projectIdRef.current) return;
         setUploadPhase({ kind: "error", message: getApiErrorMessage(err) });
       }
     },
@@ -239,7 +245,7 @@ export default function LookaheadDashboard() {
     const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
     const monday = new Date(today);
     monday.setDate(today.getDate() + daysToMonday);
-    const currentWeekStr = monday.toISOString().split("T")[0];
+    const currentWeekStr = monday.toLocaleDateString("en-CA"); // YYYY-MM-DD in local time
 
     // Start from the first week that is >= the current week's Monday.
     // If the programme is entirely in the past, fall back to the last N weeks.
@@ -346,6 +352,7 @@ export default function LookaheadDashboard() {
 
   const isLoading = authLoading || isDataLoading;
   const isUploading = uploadPhase.kind === "uploading" || uploadPhase.kind === "polling";
+  const hasForecast = !!projectId && !!heatmap && visibleWeeks.length > 0;
 
   // ─── render ──────────────────────────────────────────────────────────────────
   return (
@@ -528,13 +535,13 @@ export default function LookaheadDashboard() {
                   </div>
                 ))}
               </div>
-            ) : (
+            ) : hasForecast ? (
               <StatCards
                 stats={stats}
                 visibleWeeksCount={visibleWeeks.length}
                 heatmap={heatmap}
               />
-            )}
+            ) : null}
 
             {/* ── DEMAND FORECAST ── */}
             {snapshotLoading || isLoading ? (
