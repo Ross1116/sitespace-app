@@ -25,7 +25,7 @@ export function VersionHistory({ versions, deletingId, onDelete }: Props) {
         className="w-full flex items-center justify-between px-5 py-3.5 text-sm font-bold text-slate-600 hover:text-slate-900 transition-colors"
       >
         <span className="flex items-center gap-2">
-          <Clock size={14} className="text-[var(--teal)]" />
+          <Clock size={14} className="text-teal" />
           Programme History
           <span className="text-[11px] font-normal text-slate-400">
             ({versions.length} {versions.length === 1 ? "version" : "versions"})
@@ -53,7 +53,7 @@ export function VersionHistory({ versions, deletingId, onDelete }: Props) {
                     <span className="text-slate-600 font-medium">
                       Delete <span className="font-bold">v{v.version_number}</span>? This cannot be undone.
                     </span>
-                    <div className="flex items-center gap-2 flex-shrink-0">
+                    <div className="flex items-center gap-2 shrink-0">
                       <button
                         type="button"
                         onClick={() => {
@@ -77,12 +77,12 @@ export function VersionHistory({ versions, deletingId, onDelete }: Props) {
                 ) : (
                   <>
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="font-bold text-slate-700 flex-shrink-0">
+                      <span className="font-bold text-slate-700 shrink-0">
                         v{v.version_number}
                       </span>
                       <span className="text-slate-500 truncate">{v.file_name}</span>
                     </div>
-                    <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                    <div className="flex items-center gap-2 shrink-0 ml-2">
                       <span
                         className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                           v.status === "committed"

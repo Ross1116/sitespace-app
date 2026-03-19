@@ -36,11 +36,11 @@ export const PlanningAlerts = React.memo(function PlanningAlerts({ alerts, onDis
           }`}
         >
           {alert.level === "red" ? (
-            <AlertTriangle size={18} className="text-red-500 flex-shrink-0 mt-0.5" />
+            <AlertTriangle size={18} className="text-red-500 shrink-0 mt-0.5" />
           ) : alert.level === "amber" ? (
-            <AlertTriangle size={18} className="text-amber-500 flex-shrink-0 mt-0.5" />
+            <AlertTriangle size={18} className="text-amber-500 shrink-0 mt-0.5" />
           ) : (
-            <Info size={18} className="text-blue-500 flex-shrink-0 mt-0.5" />
+            <Info size={18} className="text-blue-500 shrink-0 mt-0.5" />
           )}
           <div className="flex-1 min-w-0">
             <p
@@ -69,7 +69,7 @@ export const PlanningAlerts = React.memo(function PlanningAlerts({ alerts, onDis
           <button
             type="button"
             onClick={() => onDismiss(alert.key)}
-            className={`flex-shrink-0 opacity-60 hover:opacity-100 transition-opacity ${
+            className={`shrink-0 opacity-60 hover:opacity-100 transition-opacity ${
               alert.level === "red"
                 ? "text-red-600"
                 : alert.level === "amber"

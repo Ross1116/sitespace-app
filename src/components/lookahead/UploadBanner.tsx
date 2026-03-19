@@ -34,13 +34,13 @@ export function UploadBanner({ phase, onDismiss, onUploadAnother }: Props) {
       }`}
     >
       {isInProgress && (
-        <Loader2 size={16} className="animate-spin text-[var(--teal)] flex-shrink-0" />
+        <Loader2 size={16} className="animate-spin text-teal shrink-0" />
       )}
-      {isSuccess && <CheckCircle2 size={16} className="text-green-600 flex-shrink-0" />}
+      {isSuccess && <CheckCircle2 size={16} className="text-green-600 shrink-0" />}
       {phase.kind === "done" && phase.result.status !== "committed" && (
-        <AlertTriangle size={16} className="text-amber-500 flex-shrink-0" />
+        <AlertTriangle size={16} className="text-amber-500 shrink-0" />
       )}
-      {isError && <XCircle size={16} className="text-red-500 flex-shrink-0" />}
+      {isError && <XCircle size={16} className="text-red-500 shrink-0" />}
 
       <span className="flex-1">
         {phase.kind === "uploading" && "Uploading file…"}
@@ -68,11 +68,11 @@ export function UploadBanner({ phase, onDismiss, onUploadAnother }: Props) {
       </span>
 
       {(phase.kind === "done" || phase.kind === "error") && (
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           <button
             type="button"
             onClick={onUploadAnother}
-            className="flex items-center gap-1 text-xs font-semibold text-[var(--teal)] hover:text-[var(--navy)] transition-colors"
+            className="flex items-center gap-1 text-xs font-semibold text-teal hover:text-navy transition-colors"
           >
             <RefreshCw size={11} />
             Upload another

@@ -356,7 +356,7 @@ export default function LookaheadDashboard() {
 
   // ─── render ──────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[var(--page-bg)] p-4 sm:p-6 lg:p-8 font-sans">
+    <div className="min-h-screen bg-(--page-bg) p-4 sm:p-6 lg:p-8 font-sans">
       <div className="max-w-screen mx-auto space-y-6">
         <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-1 min-h-[85vh] flex flex-col relative overflow-hidden">
           <div className="p-6 flex-1 flex flex-col space-y-6">
@@ -383,7 +383,7 @@ export default function LookaheadDashboard() {
                 {/* Stat pills */}
                 {!isLoading && !snapshotLoading && heatmap && (
                   <div className="flex gap-3">
-                    <div className="bg-[var(--navy)] text-white rounded-xl px-5 py-2 flex flex-col items-center justify-center min-w-[100px] shadow-md shadow-slate-900/10">
+                    <div className="bg-navy text-white rounded-xl px-5 py-2 flex flex-col items-center justify-center min-w-25 shadow-md shadow-slate-900/10">
                       <span className="text-2xl font-bold leading-none">
                         {stats.assetsTracked}
                       </span>
@@ -391,7 +391,7 @@ export default function LookaheadDashboard() {
                         Asset Types
                       </span>
                     </div>
-                    <div className="bg-[var(--brand-orange)] text-white rounded-xl px-5 py-2 flex flex-col items-center justify-center min-w-[100px] shadow-md shadow-orange-900/10">
+                    <div className="bg-(--brand-orange) text-white rounded-xl px-5 py-2 flex flex-col items-center justify-center min-w-25 shadow-md shadow-orange-900/10">
                       <span className="text-2xl font-bold leading-none">
                         {stats.totalGapHours}h
                       </span>
@@ -406,7 +406,7 @@ export default function LookaheadDashboard() {
                 <div className="relative" ref={dropdownRef}>
                   <Button
                     onClick={() => setShowProjectSelector((v) => !v)}
-                    className="bg-[var(--navy)] hover:bg-[var(--navy-hover)] text-white rounded-lg px-5 py-5 h-auto text-sm font-bold shadow-md shadow-slate-900/10 flex items-center gap-2"
+                    className="bg-navy hover:bg-(--navy-hover) text-white rounded-lg px-5 py-5 h-auto text-sm font-bold shadow-md shadow-slate-900/10 flex items-center gap-2"
                   >
                     {isLoading ? "Loading…" : (selectedProject?.name ?? "Select Project")}
                     <ChevronDown
@@ -425,7 +425,7 @@ export default function LookaheadDashboard() {
                           {projects.length}
                         </span>
                       </div>
-                      <div className="max-h-[300px] overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                      <div className="max-h-75 overflow-y-auto p-2 space-y-1 custom-scrollbar">
                         {projects.length === 0 ? (
                           <p className="text-center py-4 text-sm text-slate-400">
                             No projects found
@@ -439,7 +439,7 @@ export default function LookaheadDashboard() {
                                 onClick={() => handleProjectSelect(proj)}
                                 className={`w-full text-left px-3 py-3 rounded-lg text-sm font-medium transition-all flex items-center justify-between group cursor-pointer ${
                                   isActive
-                                    ? "bg-[var(--navy)] text-white shadow-md shadow-slate-900/10"
+                                    ? "bg-navy text-white shadow-md shadow-slate-900/10"
                                     : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                                 }`}
                               >
@@ -452,7 +452,7 @@ export default function LookaheadDashboard() {
                                   </span>
                                 </div>
                                 {isActive && (
-                                  <Check size={16} className="text-white flex-shrink-0 ml-2" />
+                                  <Check size={16} className="text-white shrink-0 ml-2" />
                                 )}
                               </button>
                             );
@@ -470,7 +470,7 @@ export default function LookaheadDashboard() {
                     if (fileInputRef.current) fileInputRef.current.value = "";
                     fileInputRef.current?.click();
                   }}
-                  className="bg-[var(--navy)] hover:bg-[var(--navy-hover)] text-white rounded-lg px-5 py-5 h-auto text-sm font-bold shadow-md shadow-slate-900/10 flex items-center gap-2 w-full sm:w-auto"
+                  className="bg-navy hover:bg-(--navy-hover) text-white rounded-lg px-5 py-5 h-auto text-sm font-bold shadow-md shadow-slate-900/10 flex items-center gap-2 w-full sm:w-auto"
                 >
                   {isUploading ? (
                     <Loader2 size={15} className="animate-spin" />

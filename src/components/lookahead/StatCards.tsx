@@ -50,7 +50,7 @@ export const StatCards = React.memo(function StatCards({ stats, visibleWeeksCoun
                 title="Booking coverage"
               >
                 <div
-                  className="h-full bg-[var(--teal)] rounded-full transition-all duration-500"
+                  className="h-full bg-teal rounded-full transition-all duration-500"
                   style={{ width: `${Math.min(100, coveragePct)}%` }}
                 />
               </div>
@@ -83,7 +83,7 @@ export const StatCards = React.memo(function StatCards({ stats, visibleWeeksCoun
           key={label}
           className="rounded-xl border border-slate-100 bg-slate-50/50 p-5 hover:border-slate-200 transition-colors"
         >
-          <Icon size={18} className="text-[var(--teal)] mb-3" strokeWidth={1.75} />
+          <Icon size={18} className="text-teal mb-3" strokeWidth={1.75} />
           <p className={`text-3xl font-extrabold leading-none mb-1 ${valueClass}`}>{value}</p>
           <p className="text-xs font-bold text-slate-600 uppercase tracking-wide leading-tight">
             {label}

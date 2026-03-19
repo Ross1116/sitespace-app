@@ -17,7 +17,7 @@ function getDisplayLevel(row: LookaheadRow): DisplayLevel {
 const BADGE: Record<DisplayLevel, { bg: string; text: string; label: string }> = {
   covered:     { bg: "bg-green-100",  text: "text-green-700",     label: "Covered" },
   "no-demand": { bg: "bg-slate-100",  text: "text-slate-500",     label: "No demand" },
-  low:         { bg: "bg-teal-50",    text: "text-[var(--teal)]", label: "Low" },
+  low:         { bg: "bg-teal-50",    text: "text-teal", label: "Low" },
   medium:      { bg: "bg-amber-50",   text: "text-amber-600",     label: "Medium" },
   high:        { bg: "bg-orange-50",  text: "text-orange-600",    label: "High" },
   critical:    { bg: "bg-red-50",     text: "text-red-600",       label: "Critical" },
@@ -49,7 +49,7 @@ export const DemandHeatmap = React.memo(function DemandHeatmap({
     <div className="space-y-4 flex-1">
       <div className="flex flex-col gap-0.5">
         <div className="flex items-center gap-2">
-          <BarChart3 size={18} className="text-[var(--teal)]" />
+          <BarChart3 size={18} className="text-teal" />
           <h2 className="text-base font-bold text-slate-900">Weekly Resource Demand</h2>
           {snapshotDate && (
             <span className="text-xs text-slate-400 ml-1">
@@ -65,7 +65,7 @@ export const DemandHeatmap = React.memo(function DemandHeatmap({
 
       <div className="rounded-xl border border-slate-100 overflow-x-auto">
         <div
-          className="p-5 sm:p-6 min-w-[480px] grid gap-6"
+          className="p-5 sm:p-6 min-w-120 grid gap-6"
           style={{ gridTemplateColumns: `repeat(${visibleWeeks.length}, 1fr)` }}
         >
           {visibleWeeks.map((week, wIdx) => (
@@ -92,7 +92,7 @@ export const DemandHeatmap = React.memo(function DemandHeatmap({
                           >
                             {formatAssetType(asset)}
                           </span>
-                          <span className="text-xs text-slate-300 flex-shrink-0">—</span>
+                          <span className="text-xs text-slate-300 shrink-0">—</span>
                         </div>
                         <div className="h-1.5 w-full bg-slate-100 rounded-full" />
                       </div>
@@ -105,7 +105,7 @@ export const DemandHeatmap = React.memo(function DemandHeatmap({
                   // Bar: total width is demand proportion, split teal (booked) / coloured (gap).
                   // No-demand rows get no bar — the text already says "Xh booked · No forecast demand".
                   const hasDemand = row.demand_hours > 0;
-                  const totalBarPct = hasDemand
+                  const totalBarPct = hasDemand && maxDemand
                     ? Math.round((row.demand_hours / maxDemand) * 100)
                     : 0;
                   const bookedSharePct = hasDemand
@@ -122,7 +122,7 @@ export const DemandHeatmap = React.memo(function DemandHeatmap({
                           {formatAssetType(asset)}
                         </span>
                         <span
-                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 ${badge.bg} ${badge.text}`}
+                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${badge.bg} ${badge.text}`}
                         >
                           {badge.label}
                         </span>
@@ -136,7 +136,7 @@ export const DemandHeatmap = React.memo(function DemandHeatmap({
                         >
                           {bookedSharePct > 0 && (
                             <div
-                              className="h-full bg-[var(--teal)]"
+                              className="h-full bg-teal"
                               style={{ width: `${bookedSharePct}%` }}
                             />
                           )}
@@ -167,7 +167,7 @@ export const DemandHeatmap = React.memo(function DemandHeatmap({
                               {row.demand_hours}h needed
                             </span>
                             {row.booked_hours > 0 && (
-                              <span className="text-[10px] text-[var(--teal)] font-medium">
+                              <span className="text-[10px] text-teal font-medium">
                                 {row.booked_hours}h booked
                               </span>
                             )}
@@ -198,7 +198,7 @@ export const DemandHeatmap = React.memo(function DemandHeatmap({
         {/* Legend */}
         <div className="px-5 sm:px-6 py-3 border-t border-slate-100 bg-slate-50/50 flex items-center gap-4 flex-wrap">
           <div className="flex items-center gap-1.5">
-            <div className="w-3 h-1.5 rounded-full bg-[var(--teal)]" />
+            <div className="w-3 h-1.5 rounded-full bg-teal" />
             <span className="text-[11px] text-slate-500">Booked</span>
           </div>
           <div className="flex items-center gap-1.5">

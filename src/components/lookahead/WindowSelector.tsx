@@ -29,7 +29,7 @@ export const WindowSelector = React.memo(function WindowSelector({
               onClick={() => onSetWindowSize(w)}
               className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-all ${
                 windowSize === w
-                  ? "bg-[var(--navy)] text-white shadow-sm"
+                  ? "bg-navy text-white shadow-sm"
                   : "text-slate-500 hover:text-slate-800"
               }`}
             >
