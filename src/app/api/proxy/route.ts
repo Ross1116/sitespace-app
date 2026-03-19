@@ -172,11 +172,21 @@ async function proxyToBackend(
     }
   }
 
+  // GET requests get a hard timeout so Vercel's function limit (10s) never
+  // kills them silently. Only applied in production — in dev there is no
+  // function timeout and slow AI/DB responses would cause false TimeoutErrors.
+  if (method === "GET" && process.env.NODE_ENV === "production") {
+    fetchOpts.signal = AbortSignal.timeout(9000);
+  }
+
   // First attempt
   let response = await fetch(targetUrl, fetchOpts);
 
-  // If 401, try refresh once
-  if (response.status === 401 && tokens.refresh) {
+  // If 401, try refresh once.
+  // Skip retry for multipart/streaming uploads — the ReadableStream body is
+  // consumed after the first fetch and cannot be re-read. Return 401 so the
+  // client can re-submit after token refresh.
+  if (response.status === 401 && tokens.refresh && !isMultipart) {
     const newTokens = await tryRefresh(tokens.refresh);
 
     if (newTokens) {
@@ -216,18 +226,35 @@ async function proxyToBackend(
   return buildNextResponse(response);
 }
 
-export async function GET(req: Request) {
-  return proxyToBackend(req, "GET");
+function withErrorBoundary(
+  handler: (req: Request) => Promise<NextResponse>,
+): (req: Request) => Promise<NextResponse> {
+  return async (req: Request) => {
+    try {
+      return await handler(req);
+    } catch (err: unknown) {
+      // AbortError / TimeoutError — backend didn't respond in time
+      if (
+        err instanceof Error &&
+        (err.name === "TimeoutError" || err.name === "AbortError")
+      ) {
+        return NextResponse.json(
+          { message: "Backend request timed out. Please try again." },
+          { status: 504 },
+        );
+      }
+      // Connection refused, ECONNRESET, etc.
+      reportError(err, "proxy route: unhandled fetch error", "server");
+      return NextResponse.json(
+        { message: "Could not reach the backend. Please try again." },
+        { status: 502 },
+      );
+    }
+  };
 }
-export async function POST(req: Request) {
-  return proxyToBackend(req, "POST");
-}
-export async function PUT(req: Request) {
-  return proxyToBackend(req, "PUT");
-}
-export async function PATCH(req: Request) {
-  return proxyToBackend(req, "PATCH");
-}
-export async function DELETE(req: Request) {
-  return proxyToBackend(req, "DELETE");
-}
+
+export const GET    = withErrorBoundary((req) => proxyToBackend(req, "GET"));
+export const POST   = withErrorBoundary((req) => proxyToBackend(req, "POST"));
+export const PUT    = withErrorBoundary((req) => proxyToBackend(req, "PUT"));
+export const PATCH  = withErrorBoundary((req) => proxyToBackend(req, "PATCH"));
+export const DELETE = withErrorBoundary((req) => proxyToBackend(req, "DELETE"));

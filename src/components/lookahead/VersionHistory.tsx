@@ -20,6 +20,7 @@ export function VersionHistory({ versions, deletingId, onDelete }: Props) {
   return (
     <div className="rounded-xl border border-slate-100 bg-slate-50/50">
       <button
+        type="button"
         onClick={() => setIsOpen((v) => !v)}
         className="w-full flex items-center justify-between px-5 py-3.5 text-sm font-bold text-slate-600 hover:text-slate-900 transition-colors"
       >
@@ -54,6 +55,7 @@ export function VersionHistory({ versions, deletingId, onDelete }: Props) {
                     </span>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <button
+                        type="button"
                         onClick={() => {
                           void onDelete(v.upload_id);
                           setConfirmDeleteId(null);
@@ -64,6 +66,7 @@ export function VersionHistory({ versions, deletingId, onDelete }: Props) {
                         {isDeleting ? "Deleting…" : "Delete"}
                       </button>
                       <button
+                        type="button"
                         onClick={() => setConfirmDeleteId(null)}
                         className="text-slate-400 hover:text-slate-700 transition-colors"
                       >
@@ -103,10 +106,11 @@ export function VersionHistory({ versions, deletingId, onDelete }: Props) {
                       </span>
                       <span className="text-slate-400">{formatDate(v.created_at)}</span>
                       <button
+                        type="button"
                         onClick={() => setConfirmDeleteId(v.upload_id)}
                         disabled={v.status === "processing" || isDeleting}
-                        className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-500 disabled:cursor-not-allowed transition-all"
-                        title="Delete this version"
+                        className="opacity-0 group-hover:opacity-100 focus:opacity-100 focus-visible:opacity-100 text-slate-300 hover:text-red-500 disabled:cursor-not-allowed transition-all"
+                        aria-label={`Delete version ${v.version_number}`}
                       >
                         <Trash2 size={13} />
                       </button>

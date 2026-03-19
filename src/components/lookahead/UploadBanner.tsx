@@ -70,6 +70,7 @@ export function UploadBanner({ phase, onDismiss, onUploadAnother }: Props) {
       {(phase.kind === "done" || phase.kind === "error") && (
         <div className="flex items-center gap-2 flex-shrink-0">
           <button
+            type="button"
             onClick={onUploadAnother}
             className="flex items-center gap-1 text-xs font-semibold text-[var(--teal)] hover:text-[var(--navy)] transition-colors"
           >
@@ -77,8 +78,10 @@ export function UploadBanner({ phase, onDismiss, onUploadAnother }: Props) {
             Upload another
           </button>
           <button
+            type="button"
             onClick={onDismiss}
             className="text-slate-400 hover:text-slate-700 transition-colors"
+            aria-label="Dismiss"
           >
             <X size={14} />
           </button>

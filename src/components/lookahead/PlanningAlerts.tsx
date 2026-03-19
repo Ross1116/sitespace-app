@@ -67,6 +67,7 @@ export const PlanningAlerts = React.memo(function PlanningAlerts({ alerts, onDis
             </p>
           </div>
           <button
+            type="button"
             onClick={() => onDismiss(alert.key)}
             className={`flex-shrink-0 opacity-60 hover:opacity-100 transition-opacity ${
               alert.level === "red"

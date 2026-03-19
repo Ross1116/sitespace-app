@@ -71,7 +71,7 @@ export const StatCards = React.memo(function StatCards({ stats, visibleWeeksCoun
           icon: MapPin,
           value: stats.assetsTracked,
           label: "Asset Types Tracked",
-          sub: heatmap
+          sub: heatmap && heatmap.assets.length > 0
             ? heatmap.assets.slice(0, 3).map(formatAssetType).join(", ") +
               (heatmap.assets.length > 3 ? "…" : "")
             : "No assets",

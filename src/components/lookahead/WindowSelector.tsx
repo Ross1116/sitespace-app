@@ -24,6 +24,8 @@ export const WindowSelector = React.memo(function WindowSelector({
           {(["2W", "4W", "6W"] as WindowSize[]).map((w) => (
             <button
               key={w}
+              type="button"
+              aria-pressed={windowSize === w}
               onClick={() => onSetWindowSize(w)}
               className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-all ${
                 windowSize === w

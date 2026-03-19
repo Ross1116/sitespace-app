@@ -101,13 +101,19 @@ export default function LookaheadDashboard() {
 
   useEffect(() => () => stopPolling(), [stopPolling]);
 
+  const isFetchingRef = useRef(false);
+
   const startPolling = useCallback(
     (uploadId: string) => {
       stopPolling();
+      isFetchingRef.current = false;
       const generation = ++pollingGenerationRef.current;
       let attempts = 0;
+      let consecutiveErrors = 0;
       pollingRef.current = setInterval(async () => {
         if (pollingGenerationRef.current !== generation) return;
+        // Prevent overlapping requests when fetchUploadStatus takes > 2s
+        if (isFetchingRef.current) return;
         attempts += 1;
         if (attempts > POLL_MAX_ATTEMPTS) {
           stopPolling();
@@ -117,9 +123,11 @@ export default function LookaheadDashboard() {
           });
           return;
         }
+        isFetchingRef.current = true;
         try {
           const status = await fetchUploadStatus(uploadId);
           if (pollingGenerationRef.current !== generation) return;
+          consecutiveErrors = 0;
           if (status.status !== "processing") {
             stopPolling();
             setUploadPhase({ kind: "done", result: status });
@@ -129,11 +137,18 @@ export default function LookaheadDashboard() {
           }
         } catch {
           if (pollingGenerationRef.current !== generation) return;
-          stopPolling();
-          setUploadPhase({
-            kind: "error",
-            message: "Lost connection while checking upload status.",
-          });
+          consecutiveErrors += 1;
+          // Allow up to 2 transient failures (proxy timeout, brief network blip)
+          // before surfacing an error. The next interval tick will retry.
+          if (consecutiveErrors >= 3) {
+            stopPolling();
+            setUploadPhase({
+              kind: "error",
+              message: "Lost connection while checking upload status.",
+            });
+          }
+        } finally {
+          isFetchingRef.current = false;
         }
       }, 2000);
     },
@@ -144,12 +159,16 @@ export default function LookaheadDashboard() {
   const handleFileSelected = useCallback(
     async (file: File | null) => {
       if (!file || !projectId) return;
+      const targetProject = projectId;
       setUploadPhase({ kind: "uploading" });
       try {
-        const result = await uploadProgramme(projectId, file);
+        const result = await uploadProgramme(targetProject, file);
+        // Discard result if the user switched projects while uploading
+        if (pollingGenerationRef.current !== 0 && targetProject !== projectId) return;
         setUploadPhase({ kind: "polling", uploadId: result.upload_id });
         startPolling(result.upload_id);
       } catch (err) {
+        if (targetProject !== projectId) return;
         setUploadPhase({ kind: "error", message: getApiErrorMessage(err) });
       }
     },
@@ -209,10 +228,26 @@ export default function LookaheadDashboard() {
     [snapshot],
   );
 
-  const visibleWeeks = useMemo(
-    () => (heatmap ? heatmap.weeks.slice(0, WINDOW_WEEKS[windowSize]) : []),
-    [heatmap, windowSize],
-  );
+  const visibleWeeks = useMemo(() => {
+    if (!heatmap) return [];
+    const weeks = heatmap.weeks;
+    const n = WINDOW_WEEKS[windowSize];
+
+    // Find the Monday of the current week (ISO date string YYYY-MM-DD).
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // 0 = Sun
+    const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const monday = new Date(today);
+    monday.setDate(today.getDate() + daysToMonday);
+    const currentWeekStr = monday.toISOString().split("T")[0];
+
+    // Start from the first week that is >= the current week's Monday.
+    // If the programme is entirely in the past, fall back to the last N weeks.
+    let startIdx = weeks.findIndex((w) => w >= currentWeekStr);
+    if (startIdx === -1) startIdx = Math.max(0, weeks.length - n);
+
+    return weeks.slice(startIdx, startIdx + n);
+  }, [heatmap, windowSize]);
 
   const visibleRows = useMemo(() => {
     if (!heatmap || !visibleWeeks.length) return [];
