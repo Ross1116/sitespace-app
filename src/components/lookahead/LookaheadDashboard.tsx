@@ -46,14 +46,7 @@ export default function LookaheadDashboard() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollingGenerationRef = useRef(0);
-  const projectIdRef = useRef(projectId);
-
   const userId = user?.id;
-
-  // Keep projectIdRef in sync so async callbacks can read the live value
-  useEffect(() => {
-    projectIdRef.current = projectId;
-  }, [projectId]);
 
   // ── zustand: persisted window size ─────────────────────────────────────────
   const hasUIIntentHydrated = useUIIntentStore((state) => state.hasHydrated);
@@ -67,6 +60,13 @@ export default function LookaheadDashboard() {
     projectBootstrapLoading: isDataLoading,
     setProjectId,
   } = useResolvedProjectSelection({ userId, role: user?.role });
+
+  const projectIdRef = useRef(projectId);
+
+  // Keep projectIdRef in sync so async callbacks can read the live value
+  useEffect(() => {
+    projectIdRef.current = projectId;
+  }, [projectId]);
 
   const uiScopeKey = useMemo(
     () => (userId && projectId ? `${userId}:${projectId}` : null),
