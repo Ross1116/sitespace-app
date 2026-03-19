@@ -399,6 +399,7 @@ export interface UploadStatusResponse {
   completeness_notes: {
     missing_fields: string[];
     notes: string;
+    ai_classification_fallback?: boolean;
   } | null;
   version_number: number;
   file_name: string;
