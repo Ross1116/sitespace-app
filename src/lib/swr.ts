@@ -9,9 +9,12 @@ export const swrFetcher = (url: string) => api.get(url).then((r) => r.data);
  * Trade-off — API load vs. data staleness:
  *   revalidateOnFocus: false  — prevents a burst of 6+ concurrent requests every time the user
  *                               switches tabs (was the root cause of the N+1 Sentry issue #99236617).
- *                               Tab-focus updates are sacrificed; background polling covers freshness.
- *   refreshInterval: 5 min   — background revalidation every 5 minutes is sufficient for bookings,
- *                               assets, subcontractors, and project data on the dashboard.
+ *                               Tab-focus updates are sacrificed; mutation invalidation covers freshness.
+ *   refreshInterval: 0        — no background polling by default. Background polling on every hook
+ *                               caused a burst of N concurrent /api/proxy calls every 5 minutes,
+ *                               which Sentry flagged as a recurring N+1 (issue #99236617).
+ *                               Hooks that genuinely need live updates (e.g. useCalendarBookingsQuery)
+ *                               override this individually.
  *   dedupingInterval: 60s    — collapses duplicate requests within a 60-second window, reducing
  *                               redundant fetches from rapid re-mounts or strict-mode double invocations.
  *
@@ -24,14 +27,14 @@ export const swrFetcher = (url: string) => api.get(url).then((r) => r.data);
  *
  * Mutation invalidation:
  *   useBookingMutations calls mutate() after every create/update/delete, so optimistic updates
- *   and immediate cache invalidation compensate for the reduced background revalidation frequency.
- *   Manual page refresh or the 5-minute background poll handles the remainder.
+ *   and immediate cache invalidation compensate for the lack of background polling.
+ *   Manual page refresh is the fallback for data changed by other users.
  *
  * See: src/hooks/bookings/useBookingsData.ts, src/hooks/useResolvedProjectSelection.ts
  */
 export const SWR_CONFIG: SWRConfiguration = {
   revalidateOnFocus: false,
   revalidateOnReconnect: true,
-  refreshInterval: 5 * 60 * 1000, // 5 min
+  refreshInterval: 0,
   dedupingInterval: 60_000, // 60s dedup
 };
