@@ -3,11 +3,9 @@
 import React from "react";
 import type { LookaheadWindowSize } from "@/stores/uiIntentStore";
 
-type WindowSize = LookaheadWindowSize;
-
 interface Props {
-  windowSize: WindowSize;
-  onSetWindowSize: (size: WindowSize) => void;
+  windowSize: LookaheadWindowSize;
+  onSetWindowSize: (size: LookaheadWindowSize) => void;
   lastUpdated: string | null;
 }
 
@@ -21,7 +19,7 @@ export const WindowSelector = React.memo(function WindowSelector({
       <div className="flex items-center gap-3 flex-wrap">
         <span className="text-sm font-semibold text-slate-500">Show next:</span>
         <div className="flex items-center gap-1.5 bg-slate-100 rounded-lg p-1">
-          {(["2W", "4W", "6W"] as WindowSize[]).map((w) => (
+          {(["2W", "4W", "6W"] as LookaheadWindowSize[]).map((w) => (
             <button
               key={w}
               type="button"

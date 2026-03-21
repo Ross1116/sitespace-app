@@ -7,11 +7,11 @@ import { formatDate } from "./utils";
 
 interface Props {
   versions: ProgrammeVersion[];
-  deletingId: string | null;
+  deletingIds: Set<string>;
   onDelete: (uploadId: string) => void;
 }
 
-export function VersionHistory({ versions, deletingId, onDelete }: Props) {
+export function VersionHistory({ versions, deletingIds, onDelete }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
@@ -22,6 +22,8 @@ export function VersionHistory({ versions, deletingId, onDelete }: Props) {
       <button
         type="button"
         onClick={() => setIsOpen((v) => !v)}
+        aria-expanded={isOpen}
+        aria-controls="versionHistoryPanel"
         className="w-full flex items-center justify-between px-5 py-3.5 text-sm font-bold text-slate-600 hover:text-slate-900 transition-colors"
       >
         <span className="flex items-center gap-2">
@@ -38,10 +40,10 @@ export function VersionHistory({ versions, deletingId, onDelete }: Props) {
       </button>
 
       {isOpen && (
-        <div className="border-t border-slate-100 p-3 space-y-1 max-h-64 overflow-y-auto custom-scrollbar">
+        <div id="versionHistoryPanel" role="region" className="border-t border-slate-100 p-3 space-y-1 max-h-64 overflow-y-auto custom-scrollbar">
           {versions.map((v) => {
             const isConfirming = confirmDeleteId === v.upload_id;
-            const isDeleting = deletingId === v.upload_id;
+            const isDeleting = deletingIds.has(v.upload_id);
 
             return (
               <div

@@ -30,6 +30,45 @@ const GAP_BAR_COLOR: Record<DemandLevel, string> = {
   critical: "bg-red-500",
 };
 
+function StatusText({ row }: { row: LookaheadRow }) {
+  if (row.demand_hours === 0) {
+    return row.booked_hours > 0 ? (
+      <span className="text-[10px] text-slate-400">
+        {row.booked_hours}h booked · No forecast demand
+      </span>
+    ) : (
+      <span className="text-[10px] text-slate-300">
+        No activity forecast
+      </span>
+    );
+  }
+  return (
+    <>
+      <span className="text-[10px] text-slate-400">
+        {row.demand_hours}h needed
+      </span>
+      {row.booked_hours > 0 && (
+        <span className="text-[10px] text-teal font-medium">
+          {row.booked_hours}h booked
+        </span>
+      )}
+      {row.gap_hours > 0 ? (
+        <span className="text-[10px] text-red-500 font-semibold">
+          {row.gap_hours}h unbooked
+        </span>
+      ) : row.booked_hours > 0 ? (
+        <span className="text-[10px] text-green-600 font-medium">
+          All booked ✓
+        </span>
+      ) : (
+        <span className="text-[10px] text-red-400">
+          Nothing booked yet
+        </span>
+      )}
+    </>
+  );
+}
+
 interface Props {
   heatmap: PivotResult;
   visibleWeeks: string[];
@@ -151,41 +190,7 @@ export const DemandHeatmap = React.memo(function DemandHeatmap({
 
                       {/* Status text */}
                       <div className="flex items-center gap-2.5 mt-1 flex-wrap">
-                        {row.demand_hours === 0 ? (
-                          row.booked_hours > 0 ? (
-                            <span className="text-[10px] text-slate-400">
-                              {row.booked_hours}h booked · No forecast demand
-                            </span>
-                          ) : (
-                            <span className="text-[10px] text-slate-300">
-                              No activity forecast
-                            </span>
-                          )
-                        ) : (
-                          <>
-                            <span className="text-[10px] text-slate-400">
-                              {row.demand_hours}h needed
-                            </span>
-                            {row.booked_hours > 0 && (
-                              <span className="text-[10px] text-teal font-medium">
-                                {row.booked_hours}h booked
-                              </span>
-                            )}
-                            {row.gap_hours > 0 ? (
-                              <span className="text-[10px] text-red-500 font-semibold">
-                                {row.gap_hours}h unbooked
-                              </span>
-                            ) : row.booked_hours > 0 ? (
-                              <span className="text-[10px] text-green-600 font-medium">
-                                All booked ✓
-                              </span>
-                            ) : (
-                              <span className="text-[10px] text-red-400">
-                                Nothing booked yet
-                              </span>
-                            )}
-                          </>
-                        )}
+                        <StatusText row={row} />
                       </div>
                     </div>
                   );
@@ -202,7 +207,12 @@ export const DemandHeatmap = React.memo(function DemandHeatmap({
             <span className="text-[11px] text-slate-500">Booked</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="w-3 h-1.5 rounded-full bg-red-500" />
+            <div className="flex gap-0.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-amber-300" />
+              <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+              <div className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+              <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
+            </div>
             <span className="text-[11px] text-slate-500">Unbooked</span>
           </div>
           <span className="text-slate-200">|</span>

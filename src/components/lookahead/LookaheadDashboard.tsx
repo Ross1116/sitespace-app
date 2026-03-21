@@ -39,7 +39,7 @@ export default function LookaheadDashboard() {
   const [showProjectSelector, setShowProjectSelector] = useState(false);
   const [uploadPhase, setUploadPhase] = useState<UploadPhase>({ kind: "idle" });
   const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set());
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const [windowSize, setWindowSizeLocal] = useState<WindowSize>("4W");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -184,7 +184,7 @@ export default function LookaheadDashboard() {
   // ── delete handler ──────────────────────────────────────────────────────────
   const handleDeleteVersion = useCallback(
     async (uploadId: string) => {
-      setDeletingId(uploadId);
+      setDeletingIds((prev) => new Set(prev).add(uploadId));
       try {
         await deleteProgrammeVersion(uploadId);
         void mutateVersions();
@@ -198,7 +198,11 @@ export default function LookaheadDashboard() {
       } catch (err) {
         setUploadPhase({ kind: "error", message: getApiErrorMessage(err) });
       } finally {
-        setDeletingId(null);
+        setDeletingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(uploadId);
+          return next;
+        });
       }
     },
     [mutateVersions, mutateSnapshot, mutateAlerts],
@@ -569,7 +573,7 @@ export default function LookaheadDashboard() {
             {!versionsLoading && (
               <VersionHistory
                 versions={versions}
-                deletingId={deletingId}
+                deletingIds={deletingIds}
                 onDelete={handleDeleteVersion}
               />
             )}
