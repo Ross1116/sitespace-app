@@ -95,8 +95,8 @@ export default function LandingPage() {
               </div>
             </HeroParallax>
 
-            <div className="animate-fade-in-up [animation-delay:0.2s] [animation-fill-mode:both]">
-              <DesktopFrame className="shine md:[transform:perspective(1000px)_rotateY(-5deg)]">
+            <div className="animate-fade-in-up [animation-delay:0.2s] fill-mode-both">
+              <DesktopFrame className="shine md:transform-[perspective(1000px)_rotateY(-5deg)]">
                 <Image
                   src="/static/images/Lookaheaddash.jpeg"
                   alt="SiteSpace Lookahead dashboard"
@@ -113,7 +113,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="px-6 py-16 md:py-[120px]">
+      <section className="px-6 py-16 md:py-30">
         <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
             {[
@@ -170,7 +170,7 @@ export default function LandingPage() {
             data-fade-in
             style={{ transitionDelay: "0.2s" }}
           >
-            <DesktopFrame className="shine max-w-[720px] mx-auto">
+            <DesktopFrame className="shine max-w-180 mx-auto">
               <Image
                 src="/static/images/dashtwo.jpeg"
                 alt="SiteSpace dashboard showing bookings and assets"
@@ -245,13 +245,13 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="px-6 py-16 md:py-[120px]">
+      <section className="px-6 py-16 md:py-30">
         <div className="max-w-6xl mx-auto">
           <LookaheadDashboard />
         </div>
       </section>
 
-      <section className="relative px-6 pt-24 pb-16 md:pt-[160px] md:pb-[120px]">
+      <section className="relative px-6 pt-24 pb-16 md:pt-40 md:pb-30">
         {/* Faint separator from the dashboard above */}
         <div
           className="absolute top-0 inset-x-0 h-px"
@@ -313,7 +313,7 @@ export default function LandingPage() {
       </section>
 
       <section
-        className="px-6 py-16 md:py-[120px]"
+        className="px-6 py-16 md:py-30"
         style={{
           background: "linear-gradient(180deg, #0a0a14 0%, #000 100%)",
         }}
@@ -341,7 +341,7 @@ export default function LandingPage() {
 
       <section
         id="benefits"
-        className="px-6 py-16 md:py-[120px]"
+        className="px-6 py-16 md:py-30"
         style={{
           background:
             "linear-gradient(180deg, #000 0%, #0a0a14 50%, #000 100%)",
@@ -428,7 +428,7 @@ export default function LandingPage() {
               />
               <DemoRequestCTA
                 label="Contact Sales"
-                className="cursor-pointer bg-transparent text-amber-500 border-2 border-amber-500 rounded-full px-[22px] py-[10px] text-[17px] font-semibold hover:bg-amber-500 hover:text-black transition-colors"
+                className="cursor-pointer bg-transparent text-amber-500 border-2 border-amber-500 rounded-full px-5.5 py-2.5 text-[17px] font-semibold hover:bg-amber-500 hover:text-black transition-colors"
               />
             </div>
             <p className="text-gray-600 text-sm">
@@ -439,7 +439,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <footer className="border-t border-white/10 py-[60px] px-6">
+      <footer className="border-t border-white/10 py-15 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-5 gap-12 mb-12">
             <div className="md:col-span-2">
@@ -539,7 +539,7 @@ function MobileFrame({
   return (
     <div
       className={cn(
-        "relative w-full max-w-[375px] mx-auto bg-[rgb(26,26,26)] rounded-[50px] p-4 shadow-[0_30px_80px_rgba(0,0,0,0.6)]",
+        "relative w-full max-w-93.75 mx-auto bg-[rgb(26,26,26)] rounded-[50px] p-4 shadow-[0_30px_80px_rgba(0,0,0,0.6)]",
         APPLE,
         "shine",
         className,
@@ -547,7 +547,7 @@ function MobileFrame({
       style={style}
     >
       <div
-        className="absolute top-2 left-1/2 -translate-x-1/2 w-[120px] h-[25px] bg-[rgb(26,26,26)] rounded-b-[20px] z-[2]"
+        className="absolute top-2 left-1/2 -translate-x-1/2 w-30 h-6.25 bg-[rgb(26,26,26)] rounded-b-[20px] z-2"
         aria-hidden="true"
       />
       <div className="rounded-[38px] overflow-hidden">{children}</div>
@@ -629,8 +629,8 @@ function FeatureBlurb({
     <div
       className={cn(
         FADE,
-        "group relative rounded-2xl border border-white/10 bg-white/[0.03] p-7 md:p-8 overflow-hidden",
-        "hover:bg-white/[0.06] hover:border-white/20 transition-all duration-300",
+        "group relative rounded-2xl border border-white/10 bg-white/3 p-7 md:p-8 overflow-hidden",
+        "hover:bg-white/6 hover:border-white/20 transition-all duration-300",
       )}
       data-fade-in
       style={{ transitionDelay: delay }}

@@ -13,8 +13,8 @@ export function LookaheadDashboard() {
     <div
       className={cn(
         FADE,
-        "shine bg-[rgba(20,20,30,0.8)] backdrop-blur-[40px] rounded-3xl border border-white/10 p-6 md:p-8 shadow-[0_40px_100px_rgba(0,0,0,0.6),0_0_60px_rgba(0,78,137,0.35)]",
-        "bg-white/[0.03] transition-all duration-[400ms] ease-in-out cursor-pointer hover:scale-[1.02] hover:shadow-[0_20px_60px_rgba(0,0,0,0.3)]",
+        "shine bg-[rgba(20,20,30,0.8)] backdrop-blur-2xl rounded-3xl border border-white/10 p-6 md:p-8 shadow-[0_40px_100px_rgba(0,0,0,0.6),0_0_60px_rgba(0,78,137,0.35)]",
+        "bg-white/3 transition-all duration-400 ease-in-out cursor-pointer hover:scale-[1.02] hover:shadow-[0_20px_60px_rgba(0,0,0,0.3)]",
       )}
       data-fade-in
       data-progress

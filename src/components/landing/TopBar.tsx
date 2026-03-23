@@ -103,16 +103,16 @@ export function NavBar() {
             <button
               type="button"
               className={cn(
-                "flex flex-col md:hidden cursor-pointer gap-[5px] z-[100] bg-transparent border-none p-1.5",
+                "flex flex-col md:hidden cursor-pointer gap-1.25 z-100 bg-transparent border-none p-1.5",
                 isMenuOpen && "hamburger-open",
               )}
               onClick={toggleMenu}
               aria-label="Toggle menu"
               aria-expanded={isMenuOpen}
             >
-              <span className="block w-[25px] h-0.5 bg-[rgb(245,245,247)] rounded-sm transition-all duration-300" />
-              <span className="block w-[25px] h-0.5 bg-[rgb(245,245,247)] rounded-sm transition-all duration-300" />
-              <span className="block w-[25px] h-0.5 bg-[rgb(245,245,247)] rounded-sm transition-all duration-300" />
+              <span className="block w-6.25 h-0.5 bg-[rgb(245,245,247)] rounded-sm transition-all duration-300" />
+              <span className="block w-6.25 h-0.5 bg-[rgb(245,245,247)] rounded-sm transition-all duration-300" />
+              <span className="block w-6.25 h-0.5 bg-[rgb(245,245,247)] rounded-sm transition-all duration-300" />
             </button>
           </div>
         </div>
@@ -122,7 +122,7 @@ export function NavBar() {
       <button
         type="button"
         className={cn(
-          "fixed inset-0 bg-black/70 transition-all duration-300 z-[98] border-none",
+          "fixed inset-0 bg-black/70 transition-all duration-300 z-98 border-none",
           isMenuOpen ? "opacity-100 visible" : "opacity-0 invisible",
         )}
         onClick={closeMenu}
@@ -132,7 +132,7 @@ export function NavBar() {
       {/* Mobile menu */}
       <div
         className={cn(
-          "fixed top-0 w-4/5 max-w-[400px] h-screen bg-[rgba(10,10,20,0.98)] backdrop-blur-[40px] transition-[right] duration-[400ms] ease-in-out z-[99] pt-20 px-[30px] pb-[30px] overflow-y-auto shadow-[-5px_0_30px_rgba(0,0,0,0.5)]",
+          "fixed top-0 w-4/5 max-w-100 h-screen bg-[rgba(10,10,20,0.98)] backdrop-blur-2xl transition-[right] duration-400 ease-in-out z-99 pt-20 px-7.5 pb-7.5 overflow-y-auto shadow-[-5px_0_30px_rgba(0,0,0,0.5)]",
           isMenuOpen ? "right-0" : "-right-full",
         )}
         aria-hidden={!isMenuOpen}
