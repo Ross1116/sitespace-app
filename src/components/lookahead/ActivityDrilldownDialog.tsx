@@ -2,6 +2,7 @@
 
 import { CalendarDays, Link2, Loader2 } from "lucide-react";
 import type { LookaheadActivityCandidate, LookaheadRow } from "@/types";
+import { getApiErrorMessage } from "@/types";
 import {
   Dialog,
   DialogContent,
@@ -19,7 +20,11 @@ interface Props {
   selectedCell: LookaheadRow | null;
   activities: LookaheadActivityCandidate[];
   isLoading: boolean;
+  bookingActivityId?: string | null;
+  bookingContextLoading?: boolean;
+  bookingContextError?: unknown;
   onBook: (activity: LookaheadActivityCandidate) => void;
+  onRetryBook?: (activity: LookaheadActivityCandidate) => void;
   onViewContext: (activity: LookaheadActivityCandidate) => void;
 }
 
@@ -29,7 +34,11 @@ export function ActivityDrilldownDialog({
   selectedCell,
   activities,
   isLoading,
+  bookingActivityId,
+  bookingContextLoading = false,
+  bookingContextError,
   onBook,
+  onRetryBook,
   onViewContext,
 }: Props) {
   return (
@@ -83,6 +92,34 @@ export function ActivityDrilldownDialog({
                 key={activity.activity_id}
                 className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
               >
+                {bookingActivityId === activity.activity_id &&
+                  bookingContextLoading && (
+                  <div className="mb-3 flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Loading booking context...
+                  </div>
+                )}
+                {bookingActivityId === activity.activity_id &&
+                  Boolean(bookingContextError) && (
+                  <div className="mb-3 flex flex-col gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 sm:flex-row sm:items-center sm:justify-between">
+                    <span>
+                      {String(
+                        getApiErrorMessage(
+                          bookingContextError,
+                          "We couldn't load booking context for this activity.",
+                        ),
+                      )}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => (onRetryBook ?? onBook)(activity)}
+                      className="font-semibold text-red-700 underline underline-offset-2"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                )}
+
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                   <div className="space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
@@ -121,15 +158,37 @@ export function ActivityDrilldownDialog({
                       type="button"
                       size="sm"
                       variant="outline"
+                      disabled={
+                        bookingActivityId === activity.activity_id &&
+                        bookingContextLoading
+                      }
                       onClick={() => onViewContext(activity)}
                     >
                       <Link2 className="mr-1 h-3.5 w-3.5" />
                       View context
                     </Button>
-                    <Button type="button" size="sm" onClick={() => onBook(activity)}>
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={
+                        bookingActivityId === activity.activity_id &&
+                        bookingContextLoading
+                      }
+                      onClick={() => onBook(activity)}
+                    >
+                      {bookingActivityId === activity.activity_id &&
+                      bookingContextLoading ? (
+                        <>
+                          <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                          Loading...
+                        </>
+                      ) : (
+                        <>
                       {(activity.linked_booking_count ?? 0) > 0
                         ? "Book remaining"
                         : "Book asset"}
+                        </>
+                      )}
                     </Button>
                   </div>
                 </div>

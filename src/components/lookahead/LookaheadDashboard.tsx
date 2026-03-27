@@ -260,7 +260,7 @@ export default function LookaheadDashboard() {
     mutate: mutateUnclassified,
   } = useUnclassifiedMappings({
     uploadId: latestVersion?.upload_id ?? null,
-    enabled: Boolean(latestVersion?.upload_id && isUploadReviewOpen),
+    enabled: Boolean(latestVersion?.upload_id),
   });
   const {
     activities,
@@ -275,6 +275,7 @@ export default function LookaheadDashboard() {
   const {
     bookingContext,
     isLoading: bookingContextLoading,
+    error: bookingContextError,
     mutate: mutateBookingContext,
   } = useProgrammeActivityBookingContext({
     activityId: selectedActivity?.activity_id ?? null,
@@ -295,6 +296,10 @@ export default function LookaheadDashboard() {
   useEffect(() => {
     setDismissedAlerts(new Set());
     setDeletingIds(new Set());
+    setSelectedCell(null);
+    setActivityContextCell(null);
+    setSelectedActivity(null);
+    setActivityDialogMode(null);
   }, [latestUploadKey, snapshotKey]);
 
   const refreshLookaheadWorkspace = useCallback(async () => {
@@ -332,6 +337,17 @@ export default function LookaheadDashboard() {
     setActivityContextCell(null);
     setActivityDialogMode(null);
   }, []);
+
+  useEffect(() => {
+    if (
+      activityDialogMode === "booking" &&
+      selectedCell &&
+      bookingContext &&
+      !bookingContextLoading
+    ) {
+      setSelectedCell(null);
+    }
+  }, [activityDialogMode, bookingContext, bookingContextLoading, selectedCell]);
 
   const isUploadInFlight =
     uploadPhase.kind === "uploading" || uploadPhase.kind === "polling";
@@ -1120,16 +1136,27 @@ export default function LookaheadDashboard() {
         onOpenChange={(open) => {
           if (!open) {
             setSelectedCell(null);
+            closeActivityFlow();
           }
         }}
         selectedCell={selectedCell}
         activities={activities}
         isLoading={activitiesLoading}
+        bookingActivityId={
+          activityDialogMode === "booking" ? selectedActivity?.activity_id : null
+        }
+        bookingContextLoading={bookingContextLoading}
+        bookingContextError={bookingContextError}
         onBook={(activity) => {
           setActivityContextCell(selectedCell);
           setSelectedActivity(activity);
           setActivityDialogMode("booking");
-          setSelectedCell(null);
+        }}
+        onRetryBook={(activity) => {
+          setActivityContextCell(selectedCell);
+          setSelectedActivity(activity);
+          setActivityDialogMode("booking");
+          void mutateBookingContext();
         }}
         onViewContext={(activity) => {
           setActivityContextCell(selectedCell);
