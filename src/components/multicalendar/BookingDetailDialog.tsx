@@ -39,7 +39,10 @@ import { format } from "date-fns";
 import api from "@/lib/api";
 import { useAuth } from "@/app/context/AuthContext";
 import dynamic from "next/dynamic";
-import { formatBookingSource } from "@/lib/bookingHelpers";
+import {
+  buildBookingProvenanceSummary,
+  formatBookingSource,
+} from "@/lib/bookingHelpers";
 
 const RescheduleBookingForm = dynamic(() => import("@/components/forms/RescheduleBookingForm"), { ssr: false });
 import {
@@ -194,6 +197,7 @@ export function BookingDetailsDialog({
   const status = (data?.status || "pending").toLowerCase();
   const competingPendingCount = data?.competing_pending_count ?? 0;
   const sourceLabel = formatBookingSource(data?.source);
+  const provenanceSummary = data ? buildBookingProvenanceSummary(data) : "";
 
   const bookedBy = useMemo(() => {
     const initials = (name?: string | null) => {
@@ -572,7 +576,7 @@ export function BookingDetailsDialog({
                   )}
                 </div>
 
-                {(sourceLabel ||
+                {(provenanceSummary ||
                   data.programme_activity_name ||
                   data.expected_asset_type ||
                   data.booking_group_id ||

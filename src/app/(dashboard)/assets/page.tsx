@@ -38,33 +38,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { TransformedAsset, getApiErrorMessage } from "@/types";
+import { ApiAsset, TransformedAsset, getApiErrorMessage } from "@/types";
 import { useRouter } from "next/navigation";
 import { useResolvedProjectSelection } from "@/hooks/useResolvedProjectSelection";
 import { useProjectAssets } from "@/hooks/useProjectAssets";
-
-interface AssetFromBackend {
-  id: string;
-  asset_code: string;
-  name: string;
-  type?: string | null;
-  canonical_type?: string | null;
-  type_resolution_status?: string | null;
-  type_inference_source?: string | null;
-  type_inference_confidence?: number | null;
-  planning_ready?: boolean;
-  description?: string;
-  status: string;
-  project_id?: string;
-  created_at: string;
-  updated_at: string;
-  location?: string;
-  poc?: string;
-  usage_instructions?: string;
-  maintenance_start_date?: string;
-  maintenance_end_date?: string;
-  pending_booking_capacity?: number;
-}
 
 type Asset = TransformedAsset;
 
@@ -80,7 +57,7 @@ type ReadinessFilter = "all" | "ready" | "review";
 const getAssetDisplayType = (asset: Asset): string =>
   asset.canonicalType || asset.assetType;
 
-const transformBackendAsset = (backendAsset: AssetFromBackend): Asset => {
+const transformBackendAsset = (backendAsset: ApiAsset): Asset => {
   const descriptionText =
     backendAsset.description ||
     backendAsset.usage_instructions ||
@@ -299,7 +276,7 @@ export default function AssetsTable() {
     }
 
     if (readinessFilter === "review") {
-      result = result.filter((asset) => asset.planningReady === false);
+      result = result.filter((asset) => asset.planningReady !== true);
     }
 
     // Sort
@@ -632,19 +609,22 @@ export default function AssetsTable() {
                         >
                           {asset.assetDescription}
                         </span>
-                        {asset.planningReady !== undefined && (
+                        {(asset.planningReady !== undefined ||
+                          asset.typeResolutionStatus) && (
                           <div className="mt-1 flex flex-wrap gap-1">
-                            <span
-                              className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                                asset.planningReady
-                                  ? "bg-emerald-50 text-emerald-700"
-                                  : "bg-amber-50 text-amber-700"
-                              }`}
-                            >
-                              {asset.planningReady
-                                ? "Planning ready"
-                                : "Needs type review"}
-                            </span>
+                            {asset.planningReady !== undefined && (
+                              <span
+                                className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                                  asset.planningReady
+                                    ? "bg-emerald-50 text-emerald-700"
+                                    : "bg-amber-50 text-amber-700"
+                                }`}
+                              >
+                                {asset.planningReady
+                                  ? "Planning ready"
+                                  : "Needs type review"}
+                              </span>
+                            )}
                             {asset.typeResolutionStatus && (
                               <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
                                 {asset.typeResolutionStatus}
@@ -787,7 +767,7 @@ export default function AssetsTable() {
                         </span>
                       </div>
                       <span className="text-sm font-semibold text-slate-900">
-                        {selectedAsset.canonicalType || selectedAsset.assetType}
+                        {selectedAsset.canonicalType || "Unresolved"}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">

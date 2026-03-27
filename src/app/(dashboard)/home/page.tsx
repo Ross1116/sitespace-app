@@ -48,7 +48,7 @@ const PALETTE = {
   bg: "bg-(--page-bg)",
   darkNavy: "bg-navy",
   navy: "bg-(--navy-deep)",
-  blue: "bg-brand-blue",
+  blue: "bg-(--brand-blue)",
   teal: "bg-teal",
 };
 

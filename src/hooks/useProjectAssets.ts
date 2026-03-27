@@ -33,7 +33,7 @@ function getAssetEnvelope(payload: unknown): UnknownRecord {
   if (!isRecord(payload)) return {};
   if (hasAssetList(payload)) return payload;
 
-  for (const key of ["data", "assets", "results", "items"]) {
+  for (const key of ["data", "assets", "results", "items", "records"]) {
     const nestedValue = payload[key];
     if (hasAssetList(nestedValue)) {
       return nestedValue;

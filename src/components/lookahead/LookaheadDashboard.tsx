@@ -268,7 +268,7 @@ export default function LookaheadDashboard() {
   useEffect(() => () => stopPolling(), [stopPolling]);
 
   const refreshLookaheadWorkspace = useCallback(async () => {
-    await Promise.allSettled([
+    const refreshTasks: Promise<unknown>[] = [
       mutateSnapshot(),
       mutateAlerts(),
       mutateHistory(),
@@ -276,8 +276,13 @@ export default function LookaheadDashboard() {
       mutateUploadStatus(),
       mutateActivities(),
       mutateBookingContext(),
-      revalidateBookingsForProject(projectId),
-    ]);
+    ];
+
+    if (projectId) {
+      refreshTasks.push(revalidateBookingsForProject(projectId));
+    }
+
+    await Promise.allSettled(refreshTasks);
   }, [
     mutateActivities,
     mutateAlerts,

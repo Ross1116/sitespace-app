@@ -1,6 +1,13 @@
 import { Truck, Wrench, Settings } from "lucide-react";
 import type { TransformedBooking } from "@/types";
 
+type BookingProvenanceInput = {
+  programme_activity_name?: string | null;
+  expected_asset_type?: string | null;
+  source?: string | null;
+  is_modified?: boolean | null;
+};
+
 // --- Shared Date/Time Helpers ---
 
 export const combineDateAndTime = (dateStr: string, timeStr: string): Date => {
@@ -120,6 +127,25 @@ export const formatBookingSource = (source?: string | null) => {
   return normalized
     .replace(/[_-]+/g, " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
+export const buildBookingProvenanceSummary = (
+  booking: BookingProvenanceInput,
+) => {
+  const sourceLabel = formatBookingSource(booking.source);
+
+  return [
+    booking.programme_activity_name
+      ? `Activity: ${booking.programme_activity_name}`
+      : null,
+    booking.expected_asset_type
+      ? `Expected: ${booking.expected_asset_type}`
+      : null,
+    sourceLabel ? `Source: ${sourceLabel}` : null,
+    booking.is_modified ? "Modified from programme default" : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 };
 
 export const isToday = (date: Date) => {

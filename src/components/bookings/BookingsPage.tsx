@@ -189,6 +189,7 @@ export default function BookingsPage() {
     projectId,
     hasResolvedProjects,
     projectBootstrapLoading,
+    projectBootstrapTimedOut,
   } = useResolvedProjectSelection({
     userId,
     role: user?.role,
@@ -224,14 +225,21 @@ export default function BookingsPage() {
     if (
       !isTv &&
       userId &&
-      !projectBootstrapLoading &&
+      (!projectBootstrapLoading || projectBootstrapTimedOut) &&
       hasResolvedProjects &&
       !projectId &&
       typeof window !== "undefined"
     ) {
       window.location.href = "/home";
     }
-  }, [isTv, userId, projectId, hasResolvedProjects, projectBootstrapLoading]);
+  }, [
+    hasResolvedProjects,
+    isTv,
+    projectBootstrapLoading,
+    projectBootstrapTimedOut,
+    projectId,
+    userId,
+  ]);
 
   // --- Bookings ---
   const { bookings, isLoading, mutate } = useProjectBookingsList({
@@ -250,6 +258,8 @@ export default function BookingsPage() {
   const searchParams = useSearchParams();
   const highlightBookingId = searchParams.get("highlight");
 
+  // Depend on isBookingFormOpen so nextHour/endHour refresh when the form opens,
+  // then stay frozen while the dialog remains open.
   const { nextHour, endHour } = useMemo(() => {
     const now = new Date();
     const nextHour = startOfHour(addHours(now, 1));
