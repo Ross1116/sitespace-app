@@ -1,102 +1,247 @@
 "use client";
 
-import { useRef, useState, useEffect, useCallback, useMemo } from "react";
-import { Upload, Check, ChevronDown, Loader2, MapPin } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
+import {
+  AlertTriangle,
+  Check,
+  ChevronDown,
+  Loader2,
+  MapPin,
+  Upload,
+} from "lucide-react";
 import { useAuth } from "@/app/context/AuthContext";
 import { useResolvedProjectSelection } from "@/hooks/useResolvedProjectSelection";
+import { useBookingMutations } from "@/hooks/bookings/useBookingMutations";
 import {
-  useLookaheadSnapshot,
+  deleteProgrammeVersion,
+  fetchUploadStatus,
+  promoteItemClassification,
+  updateProgrammeMapping,
+  uploadProgramme,
+} from "@/hooks/lookahead/api";
+import {
+  useLookaheadActivities,
   useLookaheadAlerts,
+  useLookaheadHistory,
+  useLookaheadSnapshot,
+  usePlanningCompleteness,
+  useProgrammeActivityBookingContext,
+  useProgrammeMappings,
+  useProgrammeUploadStatus,
   useProgrammeVersions,
-} from "@/hooks/lookahead/useLookaheadData";
-import { uploadProgramme, fetchUploadStatus, deleteProgrammeVersion } from "@/hooks/lookahead/api";
+  useUnclassifiedMappings,
+} from "@/hooks/lookahead/useLookaheadQueries";
 import { useUIIntentStore } from "@/stores/uiIntentStore";
-import type { LookaheadWindowSize } from "@/stores/uiIntentStore";
-import type { LookaheadAnomalyFlags, ApiProject } from "@/types";
+import type {
+  ApiProject,
+  LookaheadActivityCandidate,
+  LookaheadAnomalyFlags,
+  LookaheadRow,
+} from "@/types";
 import { getApiErrorMessage } from "@/types";
-
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { DemandHeatmap } from "./DemandHeatmap";
+import { EmptyForecastState } from "./EmptyForecastState";
+import { PlanningAlerts, type PlanningAlert } from "./PlanningAlerts";
+import { PlanningReadinessCard } from "./PlanningReadinessCard";
+import { SnapshotHistoryPanel } from "./SnapshotHistoryPanel";
 import { StatCards } from "./StatCards";
 import { UploadBanner, type UploadPhase } from "./UploadBanner";
-import { PlanningAlerts, type PlanningAlert } from "./PlanningAlerts";
-import { DemandHeatmap } from "./DemandHeatmap";
-import { WindowSelector } from "./WindowSelector";
 import { VersionHistory } from "./VersionHistory";
-import { EmptyForecastState } from "./EmptyForecastState";
-import { pivotRows, formatPct } from "./utils";
+import { WindowSelector } from "./WindowSelector";
+import { formatPct, pivotRows } from "./utils";
 
-// ── constants ─────────────────────────────────────────────────────────────────
-type WindowSize = LookaheadWindowSize;
+const CreateBookingForm = dynamic(
+  () =>
+    import("@/components/forms/CreateBookingForm").then((module) => ({
+      default: module.CreateBookingForm,
+    })),
+  { ssr: false },
+);
+
+const ActivityDrilldownDialog = dynamic(
+  () => import("./ActivityDrilldownDialog").then((module) => ({ default: module.ActivityDrilldownDialog })),
+  { ssr: false },
+);
+
+const ActivityContextDialog = dynamic(
+  () => import("./ActivityContextDialog").then((module) => ({ default: module.ActivityContextDialog })),
+  { ssr: false },
+);
+
+const UploadReviewDialog = dynamic(
+  () => import("./UploadReviewDialog").then((module) => ({ default: module.UploadReviewDialog })),
+  { ssr: false },
+);
+
+type WindowSize = "2W" | "4W" | "6W";
+type ActivityDialogMode = "context" | "booking";
+
 const WINDOW_WEEKS: Record<WindowSize, number> = { "2W": 2, "4W": 4, "6W": 6 };
-const POLL_MAX_ATTEMPTS = 60; // 60 × 2s = 2 min max
+const POLL_MAX_ATTEMPTS = 60;
 
-// ─────────────────────────────────────────────────────────────────────────────
+function toDateTime(date?: string | null, time?: string | null): Date | null {
+  if (!date || !time) return null;
+  const normalizedTime = time.length === 5 ? `${time}:00` : time;
+  const parsed = new Date(`${date}T${normalizedTime}`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function getPersistentUploadAlertMessage(
+  notes: Record<string, unknown> | null | undefined,
+): string | null {
+  if (!notes) return null;
+
+  if (notes.classification_ai_suppressed || notes.work_profile_ai_suppressed) {
+    return "Programme processed in deterministic fallback mode because AI was unavailable.";
+  }
+
+  if (notes.ai_quota_exhausted) {
+    return "Programme diagnostics report AI quota exhaustion. Review classifications before trusting coverage.";
+  }
+
+  if (
+    typeof notes.unclassified_mapping_count === "number" &&
+    notes.unclassified_mapping_count > 0
+  ) {
+    return `${notes.unclassified_mapping_count} mappings still need review before coverage is fully trustworthy.`;
+  }
+
+  return null;
+}
+
 export default function LookaheadDashboard() {
   const { user, isLoading: authLoading } = useAuth();
+  const userId = user?.id;
+  const [hasMounted, setHasMounted] = useState(false);
+  const hasUIIntentHydrated = useUIIntentStore((state) => state.hasHydrated);
+  const setLookaheadWindowSize = useUIIntentStore(
+    (state) => state.setLookaheadWindowSize,
+  );
+  const {
+    projects,
+    projectId,
+    selectedProject,
+    projectBootstrapLoading,
+    setProjectId,
+  } = useResolvedProjectSelection({
+    userId,
+    role: user?.role,
+  });
+  const { revalidateBookingsForProject } = useBookingMutations();
 
-  // ── local ui state ──────────────────────────────────────────────────────────
+  const [windowSize, setWindowSizeLocal] = useState<WindowSize>("4W");
   const [showProjectSelector, setShowProjectSelector] = useState(false);
   const [uploadPhase, setUploadPhase] = useState<UploadPhase>({ kind: "idle" });
   const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set());
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
-  const [windowSize, setWindowSizeLocal] = useState<WindowSize>("4W");
+  const [selectedCell, setSelectedCell] = useState<LookaheadRow | null>(null);
+  const [activityContextCell, setActivityContextCell] =
+    useState<LookaheadRow | null>(null);
+  const [selectedActivity, setSelectedActivity] =
+    useState<LookaheadActivityCandidate | null>(null);
+  const [activityDialogMode, setActivityDialogMode] =
+    useState<ActivityDialogMode | null>(null);
+  const [isUploadReviewOpen, setIsUploadReviewOpen] = useState(false);
+  const [isSnapshotHistoryOpen, setIsSnapshotHistoryOpen] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollingGenerationRef = useRef(0);
-  const userId = user?.id;
-
-  // ── zustand: persisted window size ─────────────────────────────────────────
-  const hasUIIntentHydrated = useUIIntentStore((state) => state.hasHydrated);
-  const setLookaheadWindowSize = useUIIntentStore((state) => state.setLookaheadWindowSize);
-
-  // ── project selection ───────────────────────────────────────────────────────
-  const {
-    projects,
-    projectId,
-    selectedProject,
-    projectBootstrapLoading: isDataLoading,
-    setProjectId,
-  } = useResolvedProjectSelection({ userId, role: user?.role });
-
   const projectIdRef = useRef(projectId);
+  const isFetchingRef = useRef(false);
 
-  // Keep projectIdRef in sync so async callbacks can read the live value
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
   useEffect(() => {
     projectIdRef.current = projectId;
   }, [projectId]);
 
   const uiScopeKey = useMemo(
     () => (userId && projectId ? `${userId}:${projectId}` : null),
-    [userId, projectId],
+    [projectId, userId],
   );
 
   useEffect(() => {
     if (!hasUIIntentHydrated || !uiScopeKey) return;
     const persisted = useUIIntentStore.getState().getLookaheadIntent(uiScopeKey);
-    setWindowSizeLocal(persisted?.windowSize ?? "4W");
+    setWindowSizeLocal((persisted?.windowSize as WindowSize) ?? "4W");
   }, [hasUIIntentHydrated, uiScopeKey]);
 
-  const setWindowSize = useCallback(
+  const updateWindowSize = useCallback(
     (next: WindowSize) => {
       setWindowSizeLocal(next);
-      if (uiScopeKey) setLookaheadWindowSize(uiScopeKey, next);
+      if (uiScopeKey) {
+        setLookaheadWindowSize(uiScopeKey, next);
+      }
     },
-    [uiScopeKey, setLookaheadWindowSize],
+    [setLookaheadWindowSize, uiScopeKey],
   );
 
-  // ── swr data ────────────────────────────────────────────────────────────────
   const enabled = Boolean(projectId);
   const { snapshot, isLoading: snapshotLoading, mutate: mutateSnapshot } =
     useLookaheadSnapshot({ projectId, enabled });
   const { alerts, isLoading: alertsLoading, mutate: mutateAlerts } =
     useLookaheadAlerts({ projectId, enabled });
+  const { history, mutate: mutateHistory } = useLookaheadHistory({
+    projectId,
+    enabled: enabled && isSnapshotHistoryOpen,
+  });
   const { versions, isLoading: versionsLoading, mutate: mutateVersions } =
     useProgrammeVersions({ projectId, enabled });
+  const { planningCompleteness } = usePlanningCompleteness({
+    projectId,
+    enabled,
+  });
 
-  // ── polling ─────────────────────────────────────────────────────────────────
+  const sortedVersions = useMemo(
+    () =>
+      [...versions].sort(
+        (left, right) =>
+          (right.version_number ?? 0) - (left.version_number ?? 0),
+      ),
+    [versions],
+  );
+  const latestVersion = sortedVersions[0] ?? null;
+
+  const { uploadStatus, mutate: mutateUploadStatus } = useProgrammeUploadStatus({
+    uploadId: latestVersion?.upload_id ?? null,
+    enabled: Boolean(latestVersion?.upload_id),
+  });
+  const { mappings, mutate: mutateMappings } = useProgrammeMappings({
+    uploadId: latestVersion?.upload_id ?? null,
+    enabled: Boolean(latestVersion?.upload_id && isUploadReviewOpen),
+  });
+  const { mappings: unclassifiedMappings, mutate: mutateUnclassified } =
+    useUnclassifiedMappings({
+      uploadId: latestVersion?.upload_id ?? null,
+      enabled: Boolean(latestVersion?.upload_id && isUploadReviewOpen),
+    });
+  const {
+    activities,
+    isLoading: activitiesLoading,
+    mutate: mutateActivities,
+  } = useLookaheadActivities({
+    projectId,
+    weekStart: selectedCell?.week_start,
+    assetType: selectedCell?.asset_type,
+    enabled: Boolean(selectedCell?.week_start && selectedCell?.asset_type && projectId),
+  });
+  const {
+    bookingContext,
+    isLoading: bookingContextLoading,
+    mutate: mutateBookingContext,
+  } = useProgrammeActivityBookingContext({
+    activityId: selectedActivity?.activity_id ?? null,
+    selectedWeekStart: activityContextCell?.week_start,
+    enabled: Boolean(selectedActivity?.activity_id),
+  });
+
   const stopPolling = useCallback(() => {
     if (pollingRef.current) {
       clearInterval(pollingRef.current);
@@ -107,7 +252,34 @@ export default function LookaheadDashboard() {
 
   useEffect(() => () => stopPolling(), [stopPolling]);
 
-  const isFetchingRef = useRef(false);
+  const refreshLookaheadWorkspace = useCallback(async () => {
+    await Promise.allSettled([
+      mutateSnapshot(),
+      mutateAlerts(),
+      mutateHistory(),
+      mutateVersions(),
+      mutateUploadStatus(),
+      mutateActivities(),
+      mutateBookingContext(),
+      revalidateBookingsForProject(projectId),
+    ]);
+  }, [
+    mutateActivities,
+    mutateAlerts,
+    mutateBookingContext,
+    mutateHistory,
+    mutateSnapshot,
+    mutateUploadStatus,
+    mutateVersions,
+    projectId,
+    revalidateBookingsForProject,
+  ]);
+
+  const closeActivityFlow = useCallback(() => {
+    setSelectedActivity(null);
+    setActivityContextCell(null);
+    setActivityDialogMode(null);
+  }, []);
 
   const startPolling = useCallback(
     (uploadId: string) => {
@@ -116,10 +288,12 @@ export default function LookaheadDashboard() {
       const generation = ++pollingGenerationRef.current;
       let attempts = 0;
       let consecutiveErrors = 0;
+
       pollingRef.current = setInterval(async () => {
-        if (pollingGenerationRef.current !== generation) return;
-        // Prevent overlapping requests when fetchUploadStatus takes > 2s
-        if (isFetchingRef.current) return;
+        if (pollingGenerationRef.current !== generation || isFetchingRef.current) {
+          return;
+        }
+
         attempts += 1;
         if (attempts > POLL_MAX_ATTEMPTS) {
           stopPolling();
@@ -129,6 +303,7 @@ export default function LookaheadDashboard() {
           });
           return;
         }
+
         isFetchingRef.current = true;
         try {
           const status = await fetchUploadStatus(uploadId);
@@ -137,15 +312,10 @@ export default function LookaheadDashboard() {
           if (status.status !== "processing") {
             stopPolling();
             setUploadPhase({ kind: "done", result: status });
-            void mutateSnapshot();
-            void mutateAlerts();
-            void mutateVersions();
+            void refreshLookaheadWorkspace();
           }
         } catch {
-          if (pollingGenerationRef.current !== generation) return;
           consecutiveErrors += 1;
-          // Allow up to 2 transient failures (proxy timeout, brief network blip)
-          // before surfacing an error. The next interval tick will retry.
           if (consecutiveErrors >= 3) {
             stopPolling();
             setUploadPhase({
@@ -158,81 +328,73 @@ export default function LookaheadDashboard() {
         }
       }, 2000);
     },
-    [stopPolling, mutateSnapshot, mutateAlerts, mutateVersions],
+    [refreshLookaheadWorkspace, stopPolling],
   );
 
-  // ── upload handler ──────────────────────────────────────────────────────────
   const handleFileSelected = useCallback(
     async (file: File | null) => {
       if (!file || !projectId) return;
+
       const targetProject = projectId;
       setUploadPhase({ kind: "uploading" });
+
       try {
         const result = await uploadProgramme(targetProject, file);
-        // Discard result if the user switched projects while uploading
         if (targetProject !== projectIdRef.current) return;
         setUploadPhase({ kind: "polling", uploadId: result.upload_id });
         startPolling(result.upload_id);
-      } catch (err) {
+      } catch (error) {
         if (targetProject !== projectIdRef.current) return;
-        setUploadPhase({ kind: "error", message: getApiErrorMessage(err) });
+        setUploadPhase({ kind: "error", message: getApiErrorMessage(error) });
       }
     },
     [projectId, startPolling],
   );
 
-  // ── delete handler ──────────────────────────────────────────────────────────
   const handleDeleteVersion = useCallback(
     async (uploadId: string) => {
-      setDeletingIds((prev) => new Set(prev).add(uploadId));
+      setDeletingIds((current) => new Set(current).add(uploadId));
       try {
         await deleteProgrammeVersion(uploadId);
-        void mutateVersions();
-        void mutateSnapshot();
-        void mutateAlerts();
-        setUploadPhase((prev) =>
-          prev.kind === "done" && prev.result.upload_id === uploadId
-            ? { kind: "idle" }
-            : prev,
-        );
-      } catch (err) {
-        setUploadPhase({ kind: "error", message: getApiErrorMessage(err) });
+        await refreshLookaheadWorkspace();
+      } catch (error) {
+        setUploadPhase({ kind: "error", message: getApiErrorMessage(error) });
       } finally {
-        setDeletingIds((prev) => {
-          const next = new Set(prev);
+        setDeletingIds((current) => {
+          const next = new Set(current);
           next.delete(uploadId);
           return next;
         });
       }
     },
-    [mutateVersions, mutateSnapshot, mutateAlerts],
+    [refreshLookaheadWorkspace],
   );
 
-  // ── project switcher ─────────────────────────────────────────────────────────
   const handleProjectSelect = useCallback(
-    (proj: ApiProject) => {
-      if (!proj?.id) return;
+    (project: ApiProject) => {
       stopPolling();
+      setProjectId(project.id);
       setShowProjectSelector(false);
-      setProjectId(proj.id);
       setUploadPhase({ kind: "idle" });
       setDismissedAlerts(new Set());
+      setSelectedCell(null);
+      closeActivityFlow();
     },
-    [stopPolling, setProjectId],
+    [closeActivityFlow, setProjectId, stopPolling],
   );
 
   useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (!(e.target instanceof Node)) return;
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!(event.target instanceof Node)) return;
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setShowProjectSelector(false);
       }
-    }
+    };
+
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // ── derived data ─────────────────────────────────────────────────────────────
   const heatmap = useMemo(
     () => (snapshot?.rows?.length ? pivotRows(snapshot.rows) : null),
     [snapshot],
@@ -241,26 +403,24 @@ export default function LookaheadDashboard() {
   const visibleWeeks = useMemo(() => {
     if (!heatmap) return [];
     const weeks = heatmap.weeks;
-    const n = WINDOW_WEEKS[windowSize];
-
-    // Find the Monday of the current week (ISO date string YYYY-MM-DD).
+    const count = WINDOW_WEEKS[windowSize];
     const today = new Date();
-    const dayOfWeek = today.getDay(); // 0 = Sun
+    const dayOfWeek = today.getDay();
     const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
     const monday = new Date(today);
     monday.setDate(today.getDate() + daysToMonday);
-    const currentWeekStr = monday.toLocaleDateString("en-CA"); // YYYY-MM-DD in local time
+    const currentWeek = monday.toLocaleDateString("en-CA");
+    let startIndex = weeks.findIndex((week) => week >= currentWeek);
 
-    // Start from the first week that is >= the current week's Monday.
-    // If the programme is entirely in the past, fall back to the last N weeks.
-    let startIdx = weeks.findIndex((w) => w >= currentWeekStr);
-    if (startIdx === -1) startIdx = Math.max(0, weeks.length - n);
+    if (startIndex === -1) {
+      startIndex = Math.max(0, weeks.length - count);
+    }
 
-    return weeks.slice(startIdx, startIdx + n);
+    return weeks.slice(startIndex, startIndex + count);
   }, [heatmap, windowSize]);
 
   const visibleRows = useMemo(() => {
-    if (!heatmap || !visibleWeeks.length) return [];
+    if (!heatmap || visibleWeeks.length === 0) return [];
     return heatmap.assets.flatMap((asset) =>
       visibleWeeks.flatMap((week) => {
         const row = heatmap.matrix.get(asset)?.get(week);
@@ -271,12 +431,12 @@ export default function LookaheadDashboard() {
 
   const stats = useMemo(
     () => ({
-      totalDemandHours: visibleRows.reduce((s, r) => s + r.demand_hours, 0),
-      totalBookedHours: visibleRows.reduce((s, r) => s + r.booked_hours, 0),
-      totalGapHours:    visibleRows.reduce((s, r) => s + r.gap_hours, 0),
-      assetsTracked:    heatmap?.assets.length ?? 0,
+      totalDemandHours: visibleRows.reduce((sum, row) => sum + row.demand_hours, 0),
+      totalBookedHours: visibleRows.reduce((sum, row) => sum + row.booked_hours, 0),
+      totalGapHours: visibleRows.reduce((sum, row) => sum + row.gap_hours, 0),
+      assetsTracked: heatmap?.assets.length ?? 0,
     }),
-    [visibleRows, heatmap],
+    [heatmap, visibleRows],
   );
 
   const maxDemand = useMemo(
@@ -284,144 +444,194 @@ export default function LookaheadDashboard() {
       Math.max(
         1,
         ...(heatmap
-          ? heatmap.assets.flatMap((a) =>
-              visibleWeeks.map((w) => heatmap.matrix.get(a)?.get(w)?.demand_hours ?? 0),
+          ? heatmap.assets.flatMap((asset) =>
+              visibleWeeks.map(
+                (week) => heatmap.matrix.get(asset)?.get(week)?.demand_hours ?? 0,
+              ),
             )
           : [0]),
       ),
     [heatmap, visibleWeeks],
   );
 
+  const persistentUploadMessage = useMemo(
+    () => getPersistentUploadAlertMessage(uploadStatus?.completeness_notes),
+    [uploadStatus],
+  );
+  const unclassifiedCount =
+    uploadStatus?.completeness_notes?.unclassified_mapping_count ??
+    unclassifiedMappings.length;
+
   const activeAlerts = useMemo((): PlanningAlert[] => {
     if (!alerts?.alerts) return [];
     const flags = alerts.alerts as LookaheadAnomalyFlags;
-    const result: PlanningAlert[] = [];
+    const nextAlerts: PlanningAlert[] = [];
 
     if (flags.demand_spike_over_100pct) {
-      result.push({
+      nextAlerts.push({
         key: "demand_spike",
-        label: "Workload surge detected",
+        label: "Demand surge detected",
         detail:
-          "One or more asset types now need more than double the hours compared to your previous programme. Check that bookings are in place to cover the increase.",
-        level: "red",
+          "Demand doubled or more compared with the previous snapshot. Review linked activities and create bookings against the new load.",
+      level: "red",
       });
     }
+
     if (flags.mapping_changes_over_40pct) {
-      const pct =
-        flags.mapping_change_ratio != null
-          ? ` — ${formatPct(flags.mapping_change_ratio)} of tasks were reassigned`
-          : "";
-      result.push({
+      nextAlerts.push({
         key: "mapping_changes",
-        label: "Many tasks re-categorised",
-        detail: `More than 40% of tasks were assigned to different asset categories compared to your last upload${pct}. It's worth checking the results look correct before relying on the forecast.`,
+        label: "Large mapping shift",
+        detail:
+          flags.mapping_change_ratio != null
+            ? `${formatPct(flags.mapping_change_ratio)} of rows changed category. Open the upload review surface to triage mappings.`
+            : "Many tasks changed category since the previous programme.",
         level: "amber",
+        ctaLabel: "Review mappings",
+        onAction: () => setIsUploadReviewOpen(true),
       });
     }
+
     if (flags.activity_count_delta_over_30pct) {
-      const pct =
-        flags.activity_count_delta_ratio != null
-          ? ` (${formatPct(flags.activity_count_delta_ratio)} difference)`
-          : "";
-      result.push({
+      nextAlerts.push({
         key: "activity_delta",
-        label: "Task count changed significantly",
-        detail: `The number of tasks in this programme is more than 30% different from your previous upload${pct}. This may be expected if the scope changed.`,
+        label: "Activity volume changed materially",
+        detail:
+          flags.activity_count_delta_ratio != null
+            ? `Activity count changed by ${formatPct(flags.activity_count_delta_ratio)} versus the previous snapshot.`
+            : "Activity volume changed materially since the previous snapshot.",
         level: "blue",
       });
     }
 
-    return result.filter((a) => !dismissedAlerts.has(a.key));
-  }, [alerts, dismissedAlerts]);
+    if (persistentUploadMessage) {
+      nextAlerts.push({
+        key: "upload_quality",
+        label: "Latest upload needs review",
+        detail: persistentUploadMessage,
+        level: "amber",
+        ctaLabel: "Open upload review",
+        onAction: () => setIsUploadReviewOpen(true),
+      });
+    }
 
-  const latestVersion = useMemo(
-    () => versions.find((v) => v.status === "committed") ?? versions[0] ?? null,
-    [versions],
+    return nextAlerts.filter((alert) => !dismissedAlerts.has(alert.key));
+  }, [alerts, dismissedAlerts, persistentUploadMessage]);
+
+  const latestUploadDate = latestVersion?.created_at
+    ? new Date(latestVersion.created_at).toLocaleString("en-AU", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : null;
+  const firstSuggestedBookingDate = bookingContext?.suggested_bulk_dates[0] ?? null;
+
+  const bookingStartTime = useMemo(() => {
+    const defaultDate =
+      bookingContext?.default_booking_date ??
+      firstSuggestedBookingDate?.date ??
+      activityContextCell?.week_start ??
+      snapshot?.snapshot_date ??
+      null;
+    return (
+      toDateTime(
+        defaultDate,
+        bookingContext?.default_start_time ?? firstSuggestedBookingDate?.start_time,
+      ) ??
+      toDateTime(defaultDate, "07:00:00") ??
+      new Date()
+    );
+  }, [activityContextCell?.week_start, bookingContext, firstSuggestedBookingDate, snapshot?.snapshot_date]);
+
+  const bookingEndTime = useMemo(
+    () =>
+      toDateTime(
+        bookingContext?.default_booking_date ??
+          firstSuggestedBookingDate?.date ??
+          activityContextCell?.week_start ??
+          null,
+        bookingContext?.default_end_time ?? firstSuggestedBookingDate?.end_time,
+      ) ??
+      new Date(bookingStartTime.getTime() + 60 * 60 * 1000),
+    [activityContextCell?.week_start, bookingContext, bookingStartTime, firstSuggestedBookingDate],
   );
 
-  const lastUpdated = useMemo(() => {
-    if (!latestVersion?.created_at) return null;
-    return new Date(latestVersion.created_at).toLocaleString("en-AU", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  }, [latestVersion]);
+  const isLoading = authLoading || projectBootstrapLoading;
+  const topActionButtonsReady = hasMounted && !isLoading;
+  const hasForecast = Boolean(projectId && heatmap && visibleWeeks.length > 0);
+  const coveragePct =
+    stats.totalDemandHours > 0
+      ? Math.round((stats.totalBookedHours / stats.totalDemandHours) * 100)
+      : 0;
+  const readinessScore = Math.round(planningCompleteness?.score ?? 0);
+  const topAlert = activeAlerts[0] ?? null;
+  const latestUploadNeedsReview = Boolean(
+    persistentUploadMessage || unclassifiedCount > 0,
+  );
+  const focusHeadline =
+    !projectId
+      ? "Start by selecting a project"
+      : stats.totalGapHours > 0
+        ? `${stats.totalGapHours}h still unbooked`
+        : hasForecast
+          ? "Forecast demand is covered"
+          : "Upload a programme to start planning";
+  const focusDescription =
+    !projectId
+      ? "Choose a project and upload a programme to turn this into a planning workspace."
+      : stats.totalGapHours > 0
+        ? "Use the heatmap to open the weekly activity behind the gap, then book directly from context."
+        : hasForecast
+          ? "Use the heatmap below to confirm activity coverage and spot changes early."
+          : "This project needs a fresh programme upload before the heatmap can drive planning.";
 
-  useEffect(() => {
-    setDismissedAlerts(new Set());
-  }, [latestVersion?.upload_id]);
-
-  const isLoading = authLoading || isDataLoading;
-  const isUploading = uploadPhase.kind === "uploading" || uploadPhase.kind === "polling";
-  const hasForecast = !!projectId && !!heatmap && visibleWeeks.length > 0;
-
-  // ─── render ──────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-(--page-bg) p-4 sm:p-6 lg:p-8 font-sans">
-      <div className="max-w-screen mx-auto space-y-6">
-        <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-1 min-h-[85vh] flex flex-col relative overflow-hidden">
-          <div className="p-6 flex-1 flex flex-col space-y-6">
-
-            {/* ── HEADER ── */}
-            <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-6">
+    <div className="min-h-screen bg-[var(--page-bg)] p-4 font-sans sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-screen space-y-6">
+        <div className="relative min-h-[85vh] overflow-hidden rounded-3xl border border-slate-100 bg-white p-1 shadow-sm">
+          <div className="flex flex-1 flex-col space-y-8 p-6">
+            <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
               <div>
-                <h1 className="text-2xl font-extrabold text-slate-900">
-                  Lookahead Dashboard
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
+                  Lookahead Workspace
+                </p>
+                <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950">
+                  Plan demand before it becomes a booking gap
                 </h1>
-                <p className="text-slate-500 text-sm mt-1 font-medium flex items-center gap-1">
+                <p className="mt-2 flex items-center gap-1 text-sm font-medium text-slate-500">
                   {selectedProject?.location ? (
                     <>
                       <MapPin size={13} className="text-slate-300" />
                       {selectedProject.location}
                     </>
                   ) : (
-                    "Asset demand forecast and programme planning"
+                    "Forecast demand, inspect activity, and book directly from the same workspace."
                   )}
                 </p>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full xl:w-auto">
-                {/* Stat pills */}
-                {!isLoading && !snapshotLoading && heatmap && (
-                  <div className="flex gap-3">
-                    <div className="bg-navy text-white rounded-xl px-5 py-2 flex flex-col items-center justify-center min-w-25 shadow-md shadow-slate-900/10">
-                      <span className="text-2xl font-bold leading-none">
-                        {stats.assetsTracked}
-                      </span>
-                      <span className="text-[10px] font-medium opacity-80 uppercase tracking-wide">
-                        Asset Types
-                      </span>
-                    </div>
-                    <div className="bg-(--brand-orange) text-white rounded-xl px-5 py-2 flex flex-col items-center justify-center min-w-25 shadow-md shadow-orange-900/10">
-                      <span className="text-2xl font-bold leading-none">
-                        {stats.totalGapHours}h
-                      </span>
-                      <span className="text-[10px] font-medium opacity-90 uppercase tracking-wide">
-                        Still Unbooked
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Project switcher */}
+              <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center xl:w-auto">
                 <div className="relative" ref={dropdownRef}>
                   <Button
-                    onClick={() => setShowProjectSelector((v) => !v)}
-                    className="bg-navy hover:bg-(--navy-hover) text-white rounded-lg px-5 py-5 h-auto text-sm font-bold shadow-md shadow-slate-900/10 flex items-center gap-2"
+                    onClick={() => setShowProjectSelector((current) => !current)}
+                    className="h-auto w-full rounded-lg bg-[var(--navy)] px-5 py-5 text-sm font-bold text-white shadow-md shadow-slate-900/10 hover:bg-[var(--navy-hover)] sm:w-auto"
                   >
-                    {isLoading ? "Loading…" : (selectedProject?.name ?? "Select Project")}
-                    <ChevronDown
-                      size={15}
-                      className={`transition-transform duration-200 ${showProjectSelector ? "rotate-180" : ""}`}
-                    />
+                    <span className="flex items-center gap-2">
+                      {isLoading ? "Loading..." : selectedProject?.name ?? "Select Project"}
+                      <ChevronDown
+                        size={15}
+                        className={`transition-transform duration-200 ${
+                          showProjectSelector ? "rotate-180" : ""
+                        }`}
+                      />
+                    </span>
                   </Button>
 
                   {showProjectSelector && (
-                    <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-2xl border border-slate-100 z-50 overflow-hidden ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-200">
-                      <div className="p-3 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                    <div className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-xl border border-slate-100 bg-white shadow-2xl ring-1 ring-black/5">
+                      <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/50 p-3">
                         <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                           Available Projects
                         </span>
@@ -429,59 +639,67 @@ export default function LookaheadDashboard() {
                           {projects.length}
                         </span>
                       </div>
-                      <div className="max-h-75 overflow-y-auto p-2 space-y-1 custom-scrollbar">
-                        {projects.length === 0 ? (
-                          <p className="text-center py-4 text-sm text-slate-400">
-                            No projects found
-                          </p>
-                        ) : (
-                          projects.map((proj) => {
-                            const isActive = selectedProject?.id === proj.id;
-                            return (
-                              <button
-                                key={proj.id}
-                                onClick={() => handleProjectSelect(proj)}
-                                className={`w-full text-left px-3 py-3 rounded-lg text-sm font-medium transition-all flex items-center justify-between group cursor-pointer ${
-                                  isActive
-                                    ? "bg-navy text-white shadow-md shadow-slate-900/10"
-                                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                                }`}
-                              >
-                                <div className="flex flex-col items-start gap-0.5 overflow-hidden">
-                                  <span className="truncate w-full font-bold">{proj.name}</span>
-                                  <span
-                                    className={`text-[11px] truncate w-full ${isActive ? "text-slate-300" : "text-slate-400"}`}
+                      <div className="max-h-75 overflow-y-auto p-2 space-y-1">
+                        {projects.map((project) => {
+                          const isActive = selectedProject?.id === project.id;
+                          return (
+                            <button
+                              key={project.id}
+                              type="button"
+                              onClick={() => handleProjectSelect(project)}
+                              className={`w-full rounded-lg px-3 py-3 text-left text-sm font-medium transition-all ${
+                                isActive
+                                  ? "bg-[var(--navy)] text-white"
+                                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                              }`}
+                            >
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="min-w-0">
+                                  <div className="truncate font-bold">{project.name}</div>
+                                  <div
+                                    className={`truncate text-[11px] ${
+                                      isActive ? "text-slate-300" : "text-slate-400"
+                                    }`}
                                   >
-                                    {proj.location || "No location"}
-                                  </span>
+                                    {project.location || "No location"}
+                                  </div>
                                 </div>
-                                {isActive && (
-                                  <Check size={16} className="text-white shrink-0 ml-2" />
-                                )}
-                              </button>
-                            );
-                          })
-                        )}
+                                {isActive && <Check size={14} className="shrink-0" />}
+                              </div>
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
                 </div>
 
-                {/* Upload button */}
                 <Button
-                  disabled={!projectId || isLoading || isUploading}
+                  disabled={!topActionButtonsReady || !projectId}
                   onClick={() => {
                     if (fileInputRef.current) fileInputRef.current.value = "";
                     fileInputRef.current?.click();
                   }}
-                  className="bg-navy hover:bg-(--navy-hover) text-white rounded-lg px-5 py-5 h-auto text-sm font-bold shadow-md shadow-slate-900/10 flex items-center gap-2 w-full sm:w-auto"
+                  className="h-auto w-full rounded-lg bg-[var(--navy)] px-5 py-5 text-sm font-bold text-white shadow-md shadow-slate-900/10 hover:bg-[var(--navy-hover)] sm:w-auto"
                 >
-                  {isUploading ? (
-                    <Loader2 size={15} className="animate-spin" />
-                  ) : (
-                    <Upload size={15} />
-                  )}
-                  Upload Programme
+                  <span className="flex items-center gap-2">
+                    {uploadPhase.kind === "uploading" || uploadPhase.kind === "polling" ? (
+                      <Loader2 size={15} className="animate-spin" />
+                    ) : (
+                      <Upload size={15} />
+                    )}
+                    Upload Programme
+                  </span>
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!topActionButtonsReady || !latestVersion}
+                  onClick={() => setIsUploadReviewOpen(true)}
+                  className="h-auto rounded-lg px-5 py-5 text-sm font-bold"
+                >
+                  Review latest upload
                 </Button>
 
                 <input
@@ -489,98 +707,423 @@ export default function LookaheadDashboard() {
                   type="file"
                   accept=".csv,.xlsx,.xlsm,.pdf"
                   className="hidden"
-                  onChange={(e) => handleFileSelected(e.target.files?.[0] ?? null)}
+                  onChange={(event) =>
+                    handleFileSelected(event.target.files?.[0] ?? null)
+                  }
                 />
               </div>
             </div>
 
-            {/* ── WINDOW SELECTOR + TIMESTAMP ── */}
-            <WindowSelector
-              windowSize={windowSize}
-              onSetWindowSize={setWindowSize}
-              lastUpdated={versionsLoading ? null : lastUpdated}
-            />
-
-            {/* ── UPLOAD STATUS BANNER ── */}
             <UploadBanner
               phase={uploadPhase}
-              onDismiss={() => {
-                setUploadPhase({ kind: "idle" });
-                if (fileInputRef.current) fileInputRef.current.value = "";
-              }}
+              onDismiss={() => setUploadPhase({ kind: "idle" })}
               onUploadAnother={() => {
                 setUploadPhase({ kind: "idle" });
-                if (fileInputRef.current) fileInputRef.current.value = "";
                 fileInputRef.current?.click();
               }}
             />
 
-            {/* ── PLANNING ALERTS ── */}
-            {!alertsLoading && (
-              <PlanningAlerts
-                alerts={activeAlerts}
-                onDismiss={(key) =>
-                  setDismissedAlerts((prev) => new Set(prev).add(key))
-                }
-              />
-            )}
+            <section className="grid gap-4 xl:grid-cols-[1.35fr_0.95fr]">
+              <div className="rounded-[28px] border border-slate-200 bg-[linear-gradient(135deg,rgba(11,17,32,0.04)_0%,rgba(14,124,155,0.10)_100%)] p-6 shadow-sm">
+                <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="max-w-2xl">
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
+                      Planning focus
+                    </p>
+                    <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+                      {focusHeadline}
+                    </h2>
+                    <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+                      {focusDescription}
+                    </p>
 
-            {/* ── STAT CARDS ── */}
-            {isLoading || snapshotLoading ? (
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {[1, 2, 3, 4].map((i) => (
-                  <div
-                    key={i}
-                    className="rounded-xl border border-slate-100 bg-slate-50/50 p-5 space-y-3"
-                  >
-                    <Skeleton className="h-4 w-4 rounded" />
-                    <Skeleton className="h-8 w-12" />
-                    <Skeleton className="h-3 w-28" />
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-slate-600">
+                        {visibleWeeks.length} week{visibleWeeks.length === 1 ? "" : "s"} in view
+                      </span>
+                      <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-slate-600">
+                        {coveragePct}% covered
+                      </span>
+                      <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-slate-600">
+                        {stats.assetsTracked} asset type{stats.assetsTracked === 1 ? "" : "s"}
+                      </span>
+                      {latestVersion && (
+                        <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-slate-600">
+                          Upload v{latestVersion.version_number}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                ))}
+
+                  <div className="grid gap-3 sm:grid-cols-2 lg:min-w-[280px] lg:grid-cols-1">
+                    <div className="rounded-2xl bg-[var(--navy)] p-5 text-white shadow-lg shadow-slate-900/10">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-300">
+                        Next move
+                      </p>
+                      <p className="mt-2 text-lg font-bold">
+                        {stats.totalGapHours > 0
+                          ? "Open the hottest heatmap cells first"
+                          : "Stay on top of activity changes"}
+                      </p>
+                      <p className="mt-2 text-sm leading-6 text-slate-300">
+                        {stats.totalGapHours > 0
+                          ? "Red and orange cells show uncovered demand. Click a cell to inspect the activity and book from context."
+                          : "Even with coverage in place, the heatmap is where activity shifts show up first."}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-sm">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                        Planning readiness
+                      </p>
+                      <div className="mt-2 flex items-end gap-2">
+                        <span className="text-3xl font-black leading-none text-slate-950">
+                          {readinessScore}
+                        </span>
+                        <span className="pb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          {planningCompleteness?.status ?? "Unknown"}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-sm text-slate-600">
+                        Metadata quality affects how much booked work can count
+                        toward forecast coverage.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  {isLoading || snapshotLoading ? (
+                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                      {[1, 2, 3, 4].map((index) => (
+                        <div
+                          key={index}
+                          className="space-y-3 rounded-2xl border border-slate-200 bg-white/80 p-4"
+                        >
+                          <Skeleton className="h-4 w-20 rounded" />
+                          <Skeleton className="h-8 w-16" />
+                          <Skeleton className="h-3 w-full" />
+                        </div>
+                      ))}
+                    </div>
+                  ) : hasForecast ? (
+                    <StatCards
+                      stats={stats}
+                      visibleWeeksCount={visibleWeeks.length}
+                      heatmap={heatmap}
+                    />
+                  ) : null}
+                </div>
               </div>
-            ) : hasForecast ? (
-              <StatCards
-                stats={stats}
-                visibleWeeksCount={visibleWeeks.length}
-                heatmap={heatmap}
-              />
-            ) : null}
 
-            {/* ── DEMAND FORECAST ── */}
-            {snapshotLoading || isLoading ? (
-              <div className="space-y-3">
-                <Skeleton className="h-6 w-48" />
-                {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-16 w-full rounded-xl" />
-                ))}
+              <div className="space-y-4">
+                <WindowSelector
+                  windowSize={windowSize}
+                  onSetWindowSize={updateWindowSize}
+                  lastUpdated={versionsLoading ? null : latestUploadDate}
+                />
+
+                {topAlert && (
+                  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <div className="flex items-start gap-3">
+                      <div className="rounded-xl bg-amber-50 p-2">
+                        <AlertTriangle className="h-4 w-4 text-amber-500" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                          Needs attention
+                        </p>
+                        <p className="mt-2 text-base font-bold text-slate-950">
+                          {topAlert.label}
+                        </p>
+                        <p className="mt-2 text-sm leading-6 text-slate-600">
+                          {topAlert.detail}
+                        </p>
+                        {topAlert.onAction && topAlert.ctaLabel && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={topAlert.onAction}
+                            className="mt-4"
+                          >
+                            {topAlert.ctaLabel}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {uploadStatus && (
+                  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <div className="flex flex-col gap-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                            Data quality
+                          </p>
+                          <p className="mt-2 text-base font-bold text-slate-950">
+                            {latestUploadNeedsReview
+                              ? "Latest upload needs review"
+                              : "Latest upload is planning-ready"}
+                          </p>
+                          <p className="mt-2 text-sm leading-6 text-slate-600">
+                            {persistentUploadMessage ||
+                              "Diagnostics, mappings, and exclusions look healthy enough for planning."}
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setIsUploadReviewOpen(true)}
+                        >
+                          Review
+                        </Button>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2 text-xs">
+                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">
+                          v{uploadStatus.version_number}
+                        </span>
+                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">
+                          {unclassifiedCount} unclassified
+                        </span>
+                        {typeof uploadStatus.completeness_notes?.excluded_booking_count ===
+                          "number" && (
+                          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">
+                            {uploadStatus.completeness_notes.excluded_booking_count} excluded bookings
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-            ) : !projectId ? (
-              <EmptyForecastState reason="no-project" />
-            ) : !heatmap || visibleWeeks.length === 0 ? (
-              <EmptyForecastState reason="no-data" />
-            ) : (
-              <DemandHeatmap
-                heatmap={heatmap}
-                visibleWeeks={visibleWeeks}
-                maxDemand={maxDemand}
-                snapshotDate={snapshot?.snapshot_date}
-                timezone={snapshot?.timezone}
-              />
-            )}
+            </section>
 
-            {/* ── VERSION HISTORY ── */}
-            {!versionsLoading && (
-              <VersionHistory
-                versions={versions}
-                deletingIds={deletingIds}
-                onDelete={handleDeleteVersion}
-              />
-            )}
+            <section className="space-y-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
+                    Main workspace
+                  </p>
+                  <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">
+                    Book against the forecast
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-500">
+                    The heatmap is the main planning surface. Click a demand
+                    cell to inspect the activity behind it and book directly
+                    from context.
+                  </p>
+                </div>
+                {hasForecast && (
+                  <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                    {visibleWeeks.length} week{visibleWeeks.length === 1 ? "" : "s"} currently visible
+                  </span>
+                )}
+              </div>
 
+              {snapshotLoading || isLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-8 w-52" />
+                  <Skeleton className="h-[360px] w-full rounded-[28px]" />
+                </div>
+              ) : !projectId ? (
+                <EmptyForecastState reason="no-project" />
+              ) : !heatmap || visibleWeeks.length === 0 ? (
+                <EmptyForecastState reason="no-data" />
+              ) : (
+                <DemandHeatmap
+                  heatmap={heatmap}
+                  visibleWeeks={visibleWeeks}
+                  maxDemand={maxDemand}
+                  snapshotDate={snapshot?.snapshot_date}
+                  timezone={snapshot?.timezone}
+                  onCellSelect={(row) => {
+                    setSelectedCell(row);
+                    closeActivityFlow();
+                  }}
+                />
+              )}
+            </section>
+
+            <section className="space-y-4 border-t border-slate-100 pt-2">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
+                  Supporting detail
+                </p>
+                <h2 className="mt-2 text-xl font-bold text-slate-900">
+                  Diagnostics, readiness, and history
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  These sections support forecast quality and follow-up work,
+                  but the booking workspace stays above them.
+                </p>
+              </div>
+
+              {!alertsLoading && (
+                <PlanningAlerts
+                  alerts={activeAlerts}
+                  onDismiss={(key) =>
+                    setDismissedAlerts((current) => new Set(current).add(key))
+                  }
+                />
+              )}
+
+              {(planningCompleteness || uploadStatus) && (
+                <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+                  <PlanningReadinessCard planningCompleteness={planningCompleteness} />
+
+                  {uploadStatus && (
+                    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4 text-amber-500" />
+                        <h3 className="text-sm font-bold text-slate-900">
+                          Upload quality
+                        </h3>
+                      </div>
+                      <p className="mt-2 text-sm leading-6 text-slate-600">
+                        {persistentUploadMessage ||
+                          "Latest upload diagnostics are healthy enough for planning review."}
+                      </p>
+                      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                            Latest upload
+                          </p>
+                          <p className="mt-2 text-xl font-black text-slate-950">
+                            v{uploadStatus.version_number}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            {uploadStatus.file_name}
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                            Mapping triage
+                          </p>
+                          <p className="mt-2 text-xl font-black text-slate-950">
+                            {unclassifiedCount}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            rows still need classification review
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                            Excluded coverage
+                          </p>
+                          <p className="mt-2 text-xl font-black text-slate-950">
+                            {uploadStatus.completeness_notes?.excluded_booking_count ?? 0}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            booked rows excluded from coverage
+                          </p>
+                        </div>
+                      </div>
+                    </section>
+                  )}
+                </div>
+              )}
+
+              <div className="grid gap-4 xl:grid-cols-2">
+                <SnapshotHistoryPanel
+                  history={history}
+                  isOpen={isSnapshotHistoryOpen}
+                  onOpenChange={setIsSnapshotHistoryOpen}
+                  isLoading={isSnapshotHistoryOpen && enabled && history.length === 0}
+                />
+                {!versionsLoading && (
+                  <VersionHistory
+                    versions={sortedVersions}
+                    deletingIds={deletingIds}
+                    onDelete={handleDeleteVersion}
+                    onReviewUpload={() => setIsUploadReviewOpen(true)}
+                  />
+                )}
+              </div>
+            </section>
           </div>
         </div>
       </div>
+
+      <ActivityDrilldownDialog
+        open={Boolean(selectedCell)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedCell(null);
+          }
+        }}
+        selectedCell={selectedCell}
+        activities={activities}
+        isLoading={activitiesLoading}
+        onBook={(activity) => {
+          setActivityContextCell(selectedCell);
+          setSelectedActivity(activity);
+          setActivityDialogMode("booking");
+          setSelectedCell(null);
+        }}
+        onViewContext={(activity) => {
+          setActivityContextCell(selectedCell);
+          setSelectedActivity(activity);
+          setActivityDialogMode("context");
+          setSelectedCell(null);
+        }}
+      />
+
+      <ActivityContextDialog
+        open={activityDialogMode === "context" && Boolean(selectedActivity)}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeActivityFlow();
+          }
+        }}
+        selectedCell={activityContextCell}
+        bookingContext={bookingContext}
+        isLoading={bookingContextLoading}
+        onBook={() => setActivityDialogMode("booking")}
+      />
+
+      <UploadReviewDialog
+        open={isUploadReviewOpen}
+        onOpenChange={setIsUploadReviewOpen}
+        status={uploadStatus}
+        mappings={mappings}
+        unclassifiedMappings={unclassifiedMappings}
+        isLoading={
+          Boolean(
+            isUploadReviewOpen &&
+              latestVersion?.upload_id &&
+              (!uploadStatus || (!mappings.length && !unclassifiedMappings.length)),
+          )
+        }
+        userRole={user?.role}
+        onCorrectMapping={async (mappingId, assetType) => {
+          await updateProgrammeMapping(mappingId, { asset_type: assetType });
+          await Promise.allSettled([mutateMappings(), mutateUnclassified(), mutateUploadStatus()]);
+        }}
+        onPromoteToMemory={async (itemId, assetType) => {
+          await promoteItemClassification(itemId, { asset_type: assetType });
+        }}
+      />
+
+      {activityDialogMode === "booking" &&
+        selectedActivity &&
+        bookingContext &&
+        !bookingContextLoading && (
+        <CreateBookingForm
+          isOpen={Boolean(selectedActivity)}
+          onClose={closeActivityFlow}
+          startTime={bookingStartTime}
+          endTime={bookingEndTime}
+          onSave={() => {
+            void refreshLookaheadWorkspace();
+          }}
+          activityContext={bookingContext}
+        />
+      )}
     </div>
   );
 }

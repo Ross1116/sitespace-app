@@ -48,8 +48,13 @@ interface AssetFromBackend {
   asset_code: string;
   name: string;
   type?: string | null;
+  canonical_type?: string | null;
+  type_resolution_status?: string | null;
+  type_inference_source?: string | null;
+  type_inference_confidence?: number | null;
+  planning_ready?: boolean;
   description?: string;
-  status: "available" | "maintenance" | "retired";
+  status: string;
   project_id?: string;
   created_at: string;
   updated_at: string;
@@ -70,6 +75,7 @@ type SortField =
   | "assetDescription"
   | "assetLastUpdated";
 type SortDirection = "asc" | "desc";
+type ReadinessFilter = "all" | "ready" | "review";
 
 const transformBackendAsset = (backendAsset: AssetFromBackend): Asset => {
   const descriptionText =
@@ -92,6 +98,11 @@ const transformBackendAsset = (backendAsset: AssetFromBackend): Asset => {
     usageInstructions: backendAsset.usage_instructions || "",
     assetCode: backendAsset.asset_code,
     pendingBookingCapacity: backendAsset.pending_booking_capacity,
+    canonicalType: backendAsset.canonical_type ?? null,
+    typeResolutionStatus: backendAsset.type_resolution_status ?? null,
+    typeInferenceSource: backendAsset.type_inference_source ?? null,
+    typeInferenceConfidence: backendAsset.type_inference_confidence ?? null,
+    planningReady: backendAsset.planning_ready,
     _originalData: backendAsset,
   };
 };
@@ -187,6 +198,7 @@ export default function AssetsTable() {
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteConfirmKey, setDeleteConfirmKey] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [readinessFilter, setReadinessFilter] = useState<ReadinessFilter>("all");
 
   // Sort state
   const [sortField, setSortField] = useState<SortField | null>(null);
@@ -279,6 +291,14 @@ export default function AssetsTable() {
       );
     }
 
+    if (readinessFilter === "ready") {
+      result = result.filter((asset) => asset.planningReady === true);
+    }
+
+    if (readinessFilter === "review") {
+      result = result.filter((asset) => asset.planningReady !== true);
+    }
+
     // Sort
     if (sortField) {
       result.sort((a, b) => {
@@ -318,7 +338,7 @@ export default function AssetsTable() {
     }
 
     return result;
-  }, [allAssets, searchTerm, sortField, sortDirection]);
+  }, [allAssets, readinessFilter, searchTerm, sortField, sortDirection]);
 
   const paginatedAssets = useMemo(() => {
     if (!filteredAndSortedAssets || filteredAndSortedAssets.length === 0)
@@ -337,6 +357,9 @@ export default function AssetsTable() {
 
   const maintenanceCount = (allAssets ?? []).filter(
     (a) => a.assetStatus === "Maintenance",
+  ).length;
+  const planningReadyCount = (allAssets ?? []).filter(
+    (asset) => asset.planningReady === true,
   ).length;
 
   const handlePageChange = (pageNumber: number) => {
@@ -427,20 +450,45 @@ export default function AssetsTable() {
               </div>
             </div>
 
-            {/* Search */}
-            <div className="mb-4 relative max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <Input
-                placeholder="Search by name, code, or type..."
-                className="pl-10 bg-slate-50 border-transparent focus:bg-white transition-all rounded-xl h-10 text-sm"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              {searchTerm && (
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
-                  {filteredAndSortedAssets.length} results
+            <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="relative max-w-sm w-full">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Input
+                  placeholder="Search by name, code, or type..."
+                  className="pl-10 bg-slate-50 border-transparent focus:bg-white transition-all rounded-xl h-10 text-sm"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                {searchTerm && (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
+                    {filteredAndSortedAssets.length} results
+                  </span>
+                )}
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
+                  {planningReadyCount} planning ready
                 </span>
-              )}
+                {[
+                  ["all", "All assets"],
+                  ["ready", "Planning ready"],
+                  ["review", "Needs review"],
+                ].map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setReadinessFilter(value as ReadinessFilter)}
+                    className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                      readinessFilter === value
+                        ? "bg-[var(--navy)] text-white"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Table Header — Sortable */}
@@ -547,7 +595,7 @@ export default function AssetsTable() {
                           className="text-slate-400 hidden sm:block"
                         />
                         <span className="truncate capitalize">
-                          {asset.assetType}
+                          {asset.canonicalType || asset.assetType}
                         </span>
                       </div>
 
@@ -575,6 +623,26 @@ export default function AssetsTable() {
                         >
                           {asset.assetDescription}
                         </span>
+                        {asset.planningReady !== undefined && (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            <span
+                              className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                                asset.planningReady
+                                  ? "bg-emerald-50 text-emerald-700"
+                                  : "bg-amber-50 text-amber-700"
+                              }`}
+                            >
+                              {asset.planningReady
+                                ? "Planning ready"
+                                : "Needs type review"}
+                            </span>
+                            {asset.typeResolutionStatus && (
+                              <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                                {asset.typeResolutionStatus}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       <div className="col-span-1 text-slate-500 text-xs sm:text-sm font-medium truncate">
@@ -706,11 +774,39 @@ export default function AssetsTable() {
                       <div className="flex items-center gap-3">
                         <Tag className="h-4 w-4 text-slate-400" />
                         <span className="text-sm font-medium text-slate-500">
-                          Asset Type
+                          Canonical Type
                         </span>
                       </div>
                       <span className="text-sm font-semibold text-slate-900">
-                        {selectedAsset.assetType}
+                        {selectedAsset.canonicalType || selectedAsset.assetType}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Info className="h-4 w-4 text-slate-400" />
+                        <span className="text-sm font-medium text-slate-500">
+                          Type Resolution
+                        </span>
+                      </div>
+                      <span className="text-sm font-semibold text-slate-900">
+                        {selectedAsset.typeResolutionStatus || "Unspecified"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <AlertTriangle className="h-4 w-4 text-slate-400" />
+                        <span className="text-sm font-medium text-slate-500">
+                          Planning Ready
+                        </span>
+                      </div>
+                      <span
+                        className={`text-sm font-semibold ${
+                          selectedAsset.planningReady
+                            ? "text-emerald-700"
+                            : "text-amber-700"
+                        }`}
+                      >
+                        {selectedAsset.planningReady ? "Yes" : "No"}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
@@ -781,6 +877,24 @@ export default function AssetsTable() {
                     Logistics
                   </h3>
                   <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-slate-500">
+                        Inference
+                      </span>
+                      <span className="text-sm font-semibold text-slate-900">
+                        {selectedAsset.typeInferenceSource || "Manual / unknown"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-slate-500">
+                        Inference Confidence
+                      </span>
+                      <span className="text-sm font-semibold text-slate-900">
+                        {selectedAsset.typeInferenceConfidence != null
+                          ? `${Math.round(selectedAsset.typeInferenceConfidence * 100)}%`
+                          : "n/a"}
+                      </span>
+                    </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-slate-500">
                         Last Updated

@@ -1,9 +1,10 @@
 "use client";
 
-import { useReducer, useEffect, useCallback, useMemo, useState } from "react";
+import { useReducer, useEffect, useCallback, useMemo, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -52,6 +53,9 @@ import {
 import {
   ApiAsset,
   ApiBooking,
+  ProgrammeActivityCandidateAsset,
+  ProgrammeActivityBookingContextResponse,
+  ProgrammeActivitySuggestedBookingDate,
   getApiErrorMessage,
 } from "@/types";
 import { isAssetUnavailableForBooking } from "@/lib/assetStatus";
@@ -73,6 +77,7 @@ import {
   HOURS_IN_DAY,
   MINUTES_PER_HOUR,
 } from "@/lib/formOptions";
+import { getSuggestedDatesWithCoverageStatus } from "@/components/lookahead/activityBookingCoverage";
 
 // ===== TYPE DEFINITIONS =====
 type CreateBookingFormProps = {
@@ -84,6 +89,7 @@ type CreateBookingFormProps = {
   bookedAssets?: string[];
   defaultAsset?: string;
   defaultAssetName?: string;
+  activityContext?: ProgrammeActivityBookingContextResponse | null;
 };
 
 type BookingDetail = ApiBooking;
@@ -100,7 +106,121 @@ interface Subcontractor {
 type AssetOption = ApiAsset & {
   assetKey: string;
   assetTitle: string;
+  availabilityStatus?: string | null;
+  availabilityReason?: string | null;
 };
+
+function getSuggestedDateLabel(
+  suggestedDate: ProgrammeActivitySuggestedBookingDate,
+): string {
+  const hours = suggestedDate.hours;
+  if (typeof hours === "number" && Number.isFinite(hours) && hours > 0) {
+    return `${suggestedDate.date} · ${hours}h remaining`;
+  }
+  return suggestedDate.date;
+}
+
+function toSeedDateTime(date?: string | null, time?: string | null): Date | null {
+  if (!date || !time) return null;
+  const normalizedTime = time.length === 5 ? `${time}:00` : time;
+  const parsed = new Date(`${date}T${normalizedTime}`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function getSuggestedDateRemainingHours(
+  suggestedDate?: ProgrammeActivitySuggestedBookingDate | null,
+): number | null {
+  if (!suggestedDate) return null;
+
+  if (
+    typeof suggestedDate.gap_hours === "number" &&
+    Number.isFinite(suggestedDate.gap_hours) &&
+    suggestedDate.gap_hours > 0
+  ) {
+    return suggestedDate.gap_hours;
+  }
+
+  if (
+    typeof suggestedDate.hours === "number" &&
+    Number.isFinite(suggestedDate.hours) &&
+    suggestedDate.hours > 0
+  ) {
+    return suggestedDate.hours;
+  }
+
+  return null;
+}
+
+function getSuggestedDateDisplayLabel(
+  suggestedDate: ProgrammeActivitySuggestedBookingDate,
+): string {
+  const remainingHours = getSuggestedDateRemainingHours(suggestedDate);
+  if (
+    typeof remainingHours === "number" &&
+    Number.isFinite(remainingHours) &&
+    remainingHours > 0
+  ) {
+    return `${suggestedDate.date} - ${remainingHours}h remaining`;
+  }
+  return getSuggestedDateLabel(suggestedDate);
+}
+
+function resolveSuggestedDateWindow(params: {
+  bookingDate: string;
+  suggestedDate?: ProgrammeActivitySuggestedBookingDate | null;
+  fallbackStartTime?: string | null;
+  fallbackEndTime?: string | null;
+}): { start: Date | null; end: Date | null; hours: number | null } {
+  const { bookingDate, suggestedDate, fallbackStartTime, fallbackEndTime } = params;
+  const startTime = suggestedDate?.start_time ?? fallbackStartTime ?? null;
+  const endTime = suggestedDate?.end_time ?? fallbackEndTime ?? null;
+  const start = toSeedDateTime(bookingDate, startTime);
+  const explicitEnd = toSeedDateTime(bookingDate, endTime);
+  const remainingHours = getSuggestedDateRemainingHours(suggestedDate);
+
+  if (start && remainingHours) {
+    const resolvedEnd = addMinutes(
+      new Date(start),
+      Math.round(remainingHours * MINUTES_PER_HOUR),
+    );
+    const explicitDurationMinutes =
+      explicitEnd && explicitEnd.getTime() > start.getTime()
+        ? Math.round((explicitEnd.getTime() - start.getTime()) / (1000 * 60))
+        : null;
+
+    if (
+      explicitDurationMinutes === null ||
+      Math.abs(explicitDurationMinutes - remainingHours * MINUTES_PER_HOUR) > 1
+    ) {
+      return { start, end: resolvedEnd, hours: remainingHours };
+    }
+
+    return { start, end: explicitEnd, hours: remainingHours };
+  }
+
+  if (start && explicitEnd && explicitEnd.getTime() > start.getTime()) {
+    return {
+      start,
+      end: explicitEnd,
+      hours: (explicitEnd.getTime() - start.getTime()) / (1000 * 60 * 60),
+    };
+  }
+
+  return {
+    start,
+    end: explicitEnd,
+    hours: remainingHours,
+  };
+}
+
+function areStringArraysEqual(left: string[], right: string[]): boolean {
+  if (left.length !== right.length) return false;
+  return left.every((value, index) => value === right[index]);
+}
+
+const EMPTY_SUGGESTED_BULK_DATES: ProgrammeActivitySuggestedBookingDate[] = [];
+const EMPTY_LINKED_BOOKINGS: ApiBooking[] = [];
+const EMPTY_CANDIDATE_ASSETS: ProgrammeActivityCandidateAsset[] = [];
 
 // ===== CONSOLIDATED STATE =====
 interface TimeState {
@@ -144,7 +264,7 @@ type TimeAction =
   | { type: "SET_START_TIME"; hour: string; minute: string }
   | { type: "SET_END_TIME"; hour: string; minute: string }
   | { type: "SET_DURATION"; duration: string }
-  | { type: "INITIALIZE"; startTime: Date; duration: string }
+  | { type: "INITIALIZE"; startTime: Date; endTime?: Date | null; duration: string }
   | { type: "SET_DATE"; date: Date }
   | { type: "RESET" };
 
@@ -198,6 +318,12 @@ function buildStartDate(
   return d;
 }
 
+function roundToQuarterHour(date: Date): Date {
+  const rounded = new Date(date);
+  rounded.setMinutes(Math.round(rounded.getMinutes() / 15) * 15, 0, 0);
+  return rounded;
+}
+
 const initialTimeState: TimeState = {
   startHour: "",
   startMinute: "",
@@ -212,32 +338,47 @@ const initialTimeState: TimeState = {
 function timeReducer(state: TimeState, action: TimeAction): TimeState {
   switch (action.type) {
     case "INITIALIZE": {
-      const roundedMinutes =
-        Math.round(action.startTime.getMinutes() / 15) * 15;
-      const startHour = action.startTime.getHours().toString().padStart(2, "0");
-      const startMinute = (roundedMinutes % 60).toString().padStart(2, "0");
+      const normalizedStart = roundToQuarterHour(action.startTime);
+      const startHour = normalizedStart.getHours().toString().padStart(2, "0");
+      const startMinute = normalizedStart
+        .getMinutes()
+        .toString()
+        .padStart(2, "0");
 
-      const normalizedStart = new Date(action.startTime);
-      normalizedStart.setHours(
-        parseInt(startHour),
-        parseInt(startMinute),
-        0,
-        0,
-      );
-
-      const { endTime, endHour, endMinute } = computeEndTime(
-        normalizedStart,
-        parseInt(action.duration),
-      );
+      const explicitEnd =
+        action.endTime && !Number.isNaN(action.endTime.getTime())
+          ? roundToQuarterHour(action.endTime)
+          : null;
+      const explicitDurationMinutes =
+        explicitEnd && explicitEnd.getTime() > normalizedStart.getTime()
+          ? Math.round(
+              (explicitEnd.getTime() - normalizedStart.getTime()) /
+                (1000 * 60),
+            )
+          : null;
+      const fallbackDurationMinutes = parseInt(action.duration);
+      const effectiveDurationMinutes =
+        explicitDurationMinutes && explicitDurationMinutes > 0
+          ? explicitDurationMinutes
+          : fallbackDurationMinutes;
+      const resolvedEndTime =
+        explicitEnd && explicitDurationMinutes && explicitDurationMinutes > 0
+          ? explicitEnd
+          : computeEndTime(normalizedStart, effectiveDurationMinutes).endTime;
+      const endHour = resolvedEndTime.getHours().toString().padStart(2, "0");
+      const endMinute = resolvedEndTime
+        .getMinutes()
+        .toString()
+        .padStart(2, "0");
 
       return {
         startHour,
         startMinute,
         endHour,
         endMinute,
-        duration: action.duration,
+        duration: effectiveDurationMinutes.toString(),
         customStartTime: normalizedStart,
-        customEndTime: endTime,
+        customEndTime: resolvedEndTime,
         selectedDate: new Date(action.startTime),
       };
     }
@@ -433,11 +574,13 @@ function asyncReducer(state: AsyncState, action: AsyncAction): AsyncState {
 export function CreateBookingForm({
   isOpen,
   onClose,
-  startTime = new Date(),
+  startTime = null,
+  endTime = null,
   onSave,
   defaultAsset,
   defaultAssetName,
   bookedAssets = [],
+  activityContext = null,
 }: CreateBookingFormProps) {
   const { user } = useAuth();
   const userId = user?.id;
@@ -459,6 +602,8 @@ export function CreateBookingForm({
     asyncReducer,
     initialAsyncState,
   );
+  const [useBulkDates, setUseBulkDates] = useState(false);
+  const [selectedBulkDates, setSelectedBulkDates] = useState<string[]>([]);
   const [pendingConfirmAlert, setPendingConfirmAlert] = useState<{
     isOpen: boolean;
     pendingCount: number;
@@ -477,6 +622,7 @@ export function CreateBookingForm({
     assetNames: [],
     impactedBookings: [],
   });
+  const seededOpenKeyRef = useRef<string | null>(null);
 
   // ===== DERIVED VALUES =====
   const {
@@ -499,12 +645,110 @@ export function CreateBookingForm({
     successAlert,
     partialSuccessAlert,
   } = asyncState;
+  const suggestedBulkDates =
+    activityContext?.suggested_bulk_dates ?? EMPTY_SUGGESTED_BULK_DATES;
+  const { coveredSuggestedDates, remainingSuggestedDates } = useMemo(
+    () => getSuggestedDatesWithCoverageStatus(activityContext),
+    [activityContext],
+  );
+  const coveredSuggestedDateValues = useMemo(
+    () => coveredSuggestedDates.map((entry) => entry.date),
+    [coveredSuggestedDates],
+  );
+  const coveredSuggestedDateSet = useMemo(
+    () => new Set(coveredSuggestedDateValues),
+    [coveredSuggestedDateValues],
+  );
+  const remainingSuggestedDateValues = useMemo(
+    () => remainingSuggestedDates.map((entry) => entry.date),
+    [remainingSuggestedDates],
+  );
+  const suggestedBulkDateValues = useMemo(
+    () => suggestedBulkDates.map((entry) => entry.date),
+    [suggestedBulkDates],
+  );
+  const suggestedBulkDatesKey = useMemo(
+    () => suggestedBulkDateValues.join("|"),
+    [suggestedBulkDateValues],
+  );
+  const selectedBulkDateEntries = useMemo(
+    () =>
+      suggestedBulkDates.filter((entry) => selectedBulkDates.includes(entry.date)),
+    [selectedBulkDates, suggestedBulkDates],
+  );
+  const linkedBookings = activityContext?.linked_bookings ?? EMPTY_LINKED_BOOKINGS;
+  const candidateAssets =
+    activityContext?.candidate_assets ?? EMPTY_CANDIDATE_ASSETS;
+  const effectiveExpectedAssetType = activityContext?.expected_asset_type ?? null;
+  const preferredSuggestedDate = remainingSuggestedDates[0] ?? suggestedBulkDates[0] ?? null;
+  const activitySuggestedCoverageFullyLinked =
+    suggestedBulkDates.length > 0 &&
+    remainingSuggestedDates.length === 0 &&
+    linkedBookings.length > 0;
 
   const formatHour = (hour: number): string => {
     const period = hour >= 12 ? "PM" : "AM";
     const displayHour = hour % 12 || 12;
     return `${displayHour} ${period}`;
   };
+
+  const effectiveBookingDates = useMemo(() => {
+    if (useBulkDates && selectedBulkDates.length > 0) {
+      return selectedBulkDates;
+    }
+    return [format(selectedDate, "yyyy-MM-dd")];
+  }, [selectedBulkDates, selectedDate, useBulkDates]);
+  const fallbackStartTimeValue = customStartTime
+    ? format(customStartTime, "HH:mm:ss")
+    : null;
+  const fallbackEndTimeValue = customEndTime
+    ? format(customEndTime, "HH:mm:ss")
+    : null;
+  const suggestedBulkDatesByDate = useMemo(
+    () => new Map(suggestedBulkDates.map((entry) => [entry.date, entry])),
+    [suggestedBulkDates],
+  );
+  const effectiveBookingPlan = useMemo(
+    () =>
+      effectiveBookingDates.map((bookingDate) => {
+        const suggestedDate = suggestedBulkDatesByDate.get(bookingDate) ?? null;
+        const resolvedWindow = resolveSuggestedDateWindow({
+          bookingDate,
+          suggestedDate,
+          fallbackStartTime: fallbackStartTimeValue,
+          fallbackEndTime: fallbackEndTimeValue,
+        });
+        return {
+          bookingDate,
+          suggestedDate,
+          start: resolvedWindow.start,
+          end: resolvedWindow.end,
+          hours: resolvedWindow.hours,
+        };
+      }),
+    [
+      effectiveBookingDates,
+      fallbackEndTimeValue,
+      fallbackStartTimeValue,
+      suggestedBulkDatesByDate,
+    ],
+  );
+  const bulkWindowSummary = useMemo(() => {
+    if (!customStartTime || !customEndTime) return null;
+    const durationMinutes =
+      (customEndTime.getTime() - customStartTime.getTime()) / (1000 * 60);
+    if (durationMinutes <= 0) return null;
+
+    const durationHours = durationMinutes / MINUTES_PER_HOUR;
+    const durationLabel = Number.isInteger(durationHours)
+      ? `${durationHours}h/day`
+      : `${durationHours.toFixed(2).replace(/\.?0+$/, "")}h/day`;
+
+    return `${format(customStartTime, "HH:mm")}-${format(customEndTime, "HH:mm")} · ${durationLabel}`;
+  }, [customEndTime, customStartTime]);
+
+  const startSeedMs = startTime?.getTime() ?? null;
+  const endSeedMs = endTime?.getTime() ?? null;
 
   // ===== RESET =====
   const resetForm = useCallback(() => {
@@ -515,6 +759,8 @@ export function CreateBookingForm({
     });
     dispatchAsset({ type: "RESET" });
     dispatchAsync({ type: "RESET" });
+    setUseBulkDates(false);
+    setSelectedBulkDates([]);
   }, [isSubcontractor, userId]);
 
   const handlePartialSuccessDismiss = useCallback(() => {
@@ -549,15 +795,31 @@ export function CreateBookingForm({
       dispatchAsset({ type: "SET_ASSET_ERROR", error: true });
       return;
     }
-    const normalizedAssets: AssetOption[] = projectAssets
+    const sourceAssets =
+      candidateAssets.length > 0
+        ? candidateAssets.map((asset) => ({
+            ...asset,
+            asset_code: asset.asset_code || asset.id,
+            created_at: "",
+            updated_at: "",
+            type: asset.canonical_type,
+            status: asset.status || "available",
+          }))
+        : projectAssets;
+
+    const normalizedAssets: AssetOption[] = sourceAssets
       .filter((asset) => !isAssetUnavailableForBooking(asset.status))
       .map((asset) => ({
         ...asset,
         assetKey: asset.id,
         assetTitle: asset.name,
+        availabilityStatus:
+          "availability_status" in asset ? asset.availability_status : undefined,
+        availabilityReason:
+          "availability_reason" in asset ? asset.availability_reason : undefined,
       }));
     dispatchAsset({ type: "SET_ASSETS", assets: normalizedAssets });
-  }, [projectAssets, assetsSwrError]);
+  }, [projectAssets, assetsSwrError, candidateAssets]);
 
   // ===== LOAD SUBCONTRACTORS =====
   useEffect(() => {
@@ -605,6 +867,97 @@ export function CreateBookingForm({
     }
   }, [isSubcontractor, userId]);
 
+  useEffect(() => {
+    if (!isOpen) {
+      seededOpenKeyRef.current = null;
+      return;
+    }
+
+    const seedKey = [
+      activityContext?.activity_id ?? "manual",
+      startSeedMs ?? "auto",
+      endSeedMs ?? "none",
+      activityContext?.default_booking_date ?? "",
+      suggestedBulkDatesKey,
+      remainingSuggestedDateValues.join("|"),
+    ].join("|");
+
+    if (seededOpenKeyRef.current === seedKey) return;
+    seededOpenKeyRef.current = seedKey;
+
+    const preferredSeedDate =
+      preferredSuggestedDate?.date ??
+      activityContext?.default_booking_date ??
+      null;
+    const preferredSuggestedWindow = preferredSeedDate
+      ? resolveSuggestedDateWindow({
+          bookingDate: preferredSeedDate,
+          suggestedDate: preferredSuggestedDate,
+          fallbackStartTime: activityContext?.default_start_time,
+          fallbackEndTime: activityContext?.default_end_time,
+        })
+      : null;
+    const preferredSeedStartTime =
+      preferredSuggestedWindow?.start ??
+      (startSeedMs ? new Date(startSeedMs) : new Date());
+    const preferredSeedEndTime =
+      preferredSuggestedWindow?.end ??
+      (endSeedMs ? new Date(endSeedMs) : null);
+
+    dispatchTime({
+      type: "INITIALIZE",
+      startTime: preferredSeedStartTime,
+      endTime: preferredSeedEndTime,
+      duration: DEFAULT_BOOKING_DURATION_MINUTES.toString(),
+    });
+
+    if (activityContext?.activity_name) {
+      dispatchForm({
+        type: "SET_FIELD",
+        field: "title",
+        value: activityContext.activity_name,
+      });
+    }
+
+    const seededBookingDate =
+      preferredSuggestedDate?.date ?? activityContext?.default_booking_date;
+
+    if (seededBookingDate) {
+      const defaultDate = new Date(seededBookingDate);
+      if (!Number.isNaN(defaultDate.getTime())) {
+        dispatchTime({ type: "SET_DATE", date: defaultDate });
+      }
+    }
+
+    if (remainingSuggestedDateValues.length > 0) {
+      setSelectedBulkDates((current) =>
+        areStringArraysEqual(current, remainingSuggestedDateValues)
+          ? current
+          : remainingSuggestedDateValues,
+      );
+      setUseBulkDates((current) => {
+        const nextValue = remainingSuggestedDateValues.length > 1;
+        return current === nextValue ? current : nextValue;
+      });
+      return;
+    }
+
+    setSelectedBulkDates((current) => (current.length === 0 ? current : []));
+    setUseBulkDates((current) => (current ? false : current));
+  }, [
+    activityContext?.activity_id,
+    activityContext?.activity_name,
+    activityContext?.default_booking_date,
+    endSeedMs,
+    isOpen,
+    preferredSuggestedDate?.date,
+    preferredSuggestedDate?.end_time,
+    preferredSuggestedDate?.start_time,
+    remainingSuggestedDateValues,
+    startSeedMs,
+    suggestedBulkDatesKey,
+  ]);
+
   // ===== SET DEFAULT ASSET =====
   useEffect(() => {
     if (
@@ -636,8 +989,8 @@ export function CreateBookingForm({
   // ===== INITIALIZE TIMES WHEN MODAL OPENS =====
   // Single effect replaces the old chain of: init times → compute end → sync duration
   useEffect(() => {
-    if (startTime && isOpen) {
-      dispatchTime({ type: "INITIALIZE", startTime, duration });
+    if (false && startTime && isOpen) {
+      void startTime;
     }
   }, [startTime, isOpen]); // intentionally exclude `duration` — init uses current duration snapshot
 
@@ -689,27 +1042,37 @@ export function CreateBookingForm({
       return;
     }
 
-    const buildBookingDateTime = (date: Date, time: Date) => {
-      const merged = new Date(date);
-      merged.setHours(time.getHours(), time.getMinutes(), 0, 0);
-      return merged;
-    };
+    const firstInvalidBookingPlan = effectiveBookingPlan.find(
+      (plan) =>
+        !(plan.start instanceof Date) ||
+        Number.isNaN(plan.start.getTime()) ||
+        !(plan.end instanceof Date) ||
+        Number.isNaN(plan.end.getTime()) ||
+        plan.end.getTime() <= plan.start.getTime(),
+    );
 
-    const bookingStartDt = buildBookingDateTime(selectedDate, customStartTime);
-    const bookingEndDt = buildBookingDateTime(selectedDate, customEndTime);
-
-    if (bookingEndDt <= bookingStartDt) {
+    if (firstInvalidBookingPlan) {
       dispatchAsync({
         type: "SET_ERROR",
-        error: "End time must be later than start time",
+        error:
+          effectiveBookingPlan.length > 1
+            ? `The booking window for ${firstInvalidBookingPlan.bookingDate} is invalid.`
+            : "End time must be later than start time",
       });
       return;
     }
 
-    if (bookingStartDt.getTime() < Date.now()) {
+    const firstPastBookingPlan = effectiveBookingPlan.find(
+      (plan) => (plan.start?.getTime() ?? 0) < Date.now(),
+    );
+
+    if (firstPastBookingPlan) {
       dispatchAsync({
         type: "SET_ERROR",
-        error: "Bookings cannot be created in the past",
+        error:
+          effectiveBookingDates.length > 1
+            ? `Bookings cannot be created in the past. Remove ${firstPastBookingPlan.bookingDate} or adjust the booking window.`
+            : "Bookings cannot be created in the past",
       });
       return;
     }
@@ -730,6 +1093,31 @@ export function CreateBookingForm({
       return;
     }
 
+    if (useBulkDates && selectedBulkDates.length === 0) {
+      dispatchAsync({
+        type: "SET_ERROR",
+        error: "Select at least one bulk booking date",
+      });
+      return;
+    }
+
+    const coveredSelectedDates = activityContext
+      ? effectiveBookingDates.filter((bookingDate) =>
+          coveredSuggestedDateSet.has(bookingDate),
+        )
+      : [];
+
+    if (coveredSelectedDates.length > 0) {
+      dispatchAsync({
+        type: "SET_ERROR",
+        error:
+          coveredSelectedDates.length === 1
+            ? `The suggested slot for ${coveredSelectedDates[0]} is already fully linked. Adjust the existing linked booking instead of creating a duplicate.`
+            : `These suggested dates are already fully linked: ${coveredSelectedDates.join(", ")}.`,
+      });
+      return;
+    }
+
     if (!projectId) {
       dispatchAsync({ type: "SET_ERROR", error: "No project selected" });
       return;
@@ -738,34 +1126,41 @@ export function CreateBookingForm({
     try {
       dispatchAsync({ type: "SET_SUBMITTING", value: true });
 
-      const bookingDate = format(selectedDate, "yyyy-MM-dd");
-      const startTimeFormatted = format(bookingStartDt, "HH:mm:ss");
-      const endTimeFormatted = format(bookingEndDt, "HH:mm:ss");
-
       const targetSubcontractorId = isSubcontractor
         ? userId
         : selectedSubcontractor || undefined;
 
-      let existingBookingsForDate: ApiBooking[] | null = null;
-      const getExistingBookingsForDate = async () => {
-        if (existingBookingsForDate) return existingBookingsForDate;
-        existingBookingsForDate = await fetchBookingsForDate({
+      const bookingsByDate = new Map<string, ApiBooking[]>();
+      const getExistingBookingsForDate = async (bookingDate: string) => {
+        const cached = bookingsByDate.get(bookingDate);
+        if (cached) return cached;
+        const fetched = await fetchBookingsForDate({
           projectId,
           bookingDate,
           context: "CreateBookingForm",
         });
-        return existingBookingsForDate;
+        bookingsByDate.set(bookingDate, fetched);
+        return fetched;
       };
 
       if (isManager && !skipPendingConfirmCheck) {
-        const existingBookings = await getExistingBookingsForDate();
-        const competingPendingBookings = getCompetingPendingBookingsForAssets({
-          bookings: existingBookings,
-          bookingDate,
-          startTime: startTimeFormatted,
-          endTime: endTimeFormatted,
-          assetIds: selectedAssetIds,
-        });
+        const competingPendingBookings: ApiBooking[] = [];
+
+        for (const bookingPlan of effectiveBookingPlan) {
+          if (!bookingPlan.start || !bookingPlan.end) continue;
+
+          const bookingDate = bookingPlan.bookingDate;
+          const existingBookings = await getExistingBookingsForDate(bookingDate);
+          competingPendingBookings.push(
+            ...getCompetingPendingBookingsForAssets({
+              bookings: existingBookings,
+              bookingDate,
+              startTime: format(bookingPlan.start, "HH:mm:ss"),
+              endTime: format(bookingPlan.end, "HH:mm:ss"),
+              assetIds: selectedAssetIds,
+            }),
+          );
+        }
 
         if (competingPendingBookings.length > 0) {
           const affectedAssetNames = Array.from(
@@ -803,15 +1198,24 @@ export function CreateBookingForm({
       }
 
       if (targetSubcontractorId) {
-        const existingBookings = await getExistingBookingsForDate();
-        const duplicateAssetIds = getDuplicateAssetIdsForSubcontractor({
-          bookings: existingBookings,
-          bookingDate,
-          startTime: startTimeFormatted,
-          endTime: endTimeFormatted,
-          targetSubcontractorId,
-          assetIds: selectedAssetIds,
-        });
+        const duplicateAssetIds = new Set<string>();
+
+        for (const bookingPlan of effectiveBookingPlan) {
+          if (!bookingPlan.start || !bookingPlan.end) continue;
+
+          const bookingDate = bookingPlan.bookingDate;
+          const existingBookings = await getExistingBookingsForDate(bookingDate);
+          const duplicatesForDate = getDuplicateAssetIdsForSubcontractor({
+            bookings: existingBookings,
+            bookingDate,
+            startTime: format(bookingPlan.start, "HH:mm:ss"),
+            endTime: format(bookingPlan.end, "HH:mm:ss"),
+            targetSubcontractorId,
+            assetIds: selectedAssetIds,
+          });
+
+          duplicatesForDate.forEach((assetId) => duplicateAssetIds.add(assetId));
+        }
 
         if (duplicateAssetIds.size > 0) {
           const blockedAssetNames = selectedAssetIds
@@ -830,22 +1234,35 @@ export function CreateBookingForm({
         }
       }
 
-      const bookingPayloads: BookingCreatePayload[] = selectedAssetIds.map(
-        (assetId) => ({
-          project_id: projectId,
-          asset_id: assetId,
-          booking_date: bookingDate,
-          start_time: startTimeFormatted,
-          end_time: endTimeFormatted,
-          purpose: title,
-          notes: description,
-          subcontractor_id: targetSubcontractorId || undefined,
-        }),
+      const bookingRequests = effectiveBookingPlan.flatMap((bookingPlan) =>
+        selectedAssetIds.map((assetId) => ({
+          bookingDate: bookingPlan.bookingDate,
+          assetId,
+          payload: {
+            project_id: projectId,
+            asset_id: assetId,
+            booking_date: bookingPlan.bookingDate,
+            start_time: bookingPlan.start
+              ? format(bookingPlan.start, "HH:mm:ss")
+              : fallbackStartTimeValue ?? "08:00:00",
+            end_time: bookingPlan.end
+              ? format(bookingPlan.end, "HH:mm:ss")
+              : fallbackEndTimeValue ?? "09:00:00",
+            purpose: title,
+            notes: description,
+            subcontractor_id: targetSubcontractorId || undefined,
+            programme_activity_id: activityContext?.activity_id,
+            selected_week_start:
+              activityContext?.selected_week_start ??
+              activityContext?.default_week_start ??
+              null,
+          } satisfies BookingCreatePayload,
+        })),
       );
 
       const results = await createBookings({
         projectId,
-        payloads: bookingPayloads,
+        payloads: bookingRequests.map((request) => request.payload),
       });
 
       // Separate successes and failures
@@ -853,14 +1270,18 @@ export function CreateBookingForm({
       const failed: { assetId: string; reason: string }[] = [];
 
       results.forEach((result, index) => {
+        const request = bookingRequests[index];
         if (result.status === "fulfilled") {
           succeeded.push(result.value);
         } else {
-          const assetId = selectedAssetIds[index];
+          const assetId = request?.assetId || "";
           const asset = assets.find((a) => a.assetKey === assetId);
           const assetName = asset?.assetTitle || assetId;
           const reason = getApiErrorMessage(result.reason, "Unknown error");
-          failed.push({ assetId: assetName, reason });
+          const bookingLabel = request?.bookingDate
+            ? `${assetName} on ${request.bookingDate}`
+            : assetName;
+          failed.push({ assetId: bookingLabel, reason });
         }
       });
 
@@ -909,6 +1330,12 @@ export function CreateBookingForm({
             subcontractorId: booking.subcontractor_id,
             projectId: booking.project_id,
             projectName: booking.project?.name || project?.name,
+            bookingSource: booking.source,
+            bookingGroupId: booking.booking_group_id,
+            programmeActivityId: booking.programme_activity_id,
+            programmeActivityName: booking.programme_activity_name,
+            expectedAssetType: booking.expected_asset_type,
+            isModified: booking.is_modified,
             _originalData: booking,
           } as Partial<CalendarEvent>;
         });
@@ -959,8 +1386,13 @@ export function CreateBookingForm({
         <DialogContent className="w-[calc(100vw-1rem)] max-w-md mx-auto rounded-xl p-3 sm:p-6 bg-white shadow-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader className="mb-4">
             <DialogTitle className="text-lg sm:text-xl font-semibold">
-              Book Time Slot
+              {activityContext ? "Book Activity" : "Book Time Slot"}
             </DialogTitle>
+            <DialogDescription className="text-sm text-slate-500">
+              {activityContext
+                ? "Create activity-linked bookings using the booking context returned for this programme activity."
+                : "Create a booking for the selected project asset and time window."}
+            </DialogDescription>
           </DialogHeader>
 
           {error && (
@@ -979,6 +1411,230 @@ export function CreateBookingForm({
                   support.
                 </p>
               </div>
+            </div>
+          )}
+
+          {activityContext && (
+            <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Linked Activity
+                  </p>
+                  <p className="text-sm font-semibold text-slate-900">
+                    {activityContext.activity_name}
+                  </p>
+                </div>
+                {effectiveExpectedAssetType && (
+                  <Badge variant="secondary" className="text-xs">
+                    Expected: {effectiveExpectedAssetType}
+                  </Badge>
+                )}
+              </div>
+
+              <div className="grid gap-2 text-xs text-slate-600 sm:grid-cols-2">
+                <div>
+                  <span className="font-medium text-slate-800">Week:</span>{" "}
+                  {activityContext.selected_week_start ||
+                    activityContext.default_week_start ||
+                    "Current"}
+                </div>
+                <div>
+                  <span className="font-medium text-slate-800">
+                    Linked bookings:
+                  </span>{" "}
+                  {linkedBookings.length}
+                </div>
+                {suggestedBulkDates.length > 0 && (
+                  <div>
+                    <span className="font-medium text-slate-800">
+                      Remaining suggested dates:
+                    </span>{" "}
+                    {remainingSuggestedDates.length}/{suggestedBulkDates.length}
+                  </div>
+                )}
+                {activityContext.level_name && (
+                  <div>
+                    <span className="font-medium text-slate-800">Level:</span>{" "}
+                    {activityContext.level_name}
+                  </div>
+                )}
+                {activityContext.zone_name && (
+                  <div>
+                    <span className="font-medium text-slate-800">Zone:</span>{" "}
+                    {activityContext.zone_name}
+                  </div>
+                )}
+              </div>
+
+              {activitySuggestedCoverageFullyLinked && (
+                <Alert className="bg-amber-50 border-amber-200">
+                  <AlertCircle className="h-4 w-4 text-amber-600" />
+                  <AlertDescription className="text-xs text-amber-700">
+                    This activity already has linked coverage for all suggested
+                    dates. Use the bookings or calendar views to adjust the
+                    existing linked bookings instead of creating duplicates
+                    here.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {!activitySuggestedCoverageFullyLinked &&
+                coveredSuggestedDates.length > 0 && (
+                <Alert className="bg-blue-50 border-blue-200">
+                  <Info className="h-4 w-4 text-blue-600" />
+                  <AlertDescription className="text-xs text-blue-700">
+                    {coveredSuggestedDates.length} suggested date
+                    {coveredSuggestedDates.length === 1 ? "" : "s"} already
+                    have linked coverage and were excluded from the default
+                    booking plan.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {suggestedBulkDates.length > 1 && (
+                <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">
+                        Suggested bulk dates
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        Each selected date creates one linked booking using the
+                        backend-suggested remaining duration for that date.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="activity-bulk-toggle"
+                        checked={useBulkDates}
+                        onCheckedChange={(checked) =>
+                          setUseBulkDates(Boolean(checked))
+                        }
+                        disabled={
+                          isSubmitting || remainingSuggestedDates.length === 0
+                        }
+                      />
+                      <Label htmlFor="activity-bulk-toggle">Bulk</Label>
+                    </div>
+                  </div>
+
+                  {useBulkDates && (
+                    <>
+                      <p className="text-xs text-slate-500">
+                        Per-date `gap_hours` or `hours` from the backend drive
+                        the booking duration for each selected date. The time
+                        controls below only act as fallbacks when a suggested
+                        date does not include its own full window.
+                      </p>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {suggestedBulkDates.map((bulkDate) => {
+                          const checked = selectedBulkDates.includes(bulkDate.date);
+                          const isCovered = coveredSuggestedDateSet.has(
+                            bulkDate.date,
+                          );
+                          return (
+                            <label
+                              key={bulkDate.date}
+                              className={`flex items-center gap-2 rounded-md border px-3 py-2 text-xs ${
+                                isCovered
+                                  ? "border-amber-200 bg-amber-50 text-amber-700"
+                                  : "border-slate-200"
+                              }`}
+                            >
+                              <Checkbox
+                                checked={checked}
+                                onCheckedChange={(nextChecked) => {
+                                  setSelectedBulkDates((current) =>
+                                    nextChecked
+                                      ? Array.from(new Set([...current, bulkDate.date]))
+                                      : current.filter((value) => value !== bulkDate.date),
+                                  );
+                                }}
+                                disabled={isSubmitting || isCovered}
+                              />
+                              <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                                <span>{getSuggestedDateDisplayLabel(bulkDate)}</span>
+                                {isCovered && (
+                                  <span className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
+                                    Already linked
+                                  </span>
+                                )}
+                              </div>
+                            </label>
+                          );
+                        })}
+                      </div>
+                      {selectedBulkDateEntries.length > 0 && (
+                        <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            Bulk booking plan
+                          </p>
+                          <div className="mt-2 space-y-2">
+                            {effectiveBookingPlan
+                              .filter((plan) => selectedBulkDates.includes(plan.bookingDate))
+                              .map((plan) => (
+                                <div
+                                  key={`plan-${plan.bookingDate}`}
+                                  className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600"
+                                >
+                                  <span className="font-medium text-slate-900">
+                                    {plan.bookingDate}
+                                  </span>
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    {typeof plan.hours === "number" &&
+                                      plan.hours > 0 && (
+                                        <span className="rounded-full bg-white px-2 py-1 text-slate-600">
+                                          {plan.hours}h remaining
+                                        </span>
+                                      )}
+                                    {plan.start && plan.end ? (
+                                      <span>
+                                        {format(plan.start, "HH:mm")}-
+                                        {format(plan.end, "HH:mm")}
+                                      </span>
+                                    ) : (
+                                      bulkWindowSummary && <span>{bulkWindowSummary}</span>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {linkedBookings.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Existing linked bookings
+                  </p>
+                  <div className="space-y-2">
+                    {linkedBookings.slice(0, 3).map((booking) => (
+                      <div
+                        key={booking.id}
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-medium text-slate-900">
+                            {booking.asset?.name || booking.asset_id}
+                          </span>
+                          <Badge variant="outline" className="capitalize">
+                            {booking.status}
+                          </Badge>
+                        </div>
+                        <p className="mt-1">
+                          {booking.booking_date} {booking.start_time}-
+                          {booking.end_time}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -1320,6 +1976,12 @@ export function CreateBookingForm({
               <Label>
                 Select Assets <span className="text-red-500">*</span>
               </Label>
+              {activityContext && candidateAssets.length > 0 && (
+                <p className="text-xs text-slate-500">
+                  Showing backend-suggested candidate assets first, including
+                  planning readiness and slot availability.
+                </p>
+              )}
               {selectedAssetIds.length > 0 && (
                 <div className="flex flex-wrap gap-1">
                   {selectedAssetIds.map((assetKey) => {
@@ -1359,12 +2021,12 @@ export function CreateBookingForm({
                       );
                       const isBooked = bookedAssets.includes(asset.assetKey);
                       return (
-                        <div
-                          key={asset.assetKey}
-                          className="flex items-center space-x-2"
-                        >
-                          <Checkbox
-                            id={`asset-${asset.assetKey}`}
+                      <div
+                        key={asset.assetKey}
+                        className="flex items-start space-x-2"
+                      >
+                        <Checkbox
+                          id={`asset-${asset.assetKey}`}
                             checked={isSelected}
                             onCheckedChange={(checked) => {
                               if (checked) {
@@ -1383,16 +2045,52 @@ export function CreateBookingForm({
                           />
                           <label
                             htmlFor={`asset-${asset.assetKey}`}
-                            className={`text-sm flex-1 truncate ${
+                            className={`text-sm flex-1 ${
                               isBooked && !isSelected
                                 ? "line-through text-muted-foreground"
                                 : ""
                             }`}
                           >
-                            {asset.assetTitle}
-                            {isBooked && !isSelected && (
-                              <span className="ml-2 text-xs text-red-500">
-                                (Booked)
+                            <span className="block truncate">
+                              {asset.assetTitle}
+                              {isBooked && !isSelected && (
+                                <span className="ml-2 text-xs text-red-500">
+                                  (Booked)
+                                </span>
+                              )}
+                            </span>
+                            {(asset.planning_ready !== undefined ||
+                              asset.availabilityStatus ||
+                              asset.canonical_type) && (
+                              <span className="mt-1 flex flex-wrap gap-1 text-[10px]">
+                                {asset.canonical_type && (
+                                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600">
+                                    {asset.canonical_type}
+                                  </span>
+                                )}
+                                {asset.planning_ready !== undefined && (
+                                  <span
+                                    className={`rounded-full px-2 py-0.5 ${
+                                      asset.planning_ready
+                                        ? "bg-emerald-50 text-emerald-700"
+                                        : "bg-amber-50 text-amber-700"
+                                    }`}
+                                  >
+                                    {asset.planning_ready
+                                      ? "Planning ready"
+                                      : "Needs readiness review"}
+                                  </span>
+                                )}
+                                {asset.availabilityStatus && (
+                                  <span className="rounded-full bg-blue-50 px-2 py-0.5 text-blue-700">
+                                    {asset.availabilityStatus}
+                                  </span>
+                                )}
+                              </span>
+                            )}
+                            {asset.availabilityReason && (
+                              <span className="mt-1 block text-[10px] text-slate-500">
+                                {asset.availabilityReason}
                               </span>
                             )}
                           </label>
@@ -1419,9 +2117,11 @@ export function CreateBookingForm({
                   void handleSubmit();
                 }}
                 disabled={
+                  activitySuggestedCoverageFullyLinked ||
                   !title ||
                   !customStartTime ||
                   !customEndTime ||
+                  (useBulkDates && selectedBulkDates.length === 0) ||
                   selectedAssetIds.length === 0 ||
                   isSubmitting
                 }
@@ -1456,8 +2156,14 @@ export function CreateBookingForm({
                     </svg>
                     Saving...
                   </span>
+                ) : activitySuggestedCoverageFullyLinked ? (
+                  "Activity already fully linked"
                 ) : (
-                  `Save Booking${selectedAssetIds.length > 1 ? "s" : ""}`
+                  `Save ${effectiveBookingDates.length * selectedAssetIds.length} Booking${
+                    effectiveBookingDates.length * selectedAssetIds.length === 1
+                      ? ""
+                      : "s"
+                  }`
                 )}
               </Button>
             </div>

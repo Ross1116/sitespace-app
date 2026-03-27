@@ -161,6 +161,12 @@ const transformBookingToLegacyFormat = (
     subcontractorId: booking.subcontractor_id ?? undefined,
     subcontractorName: subName,
     competingPendingCount: booking.competing_pending_count ?? 0,
+    bookingSource: booking.source ?? null,
+    bookingGroupId: booking.booking_group_id ?? null,
+    programmeActivityId: booking.programme_activity_id ?? null,
+    programmeActivityName: booking.programme_activity_name ?? null,
+    expectedAssetType: booking.expected_asset_type ?? null,
+    isModified: booking.is_modified ?? false,
     _originalData: booking,
   };
 };
@@ -179,7 +185,11 @@ export default function BookingsPage() {
   const { user, isLoading: authLoading } = useAuth();
   const userId = user?.id;
   const isTv = isTvUser(user);
-  const { projectId, hasResolvedProjects } = useResolvedProjectSelection({
+  const {
+    projectId,
+    hasResolvedProjects,
+    projectBootstrapLoading,
+  } = useResolvedProjectSelection({
     userId,
     role: user?.role,
   });
@@ -214,13 +224,14 @@ export default function BookingsPage() {
     if (
       !isTv &&
       userId &&
+      !projectBootstrapLoading &&
       hasResolvedProjects &&
       !projectId &&
       typeof window !== "undefined"
     ) {
       window.location.href = "/home";
     }
-  }, [isTv, userId, projectId, hasResolvedProjects]);
+  }, [isTv, userId, projectId, hasResolvedProjects, projectBootstrapLoading]);
 
   // --- Bookings ---
   const { bookings, isLoading, mutate } = useProjectBookingsList({
@@ -239,9 +250,14 @@ export default function BookingsPage() {
   const searchParams = useSearchParams();
   const highlightBookingId = searchParams.get("highlight");
 
-  const now = new Date();
-  const nextHour = startOfHour(addHours(now, 1));
-  const endHour = addHours(nextHour, 1);
+  const { nextHour, endHour } = useMemo(() => {
+    const now = new Date();
+    const nextHour = startOfHour(addHours(now, 1));
+    return {
+      nextHour,
+      endHour: addHours(nextHour, 1),
+    };
+  }, []);
 
   const updateActiveTab = useCallback(
     (nextTab: string) => {
@@ -423,7 +439,7 @@ export default function BookingsPage() {
                 <BookingList
                   bookings={filteredBookings}
                   activeTab={activeTab}
-                  loading={isLoading || authLoading}
+                  loading={isLoading || authLoading || projectBootstrapLoading}
                   onActionComplete={() => mutate()}
                   highlightBookingId={highlightBookingId}
                 />

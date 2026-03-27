@@ -5,6 +5,11 @@ export type NormalizedSubcontractor = {
   last_name: string;
   company_name?: string;
   trade_specialty?: string;
+  suggested_trade_specialty?: string | null;
+  trade_resolution_status?: string | null;
+  trade_inference_source?: string | null;
+  trade_inference_confidence?: number | null;
+  planning_ready?: boolean;
   phone?: string;
   is_active: boolean;
   created_at?: string;
@@ -24,6 +29,9 @@ const asId = (value: unknown): string =>
 
 const asBoolean = (value: unknown): boolean | undefined =>
   typeof value === "boolean" ? value : undefined;
+
+const asNumber = (value: unknown): number | undefined =>
+  typeof value === "number" && Number.isFinite(value) ? value : undefined;
 
 const extractRawSubcontractors = (payload: unknown): RawSubcontractor[] => {
   const toRecords = (arr: unknown[]): RawSubcontractor[] =>
@@ -105,6 +113,24 @@ export function normalizeSubcontractorList(
           asString(sub.contractorTrade) ||
           asString(sub.role) ||
           undefined,
+        suggested_trade_specialty:
+          asString(sub.suggested_trade_specialty) ||
+          asString(sub.suggestedTradeSpecialty) ||
+          undefined,
+        trade_resolution_status:
+          asString(sub.trade_resolution_status) ||
+          asString(sub.tradeResolutionStatus) ||
+          undefined,
+        trade_inference_source:
+          asString(sub.trade_inference_source) ||
+          asString(sub.tradeInferenceSource) ||
+          undefined,
+        trade_inference_confidence:
+          asNumber(sub.trade_inference_confidence) ??
+          asNumber(sub.tradeInferenceConfidence) ??
+          null,
+        planning_ready:
+          asBoolean(sub.planning_ready) ?? asBoolean(sub.planningReady),
         phone:
           asString(sub.phone) || asString(sub.contractorPhone) || undefined,
         is_active: asBoolean(sub.is_active) ?? true,

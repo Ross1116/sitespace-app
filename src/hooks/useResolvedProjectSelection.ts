@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 import { normalizeProjectList } from "@/lib/apiNormalization";
 import { swrFetcher, SWR_CONFIG } from "@/lib/swr";
@@ -34,6 +34,10 @@ export function useResolvedProjectSelection({
   enabled = true,
 }: Params): Result {
   const userKey = userId ? String(userId) : null;
+  const [hasMounted, setHasMounted] = useState(false);
+  const hasProjectSelectionHydrated = useProjectSelectionStore(
+    (state) => state.hasHydrated,
+  );
 
   const selectedProjectId = useProjectSelectionStore((state) =>
     userKey ? state.getSelectedProjectId(userKey) : null,
@@ -44,6 +48,20 @@ export function useResolvedProjectSelection({
   const clearSelectedProjectId = useProjectSelectionStore(
     (state) => state.clearSelectedProjectId,
   );
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
+  // Keep the first server render and first client render deterministic, but
+  // also wait for persisted Zustand state before falling back to the default
+  // project. Otherwise the fallback can overwrite the user's saved selection.
+  const canApplyPersistedSelection = hasMounted && hasProjectSelectionHydrated;
+  const stableSelectedProjectId = canApplyPersistedSelection
+    ? selectedProjectId
+    : null;
+  const isProjectSelectionReady =
+    !enabled || !userKey || canApplyPersistedSelection;
 
   const projectsUrl = useMemo(() => {
     if (!enabled || !userId) return null;
@@ -68,12 +86,21 @@ export function useResolvedProjectSelection({
   const hasResolvedProjects = projectsRaw !== undefined || Boolean(projectsError);
 
   const projectId = useMemo(() => {
-    if (!hasResolvedProjects) return selectedProjectId;
-    if (selectedProjectId && projects.some((project) => project.id === selectedProjectId)) {
-      return selectedProjectId;
+    if (!isProjectSelectionReady) return null;
+    if (!hasResolvedProjects) return stableSelectedProjectId;
+    if (
+      stableSelectedProjectId &&
+      projects.some((project) => project.id === stableSelectedProjectId)
+    ) {
+      return stableSelectedProjectId;
     }
     return projects[0]?.id ?? null;
-  }, [hasResolvedProjects, selectedProjectId, projects]);
+  }, [
+    hasResolvedProjects,
+    isProjectSelectionReady,
+    stableSelectedProjectId,
+    projects,
+  ]);
 
   const selectedProject = useMemo<ApiProject | null>(() => {
     if (!projectId) return null;
@@ -81,23 +108,24 @@ export function useResolvedProjectSelection({
   }, [projectId, projects]);
 
   useEffect(() => {
-    if (!hasResolvedProjects || !userKey) return;
+    if (!isProjectSelectionReady || !hasResolvedProjects || !userKey) return;
 
     if (!projectId) {
-      if (selectedProjectId) {
+      if (stableSelectedProjectId) {
         clearSelectedProjectId(userKey);
       }
       return;
     }
 
-    if (projectId !== selectedProjectId) {
+    if (projectId !== stableSelectedProjectId) {
       setSelectedProjectId(userKey, projectId);
     }
   }, [
     userKey,
+    isProjectSelectionReady,
     hasResolvedProjects,
     projectId,
-    selectedProjectId,
+    stableSelectedProjectId,
     clearSelectedProjectId,
     setSelectedProjectId,
   ]);
@@ -126,9 +154,11 @@ export function useResolvedProjectSelection({
 
   const projectBootstrapLoading =
     Boolean(userKey) &&
-    projectId === null &&
-    !projectsError &&
-    (projectsLoading || projectsRaw === undefined);
+    enabled &&
+    (!isProjectSelectionReady ||
+      (projectId === null &&
+        !projectsError &&
+        (projectsLoading || projectsRaw === undefined)));
 
   const setProjectId = useCallback(
     (nextProjectId: string | null) => {
@@ -153,7 +183,7 @@ export function useResolvedProjectSelection({
     projectsError,
     projectsLoading,
     hasResolvedProjects,
-    selectedProjectId,
+    selectedProjectId: stableSelectedProjectId,
     projectId,
     selectedProject,
     projectBootstrapLoading,

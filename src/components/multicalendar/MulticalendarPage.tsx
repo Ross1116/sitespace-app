@@ -43,6 +43,15 @@ const processBookingToEvent = (
   if (b.purpose && b.purpose.trim() !== "") title = b.purpose;
   else if (b.notes && b.notes.trim() !== "") title = b.notes;
 
+  const provenanceSummary = [
+    b.programme_activity_name ? `Activity: ${b.programme_activity_name}` : null,
+    b.expected_asset_type ? `Expected: ${b.expected_asset_type}` : null,
+    b.source ? `Source: ${b.source}` : null,
+    b.is_modified ? "Modified from programme default" : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   const assetName = b.asset?.name || "Unknown Asset";
   const assetCode = b.asset?.asset_code || "";
   const createdById = b.created_by_id || b.created_by?.id;
@@ -55,7 +64,7 @@ const processBookingToEvent = (
     start: startDate,
     end: endDate,
     title: title,
-    description: b.notes || "",
+    description: [b.notes || "", provenanceSummary].filter(Boolean).join(" · "),
     color,
     bookingKey: b.id,
     bookingStatus: status,

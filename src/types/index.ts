@@ -9,7 +9,11 @@ export type BookingStatus =
   | "cancelled"
   | "denied";
 
-export type AssetStatus = "available" | "maintenance" | "retired";
+export type AssetStatus =
+  | "available"
+  | "maintenance"
+  | "retired"
+  | "out of service";
 
 export type UserRole = "admin" | "manager" | "subcontractor" | "tv";
 
@@ -21,7 +25,6 @@ export interface ApiProject {
   location?: string;
   status?: string;
   is_active?: boolean;
-  // Subcontractor project assignments have these alternate keys
   project_id?: string;
   project_name?: string;
   project_location?: string;
@@ -32,6 +35,7 @@ export interface ApiManager {
   first_name: string;
   last_name: string;
   full_name?: string;
+  email?: string;
 }
 
 export interface ApiSubcontractor {
@@ -41,6 +45,11 @@ export interface ApiSubcontractor {
   last_name: string;
   company_name?: string;
   trade_specialty?: string;
+  suggested_trade_specialty?: string | null;
+  trade_resolution_status?: string | null;
+  trade_inference_source?: string | null;
+  trade_inference_confidence?: number | null;
+  planning_ready?: boolean;
   phone?: string;
   is_active: boolean;
   created_at: string;
@@ -52,8 +61,13 @@ export interface ApiAsset {
   asset_code: string;
   name: string;
   type?: string | null;
+  canonical_type?: string | null;
+  type_resolution_status?: string | null;
+  type_inference_source?: string | null;
+  type_inference_confidence?: number | null;
+  planning_ready?: boolean;
   description?: string;
-  status: AssetStatus;
+  status: AssetStatus | string;
   project_id?: string;
   created_at: string;
   updated_at: string;
@@ -80,16 +94,32 @@ export interface ApiBooking {
   title?: string;
   created_at?: string;
   updated_at?: string;
-  asset?: { id: string; name: string; asset_code?: string };
+  source?: string | null;
+  booking_group_id?: string | null;
+  programme_activity_id?: string | null;
+  programme_activity_name?: string | null;
+  expected_asset_type?: string | null;
+  is_modified?: boolean;
+  asset?: {
+    id: string;
+    name: string;
+    asset_code?: string;
+    status?: string;
+    canonical_type?: string | null;
+    planning_ready?: boolean;
+  };
   project?: { id: string; name: string };
   manager?: ApiManager;
   created_by_id?: string | null;
   created_by_name?: string | null;
   created_by_role?: string | null;
+  created_by_email?: string | null;
   booked_by_name?: string | null;
   booked_by_role?: string | null;
+  booked_by_email?: string | null;
   requested_by_name?: string | null;
   requested_by_role?: string | null;
+  requested_by_email?: string | null;
   created_by?: {
     id?: string;
     first_name?: string;
@@ -114,7 +144,7 @@ export interface PaginatedResponse<T> {
   skip: number;
   limit: number;
   has_more: boolean;
-  [key: string]: T[] | number | boolean; // e.g. bookings, assets, subcontractors
+  [key: string]: T[] | number | boolean;
 }
 
 export interface BookingListResponse {
@@ -167,6 +197,12 @@ export interface TransformedBooking {
   projectName?: string;
   managerId?: string;
   competingPendingCount?: number;
+  bookingSource?: string | null;
+  bookingGroupId?: string | null;
+  programmeActivityId?: string | null;
+  programmeActivityName?: string | null;
+  expectedAssetType?: string | null;
+  isModified?: boolean;
   _originalData?: ApiBooking;
 }
 
@@ -185,6 +221,11 @@ export interface TransformedAsset {
   usageInstructions: string;
   assetCode: string;
   pendingBookingCapacity?: number;
+  canonicalType?: string | null;
+  typeResolutionStatus?: string | null;
+  typeInferenceSource?: string | null;
+  typeInferenceConfidence?: number | null;
+  planningReady?: boolean;
   _originalData?: ApiAsset;
 }
 
@@ -196,6 +237,11 @@ export interface TransformedContractor {
   contractorEmail: string;
   contractorPhone: string;
   isActive: boolean;
+  suggestedTradeSpecialty?: string | null;
+  tradeResolutionStatus?: string | null;
+  tradeInferenceSource?: string | null;
+  tradeInferenceConfidence?: number | null;
+  planningReady?: boolean;
   _originalData?: ApiSubcontractor;
 }
 
@@ -257,6 +303,219 @@ export interface FileUploadResponse {
   preview_url: string;
 }
 
+// ===== LOOKAHEAD / PROGRAMME =====
+
+export type ProgrammeUploadStatus = "processing" | "committed" | "degraded";
+
+export type DemandLevel = "low" | "medium" | "high" | "critical";
+
+export interface LookaheadRow {
+  asset_type: string;
+  week_start: string;
+  demand_hours: number;
+  booked_hours: number;
+  gap_hours: number;
+  demand_level: DemandLevel;
+  snapshot_date?: string;
+  timezone?: string | null;
+}
+
+export interface LookaheadSnapshotResponse {
+  project_id: string;
+  snapshot_id?: string;
+  snapshot_date?: string;
+  timezone?: string | null;
+  rows: LookaheadRow[];
+  message?: string;
+}
+
+export interface LookaheadSnapshotHistoryEntry {
+  snapshot_id?: string;
+  snapshot_date?: string | null;
+  timezone?: string | null;
+  rows: LookaheadRow[];
+}
+
+export interface LookaheadAnomalyFlags {
+  demand_spike_over_100pct?: boolean;
+  mapping_changes_over_40pct?: boolean;
+  activity_count_delta_over_30pct?: boolean;
+  mapping_change_ratio?: number;
+  activity_count_delta_ratio?: number;
+  [key: string]: boolean | number | undefined;
+}
+
+export interface LookaheadAlertsResponse {
+  project_id: string;
+  snapshot_id?: string;
+  snapshot_date?: string;
+  alerts: LookaheadAnomalyFlags;
+}
+
+export interface LookaheadActivityCandidate {
+  activity_id: string;
+  programme_upload_id?: string | null;
+  activity_name: string;
+  start_date?: string | null;
+  end_date?: string | null;
+  overlap_hours: number;
+  level_name?: string | null;
+  zone_name?: string | null;
+  row_confidence?: number | null;
+  sort_order?: number | null;
+  booking_group_id?: string | null;
+  linked_booking_count?: number | null;
+}
+
+export interface LookaheadActivitiesResponse {
+  project_id?: string;
+  week_start?: string | null;
+  asset_type?: string | null;
+  activities: LookaheadActivityCandidate[];
+}
+
+export interface ActivityBookingGroupSummary {
+  booking_group_id?: string | null;
+  booking_count?: number;
+  total_booked_hours?: number;
+  last_booking_at?: string | null;
+}
+
+export interface ProgrammeActivityCandidateAsset {
+  id: string;
+  asset_code?: string;
+  name: string;
+  status?: string | null;
+  canonical_type?: string | null;
+  planning_ready?: boolean;
+  availability_status?: string | null;
+  availability_reason?: string | null;
+  booked_hours_in_week?: number | null;
+}
+
+export interface ProgrammeActivitySuggestedBookingDate {
+  date: string;
+  start_time?: string | null;
+  end_time?: string | null;
+  hours?: number | null;
+  demand_hours?: number | null;
+  booked_hours?: number | null;
+  gap_hours?: number | null;
+}
+
+export interface ProgrammeActivityBookingContextResponse {
+  activity_id: string;
+  activity_name: string;
+  programme_upload_id?: string | null;
+  expected_asset_type?: string | null;
+  selected_week_start?: string | null;
+  default_week_start?: string | null;
+  default_booking_date?: string | null;
+  default_start_time?: string | null;
+  default_end_time?: string | null;
+  suggested_bulk_dates: ProgrammeActivitySuggestedBookingDate[];
+  linked_booking_group?: ActivityBookingGroupSummary | null;
+  linked_bookings: ApiBooking[];
+  candidate_assets: ProgrammeActivityCandidateAsset[];
+  level_name?: string | null;
+  zone_name?: string | null;
+}
+
+export interface ActivityMappingResponse {
+  id: string;
+  item_id?: string | null;
+  activity_name?: string | null;
+  source_value?: string | null;
+  asset_type?: string | null;
+  classification_name?: string | null;
+  current_classification?: string | null;
+  suggested_classification?: string | null;
+  source?: string | null;
+  confidence?: number | null;
+  manual_correction?: boolean;
+  corrected_by?: string | null;
+  corrected_at?: string | null;
+  level_name?: string | null;
+  zone_name?: string | null;
+}
+
+export interface PlanningCompletenessTask {
+  id?: string;
+  title: string;
+  description?: string | null;
+  severity?: string | null;
+  status?: string | null;
+  link?: string | null;
+  entity_type?: string | null;
+  entity_id?: string | null;
+  count?: number | null;
+}
+
+export interface PlanningCompletenessCounts {
+  unknown_assets?: number;
+  inferred_assets?: number;
+  confirmed_assets?: number;
+  unknown_trades?: number;
+  inferred_trades?: number;
+  confirmed_trades?: number;
+  blocking_assets?: number;
+  blocking_trades?: number;
+  blocking_total?: number;
+  next_six_weeks_blocking_assets?: number;
+  next_six_weeks_blocking_trades?: number;
+  [key: string]: number | undefined;
+}
+
+export interface PlanningCompletenessResponse {
+  score: number;
+  status: string;
+  window_start?: string | null;
+  window_end?: string | null;
+  counts: PlanningCompletenessCounts;
+  actionable_tasks: PlanningCompletenessTask[];
+}
+
+export interface ProgrammeUploadDiagnostics {
+  ai_quota_exhausted?: boolean;
+  classification_ai_suppressed?: boolean;
+  work_profile_ai_suppressed?: boolean;
+  missing_fields?: string[];
+  notes?: string | string[];
+  unclassified_mapping_count?: number;
+  non_planning_ready_asset_count?: number;
+  excluded_booking_count?: number;
+  ai_classification_fallback?: boolean;
+  [key: string]: unknown;
+}
+
+export interface ProgrammeVersion {
+  upload_id: string;
+  version_number: number;
+  file_name: string;
+  status: ProgrammeUploadStatus;
+  completeness_score: number;
+  created_at: string | null;
+  completeness_notes?: ProgrammeUploadDiagnostics | null;
+}
+
+export interface UploadStatusResponse {
+  upload_id: string;
+  status: ProgrammeUploadStatus;
+  completeness_score: number;
+  completeness_notes: ProgrammeUploadDiagnostics | null;
+  version_number: number;
+  file_name: string;
+  created_at: string | null;
+  ai_tokens_used?: number | null;
+  ai_cost_usd?: number | null;
+}
+
+export interface UploadAcceptedResponse {
+  upload_id: string;
+  status: "processing";
+  message: string;
+}
+
 // ===== ERROR HANDLING =====
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -311,7 +570,6 @@ function toMessageText(value: unknown): string | null {
   return null;
 }
 
-/** Safely extract an error message from an unknown catch value (works with Axios errors). */
 export function getApiErrorMessage(
   error: unknown,
   fallback = "Something went wrong",
@@ -339,75 +597,6 @@ export function getApiErrorMessage(
   return fallback;
 }
 
-/** Type guard: is this an AxiosError? */
 export function isAxiosError(error: unknown): error is AxiosError {
   return error instanceof AxiosError;
-}
-
-// ===== PROGRAMME & LOOKAHEAD =====
-
-export type ProgrammeUploadStatus = "processing" | "committed" | "degraded";
-
-export type DemandLevel = "low" | "medium" | "high" | "critical";
-
-export interface LookaheadRow {
-  asset_type: string;
-  week_start: string;
-  demand_hours: number;
-  booked_hours: number;
-  demand_level: DemandLevel;
-  gap_hours: number;
-}
-
-export interface LookaheadSnapshotResponse {
-  project_id: string;
-  snapshot_id?: string;
-  snapshot_date?: string;
-  timezone?: string | null;
-  rows: LookaheadRow[];
-  message?: string;
-}
-
-export interface LookaheadAnomalyFlags {
-  demand_spike_over_100pct?: boolean;
-  mapping_changes_over_40pct?: boolean;
-  activity_count_delta_over_30pct?: boolean;
-  mapping_change_ratio?: number;
-  activity_count_delta_ratio?: number;
-}
-
-export interface LookaheadAlertsResponse {
-  project_id: string;
-  snapshot_id?: string;
-  snapshot_date?: string;
-  alerts: LookaheadAnomalyFlags;
-}
-
-export interface ProgrammeVersion {
-  upload_id: string;
-  version_number: number;
-  file_name: string;
-  status: ProgrammeUploadStatus;
-  completeness_score: number;
-  created_at: string | null;
-}
-
-export interface UploadStatusResponse {
-  upload_id: string;
-  status: ProgrammeUploadStatus;
-  completeness_score: number;
-  completeness_notes: {
-    missing_fields: string[];
-    notes: string;
-    ai_classification_fallback?: boolean;
-  } | null;
-  version_number: number;
-  file_name: string;
-  created_at: string | null;
-}
-
-export interface UploadAcceptedResponse {
-  upload_id: string;
-  status: "processing";
-  message: string;
 }

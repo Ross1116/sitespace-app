@@ -2,16 +2,10 @@
 
 import { useMemo } from "react";
 import useSWR from "swr";
-import type { ApiAsset } from "@/types";
-import { swrFetcher, SWR_CONFIG } from "@/lib/swr";
-
-type AssetListResponse = {
-  assets?: ApiAsset[];
-  total?: number;
-  skip?: number;
-  limit?: number;
-  has_more?: boolean;
-};
+import api from "@/lib/api";
+import type { ApiAsset, AssetListResponse } from "@/types";
+import { normalizeAssetList } from "@/lib/apiNormalization";
+import { SWR_CONFIG } from "@/lib/swr";
 
 type Result = {
   assets: ApiAsset[];
@@ -28,7 +22,26 @@ export function useProjectAssets(projectId: string | null): Result {
 
   const { data, error, isLoading, mutate } = useSWR<AssetListResponse>(
     swrKey,
-    swrFetcher,
+    swrKey
+      ? async () => {
+          const response = await api.get<unknown>(swrKey);
+          const assets = normalizeAssetList(response.data);
+          const payload =
+            typeof response.data === "object" && response.data !== null
+              ? (response.data as Record<string, unknown>)
+              : {};
+
+          return {
+            assets,
+            total:
+              typeof payload.total === "number" ? payload.total : assets.length,
+            skip: typeof payload.skip === "number" ? payload.skip : 0,
+            limit: typeof payload.limit === "number" ? payload.limit : 100,
+            has_more:
+              typeof payload.has_more === "boolean" ? payload.has_more : false,
+          };
+        }
+      : null,
     SWR_CONFIG,
   );
 

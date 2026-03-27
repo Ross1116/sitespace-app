@@ -36,6 +36,11 @@ interface Contractor {
   contractorEmail: string;
   contractorPhone: string;
   isActive: boolean;
+  suggestedTradeSpecialty?: string | null;
+  tradeResolutionStatus?: string | null;
+  tradeInferenceSource?: string | null;
+  tradeInferenceConfidence?: number | null;
+  planningReady?: boolean;
   _originalData?: NormalizedSubcontractor;
 }
 
@@ -55,10 +60,16 @@ const transformBackendSubcontractor = (
     contractorKey: backendSub.id,
     contractorName: `${backendSub.first_name} ${backendSub.last_name}`.trim(),
     contractorCompany: backendSub.company_name || "-",
-    contractorTrade: backendSub.trade_specialty || "General",
+    contractorTrade:
+      backendSub.trade_specialty || backendSub.suggested_trade_specialty || "General",
     contractorEmail: backendSub.email,
     contractorPhone: backendSub.phone || "-",
     isActive: backendSub.is_active,
+    suggestedTradeSpecialty: backendSub.suggested_trade_specialty ?? null,
+    tradeResolutionStatus: backendSub.trade_resolution_status ?? null,
+    tradeInferenceSource: backendSub.trade_inference_source ?? null,
+    tradeInferenceConfidence: backendSub.trade_inference_confidence ?? null,
+    planningReady: backendSub.planning_ready,
     _originalData: backendSub,
   };
 };
@@ -397,7 +408,20 @@ export default function SubcontractorsPage() {
                         <span className="sm:hidden text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
                           Trade
                         </span>
-                        {sub.contractorTrade}
+                        <div className="flex flex-col gap-1">
+                          <span>{sub.contractorTrade}</span>
+                          {sub.planningReady !== undefined && (
+                            <span
+                              className={`inline-flex w-fit rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                                sub.planningReady
+                                  ? "bg-emerald-50 text-emerald-700"
+                                  : "bg-amber-50 text-amber-700"
+                              }`}
+                            >
+                              {sub.planningReady ? "Planning ready" : "Needs trade review"}
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       <div className="col-span-2 text-slate-500 text-xs sm:text-sm font-medium truncate">
@@ -579,6 +603,45 @@ export default function SubcontractorsPage() {
                       </div>
                       <span className="text-sm font-semibold text-slate-900">
                         {selectedContractor.contractorTrade}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Briefcase className="h-4 w-4 text-slate-400" />
+                        <span className="text-sm font-medium text-slate-500">
+                          Resolution Status
+                        </span>
+                      </div>
+                      <span className="text-sm font-semibold text-slate-900">
+                        {selectedContractor.tradeResolutionStatus || "Unspecified"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Briefcase className="h-4 w-4 text-slate-400" />
+                        <span className="text-sm font-medium text-slate-500">
+                          Planning Ready
+                        </span>
+                      </div>
+                      <span
+                        className={`text-sm font-semibold ${
+                          selectedContractor.planningReady
+                            ? "text-emerald-700"
+                            : "text-amber-700"
+                        }`}
+                      >
+                        {selectedContractor.planningReady ? "Yes" : "No"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Briefcase className="h-4 w-4 text-slate-400" />
+                        <span className="text-sm font-medium text-slate-500">
+                          Inference Source
+                        </span>
+                      </div>
+                      <span className="text-sm font-semibold text-slate-900">
+                        {selectedContractor.tradeInferenceSource || "Manual / unknown"}
                       </span>
                     </div>
                   </div>
