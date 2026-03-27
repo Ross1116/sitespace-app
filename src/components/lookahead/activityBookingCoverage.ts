@@ -20,6 +20,31 @@ function buildSlotKey(
   );
 }
 
+function parseTimeToMinutes(value?: string | null): number | null {
+  const normalized = normalizeTimeValue(value);
+  if (!normalized) return null;
+
+  const [hoursText, minutesText] = normalized.split(":");
+  const hours = Number(hoursText);
+  const minutes = Number(minutesText);
+
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+    return null;
+  }
+
+  return hours * 60 + minutes;
+}
+
+export function getSuggestedDateSlotKey(
+  suggestedDate: ProgrammeActivitySuggestedBookingDate,
+): string {
+  return buildSlotKey(
+    suggestedDate.date,
+    suggestedDate.start_time,
+    suggestedDate.end_time,
+  );
+}
+
 function isActiveLinkedBooking(booking: ApiBooking): boolean {
   const status = (booking.status ?? "").toLowerCase();
   return status !== "cancelled" && status !== "denied";
@@ -54,6 +79,35 @@ export function isSuggestedDateCovered(
   const endTime = suggestedDate.end_time ?? bookingContext.default_end_time;
 
   if (startTime || endTime) {
+    const suggestedStartMinutes = parseTimeToMinutes(startTime);
+    const suggestedEndMinutes = parseTimeToMinutes(endTime);
+
+    if (
+      suggestedStartMinutes !== null &&
+      suggestedEndMinutes !== null &&
+      suggestedEndMinutes > suggestedStartMinutes
+    ) {
+      return linkedBookings.some((booking) => {
+        if (booking.booking_date !== suggestedDate.date) return false;
+
+        const bookingStartMinutes = parseTimeToMinutes(booking.start_time);
+        const bookingEndMinutes = parseTimeToMinutes(booking.end_time);
+
+        if (
+          bookingStartMinutes === null ||
+          bookingEndMinutes === null ||
+          bookingEndMinutes <= bookingStartMinutes
+        ) {
+          return false;
+        }
+
+        return (
+          bookingStartMinutes <= suggestedStartMinutes &&
+          bookingEndMinutes >= suggestedEndMinutes
+        );
+      });
+    }
+
     const slotKey = buildSlotKey(suggestedDate.date, startTime, endTime);
     return linkedBookings.some(
       (booking) =>

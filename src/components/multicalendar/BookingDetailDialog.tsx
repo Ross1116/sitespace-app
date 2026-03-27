@@ -39,6 +39,7 @@ import { format } from "date-fns";
 import api from "@/lib/api";
 import { useAuth } from "@/app/context/AuthContext";
 import dynamic from "next/dynamic";
+import { formatBookingSource } from "@/lib/bookingHelpers";
 
 const RescheduleBookingForm = dynamic(() => import("@/components/forms/RescheduleBookingForm"), { ssr: false });
 import {
@@ -570,53 +571,54 @@ export function BookingDetailsDialog({
                   )}
                 </div>
 
-                <Separator className="bg-slate-100" />
-
                 {(data.source ||
                   data.programme_activity_name ||
                   data.expected_asset_type ||
                   data.booking_group_id ||
                   data.is_modified) && (
-                  <div>
-                    <div className="mb-2 flex items-center gap-2 text-xs font-bold text-slate-400 uppercase">
-                      <Link2 className="h-3.5 w-3.5" /> Provenance
+                  <>
+                    <Separator className="bg-slate-100" />
+                    <div>
+                      <div className="mb-2 flex items-center gap-2 text-xs font-bold text-slate-400 uppercase">
+                        <Link2 className="h-3.5 w-3.5" /> Provenance
+                      </div>
+                      <div className="rounded-lg border border-slate-100 bg-slate-50 p-4 text-sm text-slate-700 space-y-2">
+                        {data.source && (
+                          <p>
+                            <span className="font-medium text-slate-900">Source:</span>{" "}
+                            {formatBookingSource(data.source)}
+                          </p>
+                        )}
+                        {data.programme_activity_name && (
+                          <p>
+                            <span className="font-medium text-slate-900">Activity:</span>{" "}
+                            {data.programme_activity_name}
+                          </p>
+                        )}
+                        {data.expected_asset_type && (
+                          <p>
+                            <span className="font-medium text-slate-900">
+                              Expected asset type:
+                            </span>{" "}
+                            {data.expected_asset_type}
+                          </p>
+                        )}
+                        {data.booking_group_id && (
+                          <p>
+                            <span className="font-medium text-slate-900">
+                              Booking group:
+                            </span>{" "}
+                            {data.booking_group_id}
+                          </p>
+                        )}
+                        {data.is_modified && (
+                          <p className="text-amber-700">
+                            This booking has been modified since it was linked to the programme activity.
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    <div className="rounded-lg border border-slate-100 bg-slate-50 p-4 text-sm text-slate-700 space-y-2">
-                      {data.source && (
-                        <p>
-                          <span className="font-medium text-slate-900">Source:</span>{" "}
-                          <span className="capitalize">{data.source}</span>
-                        </p>
-                      )}
-                      {data.programme_activity_name && (
-                        <p>
-                          <span className="font-medium text-slate-900">Activity:</span>{" "}
-                          {data.programme_activity_name}
-                        </p>
-                      )}
-                      {data.expected_asset_type && (
-                        <p>
-                          <span className="font-medium text-slate-900">
-                            Expected asset type:
-                          </span>{" "}
-                          {data.expected_asset_type}
-                        </p>
-                      )}
-                      {data.booking_group_id && (
-                        <p>
-                          <span className="font-medium text-slate-900">
-                            Booking group:
-                          </span>{" "}
-                          {data.booking_group_id}
-                        </p>
-                      )}
-                      {data.is_modified && (
-                        <p className="text-amber-700">
-                          This booking has been modified since it was linked to the programme activity.
-                        </p>
-                      )}
-                    </div>
-                  </div>
+                  </>
                 )}
 
                 <Separator className="bg-slate-100" />

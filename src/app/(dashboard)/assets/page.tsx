@@ -77,6 +77,9 @@ type SortField =
 type SortDirection = "asc" | "desc";
 type ReadinessFilter = "all" | "ready" | "review";
 
+const getAssetDisplayType = (asset: Asset): string =>
+  asset.canonicalType || asset.assetType;
+
 const transformBackendAsset = (backendAsset: AssetFromBackend): Asset => {
   const descriptionText =
     backendAsset.description ||
@@ -272,7 +275,7 @@ export default function AssetsTable() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm]);
+  }, [readinessFilter, searchTerm]);
 
   // Client-side filtering + sorting
   const filteredAndSortedAssets = useMemo(() => {
@@ -287,7 +290,7 @@ export default function AssetsTable() {
         (asset) =>
           asset.assetTitle.toLowerCase().includes(term) ||
           asset.assetCode.toLowerCase().includes(term) ||
-          asset.assetType.toLowerCase().includes(term),
+          getAssetDisplayType(asset).toLowerCase().includes(term),
       );
     }
 
@@ -328,8 +331,13 @@ export default function AssetsTable() {
           return sortDirection === "asc" ? aOrder - bOrder : bOrder - aOrder;
         }
 
-        aVal = (a[sortField] || "").toLowerCase();
-        bVal = (b[sortField] || "").toLowerCase();
+        if (sortField === "assetType") {
+          aVal = getAssetDisplayType(a).toLowerCase();
+          bVal = getAssetDisplayType(b).toLowerCase();
+        } else {
+          aVal = (a[sortField] || "").toLowerCase();
+          bVal = (b[sortField] || "").toLowerCase();
+        }
 
         if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;
         if (aVal > bVal) return sortDirection === "asc" ? 1 : -1;
@@ -799,15 +807,29 @@ export default function AssetsTable() {
                           Planning Ready
                         </span>
                       </div>
-                      <span
-                        className={`text-sm font-semibold ${
-                          selectedAsset.planningReady
-                            ? "text-emerald-700"
-                            : "text-amber-700"
-                        }`}
-                      >
-                        {selectedAsset.planningReady ? "Yes" : "No"}
-                      </span>
+                      {(() => {
+                        if (selectedAsset.planningReady === true) {
+                          return (
+                            <span className="text-sm font-semibold text-emerald-700">
+                              Yes
+                            </span>
+                          );
+                        }
+
+                        if (selectedAsset.planningReady === false) {
+                          return (
+                            <span className="text-sm font-semibold text-amber-700">
+                              No
+                            </span>
+                          );
+                        }
+
+                        return (
+                          <span className="text-sm font-semibold text-slate-500">
+                            Unknown
+                          </span>
+                        );
+                      })()}
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">

@@ -257,7 +257,7 @@ export default function BookingsPage() {
       nextHour,
       endHour: addHours(nextHour, 1),
     };
-  }, []);
+  }, [isBookingFormOpen]);
 
   const updateActiveTab = useCallback(
     (nextTab: string) => {

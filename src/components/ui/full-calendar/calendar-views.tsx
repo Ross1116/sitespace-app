@@ -394,8 +394,10 @@ export const CalendarDayView = ({
     setIsBookingFormOpen(true);
   };
 
-  const currentHour = new Date().getHours();
-  const isCurrentDay = isSameDay(date, new Date());
+  const now = new Date();
+  const currentHour = now.getHours();
+  const currentMinutes = now.getMinutes();
+  const isCurrentDay = isSameDay(date, now);
 
   return (
     <>
@@ -423,7 +425,9 @@ export const CalendarDayView = ({
               {isCurrentDay && currentHour >= 6 && currentHour < 20 && (
                 <div
                   className="absolute w-full border-t-2 border-navy z-20 pointer-events-none"
-                  style={{ top: `${(currentHour - 6) * 48}px` }}
+                  style={{
+                    top: `${((currentHour - 6) + currentMinutes / 60) * 48}px`,
+                  }}
                 >
                   <div className="absolute -left-1.5 -top-1.5 w-3 h-3 rounded-full bg-navy"></div>
                 </div>

@@ -20,6 +20,7 @@ export function SnapshotHistoryPanel({
 }: Props) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const isOpen = controlledOpen ?? uncontrolledOpen;
+  const panelId = "snapshot-history-panel";
 
   const setIsOpen = (next: boolean) => {
     if (controlledOpen === undefined) {
@@ -33,6 +34,8 @@ export function SnapshotHistoryPanel({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
+        aria-expanded={isOpen}
+        aria-controls={panelId}
         className="flex w-full items-center justify-between px-5 py-3.5 text-sm font-bold text-slate-600 hover:text-slate-900"
       >
         <span className="flex items-center gap-2">
@@ -47,7 +50,7 @@ export function SnapshotHistoryPanel({
       </button>
 
       {isOpen && (
-        <div className="space-y-2 border-t border-slate-100 p-3">
+        <div id={panelId} className="space-y-2 border-t border-slate-100 p-3">
           {isLoading ? (
             <div className="rounded-lg border border-slate-200 bg-white px-3 py-6 text-sm text-slate-500">
               Loading snapshot history...

@@ -95,7 +95,10 @@ export default function LandingPage() {
               </div>
             </HeroParallax>
 
-            <div className="animate-fade-in-up [animation-delay:0.2s] fill-mode-both">
+            <div
+              className="animate-fade-in-up [animation-delay:0.2s]"
+              style={{ animationFillMode: "both" }}
+            >
               <DesktopFrame className="shine md:transform-[perspective(1000px)_rotateY(-5deg)]">
                 <Image
                   src="/static/images/Lookaheaddash.jpeg"

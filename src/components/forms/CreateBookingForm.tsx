@@ -77,7 +77,10 @@ import {
   HOURS_IN_DAY,
   MINUTES_PER_HOUR,
 } from "@/lib/formOptions";
-import { getSuggestedDatesWithCoverageStatus } from "@/components/lookahead/activityBookingCoverage";
+import {
+  getSuggestedDateSlotKey,
+  getSuggestedDatesWithCoverageStatus,
+} from "@/components/lookahead/activityBookingCoverage";
 
 // ===== TYPE DEFINITIONS =====
 type CreateBookingFormProps = {
@@ -652,7 +655,7 @@ export function CreateBookingForm({
     [activityContext],
   );
   const coveredSuggestedDateValues = useMemo(
-    () => coveredSuggestedDates.map((entry) => entry.date),
+    () => coveredSuggestedDates.map((entry) => getSuggestedDateSlotKey(entry)),
     [coveredSuggestedDates],
   );
   const coveredSuggestedDateSet = useMemo(
@@ -660,11 +663,11 @@ export function CreateBookingForm({
     [coveredSuggestedDateValues],
   );
   const remainingSuggestedDateValues = useMemo(
-    () => remainingSuggestedDates.map((entry) => entry.date),
+    () => remainingSuggestedDates.map((entry) => getSuggestedDateSlotKey(entry)),
     [remainingSuggestedDates],
   );
   const suggestedBulkDateValues = useMemo(
-    () => suggestedBulkDates.map((entry) => entry.date),
+    () => suggestedBulkDates.map((entry) => getSuggestedDateSlotKey(entry)),
     [suggestedBulkDates],
   );
   const suggestedBulkDatesKey = useMemo(
@@ -673,7 +676,9 @@ export function CreateBookingForm({
   );
   const selectedBulkDateEntries = useMemo(
     () =>
-      suggestedBulkDates.filter((entry) => selectedBulkDates.includes(entry.date)),
+      suggestedBulkDates.filter((entry) =>
+        selectedBulkDates.includes(getSuggestedDateSlotKey(entry)),
+      ),
     [selectedBulkDates, suggestedBulkDates],
   );
   const linkedBookings = activityContext?.linked_bookings ?? EMPTY_LINKED_BOOKINGS;
@@ -692,12 +697,6 @@ export function CreateBookingForm({
     return `${displayHour} ${period}`;
   };
 
-  const effectiveBookingDates = useMemo(() => {
-    if (useBulkDates && selectedBulkDates.length > 0) {
-      return selectedBulkDates;
-    }
-    return [format(selectedDate, "yyyy-MM-dd")];
-  }, [selectedBulkDates, selectedDate, useBulkDates]);
   const fallbackStartTimeValue = customStartTime
     ? format(customStartTime, "HH:mm:ss")
     : null;
@@ -705,33 +704,86 @@ export function CreateBookingForm({
     ? format(customEndTime, "HH:mm:ss")
     : null;
   const suggestedBulkDatesByDate = useMemo(
-    () => new Map(suggestedBulkDates.map((entry) => [entry.date, entry])),
+    () =>
+      suggestedBulkDates.reduce(
+        (map, entry) => {
+          const current = map.get(entry.date) ?? [];
+          current.push(entry);
+          map.set(entry.date, current);
+          return map;
+        },
+        new Map<string, ProgrammeActivitySuggestedBookingDate[]>(),
+      ),
     [suggestedBulkDates],
   );
-  const effectiveBookingPlan = useMemo(
+  const preferredSuggestedDateKey = useMemo(
     () =>
-      effectiveBookingDates.map((bookingDate) => {
-        const suggestedDate = suggestedBulkDatesByDate.get(bookingDate) ?? null;
-        const resolvedWindow = resolveSuggestedDateWindow({
-          bookingDate,
-          suggestedDate,
-          fallbackStartTime: fallbackStartTimeValue,
-          fallbackEndTime: fallbackEndTimeValue,
+      preferredSuggestedDate ? getSuggestedDateSlotKey(preferredSuggestedDate) : null,
+    [preferredSuggestedDate],
+  );
+  const effectiveBookingPlan = useMemo(
+    () => {
+      if (useBulkDates) {
+        if (selectedBulkDateEntries.length === 0) {
+          return [];
+        }
+
+        return selectedBulkDateEntries.map((suggestedDate) => {
+          const bookingDate = suggestedDate.date;
+          const resolvedWindow = resolveSuggestedDateWindow({
+            bookingDate,
+            suggestedDate,
+            fallbackStartTime: fallbackStartTimeValue,
+            fallbackEndTime: fallbackEndTimeValue,
+          });
+          return {
+            bookingDate,
+            suggestedDate,
+            start: resolvedWindow.start,
+            end: resolvedWindow.end,
+            hours: resolvedWindow.hours,
+          };
         });
-        return {
+      }
+
+      const bookingDate = format(selectedDate, "yyyy-MM-dd");
+      const matchingSuggestedDates = suggestedBulkDatesByDate.get(bookingDate) ?? [];
+      const suggestedDate =
+        matchingSuggestedDates.find(
+          (entry) => getSuggestedDateSlotKey(entry) === preferredSuggestedDateKey,
+        ) ??
+        matchingSuggestedDates[0] ??
+        null;
+      const resolvedWindow = resolveSuggestedDateWindow({
+        bookingDate,
+        suggestedDate,
+        fallbackStartTime: fallbackStartTimeValue,
+        fallbackEndTime: fallbackEndTimeValue,
+      });
+
+      return [
+        {
           bookingDate,
           suggestedDate,
           start: resolvedWindow.start,
           end: resolvedWindow.end,
           hours: resolvedWindow.hours,
-        };
-      }),
+        },
+      ];
+    },
     [
-      effectiveBookingDates,
       fallbackEndTimeValue,
       fallbackStartTimeValue,
+      preferredSuggestedDateKey,
+      selectedBulkDateEntries,
+      selectedDate,
       suggestedBulkDatesByDate,
+      useBulkDates,
     ],
+  );
+  const effectiveBookingDates = useMemo(
+    () => effectiveBookingPlan.map((plan) => plan.bookingDate),
+    [effectiveBookingPlan],
   );
   const bulkWindowSummary = useMemo(() => {
     if (!customStartTime || !customEndTime) return null;
@@ -791,10 +843,11 @@ export function CreateBookingForm({
   });
 
   useEffect(() => {
-    if (assetsSwrError) {
+    if (assetsSwrError && candidateAssets.length === 0) {
       dispatchAsset({ type: "SET_ASSET_ERROR", error: true });
       return;
     }
+
     const sourceAssets =
       candidateAssets.length > 0
         ? candidateAssets.map((asset) => ({
@@ -818,6 +871,7 @@ export function CreateBookingForm({
         availabilityReason:
           "availability_reason" in asset ? asset.availability_reason : undefined,
       }));
+    dispatchAsset({ type: "SET_ASSET_ERROR", error: false });
     dispatchAsset({ type: "SET_ASSETS", assets: normalizedAssets });
   }, [projectAssets, assetsSwrError, candidateAssets]);
 
@@ -886,9 +940,7 @@ export function CreateBookingForm({
     seededOpenKeyRef.current = seedKey;
 
     const preferredSeedDate =
-      preferredSuggestedDate?.date ??
-      activityContext?.default_booking_date ??
-      null;
+      preferredSuggestedDate?.date ?? activityContext?.default_booking_date ?? null;
     const preferredSuggestedWindow = preferredSeedDate
       ? resolveSuggestedDateWindow({
           bookingDate: preferredSeedDate,
@@ -1102,18 +1154,25 @@ export function CreateBookingForm({
     }
 
     const coveredSelectedDates = activityContext
-      ? effectiveBookingDates.filter((bookingDate) =>
-          coveredSuggestedDateSet.has(bookingDate),
+      ? effectiveBookingPlan.filter(
+          (plan) =>
+            plan.suggestedDate &&
+            coveredSuggestedDateSet.has(getSuggestedDateSlotKey(plan.suggestedDate)),
         )
       : [];
 
     if (coveredSelectedDates.length > 0) {
+      const coveredLabels = coveredSelectedDates.map((plan) =>
+        plan.suggestedDate
+          ? getSuggestedDateDisplayLabel(plan.suggestedDate)
+          : plan.bookingDate,
+      );
       dispatchAsync({
         type: "SET_ERROR",
         error:
           coveredSelectedDates.length === 1
-            ? `The suggested slot for ${coveredSelectedDates[0]} is already fully linked. Adjust the existing linked booking instead of creating a duplicate.`
-            : `These suggested dates are already fully linked: ${coveredSelectedDates.join(", ")}.`,
+            ? `The suggested slot for ${coveredLabels[0]} is already fully linked. Adjust the existing linked booking instead of creating a duplicate.`
+            : `These suggested dates are already fully linked: ${coveredLabels.join(", ")}.`,
       });
       return;
     }
@@ -1529,13 +1588,12 @@ export function CreateBookingForm({
                       </p>
                       <div className="grid gap-2 sm:grid-cols-2">
                         {suggestedBulkDates.map((bulkDate) => {
-                          const checked = selectedBulkDates.includes(bulkDate.date);
-                          const isCovered = coveredSuggestedDateSet.has(
-                            bulkDate.date,
-                          );
+                          const slotKey = getSuggestedDateSlotKey(bulkDate);
+                          const checked = selectedBulkDates.includes(slotKey);
+                          const isCovered = coveredSuggestedDateSet.has(slotKey);
                           return (
                             <label
-                              key={bulkDate.date}
+                              key={slotKey}
                               className={`flex items-center gap-2 rounded-md border px-3 py-2 text-xs ${
                                 isCovered
                                   ? "border-amber-200 bg-amber-50 text-amber-700"
@@ -1547,8 +1605,8 @@ export function CreateBookingForm({
                                 onCheckedChange={(nextChecked) => {
                                   setSelectedBulkDates((current) =>
                                     nextChecked
-                                      ? Array.from(new Set([...current, bulkDate.date]))
-                                      : current.filter((value) => value !== bulkDate.date),
+                                      ? Array.from(new Set([...current, slotKey]))
+                                      : current.filter((value) => value !== slotKey),
                                   );
                                 }}
                                 disabled={isSubmitting || isCovered}
@@ -1572,10 +1630,20 @@ export function CreateBookingForm({
                           </p>
                           <div className="mt-2 space-y-2">
                             {effectiveBookingPlan
-                              .filter((plan) => selectedBulkDates.includes(plan.bookingDate))
+                              .filter(
+                                (plan) =>
+                                  plan.suggestedDate &&
+                                  selectedBulkDates.includes(
+                                    getSuggestedDateSlotKey(plan.suggestedDate),
+                                  ),
+                              )
                               .map((plan) => (
                                 <div
-                                  key={`plan-${plan.bookingDate}`}
+                                  key={`plan-${
+                                    plan.suggestedDate
+                                      ? getSuggestedDateSlotKey(plan.suggestedDate)
+                                      : plan.bookingDate
+                                  }`}
                                   className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600"
                                 >
                                   <span className="font-medium text-slate-900">
@@ -2159,8 +2227,8 @@ export function CreateBookingForm({
                 ) : activitySuggestedCoverageFullyLinked ? (
                   "Activity already fully linked"
                 ) : (
-                  `Save ${effectiveBookingDates.length * selectedAssetIds.length} Booking${
-                    effectiveBookingDates.length * selectedAssetIds.length === 1
+                  `Save ${effectiveBookingPlan.length * selectedAssetIds.length} Booking${
+                    effectiveBookingPlan.length * selectedAssetIds.length === 1
                       ? ""
                       : "s"
                   }`

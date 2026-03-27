@@ -209,19 +209,30 @@ export default function LookaheadDashboard() {
   );
   const latestVersion = sortedVersions[0] ?? null;
 
-  const { uploadStatus, mutate: mutateUploadStatus } = useProgrammeUploadStatus({
+  const {
+    uploadStatus,
+    isLoading: uploadStatusLoading,
+    mutate: mutateUploadStatus,
+  } = useProgrammeUploadStatus({
     uploadId: latestVersion?.upload_id ?? null,
     enabled: Boolean(latestVersion?.upload_id),
   });
-  const { mappings, mutate: mutateMappings } = useProgrammeMappings({
+  const {
+    mappings,
+    isLoading: mappingsLoading,
+    mutate: mutateMappings,
+  } = useProgrammeMappings({
     uploadId: latestVersion?.upload_id ?? null,
     enabled: Boolean(latestVersion?.upload_id && isUploadReviewOpen),
   });
-  const { mappings: unclassifiedMappings, mutate: mutateUnclassified } =
-    useUnclassifiedMappings({
-      uploadId: latestVersion?.upload_id ?? null,
-      enabled: Boolean(latestVersion?.upload_id && isUploadReviewOpen),
-    });
+  const {
+    mappings: unclassifiedMappings,
+    isLoading: unclassifiedMappingsLoading,
+    mutate: mutateUnclassified,
+  } = useUnclassifiedMappings({
+    uploadId: latestVersion?.upload_id ?? null,
+    enabled: Boolean(latestVersion?.upload_id && isUploadReviewOpen),
+  });
   const {
     activities,
     isLoading: activitiesLoading,
@@ -463,8 +474,7 @@ export default function LookaheadDashboard() {
     unclassifiedMappings.length;
 
   const activeAlerts = useMemo((): PlanningAlert[] => {
-    if (!alerts?.alerts) return [];
-    const flags = alerts.alerts as LookaheadAnomalyFlags;
+    const flags = (alerts?.alerts as LookaheadAnomalyFlags | undefined) ?? {};
     const nextAlerts: PlanningAlert[] = [];
 
     if (flags.demand_spike_over_100pct) {
@@ -1092,13 +1102,13 @@ export default function LookaheadDashboard() {
         status={uploadStatus}
         mappings={mappings}
         unclassifiedMappings={unclassifiedMappings}
-        isLoading={
-          Boolean(
-            isUploadReviewOpen &&
-              latestVersion?.upload_id &&
-              (!uploadStatus || (!mappings.length && !unclassifiedMappings.length)),
-          )
-        }
+        isLoading={Boolean(
+          isUploadReviewOpen &&
+            latestVersion?.upload_id &&
+            (uploadStatusLoading ||
+              mappingsLoading ||
+              unclassifiedMappingsLoading),
+        )}
         userRole={user?.role}
         onCorrectMapping={async (mappingId, assetType) => {
           await updateProgrammeMapping(mappingId, { asset_type: assetType });

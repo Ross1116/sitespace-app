@@ -3,7 +3,12 @@
 
 import { memo } from "react";
 import { Clock, HardHat, Briefcase, History, MapPin } from "lucide-react";
-import { formatDate, formatTime, isToday } from "@/lib/bookingHelpers";
+import {
+  formatBookingSource,
+  formatDate,
+  formatTime,
+  isToday,
+} from "@/lib/bookingHelpers";
 import BookingCardDropdown from "./BookingCardDropdown";
 import type { TransformedBooking } from "@/types";
 
@@ -93,7 +98,7 @@ function BookingCardMobile({ booking, onViewHistory }: BookingCardMobileProps) {
               )}
               {booking.bookingSource && (
                 <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 capitalize">
-                  {booking.bookingSource}
+                  {formatBookingSource(booking.bookingSource)}
                 </span>
               )}
               {booking.isModified && (

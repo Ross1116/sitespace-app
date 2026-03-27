@@ -8,6 +8,7 @@ import type {
   UploadStatusResponse,
   UserRole,
 } from "@/types";
+import { getApiErrorMessage } from "@/types";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { reportError } from "@/lib/monitoring";
 
 interface Props {
   open: boolean;
@@ -65,6 +67,7 @@ export function UploadReviewDialog({
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
   const [memoryBusyId, setMemoryBusyId] = useState<string | null>(null);
+  const [actionErrors, setActionErrors] = useState<Record<string, string>>({});
   const isAdmin = userRole === "admin";
   const notes = status?.completeness_notes;
   const badges = diagnosticBadges(notes);
@@ -111,7 +114,7 @@ export function UploadReviewDialog({
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
               <p className="text-[11px] uppercase tracking-wide text-slate-500">Needs review</p>
               <p className="mt-1 text-lg font-bold text-amber-700">
-                {unclassifiedMappings.length}
+                {reviewRows.length}
               </p>
             </div>
           </div>
@@ -214,9 +217,25 @@ export function UploadReviewDialog({
                             size="sm"
                             disabled={!draft.trim() || busyId === mapping.id}
                             onClick={async () => {
+                              const trimmedDraft = draft.trim();
+                              const errorKey = `mapping:${mapping.id}`;
                               setBusyId(mapping.id);
                               try {
-                                await onCorrectMapping(mapping.id, draft.trim());
+                                await onCorrectMapping(mapping.id, trimmedDraft);
+                                setActionErrors((current) => {
+                                  const next = { ...current };
+                                  delete next[errorKey];
+                                  return next;
+                                });
+                              } catch (error) {
+                                reportError(
+                                  error,
+                                  "UploadReviewDialog: failed to correct mapping",
+                                );
+                                setActionErrors((current) => ({
+                                  ...current,
+                                  [errorKey]: getApiErrorMessage(error),
+                                }));
                               } finally {
                                 setBusyId(null);
                               }
@@ -233,12 +252,28 @@ export function UploadReviewDialog({
                                 !draft.trim() || memoryBusyId === mapping.item_id
                               }
                               onClick={async () => {
+                                const trimmedDraft = draft.trim();
+                                const memoryKey = `memory:${mapping.item_id}`;
                                 setMemoryBusyId(mapping.item_id || null);
                                 try {
                                   await onPromoteToMemory(
                                     mapping.item_id as string,
-                                    draft.trim(),
+                                    trimmedDraft,
                                   );
+                                  setActionErrors((current) => {
+                                    const next = { ...current };
+                                    delete next[memoryKey];
+                                    return next;
+                                  });
+                                } catch (error) {
+                                  reportError(
+                                    error,
+                                    "UploadReviewDialog: failed to promote mapping memory",
+                                  );
+                                  setActionErrors((current) => ({
+                                    ...current,
+                                    [memoryKey]: getApiErrorMessage(error),
+                                  }));
                                 } finally {
                                   setMemoryBusyId(null);
                                 }
@@ -250,6 +285,14 @@ export function UploadReviewDialog({
                             </Button>
                           )}
                         </div>
+                        {(actionErrors[`mapping:${mapping.id}`] ||
+                          (mapping.item_id &&
+                            actionErrors[`memory:${mapping.item_id}`])) && (
+                          <p className="mt-2 text-xs text-red-600">
+                            {actionErrors[`mapping:${mapping.id}`] ??
+                              actionErrors[`memory:${mapping.item_id}`]}
+                          </p>
+                        )}
                       </td>
                     </tr>
                   );

@@ -18,6 +18,11 @@ export function PlanningReadinessCard({
 
   const { counts, actionable_tasks: tasks } = planningCompleteness;
   const score = Math.round(planningCompleteness.score ?? 0);
+  const displayStatus = (planningCompleteness.status || "")
+    .split("_")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -37,7 +42,7 @@ export function PlanningReadinessCard({
         <div className="rounded-2xl bg-slate-50 px-4 py-3 text-center">
           <div className="text-3xl font-extrabold text-slate-900">{score}</div>
           <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-            {planningCompleteness.status}
+            {displayStatus}
           </div>
         </div>
       </div>

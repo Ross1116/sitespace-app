@@ -623,15 +623,29 @@ export default function SubcontractorsPage() {
                           Planning Ready
                         </span>
                       </div>
-                      <span
-                        className={`text-sm font-semibold ${
-                          selectedContractor.planningReady
-                            ? "text-emerald-700"
-                            : "text-amber-700"
-                        }`}
-                      >
-                        {selectedContractor.planningReady ? "Yes" : "No"}
-                      </span>
+                      {(() => {
+                        if (selectedContractor.planningReady === true) {
+                          return (
+                            <span className="text-sm font-semibold text-emerald-700">
+                              Yes
+                            </span>
+                          );
+                        }
+
+                        if (selectedContractor.planningReady === false) {
+                          return (
+                            <span className="text-sm font-semibold text-amber-700">
+                              No
+                            </span>
+                          );
+                        }
+
+                        return (
+                          <span className="text-sm font-semibold text-slate-500">
+                            Unknown
+                          </span>
+                        );
+                      })()}
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">

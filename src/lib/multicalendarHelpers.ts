@@ -31,6 +31,7 @@ export interface CalendarEvent extends BaseCalendarEvent {
   bookingTitle: string;
   bookingDescription?: string;
   bookingNotes?: string;
+  provenanceSummary?: string;
   bookingTimeDt: string;
   bookingStartTime: string;
   bookingEndTime: string;

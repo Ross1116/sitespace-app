@@ -118,10 +118,12 @@ export const DemandHeatmap = React.memo(function DemandHeatmap({
               {timezone}
             </span>
           )}
-          <span className="inline-flex items-center gap-1 rounded-full bg-teal-gradient px-3 py-1 text-xs font-semibold text-navy">
-            <Sparkles className="h-3.5 w-3.5" />
-            Click any demand cell to drill into activity
-          </span>
+          {onCellSelect && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-teal-gradient px-3 py-1 text-xs font-semibold text-navy">
+              <Sparkles className="h-3.5 w-3.5" />
+              Click any demand cell to drill into activity
+            </span>
+          )}
         </div>
       </div>
 

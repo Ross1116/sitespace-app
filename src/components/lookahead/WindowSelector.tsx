@@ -39,21 +39,21 @@ export const WindowSelector = React.memo(function WindowSelector({
         </div>
 
         <div className="flex items-center gap-1.5 rounded-xl bg-slate-100 p-1">
-          {(["2W", "4W", "6W"] as LookaheadWindowSize[]).map((window) => (
+          {(["2W", "4W", "6W"] as LookaheadWindowSize[]).map((size) => (
             <button
-              key={window}
+              key={size}
               type="button"
-              aria-pressed={windowSize === window}
-              onClick={() => onSetWindowSize(window)}
+              aria-pressed={windowSize === size}
+              onClick={() => onSetWindowSize(size)}
               className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition-all ${
-                windowSize === window
+                windowSize === size
                   ? "bg-navy text-white shadow-md shadow-slate-900/10"
                   : "text-slate-500 hover:text-slate-900"
               }`}
             >
-              {window === "2W"
+              {size === "2W"
                 ? "2 Weeks"
-                : window === "4W"
+                : size === "4W"
                   ? "4 Weeks"
                   : "6 Weeks"}
             </button>

@@ -101,6 +101,27 @@ export const getBookingIcon = (bookingFor: string) => {
   return { icon: Settings, color: "text-orange-500" };
 };
 
+export const formatBookingSource = (source?: string | null) => {
+  const normalized = (source || "").trim();
+  if (!normalized) return "";
+
+  const knownLabels: Record<string, string> = {
+    manual: "Manual",
+    programme_activity: "Programme activity",
+    programme: "Programme",
+    import: "Import",
+  };
+
+  const lower = normalized.toLowerCase();
+  if (knownLabels[lower]) {
+    return knownLabels[lower];
+  }
+
+  return normalized
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
 export const isToday = (date: Date) => {
   const currentDate = new Date();
   return (
