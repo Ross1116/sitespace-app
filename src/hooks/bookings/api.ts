@@ -22,6 +22,8 @@ export type BookingCreatePayload = {
   end_time: string;
   notes?: string;
   purpose?: string;
+  programme_activity_id?: string;
+  selected_week_start?: string | null;
 };
 
 export type BookingUpdatePayload = {

@@ -50,7 +50,7 @@ export function DesktopView({
               <Skeleton className="h-3 w-8 bg-slate-50" />
             </div>
             <div className="flex flex-1 relative">
-              <div className="w-14 flex-shrink-0 border-r border-slate-100 bg-slate-50/50">
+              <div className="w-14 shrink-0 border-r border-slate-100 bg-slate-50/50">
                 {Array.from({ length: 4 }).map((_, i) => (
                   <div
                     key={i}

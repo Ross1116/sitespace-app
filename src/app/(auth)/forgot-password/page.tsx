@@ -6,7 +6,7 @@ export default function ForgotPasswordPage() {
   return (
     <div className="flex min-h-screen w-full bg-white font-sans">
       {/* Left Side - Visual Panel */}
-      <div className="hidden lg:flex w-1/2 bg-[var(--navy)] relative flex-col p-16 text-white overflow-hidden">
+      <div className="hidden lg:flex w-1/2 bg-navy relative flex-col p-16 text-white overflow-hidden">
         <div className="absolute inset-0 opacity-10 pointer-events-none">
           <svg
             className="h-full w-full"

@@ -2,7 +2,12 @@
 
 import { memo } from "react";
 import { Clock, HardHat, Briefcase, MapPin, History } from "lucide-react";
-import { formatDate, formatTime, isToday } from "@/lib/bookingHelpers";
+import {
+  formatBookingSource,
+  formatDate,
+  formatTime,
+  isToday,
+} from "@/lib/bookingHelpers";
 import BookingCardDropdown from "./BookingCardDropdown";
 import { useBookingCardActions } from "./BookingCardActionsContext";
 import type { TransformedBooking } from "@/types";
@@ -41,7 +46,7 @@ function BookingCardDesktop({
         
         ${
           isDropdownOpen
-            ? "z-[99] border-slate-300 shadow-md relative"
+            ? "z-99 border-slate-300 shadow-md relative"
             : "z-0 hover:z-40 hover:shadow-lg hover:-translate-y-0.5 hover:border-slate-300 transition-all duration-200"
         }
       `}
@@ -73,6 +78,26 @@ function BookingCardDesktop({
             {booking.bookingTitle || "Booking"}
           </h3>
 
+          {(booking.programmeActivityName || booking.bookingSource || booking.isModified) && (
+            <div className="flex flex-wrap gap-1">
+              {booking.programmeActivityName && (
+                <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
+                  Activity linked
+                </span>
+              )}
+              {booking.bookingSource && (
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 capitalize">
+                  {formatBookingSource(booking.bookingSource)}
+                </span>
+              )}
+              {booking.isModified && (
+                <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                  Modified
+                </span>
+              )}
+            </div>
+          )}
+
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
               <Clock size={13} className="text-slate-400" />
@@ -97,7 +122,7 @@ function BookingCardDesktop({
                 booking.bookedAssets.length > 0 && (
                   <div className="flex items-center gap-1.5 pl-3 border-l border-slate-200">
                     <MapPin size={13} className="text-blue-500" />
-                    <span className="text-xs font-bold text-blue-700 truncate max-w-[100px]">
+                    <span className="text-xs font-bold text-blue-700 truncate max-w-25">
                       {booking.bookedAssets[0]}
                     </span>
                   </div>
@@ -117,10 +142,18 @@ function BookingCardDesktop({
           >
             {booking.bookingDescription || "No description provided."}
           </p>
+          {(booking.programmeActivityName || booking.expectedAssetType) && (
+            <p className="mt-2 text-xs text-slate-500 line-clamp-1">
+              {booking.programmeActivityName || "Programme activity"}
+              {booking.expectedAssetType
+                ? ` · Expected ${booking.expectedAssetType}`
+                : ""}
+            </p>
+          )}
         </div>
 
         {/* COL 4: STATUS & ACTIONS */}
-        <div className="flex flex-col items-end gap-3 pl-6 border-l border-slate-100 h-full justify-center min-w-[120px]">
+        <div className="flex flex-col items-end gap-3 pl-6 border-l border-slate-100 h-full justify-center min-w-30">
           <div className="flex flex-col items-end gap-1.5">
             <span
               className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border

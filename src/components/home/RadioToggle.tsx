@@ -152,10 +152,10 @@ function ProjectSelector({
                 >
                   <div className="flex items-center px-4">
                     <span
-                      className={`inline-block w-3 h-3 rounded-full flex-shrink-0 mr-3 mt-0.5`}
+                      className={`inline-block w-3 h-3 rounded-full shrink-0 mr-3 mt-0.5`}
                     />
 
-                    <div className="flex-grow">
+                    <div className="grow">
                       <div className="flex flex-col">
                         <span
                           className={`font-bold ${isSelected ? "text-amber-900" : "text-gray-700"}`}
@@ -169,7 +169,7 @@ function ProjectSelector({
                           <div className="flex items-center text-amber-600">
                             <CheckCircle
                               size={16}
-                              className="mr-1.5 flex-shrink-0"
+                              className="mr-1.5 shrink-0"
                             />
                             <span className="text-sm font-medium">
                               Currently working on {projectName} project

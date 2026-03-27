@@ -56,7 +56,7 @@ export default function LogoCarousel({ logos, className }: LogoCarouselProps) {
   return (
     <div className={cn("relative overflow-hidden", className)}>
       {/* Gradient fade effect on left */}
-      <div className="absolute left-0 top-0 z-10 h-full w-16 bg-gradient-to-r from-slate-50/90  from-30% dark:from-slate-950 to-transparent"></div>
+      <div className="absolute left-0 top-0 z-10 h-full w-16 bg-linear-to-r from-slate-50/90  from-30% dark:from-slate-950 to-transparent"></div>
 
       {/* Carousel container */}
       <div ref={carouselRef} className="overflow-hidden">
@@ -75,7 +75,7 @@ export default function LogoCarousel({ logos, className }: LogoCarouselProps) {
           {extendedLogos.map((logo, index) => (
             <div
               key={index}
-              className="mx-8 flex h-12 w-[120px] flex-shrink-0 items-center justify-center grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all duration-300"
+              className="mx-8 flex h-12 w-30 shrink-0 items-center justify-center grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all duration-300"
             >
               <Image
                 src={logo.logo || "https://placehold.co/120x48.png"}
@@ -90,7 +90,7 @@ export default function LogoCarousel({ logos, className }: LogoCarouselProps) {
       </div>
 
       {/* Gradient fade effect on right */}
-      <div className="absolute from-30% right-0 top-0 z-10 h-full w-16 bg-gradient-to-l from-slate-50/90 dark:from-slate-950 to-transparent"></div>
+      <div className="absolute from-30% right-0 top-0 z-10 h-full w-16 bg-linear-to-l from-slate-50/90 dark:from-slate-950 to-transparent"></div>
     </div>
   )
 }

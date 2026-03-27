@@ -22,22 +22,16 @@ import { useAuth } from "@/app/context/AuthContext";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
+import { type TransformedContractor } from "@/types";
 import {
   type NormalizedSubcontractor,
 } from "@/lib/subcontractorNormalization";
 import { useResolvedProjectSelection } from "@/hooks/useResolvedProjectSelection";
 import { useProjectSubcontractors } from "@/hooks/useProjectSubcontractors";
 
-interface Contractor {
-  contractorKey: string;
-  contractorName: string;
-  contractorCompany: string;
-  contractorTrade: string;
-  contractorEmail: string;
-  contractorPhone: string;
-  isActive: boolean;
+type Contractor = Omit<TransformedContractor, "_originalData"> & {
   _originalData?: NormalizedSubcontractor;
-}
+};
 
 type SortField =
   | "contractorName"
@@ -55,10 +49,16 @@ const transformBackendSubcontractor = (
     contractorKey: backendSub.id,
     contractorName: `${backendSub.first_name} ${backendSub.last_name}`.trim(),
     contractorCompany: backendSub.company_name || "-",
-    contractorTrade: backendSub.trade_specialty || "General",
+    contractorTrade:
+      backendSub.trade_specialty || backendSub.suggested_trade_specialty || "General",
     contractorEmail: backendSub.email,
     contractorPhone: backendSub.phone || "-",
     isActive: backendSub.is_active,
+    suggestedTradeSpecialty: backendSub.suggested_trade_specialty ?? null,
+    tradeResolutionStatus: backendSub.trade_resolution_status ?? null,
+    tradeInferenceSource: backendSub.trade_inference_source ?? null,
+    tradeInferenceConfidence: backendSub.trade_inference_confidence ?? null,
+    planningReady: backendSub.planning_ready,
     _originalData: backendSub,
   };
 };
@@ -241,7 +241,7 @@ export default function SubcontractorsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--page-bg)] p-4 sm:p-6 lg:p-8 font-sans">
+    <div className="min-h-screen bg-(--page-bg) p-4 sm:p-6 lg:p-8 font-sans">
       <div className="max-w-screen mx-auto space-y-6">
         <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-1 min-h-[85vh] flex flex-col relative overflow-hidden">
           <div className="p-6 flex-1 flex flex-col">
@@ -258,7 +258,7 @@ export default function SubcontractorsPage() {
               {user?.role !== "subcontractor" && (
                 <Button
                   onClick={() => setIsSubFormOpen(true)}
-                  className="h-auto w-full rounded-lg bg-[var(--navy)] px-4 py-2 text-sm font-medium text-white shadow-md shadow-slate-900/10 hover:bg-[var(--navy-hover)] sm:w-auto"
+                  className="h-auto w-full rounded-lg bg-navy px-4 py-2 text-sm font-medium text-white shadow-md shadow-slate-900/10 hover:bg-(--navy-hover) sm:w-auto"
                 >
                   <Plus className="mr-2 h-4 w-4" />
                   <span className="sm:hidden">Invite subcontractor</span>
@@ -286,7 +286,7 @@ export default function SubcontractorsPage() {
             </div>
 
             {/* Table Header — Sortable */}
-            <div className="hidden sm:grid grid-cols-12 gap-4 bg-gradient-to-r from-[var(--navy-deep)] to-[var(--navy)] text-white py-3.5 px-6 rounded-xl text-sm font-semibold shadow-md shadow-slate-200 mb-4 select-none">
+            <div className="hidden sm:grid grid-cols-12 gap-4 bg-gradient-to-r from-(--navy-deep) to-navy text-white py-3.5 px-6 rounded-xl text-sm font-semibold shadow-md shadow-slate-200 mb-4 select-none">
               {columnHeaders.map(({ label, field, colSpan }) => (
                 <div
                   key={field}
@@ -397,7 +397,20 @@ export default function SubcontractorsPage() {
                         <span className="sm:hidden text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
                           Trade
                         </span>
-                        {sub.contractorTrade}
+                        <div className="flex flex-col gap-1">
+                          <span>{sub.contractorTrade}</span>
+                          {sub.planningReady !== undefined && (
+                            <span
+                              className={`inline-flex w-fit rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                                sub.planningReady
+                                  ? "bg-emerald-50 text-emerald-700"
+                                  : "bg-amber-50 text-amber-700"
+                              }`}
+                            >
+                              {sub.planningReady ? "Planning ready" : "Needs trade review"}
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       <div className="col-span-2 text-slate-500 text-xs sm:text-sm font-medium truncate">
@@ -440,7 +453,7 @@ export default function SubcontractorsPage() {
                 <Button
                   onClick={() => handlePageChange(currentPage - 1)}
                   disabled={currentPage === 1}
-                  className="bg-[var(--navy)] text-white hover:bg-[var(--navy-hover)] disabled:bg-slate-200 disabled:text-slate-400 rounded-full h-10 px-6 text-xs font-bold tracking-wide"
+                  className="bg-navy text-white hover:bg-(--navy-hover) disabled:bg-slate-200 disabled:text-slate-400 rounded-full h-10 px-6 text-xs font-bold tracking-wide"
                 >
                   Previous
                 </Button>
@@ -453,7 +466,7 @@ export default function SubcontractorsPage() {
                 <Button
                   onClick={() => handlePageChange(currentPage + 1)}
                   disabled={currentPage >= totalPages}
-                  className="bg-[var(--navy)] text-white hover:bg-[var(--navy-hover)] disabled:bg-slate-200 disabled:text-slate-400 rounded-full h-10 px-6 text-xs font-bold tracking-wide"
+                  className="bg-navy text-white hover:bg-(--navy-hover) disabled:bg-slate-200 disabled:text-slate-400 rounded-full h-10 px-6 text-xs font-bold tracking-wide"
                 >
                   Next
                 </Button>
@@ -464,13 +477,13 @@ export default function SubcontractorsPage() {
 
         {/* Sidebar */}
         <div
-          className={`fixed inset-y-0 right-0 w-full sm:w-[480px] bg-white shadow-2xl transform transition-transform duration-300 ease-in-out z-50 ${
+          className={`fixed inset-y-0 right-0 w-full sm:w-120 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out z-50 ${
             sidebarOpen ? "translate-x-0" : "translate-x-full"
           }`}
         >
           {selectedContractor && (
             <div className="h-full flex flex-col">
-              <div className="p-8 bg-[var(--navy)] text-white flex justify-between items-start">
+              <div className="p-8 bg-navy text-white flex justify-between items-start">
                 <div className="flex-1 pr-4">
                   <div className="flex items-center gap-4 mb-4">
                     <div className="h-12 w-12 rounded-full bg-white/10 flex items-center justify-center text-xl font-bold border border-white/20">
@@ -579,6 +592,49 @@ export default function SubcontractorsPage() {
                       </div>
                       <span className="text-sm font-semibold text-slate-900">
                         {selectedContractor.contractorTrade}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Briefcase className="h-4 w-4 text-slate-400" />
+                        <span className="text-sm font-medium text-slate-500">
+                          Resolution Status
+                        </span>
+                      </div>
+                      <span className="text-sm font-semibold text-slate-900">
+                        {selectedContractor.tradeResolutionStatus || "Unspecified"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Briefcase className="h-4 w-4 text-slate-400" />
+                        <span className="text-sm font-medium text-slate-500">
+                          Planning Ready
+                        </span>
+                      </div>
+                      {selectedContractor.planningReady === true ? (
+                        <span className="text-sm font-semibold text-emerald-700">
+                          Yes
+                        </span>
+                      ) : selectedContractor.planningReady === false ? (
+                        <span className="text-sm font-semibold text-amber-700">
+                          No
+                        </span>
+                      ) : (
+                        <span className="text-sm font-semibold text-slate-500">
+                          Unknown
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Briefcase className="h-4 w-4 text-slate-400" />
+                        <span className="text-sm font-medium text-slate-500">
+                          Inference Source
+                        </span>
+                      </div>
+                      <span className="text-sm font-semibold text-slate-900">
+                        {selectedContractor.tradeInferenceSource || "Manual / unknown"}
                       </span>
                     </div>
                   </div>

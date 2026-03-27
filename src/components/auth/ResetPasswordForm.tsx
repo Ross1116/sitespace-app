@@ -81,7 +81,7 @@ export function ResetPasswordForm({ initialToken }: { initialToken: string | nul
           </p>
           <Button
             onClick={() => router.push("/forgot-password")}
-            className="w-full h-12 bg-[var(--navy)] text-white font-bold rounded-xl"
+            className="w-full h-12 bg-navy text-white font-bold rounded-xl"
           >
             Request New Link
           </Button>
@@ -123,7 +123,7 @@ export function ResetPasswordForm({ initialToken }: { initialToken: string | nul
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 disabled={status.type === "loading"}
-                className="h-12 pr-10 border-slate-200 focus-visible:ring-[var(--navy)] rounded-xl text-base"
+                className="h-12 pr-10 border-slate-200 focus-visible:ring-navy rounded-xl text-base"
               />
               <button
                 type="button"
@@ -145,7 +145,7 @@ export function ResetPasswordForm({ initialToken }: { initialToken: string | nul
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
               disabled={status.type === "loading"}
-              className="h-12 border-slate-200 focus-visible:ring-[var(--navy)] rounded-xl text-base"
+              className="h-12 border-slate-200 focus-visible:ring-navy rounded-xl text-base"
             />
           </div>
 
@@ -168,7 +168,7 @@ export function ResetPasswordForm({ initialToken }: { initialToken: string | nul
 
           <Button
             type="submit"
-            className="w-full h-12 bg-[var(--navy)] hover:bg-[var(--navy-hover)] text-white font-bold rounded-xl shadow-lg shadow-slate-900/10 transition-all mt-4"
+            className="w-full h-12 bg-navy hover:bg-(--navy-hover) text-white font-bold rounded-xl shadow-lg shadow-slate-900/10 transition-all mt-4"
             disabled={status.type === "loading"}
           >
             {status.type === "loading" ? <Loader2 className="animate-spin h-5 w-5" /> : "Reset Password"}

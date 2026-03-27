@@ -30,7 +30,7 @@ export function HeroOrbs() {
         ref={(el) => {
           refs.current[0] = el;
         }}
-        className="absolute w-[500px] h-[500px] top-[10%] -right-[10%] will-change-transform pointer-events-none -z-10"
+        className="absolute w-125 h-125 top-[10%] -right-[10%] will-change-transform pointer-events-none -z-10"
         aria-hidden="true"
       >
         <div
@@ -41,7 +41,7 @@ export function HeroOrbs() {
         ref={(el) => {
           refs.current[1] = el;
         }}
-        className="absolute w-[400px] h-[400px] bottom-[20%] -left-[5%] will-change-transform pointer-events-none -z-10"
+        className="absolute w-100 h-100 bottom-[20%] -left-[5%] will-change-transform pointer-events-none -z-10"
         aria-hidden="true"
       >
         <div
@@ -53,7 +53,7 @@ export function HeroOrbs() {
         ref={(el) => {
           refs.current[2] = el;
         }}
-        className="absolute w-[350px] h-[350px] top-1/2 left-1/2 will-change-transform pointer-events-none -z-10"
+        className="absolute w-87.5 h-87.5 top-1/2 left-1/2 will-change-transform pointer-events-none -z-10"
         aria-hidden="true"
       >
         <div

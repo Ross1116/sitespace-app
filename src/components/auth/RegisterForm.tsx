@@ -115,7 +115,7 @@ export function RegisterForm() {
                 placeholder="John"
                 onChange={handleChange}
                 required
-                className="h-11 border-slate-200 focus-visible:ring-[var(--navy)]"
+                className="h-11 border-slate-200 focus-visible:ring-navy"
               />
             </div>
             <div className="space-y-2">
@@ -126,7 +126,7 @@ export function RegisterForm() {
                 placeholder="Doe"
                 onChange={handleChange}
                 required
-                className="h-11 border-slate-200 focus-visible:ring-[var(--navy)]"
+                className="h-11 border-slate-200 focus-visible:ring-navy"
               />
             </div>
           </div>
@@ -140,7 +140,7 @@ export function RegisterForm() {
               placeholder="name@company.com"
               onChange={handleChange}
               required
-              className="h-11 border-slate-200 focus-visible:ring-[var(--navy)]"
+              className="h-11 border-slate-200 focus-visible:ring-navy"
             />
           </div>
 
@@ -153,7 +153,7 @@ export function RegisterForm() {
               placeholder="+1 (555) 000-0000"
               onChange={handleChange}
               required
-              className="h-11 border-slate-200 focus-visible:ring-[var(--navy)]"
+              className="h-11 border-slate-200 focus-visible:ring-navy"
             />
           </div>
 
@@ -167,7 +167,7 @@ export function RegisterForm() {
                 placeholder="••••••••"
                 onChange={handleChange}
                 required
-                className="h-11 pr-10 border-slate-200 focus-visible:ring-[var(--navy)]"
+                className="h-11 pr-10 border-slate-200 focus-visible:ring-navy"
               />
               <button
                 type="button"
@@ -216,13 +216,13 @@ export function RegisterForm() {
               placeholder="••••••••"
               onChange={handleChange}
               required
-              className="h-11 border-slate-200 focus-visible:ring-[var(--navy)]"
+              className="h-11 border-slate-200 focus-visible:ring-navy"
             />
           </div>
 
           <Button
             type="submit"
-            className="w-full h-12 bg-[var(--navy)] hover:bg-[var(--navy-hover)] text-white font-bold text-base transition-all mt-4"
+            className="w-full h-12 bg-navy hover:bg-(--navy-hover) text-white font-bold text-base transition-all mt-4"
             disabled={isLoading}
           >
             {isLoading ? (
@@ -237,7 +237,7 @@ export function RegisterForm() {
           Already have an account?{" "}
           <Link
             href="/login"
-            className="font-bold text-[var(--navy)] hover:underline"
+            className="font-bold text-navy hover:underline"
           >
             Log in
           </Link>

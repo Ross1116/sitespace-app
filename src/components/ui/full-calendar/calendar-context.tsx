@@ -212,7 +212,7 @@ export const CalendarViewTrigger = forwardRef<
       className={`
         ${
           currentView === view
-            ? "bg-[var(--navy)] text-white hover:bg-[var(--navy-90)]"
+            ? "bg-navy text-white hover:bg-(--navy-90)"
             : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
         }
         ${className}

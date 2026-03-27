@@ -305,7 +305,7 @@ export default function BookingCardDropdown({
 
       {/* Deny Modal */}
       <Dialog open={isDenyModalOpen} onOpenChange={setIsDenyModalOpen}>
-        <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-[425px] bg-white">
+        <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-106.25 bg-white">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-600">
               <AlertTriangle className="h-5 w-5" />
@@ -347,7 +347,7 @@ export default function BookingCardDropdown({
 
       {/* Delete Modal */}
       <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
-        <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-[425px] bg-white">
+        <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-106.25 bg-white">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-600">
               <Trash2 className="h-5 w-5" />
@@ -380,7 +380,7 @@ export default function BookingCardDropdown({
 
       {/* Confirm Modal for Competing Pending Requests */}
       <Dialog open={isConfirmModalOpen} onOpenChange={setIsConfirmModalOpen}>
-        <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-[425px] bg-white">
+        <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-106.25 bg-white">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-emerald-600">
               <AlertTriangle className="h-5 w-5" />
@@ -414,7 +414,7 @@ export default function BookingCardDropdown({
               Back
             </Button>
             <Button
-              className="w-full bg-[var(--navy)] text-white hover:bg-[var(--navy-hover)] sm:w-auto"
+              className="w-full bg-navy text-white hover:bg-(--navy-hover) sm:w-auto"
               onClick={async () => {
                 setIsConfirmModalOpen(false);
                 await handleUpdateBookingStatus("confirmed");
@@ -429,7 +429,7 @@ export default function BookingCardDropdown({
 
       {/* Error Dialog */}
       <Dialog open={!!errorMessage} onOpenChange={() => setErrorMessage(null)}>
-        <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-[425px] bg-white">
+        <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-106.25 bg-white">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-600">
               <AlertTriangle className="h-5 w-5" />

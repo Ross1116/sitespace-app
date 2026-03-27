@@ -107,7 +107,7 @@ export function LoginForm({ justRegistered }: { justRegistered: boolean }) {
               required
               disabled={isSubmitting}
               autoComplete="email"
-              className="h-12 border-slate-200 focus-visible:ring-[var(--navy)] bg-white"
+              className="h-12 border-slate-200 focus-visible:ring-navy bg-white"
             />
           </div>
 
@@ -118,7 +118,7 @@ export function LoginForm({ justRegistered }: { justRegistered: boolean }) {
               </Label>
               <Link
                 href="/forgot-password"
-                className="text-xs font-semibold text-[var(--navy)] hover:underline"
+                className="text-xs font-semibold text-navy hover:underline"
               >
                 Forgot password?
               </Link>
@@ -133,7 +133,7 @@ export function LoginForm({ justRegistered }: { justRegistered: boolean }) {
                 required
                 disabled={isSubmitting}
                 autoComplete="current-password"
-                className="h-12 pr-10 border-slate-200 focus-visible:ring-[var(--navy)] bg-white"
+                className="h-12 pr-10 border-slate-200 focus-visible:ring-navy bg-white"
               />
               <button
                 type="button"
@@ -151,7 +151,7 @@ export function LoginForm({ justRegistered }: { justRegistered: boolean }) {
               id="remember"
               checked={rememberEmail}
               onCheckedChange={(checked) => setRememberEmail(checked as boolean)}
-              className="border-slate-300 data-[state=checked]:bg-[var(--navy)] data-[state=checked]:border-[var(--navy)]"
+              className="border-slate-300 data-[state=checked]:bg-navy data-[state=checked]:border-navy"
             />
             <label
               htmlFor="remember"
@@ -163,7 +163,7 @@ export function LoginForm({ justRegistered }: { justRegistered: boolean }) {
 
           <Button
             type="submit"
-            className="w-full h-12 bg-[var(--navy)] hover:bg-[var(--navy-hover)] text-white font-bold text-base transition-all shadow-lg shadow-slate-900/10 disabled:opacity-70"
+            className="w-full h-12 bg-navy hover:bg-(--navy-hover) text-white font-bold text-base transition-all shadow-lg shadow-slate-900/10 disabled:opacity-70"
             disabled={isSubmitting || !email.trim() || !password.trim()}
           >
             {isSubmitting ? (
@@ -178,7 +178,7 @@ export function LoginForm({ justRegistered }: { justRegistered: boolean }) {
           Don&apos;t have an account?{" "}
           <Link
             href="/register"
-            className="font-bold text-[var(--navy)] hover:underline"
+            className="font-bold text-navy hover:underline"
           >
             Create one here
           </Link>

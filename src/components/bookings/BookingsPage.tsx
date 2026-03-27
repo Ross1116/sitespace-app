@@ -137,6 +137,7 @@ const transformBookingToLegacyFormat = (
   }
 
   const normalizedStatus = (booking.status || "pending").toLowerCase();
+  const trimmedSource = booking.source?.trim() || null;
 
   return {
     bookingKey: booking.id,
@@ -161,6 +162,12 @@ const transformBookingToLegacyFormat = (
     subcontractorId: booking.subcontractor_id ?? undefined,
     subcontractorName: subName,
     competingPendingCount: booking.competing_pending_count ?? 0,
+    bookingSource: trimmedSource,
+    bookingGroupId: booking.booking_group_id ?? null,
+    programmeActivityId: booking.programme_activity_id ?? null,
+    programmeActivityName: booking.programme_activity_name ?? null,
+    expectedAssetType: booking.expected_asset_type ?? null,
+    isModified: booking.is_modified ?? false,
     _originalData: booking,
   };
 };
@@ -179,7 +186,11 @@ export default function BookingsPage() {
   const { user, isLoading: authLoading } = useAuth();
   const userId = user?.id;
   const isTv = isTvUser(user);
-  const { projectId, hasResolvedProjects } = useResolvedProjectSelection({
+  const {
+    projectId,
+    hasResolvedProjects,
+    projectBootstrapLoading,
+  } = useResolvedProjectSelection({
     userId,
     role: user?.role,
   });
@@ -214,13 +225,20 @@ export default function BookingsPage() {
     if (
       !isTv &&
       userId &&
+      !projectBootstrapLoading &&
       hasResolvedProjects &&
       !projectId &&
       typeof window !== "undefined"
     ) {
       window.location.href = "/home";
     }
-  }, [isTv, userId, projectId, hasResolvedProjects]);
+  }, [
+    hasResolvedProjects,
+    isTv,
+    projectBootstrapLoading,
+    projectId,
+    userId,
+  ]);
 
   // --- Bookings ---
   const { bookings, isLoading, mutate } = useProjectBookingsList({
@@ -239,9 +257,16 @@ export default function BookingsPage() {
   const searchParams = useSearchParams();
   const highlightBookingId = searchParams.get("highlight");
 
-  const now = new Date();
-  const nextHour = startOfHour(addHours(now, 1));
-  const endHour = addHours(nextHour, 1);
+  // Depend on isBookingFormOpen so nextHour/endHour refresh when the form opens,
+  // then stay frozen while the dialog remains open.
+  const { nextHour, endHour } = useMemo(() => {
+    const now = new Date();
+    const nextHour = startOfHour(addHours(now, 1));
+    return {
+      nextHour,
+      endHour: addHours(nextHour, 1),
+    };
+  }, [isBookingFormOpen]);
 
   const updateActiveTab = useCallback(
     (nextTab: string) => {
@@ -319,9 +344,10 @@ export default function BookingsPage() {
   const pendingCount = allBookings.filter(
     (b) => b.bookingStatus === "pending",
   ).length;
+  const surfaceLoading = authLoading || isLoading || projectBootstrapLoading;
 
   return (
-    <div className="min-h-screen bg-[var(--page-bg)] p-4 sm:p-6 lg:p-8 font-sans">
+    <div className="min-h-screen bg-(--page-bg) p-4 sm:p-6 lg:p-8 font-sans">
       <div className="max-w-screen mx-auto space-y-6">
         <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-1 min-h-[85vh] flex flex-col relative overflow-hidden">
           <div className="p-6 flex-1 flex flex-col">
@@ -338,17 +364,17 @@ export default function BookingsPage() {
 
               <div className="flex w-full flex-col gap-4 sm:flex-row sm:items-center xl:w-auto">
                 <div className="flex w-full gap-3 sm:w-auto">
-                  <div className="flex min-w-0 flex-1 flex-col items-center justify-center rounded-xl bg-[var(--navy)] px-4 py-2.5 text-white shadow-md shadow-slate-900/10 sm:min-w-[110px] sm:flex-none sm:px-5">
+                  <div className="flex min-w-0 flex-1 flex-col items-center justify-center rounded-xl bg-navy px-4 py-2.5 text-white shadow-md shadow-slate-900/10 sm:min-w-27.5 sm:flex-none sm:px-5">
                     <span className="text-2xl font-bold leading-none">
-                      {authLoading || isLoading ? "—" : allBookings.length}
+                      {surfaceLoading ? "—" : allBookings.length}
                     </span>
                     <span className="text-[10px] font-medium opacity-80 uppercase tracking-wide">
                       Total
                     </span>
                   </div>
-                  <div className="flex min-w-0 flex-1 flex-col items-center justify-center rounded-xl bg-[var(--brand-orange)] px-4 py-2.5 text-white shadow-md shadow-orange-900/10 sm:min-w-[110px] sm:flex-none sm:px-5">
+                  <div className="flex min-w-0 flex-1 flex-col items-center justify-center rounded-xl bg-(--brand-orange) px-4 py-2.5 text-white shadow-md shadow-orange-900/10 sm:min-w-27.5 sm:flex-none sm:px-5">
                     <span className="text-2xl font-bold leading-none">
-                      {authLoading || isLoading ? "—" : pendingCount}
+                      {surfaceLoading ? "—" : pendingCount}
                     </span>
                     <span className="text-[10px] font-medium opacity-90 uppercase tracking-wide">
                       Pending
@@ -359,9 +385,9 @@ export default function BookingsPage() {
                 {!isTv && (
                   <Button
                     onClick={() => setIsBookingFormOpen(true)}
-                    className="h-auto w-full rounded-lg bg-[var(--navy)] px-6 py-3 text-sm font-bold text-white shadow-md shadow-slate-900/10 hover:bg-[var(--navy-hover)] sm:w-auto"
+                    className="h-auto w-full rounded-lg bg-navy px-6 py-3 text-sm font-bold text-white shadow-md shadow-slate-900/10 hover:bg-(--navy-hover) sm:w-auto"
                   >
-                    <Plus className="mr-2 h-4 w-4 stroke-[3]" /> New Booking
+                    <Plus className="mr-2 h-4 w-4 stroke-3" /> New Booking
                   </Button>
                 )}
               </div>
@@ -402,7 +428,7 @@ export default function BookingsPage() {
                       px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap
                       ${
                         activeTab === tab
-                          ? "bg-[var(--navy)] text-white shadow-md shadow-slate-900/10"
+                          ? "bg-navy text-white shadow-md shadow-slate-900/10"
                           : "bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
                       }
                     `}
@@ -423,7 +449,7 @@ export default function BookingsPage() {
                 <BookingList
                   bookings={filteredBookings}
                   activeTab={activeTab}
-                  loading={isLoading || authLoading}
+                  loading={surfaceLoading}
                   onActionComplete={() => mutate()}
                   highlightBookingId={highlightBookingId}
                 />
@@ -445,3 +471,4 @@ export default function BookingsPage() {
     </div>
   );
 }
+

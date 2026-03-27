@@ -3,7 +3,12 @@
 
 import { memo } from "react";
 import { Clock, HardHat, Briefcase, History, MapPin } from "lucide-react";
-import { formatDate, formatTime, isToday } from "@/lib/bookingHelpers";
+import {
+  formatBookingSource,
+  formatDate,
+  formatTime,
+  isToday,
+} from "@/lib/bookingHelpers";
 import BookingCardDropdown from "./BookingCardDropdown";
 import type { TransformedBooking } from "@/types";
 
@@ -38,7 +43,7 @@ function BookingCardMobile({ booking, onViewHistory }: BookingCardMobileProps) {
       <div className="mb-3.5 flex">
         {/* Date */}
         <div
-          className={`flex flex-col items-center justify-center w-12 h-12 rounded-lg border flex-shrink-0 mr-3 
+          className={`flex flex-col items-center justify-center w-12 h-12 rounded-lg border shrink-0 mr-3 
             ${
               today
                 ? "bg-orange-50 border-orange-100 text-orange-700"
@@ -83,6 +88,26 @@ function BookingCardMobile({ booking, onViewHistory }: BookingCardMobileProps) {
               )}
             </div>
           </div>
+
+          {(booking.programmeActivityName || booking.bookingSource || booking.isModified) && (
+            <div className="flex flex-wrap gap-1">
+              {booking.programmeActivityName && (
+                <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
+                  Activity linked
+                </span>
+              )}
+              {booking.bookingSource && (
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 capitalize">
+                  {formatBookingSource(booking.bookingSource)}
+                </span>
+              )}
+              {booking.isModified && (
+                <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                  Modified
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -112,6 +137,14 @@ function BookingCardMobile({ booking, onViewHistory }: BookingCardMobileProps) {
                 "Unknown Asset"}
             </span>
           </div>
+          {(booking.programmeActivityName || booking.expectedAssetType) && (
+            <div className="text-xs text-slate-500">
+              {booking.programmeActivityName || "Programme activity"}
+              {booking.expectedAssetType
+                ? ` · Expected ${booking.expectedAssetType}`
+                : ""}
+            </div>
+          )}
         </div>
 
         <div className="flex items-center justify-end gap-1">

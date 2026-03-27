@@ -15,7 +15,7 @@ export default async function ResetPasswordPage({
   return (
     <div className="flex min-h-screen w-full bg-white font-sans">
       {/* Left Side - Security Panel */}
-      <div className="hidden lg:flex w-1/2 bg-[var(--navy)] relative flex-col p-16 text-white overflow-hidden">
+      <div className="hidden lg:flex w-1/2 bg-navy relative flex-col p-16 text-white overflow-hidden">
         <div className="absolute inset-0 opacity-10 pointer-events-none">
           <svg className="h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
             <rect x="0" y="0" width="100" height="100" fill="transparent" />

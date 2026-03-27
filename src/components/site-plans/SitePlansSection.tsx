@@ -49,16 +49,16 @@ export function SitePlansSection({ projectId, canEdit }: SitePlansSectionProps) 
           <Button
             size="sm"
             onClick={() => setIsUploadOpen(true)}
-            className="bg-[var(--navy)] hover:bg-[var(--navy-hover)] text-white"
+            className="bg-navy hover:bg-(--navy-hover) text-white"
           >
             <Plus className="h-4 w-4 mr-1" /> Upload Plan
           </Button>
         )}
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-[400px]">
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden min-h-100">
         {error && !isLoading ? (
-          <div className="flex flex-col items-center justify-center py-12 px-6 text-center h-full min-h-[400px]">
+          <div className="flex flex-col items-center justify-center py-12 px-6 text-center h-full min-h-100">
             <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg text-sm w-full max-w-xs">
               Failed to load site plans. Please try again.
             </div>
@@ -78,7 +78,7 @@ export function SitePlansSection({ projectId, canEdit }: SitePlansSectionProps) 
             </div>
           </div>
         ) : plans.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 px-6 text-center h-full min-h-[400px]">
+          <div className="flex flex-col items-center justify-center py-12 px-6 text-center h-full min-h-100">
             <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center mb-3">
               <ImageIcon className="h-6 w-6 text-slate-400" />
             </div>
@@ -92,7 +92,7 @@ export function SitePlansSection({ projectId, canEdit }: SitePlansSectionProps) 
             )}
           </div>
         ) : (
-          <div className="overflow-y-auto max-h-[600px] p-3 custom-scrollbar">
+          <div className="overflow-y-auto max-h-150 p-3 custom-scrollbar">
             <div className={`grid gap-3 ${plans.length === 1 ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2"}`}>
               {plans.map((plan) => (
                 <button

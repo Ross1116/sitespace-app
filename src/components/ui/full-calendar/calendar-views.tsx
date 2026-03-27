@@ -394,8 +394,10 @@ export const CalendarDayView = ({
     setIsBookingFormOpen(true);
   };
 
-  const currentHour = new Date().getHours();
-  const isCurrentDay = isSameDay(date, new Date());
+  const now = new Date();
+  const currentHour = now.getHours();
+  const currentMinutes = now.getMinutes();
+  const isCurrentDay = isSameDay(date, now);
 
   return (
     <>
@@ -407,7 +409,7 @@ export const CalendarDayView = ({
         <div className="flex flex-col h-full bg-white rounded-lg shadow-sm overflow-hidden border border-slate-100 relative">
           <div className="flex flex-1 relative overflow-y-auto overflow-x-hidden custom-scrollbar">
             {/* Sidebar Hours */}
-            <div className="w-14 flex-shrink-0 border-r border-slate-100 bg-slate-50 flex flex-col">
+            <div className="w-14 shrink-0 border-r border-slate-100 bg-slate-50 flex flex-col">
               {hours.map((hour) => (
                 <div
                   key={hour.toString()}
@@ -422,10 +424,12 @@ export const CalendarDayView = ({
             <div className="flex-1 relative">
               {isCurrentDay && currentHour >= 6 && currentHour < 20 && (
                 <div
-                  className="absolute w-full border-t-2 border-[var(--navy)] z-20 pointer-events-none"
-                  style={{ top: `${(currentHour - 6) * 48}px` }}
+                  className="absolute w-full border-t-2 border-navy z-20 pointer-events-none"
+                  style={{
+                    top: `${((currentHour - 6) + currentMinutes / 60) * 48}px`,
+                  }}
                 >
-                  <div className="absolute -left-1.5 -top-1.5 w-3 h-3 rounded-full bg-[var(--navy)]"></div>
+                  <div className="absolute -left-1.5 -top-1.5 w-3 h-3 rounded-full bg-navy"></div>
                 </div>
               )}
 
@@ -521,7 +525,7 @@ export const CalendarDayView = ({
           <AlertDialogFooter>
             <AlertDialogAction
               onClick={() => setValidationError(null)}
-              className="w-full bg-[var(--navy)] text-white sm:w-auto"
+              className="w-full bg-navy text-white sm:w-auto"
             >
               Okay
             </AlertDialogAction>
@@ -550,7 +554,7 @@ export const CalendarDayView = ({
                 format(pendingReschedule.event.start, "h:mm a")}
             </span>
             <span className="text-slate-400">→</span>
-            <span className="font-bold text-[var(--navy)]">
+            <span className="font-bold text-navy">
               {pendingReschedule?.newStart &&
                 format(pendingReschedule.newStart, "h:mm a")}
             </span>
@@ -568,7 +572,7 @@ export const CalendarDayView = ({
                 confirmReschedule();
               }}
               disabled={isRescheduling}
-              className="w-full bg-[var(--navy)] text-white sm:w-auto"
+              className="w-full bg-navy text-white sm:w-auto"
             >
               {isRescheduling ? (
                 <>
@@ -728,7 +732,7 @@ export const CalendarWeekView = () => {
               className={cn(
                 "h-6 w-6 ml-1 grid place-content-center rounded-full text-xs font-bold",
                 isToday(date)
-                  ? "bg-[var(--navy)] text-white"
+                  ? "bg-navy text-white"
                   : "text-slate-900",
               )}
             >
@@ -855,7 +859,7 @@ export const CalendarMonthView = () => {
                 className={cn(
                   "size-7 grid place-items-center rounded-full text-xs font-medium mb-1",
                   isToday(_date)
-                    ? "bg-[var(--navy)] text-white font-bold"
+                    ? "bg-navy text-white font-bold"
                     : isSelectedDate && !isToday(_date)
                       ? "bg-slate-200 text-slate-900"
                       : "text-slate-700",
@@ -947,7 +951,7 @@ export const CalendarYearView = () => {
                       "aspect-square grid place-content-center size-full rounded-md",
                       isSameDay(today, _date) &&
                         isCurrentMonth &&
-                        "bg-[var(--navy)] text-white font-bold",
+                        "bg-navy text-white font-bold",
                     )}
                   >
                     {format(_date, "d")}
@@ -1007,7 +1011,7 @@ export const EventGroup = ({
                   {event.title}
                 </div>
               </TooltipTrigger>
-              <TooltipContent className="bg-[var(--navy)] text-white border-slate-700">
+              <TooltipContent className="bg-navy text-white border-slate-700">
                 <div className="flex flex-col gap-1">
                   <p className="font-bold">{event.title}</p>
                   <p className="text-xs text-slate-300">
@@ -1180,8 +1184,8 @@ const EventGroupSideBySide = ({
                       )}
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent className="bg-[var(--navy)] text-white border-slate-700 z-[1000]">
-                    <div className="max-w-[260px] space-y-1">
+                  <TooltipContent className="bg-navy text-white border-slate-700 z-50">
+                    <div className="max-w-65 space-y-1">
                       <div className="font-bold">{tooltipTitle}</div>
                       {!isCollapsedPendingSummary && (
                         <>
