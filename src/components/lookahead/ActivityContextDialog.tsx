@@ -104,7 +104,7 @@ export function ActivityContextDialog({
         </DialogHeader>
 
         {isLoading ? (
-          <div className="flex min-h-[240px] items-center justify-center text-slate-500">
+          <div className="flex min-h-60 items-center justify-center text-slate-500">
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             Loading activity context...
           </div>

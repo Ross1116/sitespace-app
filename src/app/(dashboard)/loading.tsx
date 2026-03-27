@@ -1,7 +1,7 @@
 export default function DashboardLoading() {
   return (
     <div
-      className="min-h-screen bg-[var(--page-bg)] p-4 sm:p-6 lg:p-8"
+      className="min-h-screen bg-(--page-bg) p-4 sm:p-6 lg:p-8"
       role="status"
       aria-label="Loading"
     >

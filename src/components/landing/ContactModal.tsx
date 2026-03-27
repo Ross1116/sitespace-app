@@ -313,9 +313,9 @@ export function DemoModalProvider({ children }: { children: React.ReactNode }) {
       {children}
       <Dialog.Root open={open} onOpenChange={setOpen}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-[100] bg-black/75 transition-opacity duration-250 ease-out data-[state=closed]:opacity-0 data-[state=open]:opacity-100" />
+          <Dialog.Overlay className="fixed inset-0 z-100 bg-black/75 transition-opacity duration-250 ease-out data-[state=closed]:opacity-0 data-[state=open]:opacity-100" />
           <Dialog.Content
-            className="fixed left-1/2 top-1/2 z-[100] w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-white/10 bg-[#0a0a14] p-6 shadow-2xl max-h-[90vh] overflow-y-auto data-[state=closed]:opacity-0 data-[state=open]:opacity-100 data-[state=open]:scale-100 data-[state=closed]:scale-[0.93]"
+            className="fixed left-1/2 top-1/2 z-100 w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-white/10 bg-[#0a0a14] p-6 shadow-2xl max-h-[90vh] overflow-y-auto data-[state=closed]:opacity-0 data-[state=open]:opacity-100 data-[state=open]:scale-100 data-[state=closed]:scale-[0.93]"
             style={{
               transition: "opacity 220ms ease, scale 300ms cubic-bezier(0.16,1,0.3,1)",
             }}
@@ -332,7 +332,7 @@ export function DemoModalProvider({ children }: { children: React.ReactNode }) {
               </div>
               <Dialog.Close asChild>
                 <button
-                  className="text-gray-600 hover:text-white transition-colors mt-0.5 flex-shrink-0 cursor-pointer"
+                  className="text-gray-600 hover:text-white transition-colors mt-0.5 shrink-0 cursor-pointer"
                   aria-label="Close"
                 >
                   <X size={18} />

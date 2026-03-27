@@ -38,7 +38,7 @@ function BookingCardMobile({ booking, onViewHistory }: BookingCardMobileProps) {
       <div className="mb-3.5 flex">
         {/* Date */}
         <div
-          className={`flex flex-col items-center justify-center w-12 h-12 rounded-lg border flex-shrink-0 mr-3 
+          className={`flex flex-col items-center justify-center w-12 h-12 rounded-lg border shrink-0 mr-3 
             ${
               today
                 ? "bg-orange-50 border-orange-100 text-orange-700"

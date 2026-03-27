@@ -25,7 +25,7 @@ const BADGE: Record<DisplayLevel, { bg: string; text: string; label: string }> =
     text: "text-slate-500",
     label: "No demand",
   },
-  low: { bg: "bg-teal-50", text: "text-[var(--teal)]", label: "Low" },
+  low: { bg: "bg-teal-50", text: "text-teal", label: "Low" },
   medium: { bg: "bg-amber-50", text: "text-amber-600", label: "Medium" },
   high: { bg: "bg-orange-50", text: "text-orange-600", label: "High" },
   critical: { bg: "bg-red-50", text: "text-red-600", label: "Critical" },
@@ -53,7 +53,7 @@ function StatusText({ row }: { row: LookaheadRow }) {
     <>
       <span className="text-[10px] text-slate-400">{row.demand_hours}h needed</span>
       {row.booked_hours > 0 && (
-        <span className="text-[10px] font-medium text-[var(--teal)]">
+        <span className="text-[10px] font-medium text-teal">
           {row.booked_hours}h booked
         </span>
       )}
@@ -88,12 +88,12 @@ export const DemandHeatmap = React.memo(function DemandHeatmap({
   onCellSelect,
 }: Props) {
   return (
-    <section className="space-y-5 rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+    <section className="space-y-5 rounded-7 border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <div className="rounded-xl bg-slate-100 p-2">
-              <BarChart3 size={18} className="text-[var(--teal)]" />
+              <BarChart3 size={18} className="text-teal" />
             </div>
             <div>
               <h2 className="text-xl font-black tracking-tight text-slate-950">
@@ -118,7 +118,7 @@ export const DemandHeatmap = React.memo(function DemandHeatmap({
               {timezone}
             </span>
           )}
-          <span className="inline-flex items-center gap-1 rounded-full bg-[var(--teal-gradient)] px-3 py-1 text-xs font-semibold text-[var(--navy)]">
+          <span className="inline-flex items-center gap-1 rounded-full bg-teal-gradient px-3 py-1 text-xs font-semibold text-navy">
             <Sparkles className="h-3.5 w-3.5" />
             Click any demand cell to drill into activity
           </span>
@@ -127,7 +127,7 @@ export const DemandHeatmap = React.memo(function DemandHeatmap({
 
       <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[11px] text-slate-500">
         <div className="flex items-center gap-1.5">
-          <div className="h-2 w-2 rounded-full bg-[var(--teal)]" />
+          <div className="h-2 w-2 rounded-full bg-teal" />
           <span>Booked coverage</span>
         </div>
         <div className="flex items-center gap-1.5">
@@ -146,7 +146,7 @@ export const DemandHeatmap = React.memo(function DemandHeatmap({
 
       <div className="overflow-x-auto rounded-2xl border border-slate-200">
         <div
-          className="grid min-w-[720px] gap-6 p-5 sm:p-6"
+          className="grid min-w-180 gap-6 p-5 sm:p-6"
           style={{ gridTemplateColumns: `repeat(${visibleWeeks.length}, 1fr)` }}
         >
           {visibleWeeks.map((week, weekIndex) => (
@@ -227,7 +227,7 @@ export const DemandHeatmap = React.memo(function DemandHeatmap({
                         >
                           {bookedSharePct > 0 && (
                             <div
-                              className="h-full bg-[var(--teal)]"
+                              className="h-full bg-teal"
                               style={{ width: `${bookedSharePct}%` }}
                             />
                           )}
@@ -262,7 +262,7 @@ export const DemandHeatmap = React.memo(function DemandHeatmap({
                       key={`${asset}-${week}`}
                       type="button"
                       onClick={() => onCellSelect?.(row)}
-                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-left transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--navy)]"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-left transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy"
                       aria-label={`Open ${formatAssetType(asset)} activity details for week starting ${week}`}
                     >
                       {content}

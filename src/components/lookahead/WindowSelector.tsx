@@ -21,7 +21,7 @@ export const WindowSelector = React.memo(function WindowSelector({
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
-              <CalendarRange className="h-4 w-4 text-[var(--teal)]" />
+              <CalendarRange className="h-4 w-4 text-teal" />
               <p className="text-sm font-bold text-slate-900">
                 Planning window
               </p>
@@ -47,7 +47,7 @@ export const WindowSelector = React.memo(function WindowSelector({
               onClick={() => onSetWindowSize(window)}
               className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition-all ${
                 windowSize === window
-                  ? "bg-[var(--navy)] text-white shadow-md shadow-slate-900/10"
+                  ? "bg-navy text-white shadow-md shadow-slate-900/10"
                   : "text-slate-500 hover:text-slate-900"
               }`}
             >

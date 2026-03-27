@@ -31,9 +31,9 @@ export default function DashboardLayout({
 
   if (isLoading || !isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--page-bg)]">
+      <div className="min-h-screen flex items-center justify-center bg-(--page-bg)">
         <Loader2
-          className="h-8 w-8 animate-spin text-[var(--teal)]"
+          className="h-8 w-8 animate-spin text-teal"
           aria-label="Loading"
           role="status"
         />
@@ -42,7 +42,7 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="flex min-h-screen bg-[var(--page-bg)]">
+    <div className="flex min-h-screen bg-(--page-bg)">
       <SideNav />
       <main className="flex-1 w-full relative overflow-x-hidden">
         <div className="pt-16 md:pt-0">{children}</div>

@@ -24,7 +24,7 @@ export function PlanningReadinessCard({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4 text-[var(--teal)]" />
+            <ShieldCheck className="h-4 w-4 text-teal" />
             <h2 className="text-base font-bold text-slate-900">
               Planning Readiness
             </h2>

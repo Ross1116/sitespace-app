@@ -2215,7 +2215,7 @@ export function CreateBookingForm({
             </AlertDialogCancel>
             <AlertDialogAction
               disabled={isSubmitting}
-              className="w-full bg-[var(--navy)] text-white hover:bg-[var(--navy-hover)] sm:w-auto"
+              className="w-full bg-navy text-white hover:bg-(--navy-hover) sm:w-auto"
               onClick={(e) => {
                 e.preventDefault();
                 setPendingConfirmAlert({
@@ -2260,7 +2260,7 @@ export function CreateBookingForm({
           <AlertDialogFooter className="mt-2">
             <AlertDialogAction
               onClick={handleSuccessDismiss}
-              className="w-full bg-[var(--navy)] text-white hover:bg-[var(--navy-hover)] sm:w-auto"
+              className="w-full bg-navy text-white hover:bg-(--navy-hover) sm:w-auto"
             >
               Done
             </AlertDialogAction>
@@ -2302,7 +2302,7 @@ export function CreateBookingForm({
                         key={i}
                         className="text-sm text-red-600 flex items-start gap-1.5"
                       >
-                        <Ban className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                        <Ban className="h-3.5 w-3.5 mt-0.5 shrink-0" />
                         <span>
                           <strong>{f.assetId}</strong>: {f.reason}
                         </span>
@@ -2321,7 +2321,7 @@ export function CreateBookingForm({
           <AlertDialogFooter className="mt-2">
             <AlertDialogAction
               onClick={handlePartialSuccessDismiss}
-              className="w-full bg-[var(--navy)] text-white hover:bg-[var(--navy-hover)] sm:w-auto"
+              className="w-full bg-navy text-white hover:bg-(--navy-hover) sm:w-auto"
             >
               Done
             </AlertDialogAction>

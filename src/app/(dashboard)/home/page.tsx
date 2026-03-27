@@ -45,11 +45,11 @@ type Booking = ApiBooking;
 
 // --- Color Palette ---
 const PALETTE = {
-  bg: "bg-[var(--page-bg)]",
-  darkNavy: "bg-[var(--navy)]",
-  navy: "bg-[var(--navy-deep)]",
-  blue: "bg-[var(--brand-blue)]",
-  teal: "bg-[var(--teal)]",
+  bg: "bg-(--page-bg)",
+  darkNavy: "bg-navy",
+  navy: "bg-(--navy-deep)",
+  blue: "bg-brand-blue",
+  teal: "bg-teal",
 };
 
 export default function HomePage() {
@@ -188,7 +188,7 @@ export default function HomePage() {
               {!authLoading && user?.company_name && (
                 <>
                   <span className="w-1 h-1 rounded-full bg-slate-300"></span>
-                  <span className="text-xs text-slate-500 font-medium truncate max-w-[150px] sm:max-w-xs">
+                  <span className="text-xs text-slate-500 font-medium truncate max-w-37.5 sm:max-w-xs">
                     {user.company_name}
                   </span>
                 </>
@@ -258,7 +258,7 @@ export default function HomePage() {
             </Button>
 
             {showProjectSelector && (
-              <div className="absolute left-0 sm:left-auto sm:right-0 mt-2 w-[calc(100vw-40px)] sm:w-80 bg-white rounded-xl shadow-2xl border border-slate-100 z-50 overflow-hidden ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-200 max-w-[320px]">
+              <div className="absolute left-0 sm:left-auto sm:right-0 mt-2 w-[calc(100vw-40px)] sm:w-80 bg-white rounded-xl shadow-2xl border border-slate-100 z-50 overflow-hidden ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-200 max-w-80">
                 <div className="p-3 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
                   <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                     Available Projects
@@ -267,7 +267,7 @@ export default function HomePage() {
                     {projects.length}
                   </span>
                 </div>
-                <div className="max-h-[300px] overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                <div className="max-h-75 overflow-y-auto p-2 space-y-1 custom-scrollbar">
                   {projects.length === 0 ? (
                     <div className="text-center py-4 text-sm text-slate-400">
                       No projects found
@@ -282,7 +282,7 @@ export default function HomePage() {
                           className={`w-full text-left px-3 py-3 rounded-lg text-sm font-medium transition-all flex items-center justify-between group cursor-pointer
                             ${
                               isActive
-                                ? "bg-[var(--navy)] text-white shadow-md shadow-slate-900/10"
+                                ? "bg-navy text-white shadow-md shadow-slate-900/10"
                                 : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                             }`}
                         >
@@ -301,7 +301,7 @@ export default function HomePage() {
                           {isActive && (
                             <Check
                               size={16}
-                              className="text-white flex-shrink-0 ml-2"
+                              className="text-white shrink-0 ml-2"
                             />
                           )}
                         </button>
@@ -385,7 +385,7 @@ export default function HomePage() {
               </div>
             )}
 
-            <div className="bg-white rounded-2xl shadow-sm p-5 sm:p-6 min-h-[400px] border border-slate-100 flex flex-col">
+            <div className="bg-white rounded-2xl shadow-sm p-5 sm:p-6 min-h-100 border border-slate-100 flex flex-col">
               {loadingBookings || isDataLoading || authLoading ? (
                 <div className="space-y-4">
                   {[1, 2, 3, 4].map((i) => (
@@ -480,7 +480,7 @@ export default function HomePage() {
                           <div
                             key={booking.id}
                             onClick={() => handleBookingClick(booking.id)}
-                            className="bg-[var(--surface-subtle)] rounded-xl flex overflow-hidden border border-transparent hover:border-slate-200 hover:shadow-md transition-all group cursor-pointer active:scale-[0.99]"
+                            className="bg-(--surface-subtle) rounded-xl flex overflow-hidden border border-transparent hover:border-slate-200 hover:shadow-md transition-all group cursor-pointer active:scale-[0.99]"
                             role="button"
                             tabIndex={0}
                             onKeyDown={(e) => {
@@ -491,7 +491,7 @@ export default function HomePage() {
                             }}
                           >
                             {/* --- LEFT: DATE COLUMN --- */}
-                            <div className="w-16 sm:w-24 flex-shrink-0 flex flex-col items-center justify-center border-r border-slate-200 bg-slate-50/50 px-1">
+                            <div className="w-16 sm:w-24 shrink-0 flex flex-col items-center justify-center border-r border-slate-200 bg-slate-50/50 px-1">
                               <div
                                 className={`text-[11px] sm:text-sm font-medium uppercase ${
                                   isBookingToday
@@ -523,7 +523,7 @@ export default function HomePage() {
                                   {displayTitle}
                                 </h3>
                                 <span
-                                  className={`w-fit text-[10px] font-bold px-2 py-0.5 rounded capitalize tracking-wide flex-shrink-0 ${
+                                  className={`w-fit text-[10px] font-bold px-2 py-0.5 rounded capitalize tracking-wide shrink-0 ${
                                     status === "confirmed"
                                       ? "bg-green-100 text-green-700"
                                       : status === "pending"
@@ -609,7 +609,7 @@ export default function HomePage() {
                     Site Plans
                   </h2>
                 </div>
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-100 min-h-[400px] flex items-center justify-center">
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-100 min-h-100 flex items-center justify-center">
                   <p className="text-sm text-slate-400">
                     Select a project to view site plans
                   </p>
@@ -645,7 +645,7 @@ const QuickAccessCard = ({
   return (
     <Link href={href} className="block group">
       <Card
-        className={`${bgColor} text-white p-5 border-none shadow-lg shadow-slate-900/10 h-32 flex flex-col justify-center hover:translate-y-[-2px] transition-transform cursor-pointer rounded-lg relative overflow-hidden`}
+        className={`${bgColor} text-white p-5 border-none shadow-lg shadow-slate-900/10 h-32 flex flex-col justify-center hover:-translate-y-0.5 transition-transform cursor-pointer rounded-lg relative overflow-hidden`}
       >
         <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
         <div className="flex justify-between items-center h-full">

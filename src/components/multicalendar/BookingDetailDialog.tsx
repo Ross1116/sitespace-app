@@ -467,7 +467,7 @@ export function BookingDetailsDialog({
           </DialogHeader>
 
           {/* BODY */}
-          <div className="px-6 py-6 bg-white min-h-[200px]">
+          <div className="px-6 py-6 bg-white min-h-50">
             {loading ? (
               <div
                 className="flex flex-col items-center justify-center h-full text-slate-400 space-y-3"
@@ -720,7 +720,7 @@ export function BookingDetailsDialog({
                       {/* Primary Actions */}
                       {hasManagerPrivileges && status === "pending" && (
                         <Button
-                          className="bg-[var(--navy)] hover:bg-[var(--navy-hover)] text-white justify-start sm:justify-center"
+                          className="bg-navy hover:bg-(--navy-hover) text-white justify-start sm:justify-center"
                           onClick={() => openConfirm("confirm")}
                         >
                           <Check className="h-4 w-4 mr-2" /> Approve Request
@@ -834,7 +834,7 @@ export function BookingDetailsDialog({
                           confirmAction.type === "cancel" ||
                           confirmAction.type === "delete"
                             ? "bg-red-600 hover:bg-red-700"
-                            : "bg-[var(--navy)] hover:bg-[var(--navy-hover)]"
+                            : "bg-navy hover:bg-(--navy-hover)"
                         } text-white
                     `}
               onClick={(e) => {

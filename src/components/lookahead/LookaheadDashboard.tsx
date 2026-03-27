@@ -588,7 +588,7 @@ export default function LookaheadDashboard() {
           : "This project needs a fresh programme upload before the heatmap can drive planning.";
 
   return (
-    <div className="min-h-screen bg-[var(--page-bg)] p-4 font-sans sm:p-6 lg:p-8">
+    <div className="min-h-screen bg-(--page-bg) p-4 font-sans sm:p-6 lg:p-8">
       <div className="mx-auto max-w-screen space-y-6">
         <div className="relative min-h-[85vh] overflow-hidden rounded-3xl border border-slate-100 bg-white p-1 shadow-sm">
           <div className="flex flex-1 flex-col space-y-8 p-6">
@@ -616,7 +616,7 @@ export default function LookaheadDashboard() {
                 <div className="relative" ref={dropdownRef}>
                   <Button
                     onClick={() => setShowProjectSelector((current) => !current)}
-                    className="h-auto w-full rounded-lg bg-[var(--navy)] px-5 py-5 text-sm font-bold text-white shadow-md shadow-slate-900/10 hover:bg-[var(--navy-hover)] sm:w-auto"
+                    className="h-auto w-full rounded-lg bg-navy px-5 py-5 text-sm font-bold text-white shadow-md shadow-slate-900/10 hover:bg-(--navy-hover) sm:w-auto"
                   >
                     <span className="flex items-center gap-2">
                       {isLoading ? "Loading..." : selectedProject?.name ?? "Select Project"}
@@ -649,7 +649,7 @@ export default function LookaheadDashboard() {
                               onClick={() => handleProjectSelect(project)}
                               className={`w-full rounded-lg px-3 py-3 text-left text-sm font-medium transition-all ${
                                 isActive
-                                  ? "bg-[var(--navy)] text-white"
+                                  ? "bg-navy text-white"
                                   : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                               }`}
                             >
@@ -680,7 +680,7 @@ export default function LookaheadDashboard() {
                     if (fileInputRef.current) fileInputRef.current.value = "";
                     fileInputRef.current?.click();
                   }}
-                  className="h-auto w-full rounded-lg bg-[var(--navy)] px-5 py-5 text-sm font-bold text-white shadow-md shadow-slate-900/10 hover:bg-[var(--navy-hover)] sm:w-auto"
+                  className="h-auto w-full rounded-lg bg-navy px-5 py-5 text-sm font-bold text-white shadow-md shadow-slate-900/10 hover:bg-(--navy-hover) sm:w-auto"
                 >
                   <span className="flex items-center gap-2">
                     {uploadPhase.kind === "uploading" || uploadPhase.kind === "polling" ? (
@@ -724,7 +724,7 @@ export default function LookaheadDashboard() {
             />
 
             <section className="grid gap-4 xl:grid-cols-[1.35fr_0.95fr]">
-              <div className="rounded-[28px] border border-slate-200 bg-[linear-gradient(135deg,rgba(11,17,32,0.04)_0%,rgba(14,124,155,0.10)_100%)] p-6 shadow-sm">
+              <div className="rounded-7 border border-slate-200 bg-[linear-gradient(135deg,rgba(11,17,32,0.04)_0%,rgba(14,124,155,0.10)_100%)] p-6 shadow-sm">
                 <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
                   <div className="max-w-2xl">
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
@@ -755,8 +755,8 @@ export default function LookaheadDashboard() {
                     </div>
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-2 lg:min-w-[280px] lg:grid-cols-1">
-                    <div className="rounded-2xl bg-[var(--navy)] p-5 text-white shadow-lg shadow-slate-900/10">
+                  <div className="grid gap-3 sm:grid-cols-2 lg:min-w-70 lg:grid-cols-1">
+                    <div className="rounded-2xl bg-navy p-5 text-white shadow-lg shadow-slate-900/10">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-300">
                         Next move
                       </p>
@@ -928,7 +928,7 @@ export default function LookaheadDashboard() {
               {snapshotLoading || isLoading ? (
                 <div className="space-y-3">
                   <Skeleton className="h-8 w-52" />
-                  <Skeleton className="h-[360px] w-full rounded-[28px]" />
+                  <Skeleton className="h-90 w-full rounded-7" />
                 </div>
               ) : !projectId ? (
                 <EmptyForecastState reason="no-project" />

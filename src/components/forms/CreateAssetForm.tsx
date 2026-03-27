@@ -467,7 +467,7 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
                 value={asset.usageInstructions}
                 onChange={handleChange}
                 placeholder="Enter asset description, usage instructions, safety notes, etc."
-                className="min-h-[100px]"
+                className="min-h-25"
               />
             </div>
           </div>

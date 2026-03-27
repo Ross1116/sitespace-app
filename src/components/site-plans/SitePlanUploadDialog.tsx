@@ -245,7 +245,7 @@ export function SitePlanUploadDialog({
             <Button
               onClick={handleSubmit}
               disabled={!canSubmit}
-              className="bg-[var(--navy)] hover:bg-[var(--navy-hover)] text-white"
+              className="bg-navy hover:bg-(--navy-hover) text-white"
             >
               {submitting ? (
                 <>

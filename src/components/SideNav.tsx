@@ -113,8 +113,8 @@ const SideNav = () => {
 
     // Active Style
     const activeClasses = isActive
-      ? "bg-gradient-to-r from-[var(--teal-gradient-strong)] to-transparent text-white border-l-[3px] border-[var(--teal)]"
-      : "text-gray-400 hover:text-white hover:bg-white/5 border-l-[3px] border-transparent";
+      ? "bg-gradient-to-r from-(--teal-gradient-strong) to-transparent text-white border-l-3 border-teal"
+      : "text-gray-400 hover:text-white hover:bg-white/5 border-l-3 border-transparent";
 
     return (
       <Link
@@ -130,7 +130,7 @@ const SideNav = () => {
           ${isMobile ? "px-6" : "pl-6"} 
         `}
       >
-        <div className="flex items-center justify-center flex-shrink-0">
+        <div className="flex items-center justify-center shrink-0">
           <item.icon
             size={20}
             className={`transition-colors duration-200 ${
@@ -171,10 +171,10 @@ const SideNav = () => {
         - w-20: Matches the collapsed sidebar width (80px)
         - ml-4: Matches the sidebar's left position (16px)
         - mr-4: Creates the margin to the right of the nav (16px)
-        - flex-shrink-0: Ensures it doesn't get squished
+        - shrink-0: Ensures it doesn't get squished
       */}
       <div
-        className="hidden md:block w-20 ml-4 flex-shrink-0 h-screen"
+        className="hidden md:block w-20 ml-4 shrink-0 h-screen"
         aria-hidden="true"
       />
 
@@ -245,7 +245,7 @@ const SideNav = () => {
         }}
       >
         {/* LOGO AREA */}
-        <div className="h-24 flex items-center flex-shrink-0 pl-6 mb-2">
+        <div className="h-24 flex items-center shrink-0 pl-6 mb-2">
           <div className="relative w-full h-10 flex items-center">
             {/* Collapsed Icon */}
             <div
@@ -283,7 +283,7 @@ const SideNav = () => {
         </div>
 
         {/* FOOTER */}
-        <div className="py-4 border-t border-white/5 bg-navy-light/20 flex-shrink-0">
+        <div className="py-4 border-t border-white/5 bg-navy-light/20 shrink-0">
           {bottomMenuItems
             .filter(hasPermission)
             .map((item) => renderNavItem(item))}

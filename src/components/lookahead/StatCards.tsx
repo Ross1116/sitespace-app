@@ -61,7 +61,7 @@ export const StatCards = React.memo(function StatCards({
           ? "Coverage across the currently visible planning window."
           : "Upload a programme to start building demand coverage.",
       tone: "border-slate-200 bg-white text-slate-950",
-      accent: "text-[var(--navy)]",
+      accent: "text-navy",
       extra:
         stats.totalDemandHours > 0 ? (
           <div
@@ -69,7 +69,7 @@ export const StatCards = React.memo(function StatCards({
             title="Demand coverage"
           >
             <div
-              className="h-full rounded-full bg-[var(--teal)] transition-all duration-500"
+              className="h-full rounded-full bg-teal transition-all duration-500"
               style={{ width: `${Math.min(100, coveragePct)}%` }}
             />
           </div>
@@ -82,7 +82,7 @@ export const StatCards = React.memo(function StatCards({
       sub: `Across ${visibleWeeksCount} week${visibleWeeksCount !== 1 ? "s" : ""}`,
       detail: "Total forecast demand currently shown in the workspace.",
       tone: "border-slate-200 bg-white text-slate-950",
-      accent: "text-[var(--brand-blue)]",
+      accent: "text-brand-blue",
       extra: null,
     },
     {
@@ -96,7 +96,7 @@ export const StatCards = React.memo(function StatCards({
           : "No assets",
       detail: "Coverage is grouped by asset type before you drill into activity.",
       tone: "border-slate-200 bg-white text-slate-950",
-      accent: "text-[var(--teal)]",
+      accent: "text-teal",
       extra: null,
     },
   ];

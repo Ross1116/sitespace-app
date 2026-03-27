@@ -41,7 +41,7 @@ function BookingCardDesktop({
         
         ${
           isDropdownOpen
-            ? "z-[99] border-slate-300 shadow-md relative"
+            ? "z-99 border-slate-300 shadow-md relative"
             : "z-0 hover:z-40 hover:shadow-lg hover:-translate-y-0.5 hover:border-slate-300 transition-all duration-200"
         }
       `}
@@ -117,7 +117,7 @@ function BookingCardDesktop({
                 booking.bookedAssets.length > 0 && (
                   <div className="flex items-center gap-1.5 pl-3 border-l border-slate-200">
                     <MapPin size={13} className="text-blue-500" />
-                    <span className="text-xs font-bold text-blue-700 truncate max-w-[100px]">
+                    <span className="text-xs font-bold text-blue-700 truncate max-w-25">
                       {booking.bookedAssets[0]}
                     </span>
                   </div>
@@ -148,7 +148,7 @@ function BookingCardDesktop({
         </div>
 
         {/* COL 4: STATUS & ACTIONS */}
-        <div className="flex flex-col items-end gap-3 pl-6 border-l border-slate-100 h-full justify-center min-w-[120px]">
+        <div className="flex flex-col items-end gap-3 pl-6 border-l border-slate-100 h-full justify-center min-w-30">
           <div className="flex flex-col items-end gap-1.5">
             <span
               className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border

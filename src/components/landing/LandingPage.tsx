@@ -36,7 +36,7 @@ const BADGE =
   "inline-flex items-center px-4 py-1.5 rounded-full text-sm font-semibold bg-white/10 border border-white/20 backdrop-blur-[10px]";
 
 const CHECK_ICON_CLS =
-  "w-6 h-6 shrink-0 bg-[var(--brand-blue)] rounded-full flex items-center justify-center";
+  "w-6 h-6 shrink-0 bg-brand-blue rounded-full flex items-center justify-center";
 
 export default function LandingPage() {
   const year = new Date().getFullYear();
@@ -539,7 +539,7 @@ function MobileFrame({
   return (
     <div
       className={cn(
-        "relative w-full max-w-93.75 mx-auto bg-[rgb(26,26,26)] rounded-[50px] p-4 shadow-[0_30px_80px_rgba(0,0,0,0.6)]",
+        "relative w-full max-w-93.75 mx-auto bg-[rgb(26,26,26)] rounded-12.5 p-4 shadow-[0_30px_80px_rgba(0,0,0,0.6)]",
         APPLE,
         "shine",
         className,
@@ -547,10 +547,10 @@ function MobileFrame({
       style={style}
     >
       <div
-        className="absolute top-2 left-1/2 -translate-x-1/2 w-30 h-6.25 bg-[rgb(26,26,26)] rounded-b-[20px] z-2"
+        className="absolute top-2 left-1/2 -translate-x-1/2 w-30 h-6.25 bg-[rgb(26,26,26)] rounded-b-5 z-2"
         aria-hidden="true"
       />
-      <div className="rounded-[38px] overflow-hidden">{children}</div>
+      <div className="rounded-9.5 overflow-hidden">{children}</div>
     </div>
   );
 }

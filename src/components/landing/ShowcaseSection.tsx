@@ -26,7 +26,7 @@ export function ShowcaseSection() {
 
   return (
     <section
-      className="px-6 py-16 md:py-[120px]"
+      className="px-6 py-16 md:py-30"
       style={{
         background: "linear-gradient(180deg, #000 0%, #0a0a14 100%)",
       }}
@@ -62,7 +62,7 @@ export function ShowcaseSection() {
               className={cn(
                 "px-6 py-3 rounded-full text-sm font-semibold border transition-all duration-300 cursor-pointer",
                 view === tab.key
-                  ? "bg-[var(--brand-blue)] border-[var(--brand-blue)] text-white"
+                  ? "bg-brand-blue border-brand-blue text-white"
                   : "bg-white/5 border-white/10 text-gray-400 hover:bg-white/[0.08] hover:border-white/20 hover:text-[rgb(245,245,247)]",
               )}
               onClick={() => setView(tab.key)}
@@ -115,17 +115,17 @@ export function ShowcaseSection() {
             <div className="max-w-md mx-auto">
               <div
                 className={cn(
-                  "relative w-full max-w-[380px] mx-auto bg-[rgb(26,26,26)] rounded-[50px] p-4 shadow-[0_30px_80px_rgba(0,0,0,0.6)]",
+                  "relative w-full max-w-95 mx-auto bg-[rgb(26,26,26)] rounded-12.5 p-4 shadow-[0_30px_80px_rgba(0,0,0,0.6)]",
                   APPLE,
                   INTERACTIVE,
                   "shine",
                 )}
               >
                 <div
-                  className="absolute top-2 left-1/2 -translate-x-1/2 w-[120px] h-[25px] bg-[rgb(26,26,26)] rounded-b-[20px] z-[2]"
+                  className="absolute top-2 left-1/2 -translate-x-1/2 w-30 h-6.25 bg-[rgb(26,26,26)] rounded-b-5 z-2"
                   aria-hidden="true"
                 />
-                <div className="rounded-[38px] overflow-hidden">
+                <div className="rounded-9.5 overflow-hidden">
                   <Image
                     src="/static/images/mobile.png"
                     alt="SiteSpace mobile app interface"
@@ -177,17 +177,17 @@ export function ShowcaseSection() {
               </div>
               <div
                 className={cn(
-                  "relative w-full max-w-[340px] mx-auto bg-[rgb(26,26,26)] rounded-[50px] p-4 shadow-[0_30px_80px_rgba(0,0,0,0.6)]",
+                  "relative w-full max-w-85 mx-auto bg-[rgb(26,26,26)] rounded-12.5 p-4 shadow-[0_30px_80px_rgba(0,0,0,0.6)]",
                   APPLE,
                   INTERACTIVE,
                   "shine",
                 )}
               >
                 <div
-                  className="absolute top-2 left-1/2 -translate-x-1/2 w-[120px] h-[25px] bg-[rgb(26,26,26)] rounded-b-[20px] z-[2]"
+                  className="absolute top-2 left-1/2 -translate-x-1/2 w-30 h-6.25 bg-[rgb(26,26,26)] rounded-b-5 z-2"
                   aria-hidden="true"
                 />
-                <div className="rounded-[38px] overflow-hidden">
+                <div className="rounded-9.5 overflow-hidden">
                   <Image
                     src="/static/images/mobile.png"
                     alt="SiteSpace mobile interface"

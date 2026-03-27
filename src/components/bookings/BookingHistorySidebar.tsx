@@ -514,14 +514,14 @@ export default function BookingHistorySidebar({
         role="dialog"
         aria-modal="true"
         aria-label="Booking history"
-        className={`fixed inset-y-0 right-0 w-full sm:w-[500px] bg-white shadow-2xl transform transition-transform duration-300 ease-in-out z-50 ${
+        className={`fixed inset-y-0 right-0 w-full sm:w-125 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out z-50 ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
         {booking && (
           <div className="h-full flex flex-col">
             {/* Header */}
-            <div className="p-6 pb-5 bg-[var(--navy)] text-white">
+            <div className="p-6 pb-5 bg-navy text-white">
               <div className="flex justify-between items-start mb-4">
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-lg bg-white/10 flex items-center justify-center border border-white/20">
@@ -691,7 +691,7 @@ export default function BookingHistorySidebar({
                   {/* Timeline */}
                   <div className="relative">
                     {/* Vertical line */}
-                    <div className="absolute left-[15px] top-3 bottom-3 w-px bg-slate-200" />
+                    <div className="absolute left-3.75 top-3 bottom-3 w-px bg-slate-200" />
 
                     <div className="space-y-1">
                       {auditTrail.map((entry, index) => {
@@ -709,7 +709,7 @@ export default function BookingHistorySidebar({
                           >
                             {/* Timeline dot */}
                             <div
-                              className={`absolute left-[9px] top-1.5 h-[14px] w-[14px] rounded-full border-2 border-white shadow-sm z-10 ${config.dotColor}`}
+                              className={`absolute left-2.25 top-1.5 h-3.5 w-3.5 rounded-full border-2 border-white shadow-sm z-10 ${config.dotColor}`}
                             />
 
                             {/* Card */}
@@ -798,7 +798,7 @@ export default function BookingHistorySidebar({
             <div className="p-4 bg-white border-t border-slate-100">
               <Button
                 onClick={onClose}
-                className="w-full bg-[var(--navy)] text-white hover:bg-[var(--navy-hover)] rounded-xl h-10 text-sm font-bold"
+                className="w-full bg-navy text-white hover:bg-(--navy-hover) rounded-xl h-10 text-sm font-bold"
               >
                 Close
               </Button>

@@ -44,7 +44,7 @@ export function ForgotPasswordForm() {
         <div>
           <Link
             href="/login"
-            className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-[var(--navy)] transition-colors mb-8 group"
+            className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-navy transition-colors mb-8 group"
           >
             <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />{" "}
             Back to Login
@@ -87,13 +87,13 @@ export function ForgotPasswordForm() {
               onChange={(e) => setEmail(e.target.value)}
               required
               disabled={status.type === "loading" || status.type === "success"}
-              className="h-12 border-slate-200 focus-visible:ring-[var(--navy)] rounded-xl text-base"
+              className="h-12 border-slate-200 focus-visible:ring-navy rounded-xl text-base"
             />
           </div>
 
           <Button
             type="submit"
-            className="w-full h-12 bg-[var(--navy)] hover:bg-[var(--navy-hover)] text-white font-bold text-base rounded-xl shadow-lg shadow-slate-900/10 transition-all disabled:opacity-70"
+            className="w-full h-12 bg-navy hover:bg-(--navy-hover) text-white font-bold text-base rounded-xl shadow-lg shadow-slate-900/10 transition-all disabled:opacity-70"
             disabled={status.type === "loading" || status.type === "success"}
           >
             {status.type === "loading" ? (

@@ -300,18 +300,18 @@ export default function BookingList({
             <Button
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={currentPage === 1}
-              className="h-9 min-w-[96px] rounded-full bg-[var(--navy)] px-4 text-xs font-bold text-white hover:bg-[var(--navy-hover)] disabled:bg-slate-200 disabled:text-slate-400 sm:px-6"
+              className="h-9 min-w-24 rounded-full bg-navy px-4 text-xs font-bold text-white hover:bg-(--navy-hover) disabled:bg-slate-200 disabled:text-slate-400 sm:px-6"
             >
               Prev
             </Button>
-            <span className="order-first w-full text-center text-xs font-bold text-slate-500 sm:order-none sm:w-auto">
+            <span className="order-first w-full text-center text-xs font-bold text-slate-500 sm:order-0 sm:w-auto">
               Page <span className="text-slate-900">{currentPage}</span> of{" "}
               <span className="text-slate-900">{totalPages}</span>
             </span>
             <Button
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
-              className="h-9 min-w-[96px] rounded-full bg-[var(--navy)] px-4 text-xs font-bold text-white hover:bg-[var(--navy-hover)] disabled:bg-slate-200 disabled:text-slate-400 sm:px-6"
+              className="h-9 min-w-24 rounded-full bg-navy px-4 text-xs font-bold text-white hover:bg-(--navy-hover) disabled:bg-slate-200 disabled:text-slate-400 sm:px-6"
             >
               Next
             </Button>

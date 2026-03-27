@@ -215,11 +215,11 @@ function ImageLightbox({
     <DialogPrimitive.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay
-          className="fixed inset-0 z-[9999] data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 duration-200"
+          className="fixed inset-0 z-9999 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 duration-200"
           style={{ background: "rgba(0,0,0,0.93)" }}
         />
         <DialogPrimitive.Content
-          className="fixed inset-0 z-[9999] flex flex-col outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 duration-200"
+          className="fixed inset-0 z-9999 flex flex-col outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 duration-200"
           // Prevent Radix from auto-closing this content on outside pointer/focus events
           onPointerDownOutside={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}
@@ -228,7 +228,7 @@ function ImageLightbox({
           <DialogPrimitive.Title className="sr-only">{title}</DialogPrimitive.Title>
 
           {/* ── Top bar ── */}
-          <div className="flex-shrink-0 flex items-center justify-between px-5 py-3 bg-gradient-to-b from-black/60 to-transparent pointer-events-none">
+          <div className="shrink-0 flex items-center justify-between px-5 py-3 bg-gradient-to-b from-black/60 to-transparent pointer-events-none">
             <div className="min-w-0 pointer-events-auto">
               <p className="text-white font-semibold text-sm truncate leading-tight">
                 {title}
@@ -237,7 +237,7 @@ function ImageLightbox({
             </div>
             <DialogPrimitive.Close asChild>
               <button
-                className="pointer-events-auto flex-shrink-0 ml-4 w-9 h-9 flex items-center justify-center rounded-full text-white/60 hover:text-white hover:bg-white/15 transition-colors"
+                className="pointer-events-auto shrink-0 ml-4 w-9 h-9 flex items-center justify-center rounded-full text-white/60 hover:text-white hover:bg-white/15 transition-colors"
                 aria-label="Close lightbox"
               >
                 <X className="h-5 w-5" />
@@ -284,7 +284,7 @@ function ImageLightbox({
 
           {/* ── Bottom toolbar ── */}
           <div
-            className="flex-shrink-0 py-5 flex justify-center gap-3"
+            className="shrink-0 py-5 flex justify-center gap-3"
             onMouseDown={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-0.5 bg-white/10 backdrop-blur-md px-2 py-1.5 rounded-full border border-white/10 shadow-2xl">

@@ -75,7 +75,7 @@ export default function LogoCarousel({ logos, className }: LogoCarouselProps) {
           {extendedLogos.map((logo, index) => (
             <div
               key={index}
-              className="mx-8 flex h-12 w-[120px] flex-shrink-0 items-center justify-center grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all duration-300"
+              className="mx-8 flex h-12 w-30 shrink-0 items-center justify-center grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all duration-300"
             >
               <Image
                 src={logo.logo || "https://placehold.co/120x48.png"}

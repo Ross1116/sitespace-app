@@ -53,7 +53,7 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[var(--page-bg)] text-slate-900`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-(--page-bg) text-slate-900`}
       >
         <GlobalNetworkLoadingBar />
         <SpeedInsights />

@@ -282,7 +282,7 @@ export default function RescheduleBookingForm({
 
         {error && (
           <div className="bg-red-50 text-red-600 text-sm p-3 rounded-md flex gap-2 items-start">
-            <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+            <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
             <span>{error}</span>
           </div>
         )}

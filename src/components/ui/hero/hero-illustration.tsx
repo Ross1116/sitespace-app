@@ -13,8 +13,8 @@ export function HeroIllustration() {
 
   if (!isClient) {
     return (
-      <div className="relative w-full max-w-lg mx-auto h-[600px] flex items-center justify-center">
-        <div className="w-full h-[600px] bg-slate-100 rounded-lg animate-pulse"></div>
+      <div className="relative w-full max-w-lg mx-auto h-150 flex items-center justify-center">
+        <div className="w-full h-150 bg-slate-100 rounded-lg animate-pulse"></div>
       </div>
     );
   }
@@ -33,7 +33,7 @@ export function HeroIllustration() {
             alt="Dashboard Preview"
             width={500}
             height={600}
-            className="h-[600px] w-full rounded-2xl opacity-80"
+            className="h-150 w-full rounded-2xl opacity-80"
           />
           <div
             className="absolute inset-0 bg-slate-50/40 rounded-2xl"

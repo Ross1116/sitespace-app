@@ -337,7 +337,7 @@ export default function BookingsPage() {
   ).length;
 
   return (
-    <div className="min-h-screen bg-[var(--page-bg)] p-4 sm:p-6 lg:p-8 font-sans">
+    <div className="min-h-screen bg-(--page-bg) p-4 sm:p-6 lg:p-8 font-sans">
       <div className="max-w-screen mx-auto space-y-6">
         <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-1 min-h-[85vh] flex flex-col relative overflow-hidden">
           <div className="p-6 flex-1 flex flex-col">
@@ -354,7 +354,7 @@ export default function BookingsPage() {
 
               <div className="flex w-full flex-col gap-4 sm:flex-row sm:items-center xl:w-auto">
                 <div className="flex w-full gap-3 sm:w-auto">
-                  <div className="flex min-w-0 flex-1 flex-col items-center justify-center rounded-xl bg-[var(--navy)] px-4 py-2.5 text-white shadow-md shadow-slate-900/10 sm:min-w-[110px] sm:flex-none sm:px-5">
+                  <div className="flex min-w-0 flex-1 flex-col items-center justify-center rounded-xl bg-navy px-4 py-2.5 text-white shadow-md shadow-slate-900/10 sm:min-w-27.5 sm:flex-none sm:px-5">
                     <span className="text-2xl font-bold leading-none">
                       {authLoading || isLoading ? "—" : allBookings.length}
                     </span>
@@ -362,7 +362,7 @@ export default function BookingsPage() {
                       Total
                     </span>
                   </div>
-                  <div className="flex min-w-0 flex-1 flex-col items-center justify-center rounded-xl bg-[var(--brand-orange)] px-4 py-2.5 text-white shadow-md shadow-orange-900/10 sm:min-w-[110px] sm:flex-none sm:px-5">
+                  <div className="flex min-w-0 flex-1 flex-col items-center justify-center rounded-xl bg-(--brand-orange) px-4 py-2.5 text-white shadow-md shadow-orange-900/10 sm:min-w-27.5 sm:flex-none sm:px-5">
                     <span className="text-2xl font-bold leading-none">
                       {authLoading || isLoading ? "—" : pendingCount}
                     </span>
@@ -375,9 +375,9 @@ export default function BookingsPage() {
                 {!isTv && (
                   <Button
                     onClick={() => setIsBookingFormOpen(true)}
-                    className="h-auto w-full rounded-lg bg-[var(--navy)] px-6 py-3 text-sm font-bold text-white shadow-md shadow-slate-900/10 hover:bg-[var(--navy-hover)] sm:w-auto"
+                    className="h-auto w-full rounded-lg bg-navy px-6 py-3 text-sm font-bold text-white shadow-md shadow-slate-900/10 hover:bg-(--navy-hover) sm:w-auto"
                   >
-                    <Plus className="mr-2 h-4 w-4 stroke-[3]" /> New Booking
+                    <Plus className="mr-2 h-4 w-4 stroke-3" /> New Booking
                   </Button>
                 )}
               </div>
@@ -418,7 +418,7 @@ export default function BookingsPage() {
                       px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap
                       ${
                         activeTab === tab
-                          ? "bg-[var(--navy)] text-white shadow-md shadow-slate-900/10"
+                          ? "bg-navy text-white shadow-md shadow-slate-900/10"
                           : "bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
                       }
                     `}

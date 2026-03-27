@@ -42,11 +42,11 @@ export default function GlobalNetworkLoadingBar() {
   return (
     <div
       aria-hidden="true"
-      className={`pointer-events-none fixed left-0 top-0 z-[100] h-1 w-full overflow-hidden transition-opacity duration-150 ${
+      className={`pointer-events-none fixed left-0 top-0 z-100 h-1 w-full overflow-hidden transition-opacity duration-150 ${
         isVisible ? "opacity-100" : "opacity-0"
       }`}
     >
-      <div className="h-full w-full origin-left animate-pulse bg-[var(--teal)]" />
+      <div className="h-full w-full origin-left animate-pulse bg-teal" />
     </div>
   );
 }
