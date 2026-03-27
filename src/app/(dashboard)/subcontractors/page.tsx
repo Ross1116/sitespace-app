@@ -22,27 +22,16 @@ import { useAuth } from "@/app/context/AuthContext";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
+import { type TransformedContractor } from "@/types";
 import {
   type NormalizedSubcontractor,
 } from "@/lib/subcontractorNormalization";
 import { useResolvedProjectSelection } from "@/hooks/useResolvedProjectSelection";
 import { useProjectSubcontractors } from "@/hooks/useProjectSubcontractors";
 
-interface Contractor {
-  contractorKey: string;
-  contractorName: string;
-  contractorCompany: string;
-  contractorTrade: string;
-  contractorEmail: string;
-  contractorPhone: string;
-  isActive: boolean;
-  suggestedTradeSpecialty?: string | null;
-  tradeResolutionStatus?: string | null;
-  tradeInferenceSource?: string | null;
-  tradeInferenceConfidence?: number | null;
-  planningReady?: boolean;
+type Contractor = Omit<TransformedContractor, "_originalData"> & {
   _originalData?: NormalizedSubcontractor;
-}
+};
 
 type SortField =
   | "contractorName"
@@ -623,29 +612,19 @@ export default function SubcontractorsPage() {
                           Planning Ready
                         </span>
                       </div>
-                      {(() => {
-                        if (selectedContractor.planningReady === true) {
-                          return (
-                            <span className="text-sm font-semibold text-emerald-700">
-                              Yes
-                            </span>
-                          );
-                        }
-
-                        if (selectedContractor.planningReady === false) {
-                          return (
-                            <span className="text-sm font-semibold text-amber-700">
-                              No
-                            </span>
-                          );
-                        }
-
-                        return (
-                          <span className="text-sm font-semibold text-slate-500">
-                            Unknown
-                          </span>
-                        );
-                      })()}
+                      {selectedContractor.planningReady === true ? (
+                        <span className="text-sm font-semibold text-emerald-700">
+                          Yes
+                        </span>
+                      ) : selectedContractor.planningReady === false ? (
+                        <span className="text-sm font-semibold text-amber-700">
+                          No
+                        </span>
+                      ) : (
+                        <span className="text-sm font-semibold text-slate-500">
+                          Unknown
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">

@@ -188,7 +188,11 @@ export default function LookaheadDashboard() {
     useLookaheadSnapshot({ projectId, enabled });
   const { alerts, isLoading: alertsLoading, mutate: mutateAlerts } =
     useLookaheadAlerts({ projectId, enabled });
-  const { history, mutate: mutateHistory } = useLookaheadHistory({
+  const {
+    history,
+    isLoading: historyLoading,
+    mutate: mutateHistory,
+  } = useLookaheadHistory({
     projectId,
     enabled: enabled && isSnapshotHistoryOpen,
   });
@@ -1043,7 +1047,9 @@ export default function LookaheadDashboard() {
                   history={history}
                   isOpen={isSnapshotHistoryOpen}
                   onOpenChange={setIsSnapshotHistoryOpen}
-                  isLoading={isSnapshotHistoryOpen && enabled && history.length === 0}
+                  isLoading={Boolean(
+                    isSnapshotHistoryOpen && enabled && historyLoading,
+                  )}
                 />
                 {!versionsLoading && (
                   <VersionHistory

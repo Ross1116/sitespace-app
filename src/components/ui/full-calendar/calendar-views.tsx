@@ -873,7 +873,7 @@ export const CalendarMonthView = () => {
                 return (
                   <div
                     key={event.id}
-                    className="px-1.5 py-0.5 rounded-0.75 text-[10px] font-medium flex items-center gap-1 truncate border border-slate-100 bg-slate-50 text-slate-600"
+                    className="px-1.5 py-0.5 rounded-[3px] text-[10px] font-medium flex items-center gap-1 truncate border border-slate-100 bg-slate-50 text-slate-600"
                   >
                     <div
                       className={cn(
@@ -1184,7 +1184,7 @@ const EventGroupSideBySide = ({
                       )}
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent className="bg-navy text-white border-slate-700 z-1000">
+                  <TooltipContent className="bg-navy text-white border-slate-700 z-50">
                     <div className="max-w-65 space-y-1">
                       <div className="font-bold">{tooltipTitle}</div>
                       {!isCollapsedPendingSummary && (

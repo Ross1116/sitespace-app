@@ -50,20 +50,47 @@ export function useProjectAssets(projectId: string | null): Result {
 
   const { data, error, isLoading, mutate } = useSWR<AssetListResponse>(
     swrKey,
-    swrKey
+        swrKey
       ? async () => {
           const response = await api.get<unknown>(swrKey);
           const payload = getAssetEnvelope(response.data);
           const assets = normalizeAssetList(payload);
+          const fallbackFields: string[] = [];
+
+          const total =
+            typeof payload.total === "number"
+              ? payload.total
+              : (fallbackFields.push("total"), assets.length);
+          const skip =
+            typeof payload.skip === "number"
+              ? payload.skip
+              : (fallbackFields.push("skip"), 0);
+          const limit =
+            typeof payload.limit === "number"
+              ? payload.limit
+              : (fallbackFields.push("limit"), 100);
+          const has_more =
+            typeof payload.has_more === "boolean"
+              ? payload.has_more
+              : (fallbackFields.push("has_more"), false);
+
+          if (
+            fallbackFields.length > 0 &&
+            process.env.NODE_ENV !== "production"
+          ) {
+            console.warn("useProjectAssets applied pagination fallbacks", {
+              swrKey,
+              fallbackFields,
+              payload,
+            });
+          }
 
           return {
             assets,
-            total:
-              typeof payload.total === "number" ? payload.total : assets.length,
-            skip: typeof payload.skip === "number" ? payload.skip : 0,
-            limit: typeof payload.limit === "number" ? payload.limit : 100,
-            has_more:
-              typeof payload.has_more === "boolean" ? payload.has_more : false,
+            total,
+            skip,
+            limit,
+            has_more,
           };
         }
       : null,

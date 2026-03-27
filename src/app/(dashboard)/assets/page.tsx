@@ -299,7 +299,7 @@ export default function AssetsTable() {
     }
 
     if (readinessFilter === "review") {
-      result = result.filter((asset) => asset.planningReady !== true);
+      result = result.filter((asset) => asset.planningReady === false);
     }
 
     // Sort
@@ -486,6 +486,7 @@ export default function AssetsTable() {
                   <button
                     key={value}
                     type="button"
+                    aria-pressed={readinessFilter === value}
                     onClick={() => setReadinessFilter(value as ReadinessFilter)}
                     className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
                       readinessFilter === value

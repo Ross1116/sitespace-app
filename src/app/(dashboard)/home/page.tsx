@@ -165,7 +165,7 @@ export default function HomePage() {
       {/* --- HEADER --- */}
       <div className="w-full max-w-screen mx-auto flex items-center justify-between gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
         <div className="flex items-center gap-4">
-          <div className="w-1.5 h-10 rounded-full bg-gradient-to-b from-slate-200 to-slate-50" />
+          <div className="w-1.5 h-10 rounded-full bg-linear-to-b from-slate-200 to-slate-50" />
           <div className="flex flex-col">
             <p className="text-sm text-slate-500">Welcome back,</p>
             <p className="text-lg md:text-xl font-semibold text-slate-900 capitalize">

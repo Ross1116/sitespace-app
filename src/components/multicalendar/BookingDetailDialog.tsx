@@ -193,6 +193,7 @@ export function BookingDetailsDialog({
   // UI LOGIC: Always lowercase for comparison
   const status = (data?.status || "pending").toLowerCase();
   const competingPendingCount = data?.competing_pending_count ?? 0;
+  const sourceLabel = formatBookingSource(data?.source);
 
   const bookedBy = useMemo(() => {
     const initials = (name?: string | null) => {
@@ -571,7 +572,7 @@ export function BookingDetailsDialog({
                   )}
                 </div>
 
-                {(data.source ||
+                {(sourceLabel ||
                   data.programme_activity_name ||
                   data.expected_asset_type ||
                   data.booking_group_id ||
@@ -583,10 +584,10 @@ export function BookingDetailsDialog({
                         <Link2 className="h-3.5 w-3.5" /> Provenance
                       </div>
                       <div className="rounded-lg border border-slate-100 bg-slate-50 p-4 text-sm text-slate-700 space-y-2">
-                        {data.source && (
+                        {sourceLabel && (
                           <p>
                             <span className="font-medium text-slate-900">Source:</span>{" "}
-                            {formatBookingSource(data.source)}
+                            {sourceLabel}
                           </p>
                         )}
                         {data.programme_activity_name && (

@@ -19,6 +19,7 @@ import { MulticalendarActionsProvider } from "./MulticalendarActionsContext";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ApiAsset, ApiBooking } from "@/types";
 import { isAssetRetiredOrOutOfService } from "@/lib/assetStatus";
+import { formatBookingSource } from "@/lib/bookingHelpers";
 import ComponentErrorBoundary from "@/components/ui/ComponentErrorBoundary";
 import { useResolvedProjectSelection } from "@/hooks/useResolvedProjectSelection";
 import { useProjectAssets } from "@/hooks/useProjectAssets";
@@ -42,11 +43,12 @@ const processBookingToEvent = (
   let title = "Booking";
   if (b.purpose && b.purpose.trim() !== "") title = b.purpose;
   else if (b.notes && b.notes.trim() !== "") title = b.notes;
+  const sourceLabel = formatBookingSource(b.source);
 
   const provenanceSummary = [
     b.programme_activity_name ? `Activity: ${b.programme_activity_name}` : null,
     b.expected_asset_type ? `Expected: ${b.expected_asset_type}` : null,
-    b.source ? `Source: ${b.source}` : null,
+    sourceLabel ? `Source: ${sourceLabel}` : null,
     b.is_modified ? "Modified from programme default" : null,
   ]
     .filter(Boolean)
