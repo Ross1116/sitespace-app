@@ -250,10 +250,6 @@ export default function AssetsTable() {
     },
   ];
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [readinessFilter, searchTerm]);
-
   // Client-side filtering + sorting
   const filteredAndSortedAssets = useMemo(() => {
     if (!allAssets || allAssets.length === 0) return [];
@@ -332,13 +328,26 @@ export default function AssetsTable() {
     return filteredAndSortedAssets.slice(start, start + itemsPerPage);
   }, [filteredAndSortedAssets, currentPage, itemsPerPage]);
 
+  const totalPages = useMemo(
+    () =>
+      Math.max(
+        1,
+        Math.ceil((filteredAndSortedAssets?.length || 0) / itemsPerPage),
+      ),
+    [filteredAndSortedAssets?.length, itemsPerPage],
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [readinessFilter, searchTerm]);
+
+  useEffect(() => {
+    setCurrentPage((prev) => Math.min(prev, totalPages || 1));
+  }, [totalPages]);
+
   if (user?.role === "subcontractor") {
     return null;
   }
-
-  const totalPages = Math.ceil(
-    (filteredAndSortedAssets?.length || 0) / itemsPerPage,
-  );
 
   const maintenanceCount = (allAssets ?? []).filter(
     (a) => a.assetStatus === "Maintenance",
@@ -346,6 +355,13 @@ export default function AssetsTable() {
   const planningReadyCount = (allAssets ?? []).filter(
     (asset) => asset.planningReady === true,
   ).length;
+  const emptyStateMessage = searchTerm.trim()
+    ? `No assets found matching "${searchTerm.trim()}".`
+    : readinessFilter === "ready"
+      ? "No planning-ready assets found."
+      : readinessFilter === "review"
+        ? "No assets needing review found."
+        : "No assets found.";
 
   const handlePageChange = (pageNumber: number) => {
     setCurrentPage(pageNumber);
@@ -526,11 +542,7 @@ export default function AssetsTable() {
               ) : paginatedAssets.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-64 text-slate-400 border-2 border-dashed border-slate-100 rounded-2xl bg-slate-50/50">
                   <Box className="h-10 w-10 mb-2 opacity-50" />
-                  <p>
-                    {searchTerm
-                      ? "No assets match your search."
-                      : "No assets found."}
-                  </p>
+                  <p>{emptyStateMessage}</p>
                 </div>
               ) : (
                 paginatedAssets.map((asset) => {
@@ -581,7 +593,7 @@ export default function AssetsTable() {
                           className="text-slate-400 hidden sm:block"
                         />
                         <span className="truncate capitalize">
-                          {asset.canonicalType || asset.assetType}
+                          {getAssetDisplayType(asset)}
                         </span>
                       </div>
 

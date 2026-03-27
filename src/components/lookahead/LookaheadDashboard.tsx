@@ -84,7 +84,22 @@ const POLL_MAX_ATTEMPTS = 60;
 
 function toDateTime(date?: string | null, time?: string | null): Date | null {
   if (!date || !time) return null;
-  const [hoursRaw, minutesRaw, secondsRaw] = time.trim().split(":");
+  const parts = time.trim().split(":");
+  if (parts.length < 2 || parts.length > 3) return null;
+
+  const [hoursRaw, minutesRaw, secondsRaw] = parts;
+
+  if (
+    !hoursRaw ||
+    !minutesRaw ||
+    (secondsRaw !== undefined && !secondsRaw) ||
+    !/^\d+$/.test(hoursRaw) ||
+    !/^\d+$/.test(minutesRaw) ||
+    (secondsRaw !== undefined && !/^\d+$/.test(secondsRaw))
+  ) {
+    return null;
+  }
+
   const hours = Number(hoursRaw);
   const minutes = Number(minutesRaw);
   const seconds = secondsRaw == null ? 0 : Number(secondsRaw);
