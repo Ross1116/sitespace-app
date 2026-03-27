@@ -112,22 +112,21 @@ function toDateTime(date?: string | null, time?: string | null): Date | null {
 
 function getPersistentUploadAlertMessage(
   notes: Record<string, unknown> | null | undefined,
+  unclassifiedCount?: number | null,
 ): string | null {
-  if (!notes) return null;
+  const resolvedUnclassifiedCount =
+    typeof unclassifiedCount === "number" ? unclassifiedCount : null;
 
-  if (notes.classification_ai_suppressed || notes.work_profile_ai_suppressed) {
+  if (notes?.classification_ai_suppressed || notes?.work_profile_ai_suppressed) {
     return "Programme processed in deterministic fallback mode because AI was unavailable.";
   }
 
-  if (notes.ai_quota_exhausted) {
+  if (notes?.ai_quota_exhausted) {
     return "Programme diagnostics report AI quota exhaustion. Review classifications before trusting coverage.";
   }
 
-  if (
-    typeof notes.unclassified_mapping_count === "number" &&
-    notes.unclassified_mapping_count > 0
-  ) {
-    return `${notes.unclassified_mapping_count} mappings still need review before coverage is fully trustworthy.`;
+  if ((resolvedUnclassifiedCount ?? 0) > 0) {
+    return `${resolvedUnclassifiedCount} mappings still need review before coverage is fully trustworthy.`;
   }
 
   return null;
@@ -219,7 +218,10 @@ export default function LookaheadDashboard() {
   });
   const { versions, isLoading: versionsLoading, mutate: mutateVersions } =
     useProgrammeVersions({ projectId, enabled });
-  const { planningCompleteness } = usePlanningCompleteness({
+  const {
+    planningCompleteness,
+    mutate: mutatePlanningCompleteness,
+  } = usePlanningCompleteness({
     projectId,
     enabled,
   });
@@ -233,6 +235,8 @@ export default function LookaheadDashboard() {
     [versions],
   );
   const latestVersion = sortedVersions[0] ?? null;
+  const latestUploadKey = latestVersion?.upload_id ?? null;
+  const snapshotKey = snapshot?.snapshot_id ?? snapshot?.snapshot_date ?? null;
 
   const {
     uploadStatus,
@@ -288,6 +292,11 @@ export default function LookaheadDashboard() {
 
   useEffect(() => () => stopPolling(), [stopPolling]);
 
+  useEffect(() => {
+    setDismissedAlerts(new Set());
+    setDeletingIds(new Set());
+  }, [latestUploadKey, snapshotKey]);
+
   const refreshLookaheadWorkspace = useCallback(async () => {
     const refreshTasks: Promise<unknown>[] = [
       mutateSnapshot(),
@@ -297,6 +306,7 @@ export default function LookaheadDashboard() {
       mutateUploadStatus(),
       mutateActivities(),
       mutateBookingContext(),
+      mutatePlanningCompleteness(),
     ];
 
     if (projectId) {
@@ -309,6 +319,7 @@ export default function LookaheadDashboard() {
     mutateAlerts,
     mutateBookingContext,
     mutateHistory,
+    mutatePlanningCompleteness,
     mutateSnapshot,
     mutateUploadStatus,
     mutateVersions,
@@ -322,8 +333,15 @@ export default function LookaheadDashboard() {
     setActivityDialogMode(null);
   }, []);
 
+  const isUploadInFlight =
+    uploadPhase.kind === "uploading" || uploadPhase.kind === "polling";
+
   const startPolling = useCallback(
     (uploadId: string) => {
+      if (pollingRef.current || uploadPhase.kind === "polling") {
+        return;
+      }
+
       stopPolling();
       isFetchingRef.current = false;
       const generation = ++pollingGenerationRef.current;
@@ -369,12 +387,12 @@ export default function LookaheadDashboard() {
         }
       }, 2000);
     },
-    [refreshLookaheadWorkspace, stopPolling],
+    [refreshLookaheadWorkspace, stopPolling, uploadPhase.kind],
   );
 
   const handleFileSelected = useCallback(
     async (file: File | null) => {
-      if (!file || !projectId) return;
+      if (!file || !projectId || isUploadInFlight) return;
 
       const targetProject = projectId;
       setUploadPhase({ kind: "uploading" });
@@ -389,7 +407,7 @@ export default function LookaheadDashboard() {
         setUploadPhase({ kind: "error", message: getApiErrorMessage(error) });
       }
     },
-    [projectId, startPolling],
+    [isUploadInFlight, projectId, startPolling],
   );
 
   const handleDeleteVersion = useCallback(
@@ -495,13 +513,17 @@ export default function LookaheadDashboard() {
     [heatmap, visibleWeeks],
   );
 
-  const persistentUploadMessage = useMemo(
-    () => getPersistentUploadAlertMessage(uploadStatus?.completeness_notes),
-    [uploadStatus],
-  );
   const unclassifiedCount =
     uploadStatus?.completeness_notes?.unclassified_mapping_count ??
     unclassifiedMappings.length;
+  const persistentUploadMessage = useMemo(
+    () =>
+      getPersistentUploadAlertMessage(
+        uploadStatus?.completeness_notes,
+        unclassifiedCount,
+      ),
+    [unclassifiedCount, uploadStatus?.completeness_notes],
+  );
 
   const activeAlerts = useMemo((): PlanningAlert[] => {
     const flags = (alerts?.alerts as LookaheadAnomalyFlags | undefined) ?? {};
@@ -715,8 +737,9 @@ export default function LookaheadDashboard() {
                 </div>
 
                 <Button
-                  disabled={!topActionButtonsReady || !projectId}
+                  disabled={!topActionButtonsReady || !projectId || isUploadInFlight}
                   onClick={() => {
+                    if (isUploadInFlight) return;
                     if (fileInputRef.current) fileInputRef.current.value = "";
                     fileInputRef.current?.click();
                   }}
@@ -747,6 +770,7 @@ export default function LookaheadDashboard() {
                   type="file"
                   accept=".csv,.xlsx,.xlsm,.pdf"
                   className="hidden"
+                  disabled={isUploadInFlight}
                   onChange={(event) =>
                     handleFileSelected(event.target.files?.[0] ?? null)
                   }
@@ -1144,10 +1168,21 @@ export default function LookaheadDashboard() {
         userRole={user?.role}
         onCorrectMapping={async (mappingId, assetType) => {
           await updateProgrammeMapping(mappingId, { asset_type: assetType });
-          await Promise.allSettled([mutateMappings(), mutateUnclassified(), mutateUploadStatus()]);
+          await Promise.allSettled([
+            mutateMappings(),
+            mutateUnclassified(),
+            mutateUploadStatus(),
+            mutatePlanningCompleteness(),
+          ]);
         }}
         onPromoteToMemory={async (itemId, assetType) => {
           await promoteItemClassification(itemId, { asset_type: assetType });
+          await Promise.allSettled([
+            mutateMappings(),
+            mutateUnclassified(),
+            mutateUploadStatus(),
+            mutatePlanningCompleteness(),
+          ]);
         }}
       />
 

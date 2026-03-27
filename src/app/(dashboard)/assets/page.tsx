@@ -430,7 +430,7 @@ export default function AssetsTable() {
                   onClick={() => setIsAssetFormOpen(true)}
                   className="bg-navy hover:bg-(--navy-hover) text-white rounded-lg px-6 py-5 h-auto text-sm font-bold shadow-md shadow-slate-900/10 w-full sm:w-auto"
                 >
-                  <Plus className="mr-2 h-4 w-4 stroke-[3]" /> Add Asset
+                  <Plus className="mr-2 h-4 w-4 stroke-3" /> Add Asset
                 </Button>
               </div>
             </div>
@@ -478,7 +478,7 @@ export default function AssetsTable() {
             </div>
 
             {/* Table Header — Sortable */}
-            <div className="hidden sm:grid grid-cols-12 gap-4 bg-gradient-to-r from-(--navy-deep) to-navy text-white py-3.5 px-6 rounded-xl text-sm font-semibold shadow-md shadow-slate-200 mb-4 select-none">
+            <div className="hidden sm:grid grid-cols-12 gap-4 bg-linear-to-r from-(--navy-deep) to-navy text-white py-3.5 px-6 rounded-xl text-sm font-semibold shadow-md shadow-slate-200 mb-4 select-none">
               {columnHeaders.map(({ label, field, colSpan, extraClass }) => (
                 <div
                   key={field}
