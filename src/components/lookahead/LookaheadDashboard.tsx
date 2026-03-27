@@ -84,7 +84,28 @@ const POLL_MAX_ATTEMPTS = 60;
 
 function toDateTime(date?: string | null, time?: string | null): Date | null {
   if (!date || !time) return null;
-  const normalizedTime = time.length === 5 ? `${time}:00` : time;
+  const [hoursRaw, minutesRaw, secondsRaw] = time.trim().split(":");
+  const hours = Number(hoursRaw);
+  const minutes = Number(minutesRaw);
+  const seconds = secondsRaw == null ? 0 : Number(secondsRaw);
+
+  if (
+    !Number.isInteger(hours) ||
+    !Number.isInteger(minutes) ||
+    !Number.isInteger(seconds) ||
+    hours < 0 ||
+    hours > 23 ||
+    minutes < 0 ||
+    minutes > 59 ||
+    seconds < 0 ||
+    seconds > 59
+  ) {
+    return null;
+  }
+
+  const normalizedTime = `${String(hours).padStart(2, "0")}:${String(
+    minutes,
+  ).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
   const parsed = new Date(`${date}T${normalizedTime}`);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
@@ -1135,7 +1156,7 @@ export default function LookaheadDashboard() {
         bookingContext &&
         !bookingContextLoading && (
         <CreateBookingForm
-          isOpen={Boolean(selectedActivity)}
+          isOpen={true}
           onClose={closeActivityFlow}
           startTime={bookingStartTime}
           endTime={bookingEndTime}

@@ -189,7 +189,6 @@ export default function BookingsPage() {
     projectId,
     hasResolvedProjects,
     projectBootstrapLoading,
-    projectBootstrapTimedOut,
   } = useResolvedProjectSelection({
     userId,
     role: user?.role,
@@ -225,7 +224,7 @@ export default function BookingsPage() {
     if (
       !isTv &&
       userId &&
-      (!projectBootstrapLoading || projectBootstrapTimedOut) &&
+      !projectBootstrapLoading &&
       hasResolvedProjects &&
       !projectId &&
       typeof window !== "undefined"
@@ -236,7 +235,6 @@ export default function BookingsPage() {
     hasResolvedProjects,
     isTv,
     projectBootstrapLoading,
-    projectBootstrapTimedOut,
     projectId,
     userId,
   ]);
@@ -345,6 +343,7 @@ export default function BookingsPage() {
   const pendingCount = allBookings.filter(
     (b) => b.bookingStatus === "pending",
   ).length;
+  const surfaceLoading = authLoading || isLoading || projectBootstrapLoading;
 
   return (
     <div className="min-h-screen bg-(--page-bg) p-4 sm:p-6 lg:p-8 font-sans">
@@ -366,7 +365,7 @@ export default function BookingsPage() {
                 <div className="flex w-full gap-3 sm:w-auto">
                   <div className="flex min-w-0 flex-1 flex-col items-center justify-center rounded-xl bg-navy px-4 py-2.5 text-white shadow-md shadow-slate-900/10 sm:min-w-27.5 sm:flex-none sm:px-5">
                     <span className="text-2xl font-bold leading-none">
-                      {authLoading || isLoading ? "—" : allBookings.length}
+                      {surfaceLoading ? "—" : allBookings.length}
                     </span>
                     <span className="text-[10px] font-medium opacity-80 uppercase tracking-wide">
                       Total
@@ -374,7 +373,7 @@ export default function BookingsPage() {
                   </div>
                   <div className="flex min-w-0 flex-1 flex-col items-center justify-center rounded-xl bg-(--brand-orange) px-4 py-2.5 text-white shadow-md shadow-orange-900/10 sm:min-w-27.5 sm:flex-none sm:px-5">
                     <span className="text-2xl font-bold leading-none">
-                      {authLoading || isLoading ? "—" : pendingCount}
+                      {surfaceLoading ? "—" : pendingCount}
                     </span>
                     <span className="text-[10px] font-medium opacity-90 uppercase tracking-wide">
                       Pending
@@ -449,7 +448,7 @@ export default function BookingsPage() {
                 <BookingList
                   bookings={filteredBookings}
                   activeTab={activeTab}
-                  loading={isLoading || authLoading || projectBootstrapLoading}
+                  loading={surfaceLoading}
                   onActionComplete={() => mutate()}
                   highlightBookingId={highlightBookingId}
                 />
@@ -471,3 +470,4 @@ export default function BookingsPage() {
     </div>
   );
 }
+
