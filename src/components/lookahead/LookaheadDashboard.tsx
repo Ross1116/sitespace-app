@@ -82,6 +82,10 @@ type ActivityDialogMode = "context" | "booking";
 const WINDOW_WEEKS: Record<WindowSize, number> = { "2W": 2, "4W": 4, "6W": 6 };
 const POLL_MAX_ATTEMPTS = 60;
 
+function isWindowSize(value: unknown): value is WindowSize {
+  return typeof value === "string" && value in WINDOW_WEEKS;
+}
+
 function toDateTime(date?: string | null, time?: string | null): Date | null {
   if (!date || !time) return null;
   const parts = time.trim().split(":");
@@ -205,7 +209,9 @@ export default function LookaheadDashboard() {
   useEffect(() => {
     if (!hasUIIntentHydrated || !uiScopeKey) return;
     const persisted = useUIIntentStore.getState().getLookaheadIntent(uiScopeKey);
-    setWindowSizeLocal((persisted?.windowSize as WindowSize) ?? "4W");
+    setWindowSizeLocal(
+      isWindowSize(persisted?.windowSize) ? persisted.windowSize : "4W",
+    );
   }, [hasUIIntentHydrated, uiScopeKey]);
 
   const updateWindowSize = useCallback(
@@ -814,6 +820,9 @@ export default function LookaheadDashboard() {
               onDismiss={() => setUploadPhase({ kind: "idle" })}
               onUploadAnother={() => {
                 setUploadPhase({ kind: "idle" });
+                if (fileInputRef.current) {
+                  fileInputRef.current.value = "";
+                }
                 fileInputRef.current?.click();
               }}
             />
@@ -1213,8 +1222,7 @@ export default function LookaheadDashboard() {
           await Promise.allSettled([
             mutateMappings(),
             mutateUnclassified(),
-            mutateUploadStatus(),
-            mutatePlanningCompleteness(),
+            refreshLookaheadWorkspace(),
           ]);
         }}
         onPromoteToMemory={async (itemId, assetType) => {
@@ -1222,8 +1230,7 @@ export default function LookaheadDashboard() {
           await Promise.allSettled([
             mutateMappings(),
             mutateUnclassified(),
-            mutateUploadStatus(),
-            mutatePlanningCompleteness(),
+            refreshLookaheadWorkspace(),
           ]);
         }}
       />

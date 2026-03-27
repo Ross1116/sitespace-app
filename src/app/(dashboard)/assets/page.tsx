@@ -53,6 +53,11 @@ type SortField =
   | "assetLastUpdated";
 type SortDirection = "asc" | "desc";
 type ReadinessFilter = "all" | "ready" | "review";
+const readinessOptions = [
+  ["all", "All assets"],
+  ["ready", "Planning ready"],
+  ["review", "Needs review"],
+] as const;
 
 const getAssetDisplayType = (asset: Asset): string =>
   asset.canonicalType || asset.assetType;
@@ -471,16 +476,12 @@ export default function AssetsTable() {
                 <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
                   {planningReadyCount} planning ready
                 </span>
-                {[
-                  ["all", "All assets"],
-                  ["ready", "Planning ready"],
-                  ["review", "Needs review"],
-                ].map(([value, label]) => (
+                {readinessOptions.map(([value, label]) => (
                   <button
                     key={value}
                     type="button"
                     aria-pressed={readinessFilter === value}
-                    onClick={() => setReadinessFilter(value as ReadinessFilter)}
+                    onClick={() => setReadinessFilter(value)}
                     className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
                       readinessFilter === value
                         ? "bg-navy text-white"

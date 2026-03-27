@@ -137,6 +137,7 @@ const transformBookingToLegacyFormat = (
   }
 
   const normalizedStatus = (booking.status || "pending").toLowerCase();
+  const trimmedSource = booking.source?.trim() || null;
 
   return {
     bookingKey: booking.id,
@@ -161,7 +162,7 @@ const transformBookingToLegacyFormat = (
     subcontractorId: booking.subcontractor_id ?? undefined,
     subcontractorName: subName,
     competingPendingCount: booking.competing_pending_count ?? 0,
-    bookingSource: booking.source?.trim() ? booking.source.trim() : null,
+    bookingSource: trimmedSource,
     bookingGroupId: booking.booking_group_id ?? null,
     programmeActivityId: booking.programme_activity_id ?? null,
     programmeActivityName: booking.programme_activity_name ?? null,
