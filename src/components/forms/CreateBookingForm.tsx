@@ -591,7 +591,6 @@ export function CreateBookingForm({
   const isSubcontractor = user?.role === "subcontractor";
   const { projectId, selectedProject: project } = useResolvedProjectSelection({
     userId,
-    role: user?.role,
   });
   const { createBookings } = useBookingMutations();
 

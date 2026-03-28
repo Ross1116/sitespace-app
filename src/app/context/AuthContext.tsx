@@ -198,17 +198,9 @@ export function AuthProvider({
       // Fire-and-forget — don't block the redirect
       (async () => {
         try {
-          const projUrl =
-            userData.role === "subcontractor"
-              ? `/subcontractors/${userData.id}/projects`
-              : "/projects/?my_projects=true&limit=100&skip=0";
-
-          const projRes = await fetch(
-            `/api/proxy?path=${encodeURIComponent(projUrl)}`,
-            {
-              credentials: "include",
-            },
-          );
+          const projRes = await fetch("/api/auth/projects?limit=100&skip=0", {
+            credentials: "include",
+          });
 
           if (projRes.ok) {
             const projData = await projRes.json();

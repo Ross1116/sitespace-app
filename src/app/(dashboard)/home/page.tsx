@@ -72,7 +72,6 @@ export default function HomePage() {
     setProjectId,
   } = useResolvedProjectSelection({
     userId,
-    role: user?.role,
   });
 
   // --- Assets count ---
