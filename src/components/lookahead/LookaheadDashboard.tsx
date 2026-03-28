@@ -81,6 +81,7 @@ type ActivityDialogMode = "context" | "booking";
 
 const WINDOW_WEEKS: Record<WindowSize, number> = { "2W": 2, "4W": 4, "6W": 6 };
 const POLL_MAX_ATTEMPTS = 60;
+const DEFAULT_ERROR_MSG = "Something went wrong";
 
 function isWindowSize(value: unknown): value is WindowSize {
   return typeof value === "string" && value in WINDOW_WEEKS;
@@ -159,7 +160,9 @@ function getForecastLoadMessage(
     ? `Your latest upload from ${latestUploadDate} is still saved, but `
     : "";
   const fallback = `${uploadPrefix}the planning forecast could not be loaded right now.`;
-  const rawMessage = getApiErrorMessage(error, fallback).trim();
+  const rawMessage = getApiErrorMessage(error, DEFAULT_ERROR_MSG).trim();
+  const resolvedMessage =
+    rawMessage === DEFAULT_ERROR_MSG ? fallback : rawMessage;
 
   if (
     /offset-naive|offset-aware/i.test(rawMessage) ||
@@ -185,20 +188,23 @@ function getForecastLoadMessage(
     title: latestUploadDate
       ? "Couldn't refresh the forecast"
       : "Couldn't load the forecast",
-    message: rawMessage === fallback ? fallback : `${fallback} ${rawMessage}`,
+    message:
+      resolvedMessage === fallback || resolvedMessage.startsWith(fallback)
+        ? fallback
+        : `${fallback} ${resolvedMessage}`,
   };
 }
 
 function getDiagnosticsLoadMessage(error: unknown): string {
   const fallback =
     "Planning diagnostics could not be refreshed right now. You can still use the heatmap, but alert badges may be stale until the next retry.";
-  const rawMessage = getApiErrorMessage(error, fallback).trim();
+  const rawMessage = getApiErrorMessage(error, DEFAULT_ERROR_MSG).trim();
 
   if (
     /offset-naive|offset-aware/i.test(rawMessage) ||
     (isAxiosError(error) && (error.response?.status ?? 0) >= 500) ||
     /status code 5\d\d/i.test(rawMessage) ||
-    rawMessage === "Something went wrong"
+    rawMessage === DEFAULT_ERROR_MSG
   ) {
     return fallback;
   }

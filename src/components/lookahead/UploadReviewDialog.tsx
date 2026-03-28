@@ -56,6 +56,12 @@ interface Props {
   onPromoteToMemory: (itemId: string, assetType: string) => Promise<void>;
 }
 
+interface PaginationControlsProps {
+  page: number;
+  totalPages: number;
+  setPage: React.Dispatch<React.SetStateAction<number>>;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
@@ -166,6 +172,42 @@ function StepHint({
   );
 }
 
+function PaginationControls({
+  page,
+  totalPages,
+  setPage,
+}: PaginationControlsProps) {
+  return (
+    <div className="flex items-center gap-1">
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        className="h-8 w-8 rounded-lg"
+        aria-label="Previous page"
+        disabled={page <= 1}
+        onClick={() => setPage((p) => Math.max(1, p - 1))}
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </Button>
+      <span className="min-w-14 text-center text-sm font-medium text-slate-700">
+        {page}/{totalPages}
+      </span>
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        className="h-8 w-8 rounded-lg"
+        aria-label="Next page"
+        disabled={page >= totalPages}
+        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+      >
+        <ChevronRight className="h-4 w-4" />
+      </Button>
+    </div>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /*  Main component                                                     */
 /* ------------------------------------------------------------------ */
@@ -182,8 +224,8 @@ export function UploadReviewDialog({
   onPromoteToMemory,
 }: Props) {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const [memoryBusyId, setMemoryBusyId] = useState<string | null>(null);
+  const [mappingBusy, setMappingBusy] = useState<Record<string, boolean>>({});
+  const [memoryBusy, setMemoryBusy] = useState<Record<string, boolean>>({});
   const [actionErrors, setActionErrors] = useState<Record<string, string>>({});
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
@@ -262,7 +304,8 @@ export function UploadReviewDialog({
 
   async function handleCorrect(mapping: ActivityMappingResponse, value: string) {
     const key = `mapping:${mapping.id}`;
-    setBusyId(mapping.id);
+    if (mappingBusy[mapping.id]) return;
+    setMappingBusy((prev) => ({ ...prev, [mapping.id]: true }));
     try {
       await onCorrectMapping(mapping.id, value);
       setActionErrors((prev) => {
@@ -274,13 +317,14 @@ export function UploadReviewDialog({
       reportError(err, "UploadReviewDialog: failed to correct mapping");
       setActionErrors((prev) => ({ ...prev, [key]: getApiErrorMessage(err) }));
     } finally {
-      setBusyId(null);
+      setMappingBusy((prev) => ({ ...prev, [mapping.id]: false }));
     }
   }
 
   async function handlePromote(itemId: string, value: string) {
     const key = `memory:${itemId}`;
-    setMemoryBusyId(itemId);
+    if (memoryBusy[itemId]) return;
+    setMemoryBusy((prev) => ({ ...prev, [itemId]: true }));
     try {
       await onPromoteToMemory(itemId, value);
       setActionErrors((prev) => {
@@ -292,7 +336,7 @@ export function UploadReviewDialog({
       reportError(err, "UploadReviewDialog: failed to promote mapping memory");
       setActionErrors((prev) => ({ ...prev, [key]: getApiErrorMessage(err) }));
     } finally {
-      setMemoryBusyId(null);
+      setMemoryBusy((prev) => ({ ...prev, [itemId]: false }));
     }
   }
 
@@ -424,31 +468,11 @@ export function UploadReviewDialog({
                 )}
               </p>
 
-              <div className="flex items-center gap-1">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="h-8 w-8 rounded-lg"
-                  disabled={page <= 1}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="min-w-14 text-center text-sm font-medium text-slate-700">
-                  {page}/{totalPages}
-                </span>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="h-8 w-8 rounded-lg"
-                  disabled={page >= totalPages}
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
+              <PaginationControls
+                page={page}
+                totalPages={totalPages}
+                setPage={setPage}
+              />
             </div>
           </div>
 
@@ -633,10 +657,10 @@ export function UploadReviewDialog({
                             type="button"
                             size="sm"
                             className="h-9 rounded-lg px-4 text-sm font-semibold"
-                            disabled={!trimmed || busyId === mapping.id}
+                            disabled={!trimmed || Boolean(mappingBusy[mapping.id])}
                             onClick={() => handleCorrect(mapping, trimmed)}
                           >
-                            {busyId === mapping.id ? (
+                            {mappingBusy[mapping.id] ? (
                               <>
                                 <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
                                 Saving…
@@ -654,7 +678,9 @@ export function UploadReviewDialog({
                               className="h-9 rounded-lg px-4 text-sm font-semibold"
                               disabled={
                                 !trimmed ||
-                                memoryBusyId === mapping.item_id
+                                Boolean(
+                                  mapping.item_id && memoryBusy[mapping.item_id],
+                                )
                               }
                               onClick={() =>
                                 handlePromote(
@@ -663,7 +689,7 @@ export function UploadReviewDialog({
                                 )
                               }
                             >
-                              {memoryBusyId === mapping.item_id ? (
+                              {mapping.item_id && memoryBusy[mapping.item_id] ? (
                                 <>
                                   <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
                                   Saving…
@@ -693,32 +719,11 @@ export function UploadReviewDialog({
                   <p className="text-sm text-slate-500">
                     Rows {rangeStart}–{rangeEnd} of {filteredRows.length}
                   </p>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-8 rounded-lg px-3 text-sm"
-                      disabled={page <= 1}
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    >
-                      <ChevronLeft className="mr-1 h-3.5 w-3.5" />
-                      Previous
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-8 rounded-lg px-3 text-sm"
-                      disabled={page >= totalPages}
-                      onClick={() =>
-                        setPage((p) => Math.min(totalPages, p + 1))
-                      }
-                    >
-                      Next
-                      <ChevronRight className="ml-1 h-3.5 w-3.5" />
-                    </Button>
-                  </div>
+                  <PaginationControls
+                    page={page}
+                    totalPages={totalPages}
+                    setPage={setPage}
+                  />
                 </div>
               )}
             </div>
