@@ -192,7 +192,6 @@ export default function BookingsPage() {
     projectBootstrapLoading,
   } = useResolvedProjectSelection({
     userId,
-    role: user?.role,
   });
   const uiScopeKey = useMemo(() => {
     if (!userId || !projectId) return null;

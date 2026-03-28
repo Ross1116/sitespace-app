@@ -103,7 +103,6 @@ export default function SubcontractorsPage() {
   const { projectId, selectedProjectId, setProjectId } =
     useResolvedProjectSelection({
       userId,
-      role: user?.role,
     });
 
   useEffect(() => {

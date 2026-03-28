@@ -228,7 +228,6 @@ export default function LookaheadDashboard() {
     setProjectId,
   } = useResolvedProjectSelection({
     userId,
-    role: user?.role,
   });
   const { revalidateBookingsForProject } = useBookingMutations();
 

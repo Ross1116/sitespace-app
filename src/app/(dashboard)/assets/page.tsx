@@ -195,7 +195,6 @@ export default function AssetsTable() {
   const userId = user?.id;
   const { projectId, selectedProject } = useResolvedProjectSelection({
     userId,
-    role: user?.role,
   });
 
   useEffect(() => {

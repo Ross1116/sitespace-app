@@ -106,17 +106,25 @@ function unauthorizedResponse(message: string): NextResponse {
 export async function GET(request: Request) {
   try {
     const tokens = await getTokens();
-
-    if (!tokens.access) {
-      return NextResponse.json(
-        { message: "Not authenticated" },
-        { status: 401 },
-      );
-    }
-
-    let accessToken = tokens.access;
     let refreshedTokens: { access_token: string; refresh_token?: string } | null =
       null;
+    let accessToken = tokens.access;
+
+    if (!accessToken) {
+      if (!tokens.refresh) {
+        return NextResponse.json(
+          { message: "Not authenticated" },
+          { status: 401 },
+        );
+      }
+
+      refreshedTokens = await tryRefresh(tokens.refresh);
+      if (!refreshedTokens) {
+        return unauthorizedResponse("Session expired");
+      }
+
+      accessToken = refreshedTokens.access_token;
+    }
 
     let currentUserResponse = await fetchCurrentUser(accessToken);
     if (currentUserResponse.status === 401 && tokens.refresh) {

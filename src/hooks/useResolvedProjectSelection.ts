@@ -9,7 +9,6 @@ import type { ApiProject } from "@/types";
 
 type Params = {
   userId?: string;
-  role?: string;
   enabled?: boolean;
 };
 
