@@ -11,6 +11,7 @@ vi.mock("@/lib/api", () => ({
 }));
 
 import {
+  fetchLookaheadHistory,
   fetchPlanningCompleteness,
   fetchProgrammeActivityBookingContext,
 } from "@/hooks/lookahead/api";
@@ -184,5 +185,40 @@ describe("lookahead api", () => {
       title: "Resolve unknown asset types",
       link: "/assets?filter=review",
     });
+  });
+
+  it("preserves snapshot history row counts when rows are summarized", async () => {
+    getMock.mockResolvedValueOnce({
+      data: {
+        history: [
+          {
+            snapshot_id: "snapshot-3",
+            snapshot_date: "2026-03-28",
+            timezone: "Australia/Sydney",
+            row_count: 42,
+          },
+          {
+            snapshot_id: "snapshot-2",
+            snapshot_date: "2026-03-27",
+            timezone: "Australia/Sydney",
+            rows: [{ asset_type: "Crane" }],
+          },
+        ],
+      },
+    });
+
+    const history = await fetchLookaheadHistory("project-1");
+
+    expect(history).toMatchObject([
+      {
+        snapshot_id: "snapshot-3",
+        row_count: 42,
+        rows: [],
+      },
+      {
+        snapshot_id: "snapshot-2",
+        row_count: 1,
+      },
+    ]);
   });
 });

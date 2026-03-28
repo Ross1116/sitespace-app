@@ -217,12 +217,26 @@ export async function fetchLookaheadHistory(
 ): Promise<LookaheadSnapshotHistoryEntry[]> {
   const response = await api.get<unknown>(lookaheadKeys.history(projectId));
   return extractList(response.data, ["history", "snapshots", "items", "data"]).map(
-    (entry) => ({
-      snapshot_id: asOptionalString(entry.snapshot_id) ?? undefined,
-      snapshot_date: asOptionalString(entry.snapshot_date),
-      timezone: asOptionalString(entry.timezone),
-      rows: Array.isArray(entry.rows) ? (entry.rows as LookaheadSnapshotResponse["rows"]) : [],
-    }),
+    (entry) => {
+      const hasRowsArray = Array.isArray(entry.rows);
+      const rows = hasRowsArray
+        ? (entry.rows as LookaheadSnapshotResponse["rows"])
+        : [];
+      const rowCount =
+        asNumber(entry.row_count) ??
+        asNumber(entry.rows_count) ??
+        asNumber(entry.snapshot_row_count) ??
+        asNumber(entry.count) ??
+        (hasRowsArray ? rows.length : null);
+
+      return {
+        snapshot_id: asOptionalString(entry.snapshot_id) ?? undefined,
+        snapshot_date: asOptionalString(entry.snapshot_date),
+        timezone: asOptionalString(entry.timezone),
+        rows,
+        row_count: rowCount,
+      };
+    },
   );
 }
 
