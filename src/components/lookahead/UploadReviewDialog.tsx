@@ -268,10 +268,10 @@ export function UploadReviewDialog({
       [
         m.activity_name,
         m.source_value,
-        m.asset_type,
-        m.classification_name,
-        m.current_classification,
-        m.suggested_classification,
+        m.asset_type ? formatAssetType(m.asset_type) : null,
+        m.classification_name ? formatAssetType(m.classification_name) : null,
+        m.current_classification ? formatAssetType(m.current_classification) : null,
+        m.suggested_classification ? formatAssetType(m.suggested_classification) : null,
         m.level_name,
         m.zone_name,
       ].some((v) => v?.toLowerCase().includes(q)),
@@ -286,19 +286,20 @@ export function UploadReviewDialog({
     1,
     Math.ceil(filteredRows.length / REVIEW_PAGE_SIZE),
   );
+  const clampedPage = Math.max(1, Math.min(page, totalPages));
 
   useEffect(() => {
     setPage((p) => Math.min(p, totalPages));
   }, [totalPages]);
 
   const visibleRows = useMemo(() => {
-    const start = (page - 1) * REVIEW_PAGE_SIZE;
+    const start = (clampedPage - 1) * REVIEW_PAGE_SIZE;
     return filteredRows.slice(start, start + REVIEW_PAGE_SIZE);
-  }, [filteredRows, page]);
+  }, [clampedPage, filteredRows]);
 
   const rangeStart =
-    filteredRows.length === 0 ? 0 : (page - 1) * REVIEW_PAGE_SIZE + 1;
-  const rangeEnd = Math.min(page * REVIEW_PAGE_SIZE, filteredRows.length);
+    filteredRows.length === 0 ? 0 : (clampedPage - 1) * REVIEW_PAGE_SIZE + 1;
+  const rangeEnd = Math.min(clampedPage * REVIEW_PAGE_SIZE, filteredRows.length);
 
   /* ---- actions ---- */
 
@@ -373,7 +374,7 @@ export function UploadReviewDialog({
               </StatCard>
 
               <StatCard label="Status">
-                <p className="break-words text-base font-bold capitalize leading-tight text-slate-950 sm:text-lg">
+                <p className="wrap-break-word text-base font-bold capitalize leading-tight text-slate-950 sm:text-lg">
                   {status.status}
                 </p>
               </StatCard>
@@ -450,6 +451,7 @@ export function UploadReviewDialog({
               <Input
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                aria-label="Search activities, locations, or types"
                 placeholder="Search activity, location, or type…"
                   className="h-9 rounded-lg border-slate-200 bg-slate-50 pl-9 text-sm placeholder:text-slate-400 focus-visible:bg-white"
               />
@@ -469,7 +471,7 @@ export function UploadReviewDialog({
               </p>
 
               <PaginationControls
-                page={page}
+                page={clampedPage}
                 totalPages={totalPages}
                 setPage={setPage}
               />
@@ -631,6 +633,11 @@ export function UploadReviewDialog({
                             }))
                           }
                           placeholder="Or type a custom asset type…"
+                          aria-label={`Custom asset type for ${
+                            mapping.activity_name ||
+                            mapping.source_value ||
+                            "this mapping row"
+                          }`}
                           className="h-9 w-full max-w-full rounded-lg border-slate-200 bg-white text-sm sm:max-w-72"
                         />
 
@@ -720,7 +727,7 @@ export function UploadReviewDialog({
                     Rows {rangeStart}–{rangeEnd} of {filteredRows.length}
                   </p>
                   <PaginationControls
-                    page={page}
+                    page={clampedPage}
                     totalPages={totalPages}
                     setPage={setPage}
                   />
