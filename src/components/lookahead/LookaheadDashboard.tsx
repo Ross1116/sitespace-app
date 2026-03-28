@@ -645,6 +645,7 @@ export default function LookaheadDashboard() {
     () => (alertsError ? getDiagnosticsLoadMessage(alertsError) : null),
     [alertsError],
   );
+  const hasBlockingSnapshotError = Boolean(snapshotError && !heatmap);
 
   const activeAlerts = useMemo((): PlanningAlert[] => {
     const flags = (alerts?.alerts as LookaheadAnomalyFlags | undefined) ?? {};
@@ -697,7 +698,7 @@ export default function LookaheadDashboard() {
       });
     }
 
-    if (alertsError && !snapshotError && diagnosticsLoadMessage) {
+    if (alertsError && !hasBlockingSnapshotError && diagnosticsLoadMessage) {
       nextAlerts.push({
         key: "diagnostics_unavailable",
         label: "Diagnostics temporarily unavailable",
@@ -716,9 +717,9 @@ export default function LookaheadDashboard() {
     alertsError,
     diagnosticsLoadMessage,
     dismissedAlerts,
+    hasBlockingSnapshotError,
     mutateAlerts,
     persistentUploadMessage,
-    snapshotError,
   ]);
   const firstSuggestedBookingDate = bookingContext?.suggested_bulk_dates[0] ?? null;
 
@@ -767,7 +768,7 @@ export default function LookaheadDashboard() {
   const focusHeadline =
     !projectId
       ? "Start by selecting a project"
-      : snapshotError
+      : hasBlockingSnapshotError
         ? forecastLoadState?.title ?? "Forecast temporarily unavailable"
       : stats.totalGapHours > 0
         ? `${stats.totalGapHours}h still unbooked`
@@ -777,7 +778,7 @@ export default function LookaheadDashboard() {
   const focusDescription =
     !projectId
       ? "Choose a project and upload a programme to turn this into a planning workspace."
-      : snapshotError
+      : hasBlockingSnapshotError
         ? forecastLoadState?.message ??
           "The latest planning forecast could not be loaded right now."
       : stats.totalGapHours > 0
@@ -1159,7 +1160,7 @@ export default function LookaheadDashboard() {
                 </div>
               ) : !projectId ? (
                 <EmptyForecastState reason="no-project" />
-              ) : snapshotError ? (
+              ) : hasBlockingSnapshotError ? (
                 <EmptyForecastState
                   reason="load-error"
                   title={forecastLoadState?.title}
