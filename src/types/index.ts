@@ -334,6 +334,7 @@ export interface LookaheadSnapshotHistoryEntry {
   snapshot_date?: string | null;
   timezone?: string | null;
   rows: LookaheadRow[];
+  row_count?: number | null;
 }
 
 export interface LookaheadAnomalyFlags {

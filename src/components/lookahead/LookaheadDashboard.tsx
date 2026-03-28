@@ -39,7 +39,7 @@ import type {
   LookaheadAnomalyFlags,
   LookaheadRow,
 } from "@/types";
-import { getApiErrorMessage } from "@/types";
+import { getApiErrorMessage, isAxiosError } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DemandHeatmap } from "./DemandHeatmap";
@@ -151,6 +151,61 @@ function getPersistentUploadAlertMessage(
   return null;
 }
 
+function getForecastLoadMessage(
+  error: unknown,
+  latestUploadDate: string | null,
+): { title: string; message: string } {
+  const uploadPrefix = latestUploadDate
+    ? `Your latest upload from ${latestUploadDate} is still saved, but `
+    : "";
+  const fallback = `${uploadPrefix}the planning forecast could not be loaded right now.`;
+  const rawMessage = getApiErrorMessage(error, fallback).trim();
+
+  if (
+    /offset-naive|offset-aware/i.test(rawMessage) ||
+    (isAxiosError(error) && (error.response?.status ?? 0) >= 500) ||
+    /status code 5\d\d/i.test(rawMessage)
+  ) {
+    return {
+      title: "Forecast temporarily unavailable",
+      message: `${uploadPrefix}the server hit a processing issue while rebuilding the heatmap. Try again in a moment.`,
+    };
+  }
+
+  if (isAxiosError(error) && error.response?.status === 404) {
+    return {
+      title: "Forecast not ready yet",
+      message: latestUploadDate
+        ? `The latest upload from ${latestUploadDate} is saved, but the forecast snapshot is not available yet. Try again shortly.`
+        : "This project does not have a forecast snapshot yet. Upload a programme or try again shortly.",
+    };
+  }
+
+  return {
+    title: latestUploadDate
+      ? "Couldn't refresh the forecast"
+      : "Couldn't load the forecast",
+    message: rawMessage === fallback ? fallback : `${fallback} ${rawMessage}`,
+  };
+}
+
+function getDiagnosticsLoadMessage(error: unknown): string {
+  const fallback =
+    "Planning diagnostics could not be refreshed right now. You can still use the heatmap, but alert badges may be stale until the next retry.";
+  const rawMessage = getApiErrorMessage(error, fallback).trim();
+
+  if (
+    /offset-naive|offset-aware/i.test(rawMessage) ||
+    (isAxiosError(error) && (error.response?.status ?? 0) >= 500) ||
+    /status code 5\d\d/i.test(rawMessage) ||
+    rawMessage === "Something went wrong"
+  ) {
+    return fallback;
+  }
+
+  return rawMessage;
+}
+
 export default function LookaheadDashboard() {
   const { user, isLoading: authLoading } = useAuth();
   const userId = user?.id;
@@ -225,10 +280,18 @@ export default function LookaheadDashboard() {
   );
 
   const enabled = Boolean(projectId);
-  const { snapshot, isLoading: snapshotLoading, mutate: mutateSnapshot } =
-    useLookaheadSnapshot({ projectId, enabled });
-  const { alerts, isLoading: alertsLoading, mutate: mutateAlerts } =
-    useLookaheadAlerts({ projectId, enabled });
+  const {
+    snapshot,
+    isLoading: snapshotLoading,
+    error: snapshotError,
+    mutate: mutateSnapshot,
+  } = useLookaheadSnapshot({ projectId, enabled });
+  const {
+    alerts,
+    isLoading: alertsLoading,
+    error: alertsError,
+    mutate: mutateAlerts,
+  } = useLookaheadAlerts({ projectId, enabled });
   const {
     history,
     isLoading: historyLoading,
@@ -561,6 +624,27 @@ export default function LookaheadDashboard() {
       ),
     [unclassifiedCount, uploadStatus?.completeness_notes],
   );
+  const latestUploadDate = latestVersion?.created_at
+    ? new Date(latestVersion.created_at).toLocaleString("en-AU", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : null;
+  const hydratedLatestUploadDate = hasMounted ? latestUploadDate : null;
+  const forecastLoadState = useMemo(
+    () =>
+      snapshotError
+        ? getForecastLoadMessage(snapshotError, hydratedLatestUploadDate)
+        : null,
+    [hydratedLatestUploadDate, snapshotError],
+  );
+  const diagnosticsLoadMessage = useMemo(
+    () => (alertsError ? getDiagnosticsLoadMessage(alertsError) : null),
+    [alertsError],
+  );
 
   const activeAlerts = useMemo((): PlanningAlert[] => {
     const flags = (alerts?.alerts as LookaheadAnomalyFlags | undefined) ?? {};
@@ -613,18 +697,29 @@ export default function LookaheadDashboard() {
       });
     }
 
-    return nextAlerts.filter((alert) => !dismissedAlerts.has(alert.key));
-  }, [alerts, dismissedAlerts, persistentUploadMessage]);
+    if (alertsError && !snapshotError && diagnosticsLoadMessage) {
+      nextAlerts.push({
+        key: "diagnostics_unavailable",
+        label: "Diagnostics temporarily unavailable",
+        detail: diagnosticsLoadMessage,
+        level: "blue",
+        ctaLabel: "Retry diagnostics",
+        onAction: () => {
+          void mutateAlerts();
+        },
+      });
+    }
 
-  const latestUploadDate = latestVersion?.created_at
-    ? new Date(latestVersion.created_at).toLocaleString("en-AU", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : null;
+    return nextAlerts.filter((alert) => !dismissedAlerts.has(alert.key));
+  }, [
+    alerts,
+    alertsError,
+    diagnosticsLoadMessage,
+    dismissedAlerts,
+    mutateAlerts,
+    persistentUploadMessage,
+    snapshotError,
+  ]);
   const firstSuggestedBookingDate = bookingContext?.suggested_bulk_dates[0] ?? null;
 
   const bookingStartTime = useMemo(() => {
@@ -672,6 +767,8 @@ export default function LookaheadDashboard() {
   const focusHeadline =
     !projectId
       ? "Start by selecting a project"
+      : snapshotError
+        ? forecastLoadState?.title ?? "Forecast temporarily unavailable"
       : stats.totalGapHours > 0
         ? `${stats.totalGapHours}h still unbooked`
         : hasForecast
@@ -680,11 +777,20 @@ export default function LookaheadDashboard() {
   const focusDescription =
     !projectId
       ? "Choose a project and upload a programme to turn this into a planning workspace."
+      : snapshotError
+        ? forecastLoadState?.message ??
+          "The latest planning forecast could not be loaded right now."
       : stats.totalGapHours > 0
         ? "Use the heatmap to open the weekly activity behind the gap, then book directly from context."
         : hasForecast
           ? "Use the heatmap below to confirm activity coverage and spot changes early."
           : "This project needs a fresh programme upload before the heatmap can drive planning.";
+  const emptyForecastTitle = hydratedLatestUploadDate
+    ? "No forecast demand in this view yet"
+    : undefined;
+  const emptyForecastMessage = hydratedLatestUploadDate
+    ? `The latest upload from ${hydratedLatestUploadDate} is on file, but it did not produce forecast demand for the current heatmap view yet. Review the upload details or try another version.`
+    : undefined;
 
   return (
     <div className="min-h-screen bg-(--page-bg) p-4 font-sans sm:p-6 lg:p-8">
@@ -773,34 +879,49 @@ export default function LookaheadDashboard() {
                   )}
                 </div>
 
-                <Button
-                  disabled={!topActionButtonsReady || !projectId || isUploadInFlight}
-                  onClick={() => {
-                    if (isUploadInFlight) return;
-                    if (fileInputRef.current) fileInputRef.current.value = "";
-                    fileInputRef.current?.click();
-                  }}
-                  className="h-auto w-full rounded-lg bg-navy px-5 py-5 text-sm font-bold text-white shadow-md shadow-slate-900/10 hover:bg-(--navy-hover) sm:w-auto"
-                >
-                  <span className="flex items-center gap-2">
-                    {uploadPhase.kind === "uploading" || uploadPhase.kind === "polling" ? (
-                      <Loader2 size={15} className="animate-spin" />
-                    ) : (
-                      <Upload size={15} />
-                    )}
-                    Upload Programme
-                  </span>
-                </Button>
+                {hasMounted ? (
+                  <>
+                    <Button
+                      disabled={!topActionButtonsReady || !projectId || isUploadInFlight}
+                      onClick={() => {
+                        if (isUploadInFlight) return;
+                        if (fileInputRef.current) fileInputRef.current.value = "";
+                        fileInputRef.current?.click();
+                      }}
+                      className="h-auto w-full rounded-lg bg-navy px-5 py-5 text-sm font-bold text-white shadow-md shadow-slate-900/10 hover:bg-(--navy-hover) sm:w-auto"
+                    >
+                      <span className="flex items-center gap-2">
+                        {uploadPhase.kind === "uploading" || uploadPhase.kind === "polling" ? (
+                          <Loader2 size={15} className="animate-spin" />
+                        ) : (
+                          <Upload size={15} />
+                        )}
+                        Upload Programme
+                      </span>
+                    </Button>
 
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={!topActionButtonsReady || !latestVersion}
-                  onClick={() => setIsUploadReviewOpen(true)}
-                  className="h-auto rounded-lg px-5 py-5 text-sm font-bold"
-                >
-                  Review latest upload
-                </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={!topActionButtonsReady || !latestVersion}
+                      onClick={() => setIsUploadReviewOpen(true)}
+                      className="h-auto rounded-lg px-5 py-5 text-sm font-bold"
+                    >
+                      Review latest upload
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <div
+                      aria-hidden="true"
+                      className="h-[60px] w-full rounded-lg border border-slate-200 bg-slate-50 sm:w-[180px]"
+                    />
+                    <div
+                      aria-hidden="true"
+                      className="h-[60px] w-full rounded-lg border border-slate-200 bg-slate-50 sm:w-[220px]"
+                    />
+                  </>
+                )}
 
                 <input
                   ref={fileInputRef}
@@ -924,7 +1045,9 @@ export default function LookaheadDashboard() {
                 <WindowSelector
                   windowSize={windowSize}
                   onSetWindowSize={updateWindowSize}
-                  lastUpdated={versionsLoading ? null : latestUploadDate}
+                  lastUpdated={
+                    hasMounted && !versionsLoading ? latestUploadDate : null
+                  }
                 />
 
                 {topAlert && (
@@ -1036,8 +1159,30 @@ export default function LookaheadDashboard() {
                 </div>
               ) : !projectId ? (
                 <EmptyForecastState reason="no-project" />
+              ) : snapshotError ? (
+                <EmptyForecastState
+                  reason="load-error"
+                  title={forecastLoadState?.title}
+                  message={forecastLoadState?.message}
+                  actionLabel="Retry forecast"
+                  onAction={() => {
+                    void refreshLookaheadWorkspace();
+                  }}
+                />
               ) : !heatmap || visibleWeeks.length === 0 ? (
-                <EmptyForecastState reason="no-data" />
+                <EmptyForecastState
+                  reason="no-data"
+                  title={emptyForecastTitle}
+                  message={emptyForecastMessage}
+                  actionLabel={hydratedLatestUploadDate ? "Review latest upload" : undefined}
+                  onAction={
+                    hydratedLatestUploadDate
+                      ? () => {
+                          setIsUploadReviewOpen(true);
+                        }
+                      : undefined
+                  }
+                />
               ) : (
                 <DemandHeatmap
                   heatmap={heatmap}
@@ -1135,6 +1280,7 @@ export default function LookaheadDashboard() {
               <div className="grid gap-4 xl:grid-cols-2">
                 <SnapshotHistoryPanel
                   history={history}
+                  currentSnapshot={snapshot}
                   isOpen={isSnapshotHistoryOpen}
                   onOpenChange={setIsSnapshotHistoryOpen}
                   isLoading={Boolean(
