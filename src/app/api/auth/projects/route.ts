@@ -12,6 +12,8 @@ type AuthenticatedUser = {
   role: string;
 };
 
+const UPSTREAM_TIMEOUT_MS = 5_000;
+
 const COOKIE_BASE = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
@@ -27,10 +29,37 @@ async function getTokens(): Promise<AuthTokens> {
   };
 }
 
+async function fetchWithTimeout(
+  input: string,
+  init?: RequestInit,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
+
+  try {
+    return await fetch(input, {
+      ...init,
+      signal: controller.signal,
+    });
+  } catch (error: unknown) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      const timeoutError = new Error(
+        `Upstream request timed out after ${UPSTREAM_TIMEOUT_MS}ms`,
+      );
+      timeoutError.name = "TimeoutError";
+      throw timeoutError;
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 async function fetchCurrentUser(
   accessToken: string,
 ): Promise<Response> {
-  return fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
+  return fetchWithTimeout(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
@@ -43,7 +72,7 @@ async function tryRefresh(
   refreshToken: string,
 ): Promise<{ access_token: string; refresh_token?: string } | null> {
   try {
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`,
       {
         method: "POST",
@@ -55,6 +84,10 @@ async function tryRefresh(
     if (!response.ok) return null;
     return await response.json();
   } catch (error: unknown) {
+    if (error instanceof Error && error.name === "TimeoutError") {
+      throw error;
+    }
+
     reportError(error, "Auth projects route: token refresh failed", "server");
     return null;
   }
@@ -85,7 +118,11 @@ function buildProjectsUrl(user: AuthenticatedUser, request: Request): string {
   const skip = url.searchParams.get("skip") ?? "0";
 
   if (user.role === "subcontractor") {
-    return `${process.env.NEXT_PUBLIC_API_URL}/subcontractors/${user.id}/projects`;
+    const params = new URLSearchParams({
+      limit,
+      skip,
+    });
+    return `${process.env.NEXT_PUBLIC_API_URL}/subcontractors/${encodeURIComponent(user.id)}/projects?${params.toString()}`;
   }
 
   const params = new URLSearchParams({
@@ -109,31 +146,34 @@ export async function GET(request: Request) {
     let refreshedTokens: { access_token: string; refresh_token?: string } | null =
       null;
     let accessToken = tokens.access;
+    let refreshToken = tokens.refresh;
 
     if (!accessToken) {
-      if (!tokens.refresh) {
+      if (!refreshToken) {
         return NextResponse.json(
           { message: "Not authenticated" },
           { status: 401 },
         );
       }
 
-      refreshedTokens = await tryRefresh(tokens.refresh);
+      refreshedTokens = await tryRefresh(refreshToken);
       if (!refreshedTokens) {
         return unauthorizedResponse("Session expired");
       }
 
       accessToken = refreshedTokens.access_token;
+      refreshToken = refreshedTokens.refresh_token ?? refreshToken;
     }
 
     let currentUserResponse = await fetchCurrentUser(accessToken);
-    if (currentUserResponse.status === 401 && tokens.refresh) {
-      refreshedTokens = await tryRefresh(tokens.refresh);
+    if (currentUserResponse.status === 401 && refreshToken) {
+      refreshedTokens = await tryRefresh(refreshToken);
       if (!refreshedTokens) {
         return unauthorizedResponse("Session expired");
       }
 
       accessToken = refreshedTokens.access_token;
+      refreshToken = refreshedTokens.refresh_token ?? refreshToken;
       currentUserResponse = await fetchCurrentUser(accessToken);
     }
 
@@ -154,7 +194,7 @@ export async function GET(request: Request) {
       );
     }
 
-    const projectsResponse = await fetch(buildProjectsUrl(user, request), {
+    const projectsResponse = await fetchWithTimeout(buildProjectsUrl(user, request), {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
@@ -188,6 +228,13 @@ export async function GET(request: Request) {
 
     return response;
   } catch (error: unknown) {
+    if (error instanceof Error && error.name === "TimeoutError") {
+      return NextResponse.json(
+        { message: "Authentication service timed out. Please try again." },
+        { status: 504 },
+      );
+    }
+
     reportError(error, "Auth projects route: unexpected error", "server");
     return NextResponse.json(
       { message: "Internal server error" },
