@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 import { normalizeProjectList } from "@/lib/apiNormalization";
-import { swrFetcher, SWR_CONFIG } from "@/lib/swr";
+import { SWR_CONFIG } from "@/lib/swr";
 import { useProjectSelectionStore } from "@/stores/projectSelectionStore";
 import type { ApiProject } from "@/types";
 
@@ -33,7 +33,6 @@ const PROJECT_BOOTSTRAP_TIMEOUT_MS = 7_000;
 
 export function useResolvedProjectSelection({
   userId,
-  role,
   enabled = true,
 }: Params): Result {
   const userKey = userId ? String(userId) : null;
@@ -60,7 +59,7 @@ export function useResolvedProjectSelection({
 
   useEffect(() => {
     setProjectBootstrapTimedOut(false);
-  }, [enabled, role, userKey]);
+  }, [enabled, userKey]);
 
   // Keep the first server render and first client render deterministic, but
   // also wait for persisted Zustand state before falling back to the default
@@ -74,18 +73,40 @@ export function useResolvedProjectSelection({
 
   const projectsUrl = useMemo(() => {
     if (!enabled || !userId) return null;
-    if (role === "subcontractor") {
-      return `/subcontractors/${userId}/projects`;
+    return "/api/auth/projects?limit=100&skip=0";
+  }, [enabled, userId]);
+
+  const fetchProjects = useCallback(async (url: string) => {
+    const response = await fetch(url, {
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      const fallbackMessage =
+        response.status === 401
+          ? "Not authenticated"
+          : "Failed to load projects";
+      const payload = await response.json().catch(() => null);
+      const message =
+        payload &&
+        typeof payload === "object" &&
+        "message" in payload &&
+        typeof payload.message === "string"
+          ? payload.message
+          : fallbackMessage;
+
+      throw new Error(message);
     }
-    return "/projects/?my_projects=true&limit=100&skip=0";
-  }, [enabled, userId, role]);
+
+    return response.json();
+  }, []);
 
   const {
     data: projectsRaw,
     error: projectsError,
     isLoading: projectsLoading,
     mutate: mutateProjectsRaw,
-  } = useSWR(projectsUrl, swrFetcher, SWR_CONFIG);
+  } = useSWR(projectsUrl, fetchProjects, SWR_CONFIG);
 
   const projects = useMemo<ApiProject[]>(() => {
     if (!projectsRaw) return [];
