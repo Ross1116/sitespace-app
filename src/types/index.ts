@@ -432,7 +432,7 @@ export interface ActivityMappingResponse {
   current_classification?: string | null;
   suggested_classification?: string | null;
   source?: string | null;
-  confidence?: number | null;
+  confidence?: string | null;
   manual_correction?: boolean;
   corrected_by?: string | null;
   corrected_at?: string | null;

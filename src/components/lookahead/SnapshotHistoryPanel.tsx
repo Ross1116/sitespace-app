@@ -105,7 +105,7 @@ export function SnapshotHistoryPanel({
                       </p>
                     </div>
                     <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
-                      {rowCount == null ? "Row count unavailable" : `${rowCount} rows`}
+                      {rowCount == null ? "Cell count unavailable" : `${rowCount} heatmap cells`}
                     </span>
                   </div>
                 </div>

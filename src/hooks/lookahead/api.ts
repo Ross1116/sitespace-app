@@ -85,7 +85,7 @@ const normalizeMappings = (payload: unknown): ActivityMappingResponse[] =>
     current_classification: asOptionalString(record.current_classification),
     suggested_classification: asOptionalString(record.suggested_classification),
     source: asOptionalString(record.source),
-    confidence: asNumber(record.confidence),
+    confidence: asOptionalString(record.confidence),
     manual_correction: asBoolean(record.manual_correction),
     corrected_by:
       asOptionalString(record.corrected_by) ??

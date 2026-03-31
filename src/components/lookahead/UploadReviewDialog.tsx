@@ -110,6 +110,16 @@ function getInitialDraft(m: ActivityMappingResponse): string {
   );
 }
 
+function formatMappingConfidence(confidence: string | null | undefined): string {
+  if (!confidence) return "n/a";
+
+  const normalized = confidence.trim().toLowerCase();
+  if (normalized === "high") return "High";
+  if (normalized === "medium") return "Medium";
+  if (normalized === "low") return "Low";
+  return confidence;
+}
+
 function normalizeOptions(values: Array<string | null | undefined>): string[] {
   const unique = new Set<string>();
   for (const v of values) {
@@ -579,9 +589,7 @@ export function UploadReviewDialog({
                           <span>
                             Confidence:{" "}
                             <span className="font-medium text-slate-700">
-                              {mapping.confidence != null
-                                ? `${Math.round(mapping.confidence * 100)}%`
-                                : "n/a"}
+                              {formatMappingConfidence(mapping.confidence)}
                             </span>
                           </span>
                           {mapping.corrected_by && (
