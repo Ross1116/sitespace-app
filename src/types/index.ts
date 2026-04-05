@@ -66,6 +66,7 @@ export interface ApiAsset {
   type_inference_source?: string | null;
   type_inference_confidence?: number | null;
   planning_ready?: boolean;
+  capacity_ready?: boolean;
   description?: string;
   status: AssetStatus | string;
   project_id?: string;
@@ -77,6 +78,7 @@ export interface ApiAsset {
   maintenance_start_date?: string;
   maintenance_end_date?: string;
   pending_booking_capacity?: number;
+  max_hours_per_day?: number | null;
 }
 
 export interface ApiBooking {
@@ -221,11 +223,13 @@ export interface TransformedAsset {
   usageInstructions: string;
   assetCode: string;
   pendingBookingCapacity?: number;
+  maxHoursPerDay?: number | null;
   canonicalType?: string | null;
   typeResolutionStatus?: string | null;
   typeInferenceSource?: string | null;
   typeInferenceConfidence?: number | null;
   planningReady?: boolean;
+  capacityReady?: boolean;
   _originalData?: ApiAsset;
 }
 
@@ -515,6 +519,86 @@ export interface UploadAcceptedResponse {
   upload_id: string;
   status: "processing";
   message: string;
+}
+
+// ===== CAPACITY DASHBOARD =====
+
+export type CapacityStatus =
+  | "idle"
+  | "under_utilised"
+  | "balanced"
+  | "tight"
+  | "over_capacity"
+  | "no_capacity"
+  | "review_needed";
+
+export interface CapacityCell {
+  demand_hours: number;
+  booked_hours: number;
+  capacity_hours: number;
+  remaining_capacity_hours: number;
+  uncovered_demand_hours: number;
+  demand_utilization_pct: number;
+  booked_utilization_pct: number;
+  available_assets: number;
+  status: CapacityStatus;
+  is_anomalous: boolean;
+}
+
+export interface CapacityWeekSummary {
+  total_demand_hours: number;
+  total_booked_hours: number;
+  total_capacity_hours: number;
+  overall_demand_utilization_pct: number;
+  overall_booked_utilization_pct: number;
+  worst_status: string;
+}
+
+export interface CapacityAssetTypeSummary {
+  total_demand_hours: number;
+  total_booked_hours: number;
+  total_capacity_hours: number;
+  peak_week: string | null;
+  peak_demand_utilization_pct: number;
+  weeks_over_capacity: number;
+  weeks_tight: number;
+}
+
+export interface CapacityDashboardDiagnostics {
+  unresolved_asset_count: number;
+  other_demand_hours_total: number;
+  excluded_asset_types: string[];
+  snapshot_id: string | null;
+  snapshot_date: string | null;
+  snapshot_refreshed_at: string | null;
+  total_assets_evaluated: number;
+  excluded_not_planning_ready: number;
+  excluded_retired: number;
+  capacity_computed_at: string;
+  assumptions: string[];
+}
+
+export interface CapacityHeadlineSummary {
+  total_demand_hours: number;
+  total_capacity_hours: number;
+  avg_utilization_pct: number;
+  weeks_with_gaps: number;
+  demand_without_capacity_hours: number;
+}
+
+export interface CapacityDashboardResponse {
+  project_id: string;
+  upload_id: string | null;
+  start_week: string;
+  weeks: string[];
+  work_days_per_week: number;
+  asset_types: string[];
+  rows: Record<string, Record<string, CapacityCell>>;
+  headline_summary: CapacityHeadlineSummary;
+  summary_by_week: Record<string, CapacityWeekSummary>;
+  summary_by_asset_type: Record<string, CapacityAssetTypeSummary>;
+  diagnostics: CapacityDashboardDiagnostics | null;
+  message: string | null;
 }
 
 // ===== ERROR HANDLING =====

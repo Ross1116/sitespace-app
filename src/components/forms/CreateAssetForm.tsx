@@ -24,7 +24,12 @@ import { useAuth } from "@/app/context/AuthContext";
 import { getApiErrorMessage } from "@/types";
 import { reportError } from "@/lib/monitoring";
 import { useProjectSelectionStore } from "@/stores/projectSelectionStore";
-import { ASSET_TYPE_OPTIONS } from "@/lib/formOptions";
+import {
+  ASSET_TYPE_OPTIONS,
+  MAX_ASSET_MAX_HOURS_PER_DAY,
+  MIN_ASSET_MAX_HOURS_PER_DAY,
+  clampAssetMaxHoursPerDay,
+} from "@/lib/formOptions";
 
 // ===== TYPE DEFINITIONS =====
 interface AssetModalProps {
@@ -37,6 +42,7 @@ interface Asset {
   assetTitle: string;
   assetCode: string;
   assetType: string;
+  maxHoursPerDay: string;
   assetLocation: string;
   maintenanceStartdt: string;
   maintenanceEnddt: string;
@@ -58,6 +64,7 @@ interface AssetCreateRequest {
   usage_instructions?: string;
   maintenance_start_date?: string;
   maintenance_end_date?: string;
+  max_hours_per_day?: number;
 }
 
 // ===== HELPER FUNCTIONS =====
@@ -99,6 +106,7 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
     assetTitle: "",
     assetCode: "",
     assetType: "",
+    maxHoursPerDay: "",
     assetLocation: "",
     maintenanceStartdt: "",
     maintenanceEnddt: "",
@@ -237,9 +245,14 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
       if (asset.maintenanceEnddt) {
         createRequest.maintenance_end_date = asset.maintenanceEnddt;
       }
+      if (asset.maxHoursPerDay.trim()) {
+        createRequest.max_hours_per_day = clampAssetMaxHoursPerDay(
+          Number(asset.maxHoursPerDay),
+        );
+      }
 
       // Use new backend endpoint
-      const response = await api.post("/assets/", createRequest);
+      await api.post("/assets/", createRequest);
 
       // Call onSave callback
       onSave();
@@ -250,6 +263,7 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
         assetTitle: "",
         assetCode: "",
         assetType: "",
+        maxHoursPerDay: "",
         assetLocation: "",
         maintenanceStartdt: "",
         maintenanceEnddt: "",
@@ -369,6 +383,24 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
                 onChange={handleChange}
                 placeholder="eg. Zone 1, Loading Zone 2"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="maxHoursPerDay">Max Hours Per Day</Label>
+              <Input
+                id="maxHoursPerDay"
+                name="maxHoursPerDay"
+                type="number"
+                min={MIN_ASSET_MAX_HOURS_PER_DAY}
+                max={MAX_ASSET_MAX_HOURS_PER_DAY}
+                step="0.5"
+                value={asset.maxHoursPerDay}
+                onChange={handleChange}
+                placeholder="Leave blank to use asset-type default"
+              />
+              <span className="text-xs text-gray-500">
+                Per-asset capacity override for the capacity dashboard in 30-minute increments. Leave blank to fall back to the asset-type default.
+              </span>
             </div>
 
             {/* Maintenance Dates */}

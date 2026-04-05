@@ -5,6 +5,7 @@ import useSWR from "swr";
 import { SWR_CONFIG } from "@/lib/swr";
 import type {
   ActivityMappingResponse,
+  CapacityDashboardResponse,
   LookaheadActivitiesResponse,
   LookaheadAlertsResponse,
   LookaheadSnapshotHistoryEntry,
@@ -15,6 +16,7 @@ import type {
   UploadStatusResponse,
 } from "@/types";
 import {
+  fetchCapacityDashboard,
   fetchLookaheadActivities,
   fetchLookaheadAlerts,
   fetchLookaheadHistory,
@@ -48,6 +50,11 @@ type ActivityParams = BaseParams & {
 type LookaheadActivityParams = ProjectParams & {
   weekStart?: string | null;
   assetType?: string | null;
+};
+
+type CapacityDashboardParams = ProjectParams & {
+  startWeek?: string | null;
+  weeks?: number | null;
 };
 
 type SwrResult<T> = {
@@ -91,6 +98,34 @@ export function useLookaheadSnapshot({
   );
 
   return { snapshot: result.data, ...result };
+}
+
+export function useCapacityDashboard({
+  projectId,
+  startWeek,
+  weeks,
+  enabled = true,
+}: CapacityDashboardParams) {
+  const key = useMemo(
+    () =>
+      enabled && projectId
+        ? lookaheadKeys.capacityDashboard(projectId, { startWeek, weeks })
+        : null,
+    [enabled, projectId, startWeek, weeks],
+  );
+  const result = useTypedSWR<CapacityDashboardResponse>(
+    key,
+    key
+      ? () =>
+          fetchCapacityDashboard({
+            projectId: projectId as string,
+            startWeek,
+            weeks,
+          })
+      : null,
+  );
+
+  return { capacityData: result.data, ...result };
 }
 
 export function useLookaheadAlerts({

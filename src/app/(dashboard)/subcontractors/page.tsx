@@ -42,6 +42,16 @@ type SortField =
   | "isActive";
 type SortDirection = "asc" | "desc";
 
+const formatResolutionStatus = (status?: string | null): string => {
+  if (!status) {
+    return "Unspecified";
+  }
+
+  return status
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
 const transformBackendSubcontractor = (
   backendSub: NormalizedSubcontractor,
 ): Contractor => {
@@ -406,7 +416,7 @@ export default function SubcontractorsPage() {
                                   : "bg-amber-50 text-amber-700"
                               }`}
                             >
-                              {sub.planningReady ? "Planning ready" : "Needs trade review"}
+                              {sub.planningReady ? "Planning ready" : "Needs review"}
                             </span>
                           )}
                         </div>
@@ -601,7 +611,9 @@ export default function SubcontractorsPage() {
                         </span>
                       </div>
                       <span className="text-sm font-semibold text-slate-900">
-                        {selectedContractor.tradeResolutionStatus || "Unspecified"}
+                        {formatResolutionStatus(
+                          selectedContractor.tradeResolutionStatus,
+                        )}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
@@ -633,7 +645,11 @@ export default function SubcontractorsPage() {
                         </span>
                       </div>
                       <span className="text-sm font-semibold text-slate-900">
-                        {selectedContractor.tradeInferenceSource || "Manual / unknown"}
+                        {selectedContractor.tradeInferenceSource
+                          ? formatResolutionStatus(
+                              selectedContractor.tradeInferenceSource,
+                            )
+                          : "Manual / unknown"}
                       </span>
                     </div>
                   </div>

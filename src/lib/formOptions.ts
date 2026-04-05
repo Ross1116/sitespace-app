@@ -34,6 +34,8 @@ export const DEFAULT_BOOKING_DURATION_MINUTES = 60;
 export const MIN_PENDING_BOOKING_CAPACITY = 1;
 export const MAX_PENDING_BOOKING_CAPACITY = 20;
 export const DEFAULT_PENDING_BOOKING_CAPACITY = 5;
+export const MIN_ASSET_MAX_HOURS_PER_DAY = 0.5;
+export const MAX_ASSET_MAX_HOURS_PER_DAY = 24;
 
 export const clampPendingBookingCapacity = (
   value: number | null | undefined,
@@ -46,6 +48,17 @@ export const clampPendingBookingCapacity = (
     MAX_PENDING_BOOKING_CAPACITY,
     Math.max(MIN_PENDING_BOOKING_CAPACITY, safeValue),
   );
+};
+
+export const clampAssetMaxHoursPerDay = (
+  value: number | null | undefined,
+): number => {
+  const safeValue = Number.isFinite(value) ? (value as number) : MIN_ASSET_MAX_HOURS_PER_DAY;
+  const bounded = Math.min(
+    MAX_ASSET_MAX_HOURS_PER_DAY,
+    Math.max(MIN_ASSET_MAX_HOURS_PER_DAY, safeValue),
+  );
+  return Math.round(bounded * 2) / 2;
 };
 
 export const BOOKING_DURATION_OPTIONS = [

@@ -83,11 +83,13 @@ const transformBackendAsset = (backendAsset: ApiAsset): Asset => {
     usageInstructions: backendAsset.usage_instructions || "",
     assetCode: backendAsset.asset_code,
     pendingBookingCapacity: backendAsset.pending_booking_capacity,
+    maxHoursPerDay: backendAsset.max_hours_per_day ?? null,
     canonicalType: backendAsset.canonical_type ?? null,
     typeResolutionStatus: backendAsset.type_resolution_status ?? null,
     typeInferenceSource: backendAsset.type_inference_source ?? null,
     typeInferenceConfidence: backendAsset.type_inference_confidence ?? null,
     planningReady: backendAsset.planning_ready,
+    capacityReady: backendAsset.capacity_ready,
     _originalData: backendAsset,
   };
 };
@@ -272,11 +274,11 @@ export default function AssetsTable() {
     }
 
     if (readinessFilter === "ready") {
-      result = result.filter((asset) => asset.planningReady === true);
+      result = result.filter((asset) => Boolean(asset.capacityReady));
     }
 
     if (readinessFilter === "review") {
-      result = result.filter((asset) => asset.planningReady !== true);
+      result = result.filter((asset) => !asset.capacityReady);
     }
 
     // Sort
@@ -357,7 +359,7 @@ export default function AssetsTable() {
     (a) => a.assetStatus === "Maintenance",
   ).length;
   const planningReadyCount = (allAssets ?? []).filter(
-    (asset) => asset.planningReady === true,
+    (asset) => Boolean(asset.capacityReady),
   ).length;
   const emptyStateMessage = searchTerm.trim()
     ? `No assets found matching "${searchTerm.trim()}".`
@@ -621,27 +623,21 @@ export default function AssetsTable() {
                         >
                           {asset.assetDescription}
                         </span>
-                        {(asset.planningReady !== undefined ||
-                          asset.typeResolutionStatus) && (
+                        {(asset.typeResolutionStatus || asset.maxHoursPerDay != null) && (
                           <div className="mt-1 flex flex-wrap gap-1">
-                            {asset.planningReady !== undefined && (
-                              <span
-                                className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                                  asset.planningReady
-                                    ? "bg-emerald-50 text-emerald-700"
-                                    : "bg-amber-50 text-amber-700"
-                                }`}
-                              >
-                                {asset.planningReady
-                                  ? "Planning ready"
-                                  : "Needs type review"}
-                              </span>
-                            )}
-                            {asset.typeResolutionStatus && (
-                              <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
-                                {asset.typeResolutionStatus}
-                              </span>
-                            )}
+                            <span
+                              className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                                asset.capacityReady
+                                  ? "bg-emerald-50 text-emerald-700"
+                                  : "bg-amber-50 text-amber-700"
+                              }`}
+                            >
+                              {asset.capacityReady
+                                ? "Planning ready"
+                                : asset.maxHoursPerDay == null
+                                  ? "Capacity not set"
+                                  : "Needs review"}
+                            </span>
                           </div>
                         )}
                       </div>
@@ -801,7 +797,7 @@ export default function AssetsTable() {
                         </span>
                       </div>
                       {(() => {
-                        if (selectedAsset.planningReady === true) {
+                        if (selectedAsset.capacityReady) {
                           return (
                             <span className="text-sm font-semibold text-emerald-700">
                               Yes
@@ -809,20 +805,25 @@ export default function AssetsTable() {
                           );
                         }
 
-                        if (selectedAsset.planningReady === false) {
-                          return (
-                            <span className="text-sm font-semibold text-amber-700">
-                              No
-                            </span>
-                          );
-                        }
-
                         return (
-                          <span className="text-sm font-semibold text-slate-500">
-                            Unknown
+                          <span className="text-sm font-semibold text-amber-700">
+                            No
                           </span>
                         );
                       })()}
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Clock className="h-4 w-4 text-slate-400" />
+                        <span className="text-sm font-medium text-slate-500">
+                          Max Hours / Day
+                        </span>
+                      </div>
+                      <span className="text-sm font-semibold text-slate-900">
+                        {selectedAsset.maxHoursPerDay != null
+                          ? `${selectedAsset.maxHoursPerDay}h`
+                          : "Using type default / not set"}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">

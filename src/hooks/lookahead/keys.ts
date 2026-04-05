@@ -18,6 +18,14 @@ export const lookaheadKeys = {
   snapshot: (projectId: string): string => `/lookahead/${projectId}`,
   alerts: (projectId: string): string => `/lookahead/${projectId}/alerts`,
   history: (projectId: string): string => `/lookahead/${projectId}/history`,
+  capacityDashboard: (
+    projectId: string,
+    params?: { startWeek?: string | null; weeks?: number | null },
+  ): string =>
+    `/lookahead/${projectId}/capacity-dashboard${buildQuery({
+      start_week: params?.startWeek,
+      weeks: params?.weeks,
+    })}`,
   activities: (
     projectId: string,
     params?: { weekStart?: string | null; assetType?: string | null },

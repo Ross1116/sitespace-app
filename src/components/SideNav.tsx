@@ -15,6 +15,7 @@ import {
   Menu,
   X,
   BarChart3,
+  Layers3,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/app/context/AuthContext";
@@ -65,6 +66,12 @@ const SideNav = () => {
       icon: BarChart3,
       label: "Lookahead",
       href: "/lookahead",
+      visible: ["admin", "manager"],
+    },
+    {
+      icon: Layers3,
+      label: "Capacity Planning",
+      href: "/capacity-planning",
       visible: ["admin", "manager"],
     },
     { icon: CalendarRange, label: "Bookings", href: "/bookings", visible: [] },
