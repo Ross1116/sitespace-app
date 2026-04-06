@@ -501,7 +501,7 @@ export function CapacityDashboard() {
 
   return (
     <div className="min-h-screen bg-(--page-bg) p-4 font-sans sm:p-6 lg:p-8">
-      <div className="mx-auto max-w-screen space-y-6">
+      <div className="mx-auto max-w-screen-2xl space-y-6">
         <div className="rounded-3xl border border-slate-100 bg-white p-1 shadow-sm">
           <div className="space-y-6 p-6">
             <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
@@ -725,7 +725,14 @@ export function CapacityDashboard() {
 
                     {weeks.map((week) => {
                       const weekSummary = capacityData.summary_by_week[week];
-                      if (!weekSummary) return null;
+                      if (!weekSummary) {
+                        return (
+                          <div
+                            key={`summary-${week}`}
+                            className="relative flex min-h-28 flex-col justify-between p-3 bg-slate-50"
+                          />
+                        );
+                      }
                       return (
                         <CapacityWeekSummaryCell
                           key={`summary-${week}`}
