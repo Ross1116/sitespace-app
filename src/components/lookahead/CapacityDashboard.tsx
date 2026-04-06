@@ -49,7 +49,7 @@ const WINDOW_WEEKS: Record<CapacityWindowSize, number> = {
 };
 
 function isCapacityWindowSize(value: unknown): value is CapacityWindowSize {
-  return typeof value === "string" && value in WINDOW_WEEKS;
+  return typeof value === "string" && Object.hasOwn(WINDOW_WEEKS, value);
 }
 
 function formatDateTime(value: string | null | undefined): string {
@@ -437,7 +437,7 @@ export function CapacityDashboard() {
   }, [hasUIIntentHydrated, uiScopeKey]);
 
   const requestedWeeks = WINDOW_WEEKS[windowSize];
-  const enabled = Boolean(projectId);
+  const enabled = Boolean(projectId) && hasUIIntentHydrated && user?.role !== "subcontractor";
   const { snapshot } = useLookaheadSnapshot({ projectId, enabled });
   const heatmap = useMemo(
     () => (snapshot?.rows?.length ? pivotRows(snapshot.rows) : null),
