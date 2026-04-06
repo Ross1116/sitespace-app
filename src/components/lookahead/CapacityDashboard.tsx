@@ -154,9 +154,12 @@ function CapacityCellCard({
   cell,
   compact,
 }: {
-  cell: CapacityCell;
+  cell: CapacityCell | undefined;
   compact: boolean;
 }) {
+  if (!cell) {
+    return <div className="relative flex min-h-28 flex-col justify-between p-3 bg-slate-50" />;
+  }
   const styles = STATUS_STYLES[cell.status];
   const displayUtilizationPct = getDisplayDemandUtilizationPct(cell);
 
@@ -720,12 +723,16 @@ export function CapacityDashboard() {
                       </p>
                     </div>
 
-                    {weeks.map((week) => (
-                      <CapacityWeekSummaryCell
-                        key={`summary-${week}`}
-                        summary={capacityData.summary_by_week[week] as CapacityWeekSummary}
-                      />
-                    ))}
+                    {weeks.map((week) => {
+                      const weekSummary = capacityData.summary_by_week[week];
+                      if (!weekSummary) return null;
+                      return (
+                        <CapacityWeekSummaryCell
+                          key={`summary-${week}`}
+                          summary={weekSummary}
+                        />
+                      );
+                    })}
                   </div>
                 </section>
 

@@ -245,10 +245,9 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
       if (asset.maintenanceEnddt) {
         createRequest.maintenance_end_date = asset.maintenanceEnddt;
       }
-      if (asset.maxHoursPerDay.trim()) {
-        createRequest.max_hours_per_day = clampAssetMaxHoursPerDay(
-          Number(asset.maxHoursPerDay),
-        );
+      const parsedMaxHours = Number(asset.maxHoursPerDay);
+      if (Number.isFinite(parsedMaxHours)) {
+        createRequest.max_hours_per_day = clampAssetMaxHoursPerDay(parsedMaxHours);
       }
 
       // Use new backend endpoint
