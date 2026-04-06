@@ -46,8 +46,18 @@ const asId = (value: unknown): string =>
 const asBoolean = (value: unknown): boolean | undefined =>
   typeof value === "boolean" ? value : undefined;
 
-const asNumber = (value: unknown): number | undefined =>
-  typeof value === "number" && Number.isFinite(value) ? value : undefined;
+const asNumber = (value: unknown): number | undefined => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string" && value.trim().length > 0) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+
+  return undefined;
+};
 
 const toOptionalRecord = (
   value: unknown,
@@ -185,6 +195,7 @@ const toApiAsset = (record: UnknownRecord): ApiAsset | null => {
     type_inference_source: asOptionalString(record.type_inference_source) ?? null,
     type_inference_confidence: asNumber(record.type_inference_confidence) ?? null,
     planning_ready: asBoolean(record.planning_ready),
+    capacity_ready: asBoolean(record.capacity_ready),
     description: asOptionalString(record.description),
     status,
     project_id: asOptionalString(record.project_id),
@@ -196,6 +207,7 @@ const toApiAsset = (record: UnknownRecord): ApiAsset | null => {
     maintenance_start_date: asOptionalString(record.maintenance_start_date),
     maintenance_end_date: asOptionalString(record.maintenance_end_date),
     pending_booking_capacity: asNumber(record.pending_booking_capacity),
+    max_hours_per_day: asNumber(record.max_hours_per_day) ?? null,
   };
 };
 

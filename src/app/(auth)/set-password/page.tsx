@@ -29,7 +29,8 @@ export default async function SetPasswordPage({
               alt="SiteSpace"
               width={160}
               height={48}
-              className="h-10 w-auto brightness-0 invert"
+              className="h-10 brightness-0 invert"
+              style={{ width: "auto" }}
               priority
             />
           </Link>

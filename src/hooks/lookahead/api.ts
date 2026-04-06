@@ -2,6 +2,11 @@ import api from "@/lib/api";
 import { normalizeBookingList } from "@/lib/apiNormalization";
 import type {
   ActivityMappingResponse,
+  CapacityAssetTypeSummary,
+  CapacityCell,
+  CapacityDashboardDiagnostics,
+  CapacityHeadlineSummary,
+  CapacityDashboardResponse,
   LookaheadActivitiesResponse,
   LookaheadAlertsResponse,
   LookaheadSnapshotHistoryEntry,
@@ -194,6 +199,147 @@ const normalizePlanningTasks = (value: unknown): PlanningCompletenessTask[] =>
     count: asNumber(record.count),
   }));
 
+const CAPACITY_STATUSES = new Set<CapacityCell["status"]>([
+  "idle",
+  "under_utilised",
+  "balanced",
+  "tight",
+  "over_capacity",
+  "no_capacity",
+  "review_needed",
+]);
+
+const asStringArray = (value: unknown): string[] =>
+  Array.isArray(value)
+    ? value.filter((entry): entry is string => typeof entry === "string")
+    : [];
+
+const normalizeCapacityCell = (value: unknown): CapacityCell => {
+  const record = isRecord(value) ? value : {};
+  const status = asOptionalString(record.status);
+
+  return {
+    demand_hours: asNumber(record.demand_hours) ?? 0,
+    booked_hours: asNumber(record.booked_hours) ?? 0,
+    capacity_hours: asNumber(record.capacity_hours) ?? 0,
+    remaining_capacity_hours: asNumber(record.remaining_capacity_hours) ?? 0,
+    uncovered_demand_hours: asNumber(record.uncovered_demand_hours) ?? 0,
+    demand_utilization_pct: asNumber(record.demand_utilization_pct) ?? 0,
+    booked_utilization_pct: asNumber(record.booked_utilization_pct) ?? 0,
+    available_assets: asNumber(record.available_assets) ?? 0,
+    status:
+      status && CAPACITY_STATUSES.has(status as CapacityCell["status"])
+        ? (status as CapacityCell["status"])
+        : "review_needed",
+    is_anomalous: typeof record.is_anomalous === "boolean" ? record.is_anomalous : false,
+  };
+};
+
+const normalizeCapacityRows = (
+  value: unknown,
+): Record<string, Record<string, CapacityCell>> => {
+  if (!isRecord(value)) return {};
+
+  return Object.fromEntries(
+    Object.entries(value).map(([assetType, weekMap]) => {
+      if (!isRecord(weekMap)) return [assetType, {}];
+
+      return [
+        assetType,
+        Object.fromEntries(
+          Object.entries(weekMap).map(([week, cell]) => [week, normalizeCapacityCell(cell)]),
+        ),
+      ];
+    }),
+  );
+};
+
+const normalizeCapacitySummaryByWeek = (
+  value: unknown,
+): CapacityDashboardResponse["summary_by_week"] => {
+  if (!isRecord(value)) return {};
+
+  return Object.fromEntries(
+    Object.entries(value).map(([week, summary]) => {
+      const record = isRecord(summary) ? summary : {};
+      return [
+        week,
+        {
+          total_demand_hours: asNumber(record.total_demand_hours) ?? 0,
+          total_booked_hours: asNumber(record.total_booked_hours) ?? 0,
+          total_capacity_hours: asNumber(record.total_capacity_hours) ?? 0,
+          overall_demand_utilization_pct:
+            asNumber(record.overall_demand_utilization_pct) ?? 0,
+          overall_booked_utilization_pct:
+            asNumber(record.overall_booked_utilization_pct) ?? 0,
+          worst_status: asString(record.worst_status),
+        },
+      ];
+    }),
+  );
+};
+
+const normalizeCapacityAssetSummary = (
+  value: unknown,
+): Record<string, CapacityAssetTypeSummary> => {
+  if (!isRecord(value)) return {};
+
+  return Object.fromEntries(
+    Object.entries(value).map(([assetType, summary]) => {
+      const record = isRecord(summary) ? summary : {};
+      return [
+        assetType,
+        {
+          total_demand_hours: asNumber(record.total_demand_hours) ?? 0,
+          total_booked_hours: asNumber(record.total_booked_hours) ?? 0,
+          total_capacity_hours: asNumber(record.total_capacity_hours) ?? 0,
+          peak_week: asOptionalString(record.peak_week),
+          peak_demand_utilization_pct:
+            asNumber(record.peak_demand_utilization_pct) ?? 0,
+          weeks_over_capacity: asNumber(record.weeks_over_capacity) ?? 0,
+          weeks_tight: asNumber(record.weeks_tight) ?? 0,
+        },
+      ];
+    }),
+  );
+};
+
+const normalizeCapacityDiagnostics = (
+  value: unknown,
+): CapacityDashboardDiagnostics | null => {
+  if (!isRecord(value)) return null;
+
+  return {
+    unresolved_asset_count: asNumber(value.unresolved_asset_count) ?? 0,
+    other_demand_hours_total: asNumber(value.other_demand_hours_total) ?? 0,
+    excluded_asset_types: asStringArray(value.excluded_asset_types),
+    snapshot_id: asOptionalString(value.snapshot_id),
+    snapshot_date: asOptionalString(value.snapshot_date),
+    snapshot_refreshed_at: asOptionalString(value.snapshot_refreshed_at),
+    total_assets_evaluated: asNumber(value.total_assets_evaluated) ?? 0,
+    excluded_not_planning_ready:
+      asNumber(value.excluded_not_planning_ready) ?? 0,
+    excluded_retired: asNumber(value.excluded_retired) ?? 0,
+    capacity_computed_at: asString(value.capacity_computed_at),
+    assumptions: asStringArray(value.assumptions),
+  };
+};
+
+const normalizeCapacityHeadlineSummary = (
+  value: unknown,
+): CapacityHeadlineSummary => {
+  const record = isRecord(value) ? value : {};
+
+  return {
+    total_demand_hours: asNumber(record.total_demand_hours) ?? 0,
+    total_capacity_hours: asNumber(record.total_capacity_hours) ?? 0,
+    avg_utilization_pct: asNumber(record.avg_utilization_pct) ?? 0,
+    weeks_with_gaps: asNumber(record.weeks_with_gaps) ?? 0,
+    demand_without_capacity_hours:
+      asNumber(record.demand_without_capacity_hours) ?? 0,
+  };
+};
+
 export async function fetchLookaheadSnapshot(
   projectId: string,
 ): Promise<LookaheadSnapshotResponse> {
@@ -201,6 +347,37 @@ export async function fetchLookaheadSnapshot(
     lookaheadKeys.snapshot(projectId),
   );
   return response.data;
+}
+
+export async function fetchCapacityDashboard(params: {
+  projectId: string;
+  startWeek?: string | null;
+  weeks?: number | null;
+}): Promise<CapacityDashboardResponse> {
+  const response = await api.get<unknown>(
+    lookaheadKeys.capacityDashboard(params.projectId, {
+      startWeek: params.startWeek,
+      weeks: params.weeks,
+    }),
+  );
+  const payload = isRecord(response.data) ? response.data : {};
+
+  return {
+    project_id: asOptionalString(payload.project_id) ?? params.projectId,
+    upload_id: asOptionalString(payload.upload_id),
+    start_week: asOptionalString(payload.start_week) ?? params.startWeek ?? "",
+    weeks: asStringArray(payload.weeks),
+    work_days_per_week: asNumber(payload.work_days_per_week) ?? 0,
+    asset_types: asStringArray(payload.asset_types),
+    rows: normalizeCapacityRows(payload.rows),
+    headline_summary: normalizeCapacityHeadlineSummary(payload.headline_summary),
+    summary_by_week: normalizeCapacitySummaryByWeek(payload.summary_by_week),
+    summary_by_asset_type: normalizeCapacityAssetSummary(
+      payload.summary_by_asset_type,
+    ),
+    diagnostics: normalizeCapacityDiagnostics(payload.diagnostics),
+    message: asOptionalString(payload.message),
+  };
 }
 
 export async function fetchLookaheadAlerts(

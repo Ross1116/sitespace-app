@@ -45,7 +45,10 @@ import {
   MIN_PENDING_BOOKING_CAPACITY,
   MAX_PENDING_BOOKING_CAPACITY,
   DEFAULT_PENDING_BOOKING_CAPACITY,
+  MIN_ASSET_MAX_HOURS_PER_DAY,
+  MAX_ASSET_MAX_HOURS_PER_DAY,
   clampPendingBookingCapacity,
+  clampAssetMaxHoursPerDay,
 } from "@/lib/formOptions";
 
 // ===== TYPE DEFINITIONS (Matching AssetsTable.tsx exactly) =====
@@ -70,6 +73,7 @@ interface AssetUpdateRequest {
   maintenance_start_date?: string | null;
   maintenance_end_date?: string | null;
   pending_booking_capacity?: number;
+  max_hours_per_day?: number | null;
 }
 
 interface ImpactedBookingSummary {
@@ -278,6 +282,7 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
     usageInstructions: "",
     assetProject: "", //  Just a string
     assetCode: "",
+    maxHoursPerDay: null,
   });
 
   // Load asset data when modal opens or assetData changes
@@ -289,6 +294,10 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
           assetData.pendingBookingCapacity ??
           assetData._originalData?.pending_booking_capacity ??
           DEFAULT_PENDING_BOOKING_CAPACITY,
+        maxHoursPerDay:
+          assetData.maxHoursPerDay ??
+          assetData._originalData?.max_hours_per_day ??
+          null,
       });
     }
   }, [assetData]);
@@ -472,6 +481,10 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
           asset.pendingBookingCapacity ?? DEFAULT_PENDING_BOOKING_CAPACITY,
         ),
       );
+      const maxHoursPerDay =
+        asset.maxHoursPerDay == null
+          ? null
+          : clampAssetMaxHoursPerDay(Number(asset.maxHoursPerDay));
 
       if (hasStart && hasEnd) {
         // Both present → keep / set Maintenance status
@@ -499,6 +512,7 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
         poc: asset.assetPoc,
         usage_instructions: asset.usageInstructions,
         pending_booking_capacity: pendingBookingCapacity,
+        max_hours_per_day: maxHoursPerDay,
       };
 
       // Always send maintenance dates — null explicitly clears them on the
@@ -541,6 +555,7 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
           assetCode: response.data.asset_code,
           pendingBookingCapacity:
             response.data.pending_booking_capacity ?? pendingBookingCapacity,
+          maxHoursPerDay: response.data.max_hours_per_day ?? maxHoursPerDay,
           _originalData: response.data,
         };
 
@@ -608,6 +623,10 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
             asset.pendingBookingCapacity ?? DEFAULT_PENDING_BOOKING_CAPACITY,
           ),
         );
+      const maxHoursPerDay =
+        response.data.max_hours_per_day ??
+        pendingUpdateRequest.max_hours_per_day ??
+        null;
 
       const updatedAsset: Asset = {
         assetKey: response.data.id,
@@ -625,6 +644,7 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
         assetProject: response.data.project_id || projectId,
         assetCode: response.data.asset_code,
         pendingBookingCapacity,
+        maxHoursPerDay,
         _originalData: response.data,
       };
 
@@ -873,6 +893,33 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
                 <span className="text-xs text-gray-500">
                   Maximum pending requests allowed per slot (
                   {MIN_PENDING_BOOKING_CAPACITY}-{MAX_PENDING_BOOKING_CAPACITY})
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="maxHoursPerDay">Max Hours Per Day</Label>
+                <Input
+                  id="maxHoursPerDay"
+                  name="maxHoursPerDay"
+                  type="number"
+                  min={MIN_ASSET_MAX_HOURS_PER_DAY}
+                  max={MAX_ASSET_MAX_HOURS_PER_DAY}
+                  step="0.5"
+                  value={asset.maxHoursPerDay ?? ""}
+                  onChange={(e) => {
+                    const rawValue = e.target.value;
+                    setAsset((prev) => ({
+                      ...prev,
+                      maxHoursPerDay:
+                        rawValue.trim().length === 0
+                          ? null
+                          : clampAssetMaxHoursPerDay(Number(rawValue)),
+                    }));
+                  }}
+                  placeholder="Leave blank to use asset-type default"
+                />
+                <span className="text-xs text-gray-500">
+                  Per-asset daily capacity override used by the capacity dashboard, in 30-minute increments.
                 </span>
               </div>
 

@@ -453,7 +453,8 @@ export default function LandingPage() {
                   width={140}
                   height={48}
                   loading="lazy"
-                  className="h-9 w-auto block"
+                  className="h-9 block"
+                  style={{ width: "auto" }}
                 />
               </div>
               <p className="text-gray-500 text-sm leading-relaxed">

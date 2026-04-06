@@ -11,6 +11,7 @@ vi.mock("@/lib/api", () => ({
 }));
 
 import {
+  fetchCapacityDashboard,
   fetchLookaheadHistory,
   fetchPlanningCompleteness,
   fetchProgrammeActivityBookingContext,
@@ -31,6 +32,147 @@ describe("lookahead api", () => {
     ).toBe(
       "/lookahead/project-1/activities?week_start=2026-03-30&asset_type=scissor_lift",
     );
+  });
+
+  it("builds capacity dashboard keys with filters", () => {
+    expect(
+      lookaheadKeys.capacityDashboard("project-1", {
+        startWeek: "2026-03-30",
+        weeks: 4,
+      }),
+    ).toBe(
+      "/lookahead/project-1/capacity-dashboard?start_week=2026-03-30&weeks=4",
+    );
+  });
+
+  it("normalizes capacity dashboard rows and summaries", async () => {
+    getMock.mockResolvedValueOnce({
+      data: {
+        project_id: "project-1",
+        upload_id: "upload-1",
+        start_week: "2026-03-30",
+        weeks: ["2026-03-30", "2026-04-06"],
+        work_days_per_week: 5,
+        asset_types: ["scissor_lift"],
+        rows: {
+          scissor_lift: {
+            "2026-03-30": {
+              demand_hours: 32,
+              booked_hours: 24,
+              capacity_hours: 40,
+              remaining_capacity_hours: 16,
+              uncovered_demand_hours: 8,
+              demand_utilization_pct: 80,
+              booked_utilization_pct: 60,
+              available_assets: 2,
+              status: "tight",
+              is_anomalous: true,
+            },
+          },
+        },
+        summary_by_week: {
+          "2026-03-30": {
+            total_demand_hours: 32,
+            total_booked_hours: 24,
+            total_capacity_hours: 40,
+            overall_demand_utilization_pct: 80,
+            overall_booked_utilization_pct: 60,
+            worst_status: "tight",
+          },
+        },
+        summary_by_asset_type: {
+          scissor_lift: {
+            total_demand_hours: 32,
+            total_booked_hours: 24,
+            total_capacity_hours: 40,
+            peak_week: "2026-03-30",
+            peak_demand_utilization_pct: 80,
+            weeks_over_capacity: 0,
+            weeks_tight: 1,
+          },
+        },
+        diagnostics: {
+          unresolved_asset_count: 1,
+          other_demand_hours_total: 4,
+          excluded_asset_types: ["tower_crane"],
+          snapshot_id: "snapshot-1",
+          snapshot_date: "2026-03-29",
+          snapshot_refreshed_at: "2026-03-29T10:00:00Z",
+          total_assets_evaluated: 9,
+          excluded_not_planning_ready: 2,
+          excluded_retired: 1,
+          capacity_computed_at: "2026-03-29T10:30:00Z",
+          assumptions: ["Bookings count toward demand coverage."],
+        },
+        message: "Capacity is based on planning-ready assets only.",
+      },
+    });
+
+    const result = await fetchCapacityDashboard({
+      projectId: "project-1",
+      startWeek: "2026-03-30",
+      weeks: 4,
+    });
+
+    expect(result).toMatchObject({
+      project_id: "project-1",
+      upload_id: "upload-1",
+      weeks: ["2026-03-30", "2026-04-06"],
+      asset_types: ["scissor_lift"],
+      rows: {
+        scissor_lift: {
+          "2026-03-30": {
+            demand_hours: 32,
+            status: "tight",
+            is_anomalous: true,
+          },
+        },
+      },
+      summary_by_week: {
+        "2026-03-30": {
+          total_capacity_hours: 40,
+          worst_status: "tight",
+        },
+      },
+      summary_by_asset_type: {
+        scissor_lift: {
+          peak_week: "2026-03-30",
+          weeks_tight: 1,
+        },
+      },
+      diagnostics: {
+        unresolved_asset_count: 1,
+        excluded_asset_types: ["tower_crane"],
+      },
+      message: "Capacity is based on planning-ready assets only.",
+    });
+  });
+
+  it("defaults missing capacity collections to empty values", async () => {
+    getMock.mockResolvedValueOnce({
+      data: {
+        project_id: "project-2",
+        start_week: "2026-04-06",
+      },
+    });
+
+    const result = await fetchCapacityDashboard({
+      projectId: "project-2",
+      startWeek: "2026-04-06",
+      weeks: 4,
+    });
+
+    expect(result).toMatchObject({
+      project_id: "project-2",
+      start_week: "2026-04-06",
+      weeks: [],
+      asset_types: [],
+      rows: {},
+      summary_by_week: {},
+      summary_by_asset_type: {},
+      diagnostics: null,
+      message: null,
+    });
   });
 
   it("normalizes programme activity booking context", async () => {
