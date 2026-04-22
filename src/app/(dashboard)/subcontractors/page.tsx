@@ -17,15 +17,15 @@ import {
 } from "lucide-react";
 import dynamic from "next/dynamic";
 
-const SubFormModal = dynamic(() => import("@/components/forms/InviteSubForm"), { ssr: false });
+const SubFormModal = dynamic(() => import("@/components/forms/InviteSubForm"), {
+  ssr: false,
+});
 import { useAuth } from "@/app/context/AuthContext";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { type TransformedContractor } from "@/types";
-import {
-  type NormalizedSubcontractor,
-} from "@/lib/subcontractorNormalization";
+import { type NormalizedSubcontractor } from "@/lib/subcontractorNormalization";
 import { useResolvedProjectSelection } from "@/hooks/useResolvedProjectSelection";
 import { useProjectSubcontractors } from "@/hooks/useProjectSubcontractors";
 
@@ -60,7 +60,9 @@ const transformBackendSubcontractor = (
     contractorName: `${backendSub.first_name} ${backendSub.last_name}`.trim(),
     contractorCompany: backendSub.company_name || "-",
     contractorTrade:
-      backendSub.trade_specialty || backendSub.suggested_trade_specialty || "General",
+      backendSub.trade_specialty ||
+      backendSub.suggested_trade_specialty ||
+      "General",
     contractorEmail: backendSub.email,
     contractorPhone: backendSub.phone || "-",
     isActive: backendSub.is_active,
@@ -295,7 +297,7 @@ export default function SubcontractorsPage() {
             </div>
 
             {/* Table Header — Sortable */}
-            <div className="hidden sm:grid grid-cols-12 gap-4 bg-gradient-to-r from-(--navy-deep) to-navy text-white py-3.5 px-6 rounded-xl text-sm font-semibold shadow-md shadow-slate-200 mb-4 select-none">
+            <div className="hidden sm:grid grid-cols-12 gap-4 bg-linear-to-r from-(--navy-deep) to-navy text-white py-3.5 px-6 rounded-xl text-sm font-semibold shadow-md shadow-slate-200 mb-4 select-none">
               {columnHeaders.map(({ label, field, colSpan }) => (
                 <div
                   key={field}
@@ -416,7 +418,9 @@ export default function SubcontractorsPage() {
                                   : "bg-amber-50 text-amber-700"
                               }`}
                             >
-                              {sub.planningReady ? "Planning ready" : "Needs review"}
+                              {sub.planningReady
+                                ? "Planning ready"
+                                : "Needs review"}
                             </span>
                           )}
                         </div>
@@ -691,4 +695,3 @@ export default function SubcontractorsPage() {
     </div>
   );
 }
-
