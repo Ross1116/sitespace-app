@@ -7,18 +7,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: '*',
       allow: ['/', '/login', '/register', '/forgot-password'],
-      disallow: [
-        '/home',
-        '/assets',
-        '/bookings',
-        '/capacity-planning',
-        '/lookahead',
-        '/multicalendar',
-        '/subcontractors',
-        '/api/',
-        '/reset-password',
-        '/set-password',
-      ],
+      disallow: ['/'],
     },
     sitemap: `${BASE_URL}/sitemap.xml`,
   }
