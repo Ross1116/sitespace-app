@@ -138,6 +138,11 @@ export function ProjectCalendarDialog({
 
   const manualDays = days.filter((day) => day.source === "manual");
   const regionalDays = days.filter((day) => day.source !== "manual");
+  const regionalDaysShownBeforeScroll = 8;
+  const remainingRegionalDaysCount = Math.max(
+    0,
+    regionalDays.length - regionalDaysShownBeforeScroll,
+  );
 
   async function handleSaveSettings() {
     if (!projectId) return;
@@ -408,13 +413,13 @@ export function ProjectCalendarDialog({
                   <h3 className="text-sm font-semibold text-slate-900">
                     Regional holidays & RDOs
                   </h3>
-                  <div className="mt-3 space-y-2">
+                  <div className="mt-3 max-h-80 space-y-2 overflow-y-auto pr-1">
                     {regionalDays.length === 0 ? (
                       <p className="text-sm text-slate-500">
                         No regional holidays or RDOs returned for this range.
                       </p>
                     ) : (
-                      regionalDays.slice(0, 8).map((day) => (
+                      regionalDays.map((day) => (
                         <div
                           key={`${day.source}-${day.calendar_date}-${day.label}`}
                           className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
@@ -427,6 +432,11 @@ export function ProjectCalendarDialog({
                       ))
                     )}
                   </div>
+                  {remainingRegionalDaysCount > 0 && (
+                    <p className="mt-2 text-xs text-slate-500">
+                      Scroll for {remainingRegionalDaysCount} more.
+                    </p>
+                  )}
                 </section>
               </div>
             </>

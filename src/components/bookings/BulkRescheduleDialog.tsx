@@ -408,10 +408,12 @@ export function BulkRescheduleDialog({
   const [comment, setComment] = useState("");
 
   useEffect(() => {
+    previewRequestIdRef.current += 1;
     if (!open) return;
     setTargets(buildInitialTargets(bookings, suggestedDates, initialShiftDays));
     setValidation(null);
     setError(null);
+    setLoadingPreview(false);
     setAllowNonWorkingDays(false);
     setAllowOutsideWorkingHours(false);
     setComment("");
@@ -534,10 +536,15 @@ export function BulkRescheduleDialog({
 
   const shiftAll = useCallback((days: number) => {
     setTargets((current) =>
-      current.map((target) => ({
-        ...target,
-        bookingDate: format(addDays(new Date(`${target.bookingDate}T00:00:00`), days), "yyyy-MM-dd"),
-      })),
+      current.map((target) => {
+        if (!target.bookingDate) return target;
+        const parsedDate = new Date(`${target.bookingDate}T00:00:00`);
+        if (Number.isNaN(parsedDate.getTime())) return target;
+        return {
+          ...target,
+          bookingDate: format(addDays(parsedDate, days), "yyyy-MM-dd"),
+        };
+      }),
     );
     setValidation(null);
   }, []);
