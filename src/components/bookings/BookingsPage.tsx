@@ -1,16 +1,30 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { memo, useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 import BookingList from "./BookingList";
 import { Button } from "@/components/ui/button";
 import { addHours, startOfHour } from "date-fns";
-import { Plus, Search } from "lucide-react";
+import { CalendarClock, Plus, Search, Settings2 } from "lucide-react";
 import dynamic from "next/dynamic";
 
 const CreateBookingForm = dynamic(
   () => import("@/components/forms/CreateBookingForm").then((m) => ({ default: m.CreateBookingForm })),
+  { ssr: false },
+);
+const BulkRescheduleDialog = dynamic(
+  () =>
+    import("./BulkRescheduleDialog").then((m) => ({
+      default: m.BulkRescheduleDialog,
+    })),
+  { ssr: false },
+);
+const ProjectCalendarDialog = dynamic(
+  () =>
+    import("@/components/projects/ProjectCalendarDialog").then((m) => ({
+      default: m.ProjectCalendarDialog,
+    })),
   { ssr: false },
 );
 import { Input } from "@/components/ui/input";
@@ -178,8 +192,77 @@ const processRawBookings = (rawBookings: ApiBooking[]) => {
     .map(transformBookingToLegacyFormat);
 };
 
+interface BulkSelectionToolbarProps {
+  selectedCount: number;
+  onClear: () => void;
+  onOpenShift: (initialShiftDays: number) => void;
+}
+
+const BulkSelectionToolbar = memo(function BulkSelectionToolbar({
+  selectedCount,
+  onClear,
+  onOpenShift,
+}: BulkSelectionToolbarProps) {
+  const hasSelection = selectedCount > 0;
+
+  return (
+    <div className="mb-4 flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 lg:flex-row lg:items-center lg:justify-between">
+      <div className="min-w-0">
+        <p className="text-sm font-bold text-slate-800">
+          {selectedCount} booking{selectedCount === 1 ? "" : "s"} selected
+        </p>
+        <p className="mt-0.5 text-xs font-medium text-slate-500">
+          Pick a quick shift or open custom reschedule.
+        </p>
+      </div>
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onClear}
+          disabled={!hasSelection}
+          className="h-10"
+        >
+          Clear
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => onOpenShift(1)}
+          disabled={!hasSelection}
+          className="h-10"
+        >
+          +1 day
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => onOpenShift(7)}
+          disabled={!hasSelection}
+          className="h-10"
+        >
+          +1 week
+        </Button>
+        <Button
+          type="button"
+          onClick={() => onOpenShift(0)}
+          disabled={!hasSelection}
+          className="col-span-2 h-10 bg-navy text-white hover:bg-(--navy-hover) sm:col-span-1"
+        >
+          Custom
+        </Button>
+      </div>
+    </div>
+  );
+});
+
 export default function BookingsPage() {
   const [isBookingFormOpen, setIsBookingFormOpen] = useState(false);
+  const [isBulkRescheduleOpen, setIsBulkRescheduleOpen] = useState(false);
+  const [isProjectCalendarOpen, setIsProjectCalendarOpen] = useState(false);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedBookingIds, setSelectedBookingIds] = useState<string[]>([]);
+  const [bulkInitialShiftDays, setBulkInitialShiftDays] = useState(0);
   const [activeTab, setActiveTab] = useState("Upcoming");
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -188,11 +271,15 @@ export default function BookingsPage() {
   const isTv = isTvUser(user);
   const {
     projectId,
+    selectedProject,
     hasResolvedProjects,
     projectBootstrapLoading,
+    mutateProjects,
   } = useResolvedProjectSelection({
     userId,
   });
+  const userRole = (user?.role ?? "").toLowerCase();
+  const canManageBookings = userRole === "admin" || userRole === "manager";
   const uiScopeKey = useMemo(() => {
     if (!userId || !projectId) return null;
     return `${userId}:${projectId}`;
@@ -327,6 +414,31 @@ export default function BookingsPage() {
     mutate();
   }, [mutate]);
 
+  const toggleSelectionMode = useCallback(() => {
+    setSelectionMode((current) => {
+      const next = !current;
+      if (!next) setSelectedBookingIds([]);
+      return next;
+    });
+  }, []);
+
+  const toggleBookingSelection = useCallback((bookingId: string) => {
+    setSelectedBookingIds((current) =>
+      current.includes(bookingId)
+        ? current.filter((id) => id !== bookingId)
+        : [...current, bookingId],
+    );
+  }, []);
+
+  const clearBookingSelection = useCallback(() => {
+    setSelectedBookingIds([]);
+  }, []);
+
+  const openBulkReschedule = useCallback((initialShiftDays = 0) => {
+    setBulkInitialShiftDays(initialShiftDays);
+    setIsBulkRescheduleOpen(true);
+  }, []);
+
   const filteredBookings = useMemo(() => {
     if (!allBookings || allBookings.length === 0) return [];
     if (!searchTerm.trim()) return allBookings;
@@ -343,6 +455,13 @@ export default function BookingsPage() {
   const pendingCount = allBookings.filter(
     (b) => b.bookingStatus === "pending",
   ).length;
+  const selectedBookings = useMemo(
+    () =>
+      allBookings.filter((booking) =>
+        selectedBookingIds.includes(booking.bookingKey),
+      ),
+    [allBookings, selectedBookingIds],
+  );
   const surfaceLoading = authLoading || isLoading || projectBootstrapLoading;
 
   return (
@@ -382,15 +501,49 @@ export default function BookingsPage() {
                 </div>
 
                 {!isTv && (
-                  <Button
-                    onClick={() => setIsBookingFormOpen(true)}
-                    className="h-auto w-full rounded-lg bg-navy px-6 py-3 text-sm font-bold text-white shadow-md shadow-slate-900/10 hover:bg-(--navy-hover) sm:w-auto"
-                  >
-                    <Plus className="mr-2 h-4 w-4 stroke-3" /> New Booking
-                  </Button>
+                  <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                    {canManageBookings && (
+                      <>
+                        <Button
+                          variant="outline"
+                          onClick={() => setIsProjectCalendarOpen(true)}
+                          className="h-auto w-full rounded-lg px-4 py-3 text-sm font-bold sm:w-auto"
+                        >
+                          <Settings2 className="mr-2 h-4 w-4" />
+                          Calendar
+                        </Button>
+                        <Button
+                          variant={selectionMode ? "outline" : "default"}
+                          onClick={toggleSelectionMode}
+                          className={`h-auto w-full rounded-lg px-4 py-3 text-sm font-bold sm:w-auto ${
+                            selectionMode
+                              ? ""
+                              : "bg-slate-900 text-white hover:bg-slate-800"
+                          }`}
+                        >
+                          <CalendarClock className="mr-2 h-4 w-4" />
+                          {selectionMode ? "Cancel bulk" : "Bulk reschedule"}
+                        </Button>
+                      </>
+                    )}
+                    <Button
+                      onClick={() => setIsBookingFormOpen(true)}
+                      className="h-auto w-full rounded-lg bg-navy px-6 py-3 text-sm font-bold text-white shadow-md shadow-slate-900/10 hover:bg-(--navy-hover) sm:w-auto"
+                    >
+                      <Plus className="mr-2 h-4 w-4 stroke-3" /> New Booking
+                    </Button>
+                  </div>
                 )}
               </div>
             </div>
+
+            {selectionMode && (
+              <BulkSelectionToolbar
+                selectedCount={selectedBookingIds.length}
+                onClear={clearBookingSelection}
+                onOpenShift={openBulkReschedule}
+              />
+            )}
 
             {/* Search & Tabs */}
             <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
@@ -451,6 +604,9 @@ export default function BookingsPage() {
                   loading={surfaceLoading}
                   onActionComplete={() => mutate()}
                   highlightBookingId={highlightBookingId}
+                  selectionMode={selectionMode}
+                  selectedBookingIds={selectedBookingIds}
+                  onToggleBookingSelection={toggleBookingSelection}
                 />
               </ComponentErrorBoundary>
             </div>
@@ -465,6 +621,35 @@ export default function BookingsPage() {
             endTime={endHour}
             onSave={handleSaveBooking}
           />
+        )}
+        {canManageBookings && (
+          <>
+            <BulkRescheduleDialog
+              open={isBulkRescheduleOpen}
+              onOpenChange={(open) => {
+                setIsBulkRescheduleOpen(open);
+                if (!open) setBulkInitialShiftDays(0);
+              }}
+              projectId={projectId}
+              bookings={selectedBookings}
+              initialShiftDays={bulkInitialShiftDays}
+              onComplete={() => {
+                setSelectedBookingIds([]);
+                setSelectionMode(false);
+                setBulkInitialShiftDays(0);
+                void mutate();
+              }}
+            />
+            <ProjectCalendarDialog
+              open={isProjectCalendarOpen}
+              onOpenChange={setIsProjectCalendarOpen}
+              projectId={projectId}
+              project={selectedProject}
+              onSaved={() => {
+                void mutateProjects();
+              }}
+            />
+          </>
         )}
       </div>
     </div>

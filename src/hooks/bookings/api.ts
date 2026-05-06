@@ -2,7 +2,13 @@ import api from "@/lib/api";
 import { normalizeBookingList } from "@/lib/apiNormalization";
 import { reportError } from "@/lib/monitoring";
 import { BOOKING_PAGINATION_MAX_PAGES } from "@/lib/pagination";
-import type { ApiBooking, BookingListResponse } from "@/types";
+import type {
+  ApiBooking,
+  BookingListResponse,
+  BulkRescheduleApplyResponse,
+  BulkRescheduleRequestPayload,
+  BulkRescheduleValidationResponse,
+} from "@/types";
 import { bookingsKeys } from "./keys";
 import type { CalendarDayResponse } from "./types";
 
@@ -327,4 +333,24 @@ export async function hardDeleteBooking(bookingId: string): Promise<void> {
   await api.delete(bookingsKeys.detail(bookingId), {
     data: { hard_delete: true },
   });
+}
+
+export async function previewBulkReschedule(
+  payload: BulkRescheduleRequestPayload,
+): Promise<BulkRescheduleValidationResponse> {
+  const response = await api.post<BulkRescheduleValidationResponse>(
+    "/bookings/bulk-reschedule/preview",
+    payload,
+  );
+  return response.data;
+}
+
+export async function applyBulkReschedule(
+  payload: BulkRescheduleRequestPayload,
+): Promise<BulkRescheduleApplyResponse> {
+  const response = await api.post<BulkRescheduleApplyResponse>(
+    "/bookings/bulk-reschedule",
+    payload,
+  );
+  return response.data;
 }

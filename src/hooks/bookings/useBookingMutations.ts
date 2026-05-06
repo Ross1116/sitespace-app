@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import { useSWRConfig } from "swr";
 import type { ApiBooking } from "@/types";
 import {
+  applyBulkReschedule,
   BookingCreatePayload,
   BookingUpdatePayload,
   createBooking,
@@ -13,6 +14,10 @@ import {
 } from "./api";
 import { isBookingsCollectionKey, isProjectScopedBookingsKey } from "./keys";
 import type { CalendarDayResponse } from "./types";
+import type {
+  BulkRescheduleApplyResponse,
+  BulkRescheduleRequestPayload,
+} from "@/types";
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
@@ -224,11 +229,27 @@ export function useBookingMutations() {
     [mutateProjectBookingCaches, revalidateBookingsForProject],
   );
 
+  const bulkRescheduleBookings = useCallback(
+    async ({
+      projectId,
+      payload,
+    }: {
+      projectId?: string | null;
+      payload: BulkRescheduleRequestPayload;
+    }): Promise<BulkRescheduleApplyResponse> => {
+      const response = await applyBulkReschedule(payload);
+      await revalidateBookingsForProject(projectId ?? payload.project_id);
+      return response;
+    },
+    [revalidateBookingsForProject],
+  );
+
   return {
     createBookings,
     updateBookingStatus,
     updateBooking,
     deleteBooking,
+    bulkRescheduleBookings,
     revalidateBookingsForProject,
   };
 }

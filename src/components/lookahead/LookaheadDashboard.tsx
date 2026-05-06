@@ -34,10 +34,13 @@ import {
 } from "@/hooks/lookahead/useLookaheadQueries";
 import { useUIIntentStore } from "@/stores/uiIntentStore";
 import type {
+  ApiBooking,
   ApiProject,
   LookaheadActivityCandidate,
   LookaheadAnomalyFlags,
   LookaheadRow,
+  ProgrammeActivitySuggestedBookingDate,
+  TransformedBooking,
 } from "@/types";
 import { getApiErrorMessage, isAxiosError } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -73,6 +76,14 @@ const ActivityContextDialog = dynamic(
 
 const UploadReviewDialog = dynamic(
   () => import("./UploadReviewDialog").then((module) => ({ default: module.UploadReviewDialog })),
+  { ssr: false },
+);
+
+const BulkRescheduleDialog = dynamic(
+  () =>
+    import("@/components/bookings/BulkRescheduleDialog").then((module) => ({
+      default: module.BulkRescheduleDialog,
+    })),
   { ssr: false },
 );
 
@@ -212,6 +223,51 @@ function getDiagnosticsLoadMessage(error: unknown): string {
   return rawMessage;
 }
 
+function toLinkedTransformedBooking(booking: ApiBooking): TransformedBooking {
+  const start = new Date(`${booking.booking_date}T${booking.start_time || "00:00:00"}`);
+  const end = new Date(`${booking.booking_date}T${booking.end_time || "00:00:00"}`);
+  const assetName = booking.asset?.name || booking.asset_id || "Unknown asset";
+  const title =
+    booking.purpose?.trim() ||
+    booking.programme_activity_name?.trim() ||
+    "Linked booking";
+
+  return {
+    bookingKey: booking.id,
+    bookingTitle: title,
+    bookingDescription: booking.notes || "",
+    bookingNotes: booking.notes || "",
+    bookingTimeDt: booking.booking_date,
+    bookingStartTime: (booking.start_time || "00:00").slice(0, 5),
+    bookingEndTime: (booking.end_time || "00:00").slice(0, 5),
+    bookingStatus: (booking.status || "pending").toLowerCase(),
+    bookingFor: booking.booked_by_name || booking.requested_by_name || "",
+    bookedAssets: [assetName],
+    assetId: booking.asset?.id || booking.asset_id,
+    assetName,
+    assetCode: booking.asset?.asset_code || "",
+    start,
+    end,
+    bookingStart: start,
+    bookingEnd: end,
+    bookingDurationMins: Math.max(
+      0,
+      Math.round((end.getTime() - start.getTime()) / 60000),
+    ),
+    subcontractorId: booking.subcontractor_id ?? undefined,
+    projectName: booking.project?.name || "",
+    managerId: booking.manager_id,
+    competingPendingCount: booking.competing_pending_count ?? 0,
+    bookingSource: booking.source,
+    bookingGroupId: booking.booking_group_id ?? null,
+    programmeActivityId: booking.programme_activity_id ?? null,
+    programmeActivityName: booking.programme_activity_name ?? null,
+    expectedAssetType: booking.expected_asset_type ?? null,
+    isModified: booking.is_modified ?? false,
+    _originalData: booking,
+  };
+}
+
 export default function LookaheadDashboard() {
   const { user, isLoading: authLoading } = useAuth();
   const userId = user?.id;
@@ -244,6 +300,12 @@ export default function LookaheadDashboard() {
   const [activityDialogMode, setActivityDialogMode] =
     useState<ActivityDialogMode | null>(null);
   const [isUploadReviewOpen, setIsUploadReviewOpen] = useState(false);
+  const [isBulkRescheduleOpen, setIsBulkRescheduleOpen] = useState(false);
+  const [bulkRescheduleBookings, setBulkRescheduleBookings] = useState<
+    TransformedBooking[]
+  >([]);
+  const [bulkRescheduleSuggestedDates, setBulkRescheduleSuggestedDates] =
+    useState<ProgrammeActivitySuggestedBookingDate[]>([]);
   const [isSnapshotHistoryOpen, setIsSnapshotHistoryOpen] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -265,6 +327,8 @@ export default function LookaheadDashboard() {
     () => (userId && projectId ? `${userId}:${projectId}` : null),
     [projectId, userId],
   );
+  const userRole = (user?.role ?? "").toLowerCase();
+  const canManageBookings = userRole === "admin" || userRole === "manager";
 
   useEffect(() => {
     if (!hasUIIntentHydrated || !uiScopeKey) return;
@@ -727,6 +791,10 @@ export default function LookaheadDashboard() {
     persistentUploadMessage,
   ]);
   const firstSuggestedBookingDate = bookingContext?.suggested_bulk_dates[0] ?? null;
+  const linkedRescheduleBookings = useMemo(
+    () => (bookingContext?.linked_bookings ?? []).map(toLinkedTransformedBooking),
+    [bookingContext?.linked_bookings],
+  );
 
   const bookingStartTime = useMemo(() => {
     const defaultDate =
@@ -1353,6 +1421,18 @@ export default function LookaheadDashboard() {
         bookingContext={bookingContext}
         isLoading={bookingContextLoading}
         onBook={() => setActivityDialogMode("booking")}
+        onRescheduleLinked={
+          canManageBookings && linkedRescheduleBookings.length > 0
+            ? () => {
+                setBulkRescheduleBookings(linkedRescheduleBookings);
+                setBulkRescheduleSuggestedDates(
+                  bookingContext?.suggested_bulk_dates ?? [],
+                );
+                setActivityDialogMode(null);
+                setIsBulkRescheduleOpen(true);
+              }
+            : undefined
+        }
       />
 
       <UploadReviewDialog
@@ -1400,6 +1480,22 @@ export default function LookaheadDashboard() {
             void refreshLookaheadWorkspace();
           }}
           activityContext={bookingContext}
+        />
+      )}
+
+      {canManageBookings && (
+        <BulkRescheduleDialog
+          open={isBulkRescheduleOpen}
+          onOpenChange={setIsBulkRescheduleOpen}
+          projectId={projectId}
+          bookings={bulkRescheduleBookings}
+          suggestedDates={bulkRescheduleSuggestedDates}
+          onComplete={() => {
+            setIsBulkRescheduleOpen(false);
+            setBulkRescheduleBookings([]);
+            setBulkRescheduleSuggestedDates([]);
+            void refreshLookaheadWorkspace();
+          }}
         />
       )}
     </div>

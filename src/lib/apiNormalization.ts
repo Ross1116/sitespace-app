@@ -243,6 +243,11 @@ export function normalizeProjectList(payload: unknown): ApiProject[] {
         undefined,
       status: asOptionalString(project.status) || statusFromFlag,
       is_active: asBoolean(project.is_active),
+      default_work_start_time: asOptionalString(project.default_work_start_time),
+      default_work_end_time: asOptionalString(project.default_work_end_time),
+      holiday_country_code: asOptionalString(project.holiday_country_code),
+      holiday_region_code: asOptionalString(project.holiday_region_code),
+      holiday_region_source: asOptionalString(project.holiday_region_source),
     });
   }
 

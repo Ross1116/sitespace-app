@@ -10,6 +10,7 @@ import dynamic from "next/dynamic";
 const BookingHistorySidebar = dynamic(() => import("./BookingHistorySidebar"), { ssr: false });
 import { BookingCardActionsProvider } from "./BookingCardActionsContext";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { TransformedBooking } from "@/types";
 
 interface BookingListProps {
@@ -18,6 +19,9 @@ interface BookingListProps {
   loading: boolean;
   onActionComplete?: () => void;
   highlightBookingId?: string | null;
+  selectionMode?: boolean;
+  selectedBookingIds?: string[];
+  onToggleBookingSelection?: (bookingId: string) => void;
 }
 
 const ITEMS_PER_PAGE = 10;
@@ -28,6 +32,9 @@ export default function BookingList({
   loading,
   onActionComplete,
   highlightBookingId,
+  selectionMode = false,
+  selectedBookingIds = [],
+  onToggleBookingSelection,
 }: BookingListProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
@@ -259,7 +266,7 @@ export default function BookingList({
                       <div
                         key={booking.bookingKey}
                         ref={setBookingRef(booking.bookingKey)}
-                        className={`transition-all duration-500 rounded-xl ${
+                        className={`relative isolate transition-all duration-500 rounded-xl ${
                           isHighlighted
                             ? "ring-2 ring-blue-400 ring-offset-2 shadow-lg shadow-blue-100/50"
                             : ""
@@ -286,6 +293,17 @@ export default function BookingList({
                             />
                           </div>
                         </BookingCardActionsProvider>
+                        {selectionMode && (
+                          <label className="absolute left-3 top-3 z-[150] flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-slate-200 bg-white shadow-sm">
+                            <Checkbox
+                              checked={selectedBookingIds.includes(booking.bookingKey)}
+                              onCheckedChange={() =>
+                                onToggleBookingSelection?.(booking.bookingKey)
+                              }
+                              aria-label={`Select ${booking.bookingTitle || "booking"}`}
+                            />
+                          </label>
+                        )}
                       </div>
                     );
                   })}

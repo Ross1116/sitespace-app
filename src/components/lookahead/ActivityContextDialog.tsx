@@ -25,6 +25,7 @@ interface Props {
   bookingContext?: ProgrammeActivityBookingContextResponse | null;
   isLoading: boolean;
   onBook: () => void;
+  onRescheduleLinked?: () => void;
 }
 
 function formatTimeWindow(
@@ -72,6 +73,7 @@ export function ActivityContextDialog({
   bookingContext,
   isLoading,
   onBook,
+  onRescheduleLinked,
 }: Props) {
   const suggestedDates = bookingContext?.suggested_bulk_dates ?? [];
   const linkedBookings = bookingContext?.linked_bookings ?? [];
@@ -381,6 +383,11 @@ export function ActivityContextDialog({
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 Close
               </Button>
+              {linkedBookings.length > 0 && onRescheduleLinked && (
+                <Button variant="outline" onClick={onRescheduleLinked}>
+                  Reschedule linked
+                </Button>
+              )}
               <Button onClick={onBook} disabled={activitySuggestedCoverageFullyLinked}>
                 <Wrench className="mr-2 h-4 w-4" />
                 {activitySuggestedCoverageFullyLinked

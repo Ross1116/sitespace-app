@@ -9,12 +9,9 @@ import {
   HardHat,
   Users,
   ListChecks,
-  Search,
-  Bell,
   ChevronDown,
   CalendarX,
   Clock,
-  Plus,
   Check,
   MapPin,
   Briefcase,
@@ -22,8 +19,8 @@ import {
 } from "lucide-react";
 import { useEffect, useState, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   combineDateAndTime,
   formatDateLong as formatDate,
@@ -32,7 +29,6 @@ import {
   groupBookingsByMonth,
 } from "@/lib/bookingHelpers";
 import type { ApiBooking, ApiProject } from "@/types";
-import { SitePlansSection } from "@/components/site-plans/SitePlansSection";
 import type { LucideIcon } from "lucide-react";
 import { getSubcontractorCount } from "@/lib/subcontractorNormalization";
 import { useResolvedProjectSelection } from "@/hooks/useResolvedProjectSelection";
@@ -52,12 +48,21 @@ const PALETTE = {
   teal: "bg-teal",
 };
 
+const UpcomingHolidaysSection = dynamic(
+  () =>
+    import("@/components/home/UpcomingHolidaysSection").then((module) => ({
+      default: module.UpcomingHolidaysSection,
+    })),
+  {
+    ssr: false,
+    loading: () => <UpcomingHolidaysSectionSkeleton />,
+  },
+);
+
 export default function HomePage() {
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const isSubcontractorUser = user?.role === "subcontractor";
-  const canEditSitePlans =
-    user?.role === "admin" || user?.role === "manager";
 
   const [showProjectSelector, setShowProjectSelector] = useState(false);
 
@@ -594,23 +599,23 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* RIGHT COL: Site Plans */}
+          {/* RIGHT COL: Upcoming Holidays */}
           <div className="col-span-12 lg:col-span-4 space-y-4">
             {projectId ? (
-              <SitePlansSection
+              <UpcomingHolidaysSection
                 projectId={projectId}
-                canEdit={canEditSitePlans}
+                regionCode={selectedProject?.holiday_region_code}
               />
             ) : (
               <>
                 <div className="flex justify-between items-center mb-2">
                   <h2 className="text-xl font-bold text-slate-900">
-                    Site Plans
+                    Upcoming Holidays & RDOs
                   </h2>
                 </div>
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-100 min-h-100 flex items-center justify-center">
                   <p className="text-sm text-slate-400">
-                    Select a project to view site plans
+                    Select a project to view upcoming holidays and RDOs
                   </p>
                 </div>
               </>
@@ -688,4 +693,28 @@ const EmptyBookingsState = () => (
     </Link>
   </div>
 );
+
+function UpcomingHolidaysSectionSkeleton() {
+  return (
+    <>
+      <div className="mb-2 flex items-center justify-between">
+        <h2 className="text-xl font-bold text-slate-900">
+          Upcoming Holidays & RDOs
+        </h2>
+        <Skeleton className="h-9 w-9 rounded-lg" />
+      </div>
+      <div className="flex min-h-100 flex-col rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
+          <Skeleton className="h-4 w-28" />
+          <Skeleton className="h-6 w-20 rounded-full" />
+        </div>
+        <div className="space-y-3">
+          {[1, 2, 3, 4].map((item) => (
+            <Skeleton key={item} className="h-20 w-full rounded-xl" />
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
 
