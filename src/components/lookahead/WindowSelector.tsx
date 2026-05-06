@@ -16,56 +16,36 @@ export const WindowSelector = React.memo(function WindowSelector({
   lastUpdated,
 }: Props) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="flex flex-col gap-3">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <CalendarRange className="h-4 w-4 text-teal" />
-              <p className="text-sm font-bold text-slate-900">
-                Planning window
-              </p>
-            </div>
-            <p className="mt-1 text-xs text-slate-500">
-              Choose how far ahead the heatmap should plan.
-            </p>
-          </div>
-          {lastUpdated && (
-            <div className="hidden items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-500 sm:inline-flex">
-              <Clock3 className="h-3.5 w-3.5" />
-              {lastUpdated}
-            </div>
-          )}
+    <div className="rounded-xl border border-slate-200 bg-slate-50 p-2 sm:min-w-[20rem]">
+      <div className="mb-2 flex items-center justify-between gap-3 px-1">
+        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+          <CalendarRange className="h-4 w-4 text-teal" />
+          Window
         </div>
-
-        <div className="flex items-center gap-1.5 rounded-xl bg-slate-100 p-1">
-          {(["2W", "4W", "6W"] as LookaheadWindowSize[]).map((size) => (
-            <button
-              key={size}
-              type="button"
-              aria-pressed={windowSize === size}
-              onClick={() => onSetWindowSize(size)}
-              className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition-all ${
-                windowSize === size
-                  ? "bg-navy text-white shadow-md shadow-slate-900/10"
-                  : "text-slate-500 hover:text-slate-900"
-              }`}
-            >
-              {size === "2W"
-                ? "2 Weeks"
-                : size === "4W"
-                  ? "4 Weeks"
-                  : "6 Weeks"}
-            </button>
-          ))}
-        </div>
-
         {lastUpdated && (
-          <p className="inline-flex items-center gap-1 text-[11px] text-slate-500 sm:hidden">
+          <div className="inline-flex min-w-0 items-center gap-1 text-[11px] font-medium text-slate-500">
             <Clock3 className="h-3.5 w-3.5" />
-            Updated {lastUpdated}
-          </p>
+            <span className="truncate">Updated {lastUpdated}</span>
+          </div>
         )}
+      </div>
+
+      <div className="grid grid-cols-3 gap-1 rounded-lg bg-white p-1 shadow-sm">
+        {(["2W", "4W", "6W"] as LookaheadWindowSize[]).map((size) => (
+          <button
+            key={size}
+            type="button"
+            aria-pressed={windowSize === size}
+            onClick={() => onSetWindowSize(size)}
+            className={`rounded-md px-3 py-2 text-sm font-semibold transition-all ${
+              windowSize === size
+                ? "bg-navy text-white shadow-sm"
+                : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+            }`}
+          >
+            {size === "2W" ? "2 wk" : size === "4W" ? "4 wk" : "6 wk"}
+          </button>
+        ))}
       </div>
     </div>
   );

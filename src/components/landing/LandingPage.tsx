@@ -75,9 +75,9 @@ export default function LandingPage() {
         <div className="relative z-10 max-w-7xl mx-auto px-6 w-full">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <HeroParallax>
-              <div className={cn(BADGE, "mb-6")}>
+              {/* <div className={cn(BADGE, "mb-6")}>
                 <span>🚀 Introducing AI-Powered Lookahead Planning</span>
-              </div>
+              </div> */}
               <h1 className={cn(GIANT, "mb-6")}>
                 The future of
                 <br />

@@ -28,6 +28,11 @@ export interface ApiProject {
   project_id?: string;
   project_name?: string;
   project_location?: string;
+  default_work_start_time?: string;
+  default_work_end_time?: string;
+  holiday_country_code?: string;
+  holiday_region_code?: string;
+  holiday_region_source?: string;
 }
 
 export interface ApiManager {
@@ -155,6 +160,94 @@ export interface BookingListResponse {
   skip: number;
   limit: number;
   has_more: boolean;
+}
+
+export type HolidayRegionCode =
+  | "ACT"
+  | "NSW"
+  | "NT"
+  | "QLD"
+  | "SA"
+  | "TAS"
+  | "VIC"
+  | "WA";
+
+export type HolidayRegionSource = "default" | "location" | "manual";
+
+export interface ProjectNonWorkingDay {
+  id?: string | null;
+  project_id: string;
+  calendar_date: string;
+  label: string;
+  kind: "holiday" | "shutdown" | "weather" | "custom" | "rdo" | string;
+  source: "manual" | "regional" | string;
+  created_by?: string | null;
+  created_at?: string | null;
+}
+
+export interface BulkRescheduleItemPayload {
+  booking_id: string;
+  booking_date: string;
+  start_time: string;
+  end_time: string;
+  asset_id?: string | null;
+  subcontractor_id?: string | null;
+}
+
+export interface BulkRescheduleRequestPayload {
+  project_id: string;
+  items: BulkRescheduleItemPayload[];
+  allow_non_working_days?: boolean;
+  allow_outside_working_hours?: boolean;
+  comment?: string | null;
+}
+
+export interface BulkRescheduleBookingSnapshot {
+  booking_id: string;
+  project_id: string;
+  asset_id: string;
+  subcontractor_id?: string | null;
+  booking_date: string;
+  start_time: string;
+  end_time: string;
+  status: string;
+}
+
+export interface BulkRescheduleIssue {
+  code: string;
+  message: string;
+  field?: string | null;
+}
+
+export interface BulkRescheduleItemResult {
+  booking_id: string;
+  original?: BulkRescheduleBookingSnapshot | null;
+  target?: BulkRescheduleBookingSnapshot | null;
+  work_days_per_week: number;
+  work_days_source: string;
+  holiday_region_code?: string | null;
+  holiday_region_source?: string | null;
+  errors: BulkRescheduleIssue[];
+  warnings: BulkRescheduleIssue[];
+  conflicts: ApiBooking[];
+}
+
+export interface BulkRescheduleSummary {
+  total: number;
+  valid: number;
+  invalid: number;
+  warnings: number;
+}
+
+export interface BulkRescheduleValidationResponse {
+  can_apply: boolean;
+  summary: BulkRescheduleSummary;
+  items: BulkRescheduleItemResult[];
+}
+
+export interface BulkRescheduleApplyResponse {
+  validation: BulkRescheduleValidationResponse;
+  bookings: ApiBooking[];
 }
 
 export interface AssetListResponse {

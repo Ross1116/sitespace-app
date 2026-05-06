@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import {
-  AlertTriangle,
   Check,
   ChevronDown,
   Loader2,
@@ -14,7 +13,6 @@ import { useAuth } from "@/app/context/AuthContext";
 import { useResolvedProjectSelection } from "@/hooks/useResolvedProjectSelection";
 import { useBookingMutations } from "@/hooks/bookings/useBookingMutations";
 import {
-  deleteProgrammeVersion,
   fetchUploadStatus,
   promoteItemClassification,
   updateProgrammeMapping,
@@ -23,9 +21,7 @@ import {
 import {
   useLookaheadActivities,
   useLookaheadAlerts,
-  useLookaheadHistory,
   useLookaheadSnapshot,
-  usePlanningCompleteness,
   useProgrammeActivityBookingContext,
   useProgrammeMappings,
   useProgrammeUploadStatus,
@@ -34,10 +30,13 @@ import {
 } from "@/hooks/lookahead/useLookaheadQueries";
 import { useUIIntentStore } from "@/stores/uiIntentStore";
 import type {
+  ApiBooking,
   ApiProject,
   LookaheadActivityCandidate,
   LookaheadAnomalyFlags,
   LookaheadRow,
+  ProgrammeActivitySuggestedBookingDate,
+  TransformedBooking,
 } from "@/types";
 import { getApiErrorMessage, isAxiosError } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -45,11 +44,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { DemandHeatmap } from "./DemandHeatmap";
 import { EmptyForecastState } from "./EmptyForecastState";
 import { PlanningAlerts, type PlanningAlert } from "./PlanningAlerts";
-import { PlanningReadinessCard } from "./PlanningReadinessCard";
-import { SnapshotHistoryPanel } from "./SnapshotHistoryPanel";
-import { StatCards } from "./StatCards";
 import { UploadBanner, type UploadPhase } from "./UploadBanner";
-import { VersionHistory } from "./VersionHistory";
 import { WindowSelector } from "./WindowSelector";
 import { formatPct, pivotRows } from "./utils";
 
@@ -73,6 +68,14 @@ const ActivityContextDialog = dynamic(
 
 const UploadReviewDialog = dynamic(
   () => import("./UploadReviewDialog").then((module) => ({ default: module.UploadReviewDialog })),
+  { ssr: false },
+);
+
+const BulkRescheduleDialog = dynamic(
+  () =>
+    import("@/components/bookings/BulkRescheduleDialog").then((module) => ({
+      default: module.BulkRescheduleDialog,
+    })),
   { ssr: false },
 );
 
@@ -179,8 +182,8 @@ function getForecastLoadMessage(
     return {
       title: "Forecast not ready yet",
       message: latestUploadDate
-        ? `The latest upload from ${latestUploadDate} is saved, but the forecast snapshot is not available yet. Try again shortly.`
-        : "This project does not have a forecast snapshot yet. Upload a programme or try again shortly.",
+        ? `The latest upload from ${latestUploadDate} is saved, but the forecast is not available yet. Try again shortly.`
+        : "This project does not have a forecast yet. Upload a programme or try again shortly.",
     };
   }
 
@@ -212,6 +215,51 @@ function getDiagnosticsLoadMessage(error: unknown): string {
   return rawMessage;
 }
 
+function toLinkedTransformedBooking(booking: ApiBooking): TransformedBooking {
+  const start = new Date(`${booking.booking_date}T${booking.start_time || "00:00:00"}`);
+  const end = new Date(`${booking.booking_date}T${booking.end_time || "00:00:00"}`);
+  const assetName = booking.asset?.name || booking.asset_id || "Unknown asset";
+  const title =
+    booking.purpose?.trim() ||
+    booking.programme_activity_name?.trim() ||
+    "Linked booking";
+
+  return {
+    bookingKey: booking.id,
+    bookingTitle: title,
+    bookingDescription: booking.notes || "",
+    bookingNotes: booking.notes || "",
+    bookingTimeDt: booking.booking_date,
+    bookingStartTime: (booking.start_time || "00:00").slice(0, 5),
+    bookingEndTime: (booking.end_time || "00:00").slice(0, 5),
+    bookingStatus: (booking.status || "pending").toLowerCase(),
+    bookingFor: booking.booked_by_name || booking.requested_by_name || "",
+    bookedAssets: [assetName],
+    assetId: booking.asset?.id || booking.asset_id,
+    assetName,
+    assetCode: booking.asset?.asset_code || "",
+    start,
+    end,
+    bookingStart: start,
+    bookingEnd: end,
+    bookingDurationMins: Math.max(
+      0,
+      Math.round((end.getTime() - start.getTime()) / 60000),
+    ),
+    subcontractorId: booking.subcontractor_id ?? undefined,
+    projectName: booking.project?.name || "",
+    managerId: booking.manager_id,
+    competingPendingCount: booking.competing_pending_count ?? 0,
+    bookingSource: booking.source,
+    bookingGroupId: booking.booking_group_id ?? null,
+    programmeActivityId: booking.programme_activity_id ?? null,
+    programmeActivityName: booking.programme_activity_name ?? null,
+    expectedAssetType: booking.expected_asset_type ?? null,
+    isModified: booking.is_modified ?? false,
+    _originalData: booking,
+  };
+}
+
 export default function LookaheadDashboard() {
   const { user, isLoading: authLoading } = useAuth();
   const userId = user?.id;
@@ -235,7 +283,6 @@ export default function LookaheadDashboard() {
   const [showProjectSelector, setShowProjectSelector] = useState(false);
   const [uploadPhase, setUploadPhase] = useState<UploadPhase>({ kind: "idle" });
   const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set());
-  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const [selectedCell, setSelectedCell] = useState<LookaheadRow | null>(null);
   const [activityContextCell, setActivityContextCell] =
     useState<LookaheadRow | null>(null);
@@ -244,7 +291,12 @@ export default function LookaheadDashboard() {
   const [activityDialogMode, setActivityDialogMode] =
     useState<ActivityDialogMode | null>(null);
   const [isUploadReviewOpen, setIsUploadReviewOpen] = useState(false);
-  const [isSnapshotHistoryOpen, setIsSnapshotHistoryOpen] = useState(false);
+  const [isBulkRescheduleOpen, setIsBulkRescheduleOpen] = useState(false);
+  const [bulkRescheduleBookings, setBulkRescheduleBookings] = useState<
+    TransformedBooking[]
+  >([]);
+  const [bulkRescheduleSuggestedDates, setBulkRescheduleSuggestedDates] =
+    useState<ProgrammeActivitySuggestedBookingDate[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -265,6 +317,8 @@ export default function LookaheadDashboard() {
     () => (userId && projectId ? `${userId}:${projectId}` : null),
     [projectId, userId],
   );
+  const userRole = (user?.role ?? "").toLowerCase();
+  const canManageBookings = userRole === "admin" || userRole === "manager";
 
   useEffect(() => {
     if (!hasUIIntentHydrated || !uiScopeKey) return;
@@ -297,33 +351,17 @@ export default function LookaheadDashboard() {
     error: alertsError,
     mutate: mutateAlerts,
   } = useLookaheadAlerts({ projectId, enabled });
-  const {
-    history,
-    isLoading: historyLoading,
-    mutate: mutateHistory,
-  } = useLookaheadHistory({
-    projectId,
-    enabled: enabled && isSnapshotHistoryOpen,
-  });
-  const { versions, isLoading: versionsLoading, mutate: mutateVersions } =
+  const { versions, mutate: mutateVersions } =
     useProgrammeVersions({ projectId, enabled });
-  const {
-    planningCompleteness,
-    mutate: mutatePlanningCompleteness,
-  } = usePlanningCompleteness({
-    projectId,
-    enabled,
-  });
 
-  const sortedVersions = useMemo(
+  const latestVersion = useMemo(
     () =>
       [...versions].sort(
         (left, right) =>
           (right.version_number ?? 0) - (left.version_number ?? 0),
-      ),
+      )[0] ?? null,
     [versions],
   );
-  const latestVersion = sortedVersions[0] ?? null;
   const latestUploadKey = latestVersion?.upload_id ?? null;
   const snapshotKey = snapshot?.snapshot_id ?? snapshot?.snapshot_date ?? null;
 
@@ -384,7 +422,6 @@ export default function LookaheadDashboard() {
 
   useEffect(() => {
     setDismissedAlerts(new Set());
-    setDeletingIds(new Set());
     setSelectedCell(null);
     setActivityContextCell(null);
     setSelectedActivity(null);
@@ -395,12 +432,10 @@ export default function LookaheadDashboard() {
     const refreshTasks: Promise<unknown>[] = [
       mutateSnapshot(),
       mutateAlerts(),
-      mutateHistory(),
       mutateVersions(),
       mutateUploadStatus(),
       mutateActivities(),
       mutateBookingContext(),
-      mutatePlanningCompleteness(),
     ];
 
     if (projectId) {
@@ -412,8 +447,6 @@ export default function LookaheadDashboard() {
     mutateActivities,
     mutateAlerts,
     mutateBookingContext,
-    mutateHistory,
-    mutatePlanningCompleteness,
     mutateSnapshot,
     mutateUploadStatus,
     mutateVersions,
@@ -515,25 +548,6 @@ export default function LookaheadDashboard() {
     [isUploadInFlight, projectId, startPolling],
   );
 
-  const handleDeleteVersion = useCallback(
-    async (uploadId: string) => {
-      setDeletingIds((current) => new Set(current).add(uploadId));
-      try {
-        await deleteProgrammeVersion(uploadId);
-        await refreshLookaheadWorkspace();
-      } catch (error) {
-        setUploadPhase({ kind: "error", message: getApiErrorMessage(error) });
-      } finally {
-        setDeletingIds((current) => {
-          const next = new Set(current);
-          next.delete(uploadId);
-          return next;
-        });
-      }
-    },
-    [refreshLookaheadWorkspace],
-  );
-
   const handleProjectSelect = useCallback(
     (project: ApiProject) => {
       stopPolling();
@@ -593,14 +607,9 @@ export default function LookaheadDashboard() {
     );
   }, [heatmap, visibleWeeks]);
 
-  const stats = useMemo(
-    () => ({
-      totalDemandHours: visibleRows.reduce((sum, row) => sum + row.demand_hours, 0),
-      totalBookedHours: visibleRows.reduce((sum, row) => sum + row.booked_hours, 0),
-      totalGapHours: visibleRows.reduce((sum, row) => sum + row.gap_hours, 0),
-      assetsTracked: heatmap?.assets.length ?? 0,
-    }),
-    [heatmap, visibleRows],
+  const totalGapHours = useMemo(
+    () => visibleRows.reduce((sum, row) => sum + row.gap_hours, 0),
+    [visibleRows],
   );
 
   const maxDemand = useMemo(
@@ -661,8 +670,8 @@ export default function LookaheadDashboard() {
         key: "demand_spike",
         label: "Demand surge detected",
         detail:
-          "Demand doubled or more compared with the previous snapshot. Review linked activities and create bookings against the new load.",
-      level: "red",
+          "Demand doubled or more compared with the previous programme. Review linked activities and create bookings against the new load.",
+        level: "red",
       });
     }
 
@@ -686,8 +695,8 @@ export default function LookaheadDashboard() {
         label: "Activity volume changed materially",
         detail:
           flags.activity_count_delta_ratio != null
-            ? `Activity count changed by ${formatPct(flags.activity_count_delta_ratio)} versus the previous snapshot.`
-            : "Activity volume changed materially since the previous snapshot.",
+            ? `Activity count changed by ${formatPct(flags.activity_count_delta_ratio)} versus the previous programme.`
+            : "Activity volume changed materially since the previous programme.",
         level: "blue",
       });
     }
@@ -727,6 +736,10 @@ export default function LookaheadDashboard() {
     persistentUploadMessage,
   ]);
   const firstSuggestedBookingDate = bookingContext?.suggested_bulk_dates[0] ?? null;
+  const linkedRescheduleBookings = useMemo(
+    () => (bookingContext?.linked_bookings ?? []).map(toLinkedTransformedBooking),
+    [bookingContext?.linked_bookings],
+  );
 
   const bookingStartTime = useMemo(() => {
     const defaultDate =
@@ -761,22 +774,13 @@ export default function LookaheadDashboard() {
   const isLoading = authLoading || projectBootstrapLoading;
   const topActionButtonsReady = hasMounted && !isLoading;
   const hasForecast = Boolean(projectId && heatmap && visibleWeeks.length > 0);
-  const coveragePct =
-    stats.totalDemandHours > 0
-      ? Math.round((stats.totalBookedHours / stats.totalDemandHours) * 100)
-      : 0;
-  const readinessScore = Math.round(planningCompleteness?.score ?? 0);
-  const topAlert = activeAlerts[0] ?? null;
-  const latestUploadNeedsReview = Boolean(
-    persistentUploadMessage || unclassifiedCount > 0,
-  );
   const focusHeadline =
     !projectId
       ? "Start by selecting a project"
       : hasBlockingSnapshotError
         ? forecastLoadState?.title ?? "Forecast temporarily unavailable"
-      : stats.totalGapHours > 0
-        ? `${stats.totalGapHours}h still unbooked`
+      : totalGapHours > 0
+        ? `${totalGapHours}h still unbooked`
         : hasForecast
           ? "Forecast demand is covered"
           : "Upload a programme to start planning";
@@ -786,7 +790,7 @@ export default function LookaheadDashboard() {
       : hasBlockingSnapshotError
         ? forecastLoadState?.message ??
           "The latest planning forecast could not be loaded right now."
-      : stats.totalGapHours > 0
+      : totalGapHours > 0
         ? "Use the heatmap to open the weekly activity behind the gap, then book directly from context."
         : hasForecast
           ? "Use the heatmap below to confirm activity coverage and spot changes early."
@@ -795,7 +799,7 @@ export default function LookaheadDashboard() {
     ? "No forecast demand in this view yet"
     : undefined;
   const emptyForecastMessage = hydratedLatestUploadDate
-    ? `The latest upload from ${hydratedLatestUploadDate} is on file, but it did not produce forecast demand for the current heatmap view yet. Review the upload details or try another version.`
+    ? `The latest upload from ${hydratedLatestUploadDate} is on file, but it did not produce forecast demand for the current heatmap view yet. Review the upload details.`
     : undefined;
 
   return (
@@ -806,10 +810,10 @@ export default function LookaheadDashboard() {
             <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
-                  Lookahead Workspace
+                  Lookahead
                 </p>
                 <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950">
-                  Plan demand before it becomes a booking gap
+                  Lookahead Planning
                 </h1>
                 <p className="mt-2 flex items-center gap-1 text-sm font-medium text-slate-500">
                   {selectedProject?.location ? (
@@ -818,7 +822,7 @@ export default function LookaheadDashboard() {
                       {selectedProject.location}
                     </>
                   ) : (
-                    "Forecast demand, inspect activity, and book directly from the same workspace."
+                    "Forecast demand, inspect activity, and book directly from one workspace."
                   )}
                 </p>
               </div>
@@ -827,7 +831,7 @@ export default function LookaheadDashboard() {
                 <div className="relative" ref={dropdownRef}>
                   <Button
                     onClick={() => setShowProjectSelector((current) => !current)}
-                    className="h-auto w-full rounded-lg bg-navy px-5 py-5 text-sm font-bold text-white shadow-md shadow-slate-900/10 hover:bg-(--navy-hover) sm:w-auto"
+                    className="h-auto w-full rounded-lg bg-navy px-5 py-3 text-sm font-bold text-white shadow-md shadow-slate-900/10 hover:bg-(--navy-hover) sm:w-auto"
                   >
                     <span className="flex items-center gap-2">
                       {isLoading ? "Loading..." : selectedProject?.name ?? "Select Project"}
@@ -894,7 +898,7 @@ export default function LookaheadDashboard() {
                         if (fileInputRef.current) fileInputRef.current.value = "";
                         fileInputRef.current?.click();
                       }}
-                      className="h-auto w-full rounded-lg bg-navy px-5 py-5 text-sm font-bold text-white shadow-md shadow-slate-900/10 hover:bg-(--navy-hover) sm:w-auto"
+                      className="h-auto w-full rounded-lg bg-navy px-5 py-3 text-sm font-bold text-white shadow-md shadow-slate-900/10 hover:bg-(--navy-hover) sm:w-auto"
                     >
                       <span className="flex items-center gap-2">
                         {uploadPhase.kind === "uploading" || uploadPhase.kind === "polling" ? (
@@ -911,7 +915,7 @@ export default function LookaheadDashboard() {
                       variant="outline"
                       disabled={!topActionButtonsReady || !latestVersion}
                       onClick={() => setIsUploadReviewOpen(true)}
-                      className="h-auto rounded-lg px-5 py-5 text-sm font-bold"
+                      className="h-auto rounded-lg px-5 py-3 text-sm font-bold"
                     >
                       Review latest upload
                     </Button>
@@ -954,214 +958,43 @@ export default function LookaheadDashboard() {
               }}
             />
 
-            <section className="grid gap-4 xl:grid-cols-[1.35fr_0.95fr]">
-              <div className="rounded-7 border border-slate-200 bg-[linear-gradient(135deg,rgba(11,17,32,0.04)_0%,rgba(14,124,155,0.10)_100%)] p-6 shadow-sm">
-                <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="max-w-2xl">
-                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
-                      Planning focus
-                    </p>
-                    <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+            <section className="space-y-3">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                  <div className="min-w-0 max-w-3xl">
+                    <h2 className="text-xl font-black tracking-tight text-slate-950">
                       {focusHeadline}
                     </h2>
-                    <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+                    <p className="mt-1 text-sm leading-6 text-slate-600">
                       {focusDescription}
                     </p>
-
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-slate-600">
-                        {visibleWeeks.length} week{visibleWeeks.length === 1 ? "" : "s"} in view
-                      </span>
-                      <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-slate-600">
-                        {coveragePct}% covered
-                      </span>
-                      <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-slate-600">
-                        {stats.assetsTracked} asset type{stats.assetsTracked === 1 ? "" : "s"}
-                      </span>
-                      {latestVersion && (
-                        <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-slate-600">
-                          Upload v{latestVersion.version_number}
-                        </span>
-                      )}
-                    </div>
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-2 lg:min-w-70 lg:grid-cols-1">
-                    <div className="rounded-2xl bg-navy p-5 text-white shadow-lg shadow-slate-900/10">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-300">
-                        Next move
-                      </p>
-                      <p className="mt-2 text-lg font-bold">
-                        {stats.totalGapHours > 0
-                          ? "Open the hottest heatmap cells first"
-                          : "Stay on top of activity changes"}
-                      </p>
-                      <p className="mt-2 text-sm leading-6 text-slate-300">
-                        {stats.totalGapHours > 0
-                          ? "Red and orange cells show uncovered demand. Click a cell to inspect the activity and book from context."
-                          : "Even with coverage in place, the heatmap is where activity shifts show up first."}
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-sm">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                        Planning readiness
-                      </p>
-                      <div className="mt-2 flex items-end gap-2">
-                        <span className="text-3xl font-black leading-none text-slate-950">
-                          {readinessScore}
-                        </span>
-                        <span className="pb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                          {planningCompleteness?.status ?? "Unknown"}
-                        </span>
-                      </div>
-                      <p className="mt-2 text-sm text-slate-600">
-                        Metadata quality affects how much booked work can count
-                        toward forecast coverage.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-6">
-                  {isLoading || snapshotLoading ? (
-                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                      {[1, 2, 3, 4].map((index) => (
-                        <div
-                          key={index}
-                          className="space-y-3 rounded-2xl border border-slate-200 bg-white/80 p-4"
-                        >
-                          <Skeleton className="h-4 w-20 rounded" />
-                          <Skeleton className="h-8 w-16" />
-                          <Skeleton className="h-3 w-full" />
-                        </div>
-                      ))}
-                    </div>
-                  ) : hasForecast ? (
-                    <StatCards
-                      stats={stats}
-                      visibleWeeksCount={visibleWeeks.length}
-                      heatmap={heatmap}
+                  <div className="w-full lg:w-auto">
+                    <WindowSelector
+                      windowSize={windowSize}
+                      onSetWindowSize={updateWindowSize}
+                      lastUpdated={hasMounted ? latestUploadDate : null}
                     />
-                  ) : null}
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <WindowSelector
-                  windowSize={windowSize}
-                  onSetWindowSize={updateWindowSize}
-                  lastUpdated={
-                    hasMounted && !versionsLoading ? latestUploadDate : null
+              {!alertsLoading && activeAlerts.length > 0 && (
+                <PlanningAlerts
+                  alerts={activeAlerts}
+                  onDismiss={(key) =>
+                    setDismissedAlerts((current) => new Set(current).add(key))
                   }
                 />
-
-                {topAlert && (
-                  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <div className="flex items-start gap-3">
-                      <div className="rounded-xl bg-amber-50 p-2">
-                        <AlertTriangle className="h-4 w-4 text-amber-500" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                          Needs attention
-                        </p>
-                        <p className="mt-2 text-base font-bold text-slate-950">
-                          {topAlert.label}
-                        </p>
-                        <p className="mt-2 text-sm leading-6 text-slate-600">
-                          {topAlert.detail}
-                        </p>
-                        {topAlert.onAction && topAlert.ctaLabel && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={topAlert.onAction}
-                            className="mt-4"
-                          >
-                            {topAlert.ctaLabel}
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {uploadStatus && (
-                  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <div className="flex flex-col gap-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                            Data quality
-                          </p>
-                          <p className="mt-2 text-base font-bold text-slate-950">
-                            {latestUploadNeedsReview
-                              ? "Latest upload needs review"
-                              : "Latest upload is planning-ready"}
-                          </p>
-                          <p className="mt-2 text-sm leading-6 text-slate-600">
-                            {persistentUploadMessage ||
-                              "Diagnostics, mappings, and exclusions look healthy enough for planning."}
-                          </p>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setIsUploadReviewOpen(true)}
-                        >
-                          Review
-                        </Button>
-                      </div>
-
-                      <div className="flex flex-wrap gap-2 text-xs">
-                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">
-                          v{uploadStatus.version_number}
-                        </span>
-                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">
-                          {unclassifiedCount} unclassified
-                        </span>
-                        {typeof uploadStatus.completeness_notes?.excluded_booking_count ===
-                          "number" && (
-                          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">
-                            {uploadStatus.completeness_notes.excluded_booking_count} excluded bookings
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
+              )}
             </section>
 
             <section className="space-y-4">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
-                    Main workspace
-                  </p>
-                  <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">
-                    Book against the forecast
-                  </h2>
-                  <p className="mt-1 text-sm text-slate-500">
-                    The heatmap is the main planning surface. Click a demand
-                    cell to inspect the activity behind it and book directly
-                    from context.
-                  </p>
-                </div>
-                {hasForecast && (
-                  <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                    {visibleWeeks.length} week{visibleWeeks.length === 1 ? "" : "s"} currently visible
-                  </span>
-                )}
-              </div>
-
               {snapshotLoading || isLoading ? (
                 <div className="space-y-3">
                   <Skeleton className="h-8 w-52" />
-                  <Skeleton className="h-90 w-full rounded-7" />
+                  <Skeleton className="h-90 w-full rounded-2xl" />
                 </div>
               ) : !projectId ? (
                 <EmptyForecastState reason="no-project" />
@@ -1202,106 +1035,6 @@ export default function LookaheadDashboard() {
                   }}
                 />
               )}
-            </section>
-
-            <section className="space-y-4 border-t border-slate-100 pt-2">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
-                  Supporting detail
-                </p>
-                <h2 className="mt-2 text-xl font-bold text-slate-900">
-                  Diagnostics, readiness, and history
-                </h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  These sections support forecast quality and follow-up work,
-                  but the booking workspace stays above them.
-                </p>
-              </div>
-
-              {!alertsLoading && (
-                <PlanningAlerts
-                  alerts={activeAlerts}
-                  onDismiss={(key) =>
-                    setDismissedAlerts((current) => new Set(current).add(key))
-                  }
-                />
-              )}
-
-              {(planningCompleteness || uploadStatus) && (
-                <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-                  <PlanningReadinessCard planningCompleteness={planningCompleteness} />
-
-                  {uploadStatus && (
-                    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                      <div className="flex items-center gap-2">
-                        <AlertTriangle className="h-4 w-4 text-amber-500" />
-                        <h3 className="text-sm font-bold text-slate-900">
-                          Upload quality
-                        </h3>
-                      </div>
-                      <p className="mt-2 text-sm leading-6 text-slate-600">
-                        {persistentUploadMessage ||
-                          "Latest upload diagnostics are healthy enough for planning review."}
-                      </p>
-                      <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                            Latest upload
-                          </p>
-                          <p className="mt-2 text-xl font-black text-slate-950">
-                            v{uploadStatus.version_number}
-                          </p>
-                          <p className="mt-1 text-xs text-slate-500">
-                            {uploadStatus.file_name}
-                          </p>
-                        </div>
-                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                            Mapping triage
-                          </p>
-                          <p className="mt-2 text-xl font-black text-slate-950">
-                            {unclassifiedCount}
-                          </p>
-                          <p className="mt-1 text-xs text-slate-500">
-                            rows still need classification review
-                          </p>
-                        </div>
-                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                            Excluded coverage
-                          </p>
-                          <p className="mt-2 text-xl font-black text-slate-950">
-                            {uploadStatus.completeness_notes?.excluded_booking_count ?? 0}
-                          </p>
-                          <p className="mt-1 text-xs text-slate-500">
-                            booked rows excluded from coverage
-                          </p>
-                        </div>
-                      </div>
-                    </section>
-                  )}
-                </div>
-              )}
-
-              <div className="grid gap-4 xl:grid-cols-2">
-                <SnapshotHistoryPanel
-                  history={history}
-                  currentSnapshot={snapshot}
-                  isOpen={isSnapshotHistoryOpen}
-                  onOpenChange={setIsSnapshotHistoryOpen}
-                  isLoading={Boolean(
-                    isSnapshotHistoryOpen && enabled && historyLoading,
-                  )}
-                />
-                {!versionsLoading && (
-                  <VersionHistory
-                    versions={sortedVersions}
-                    deletingIds={deletingIds}
-                    onDelete={handleDeleteVersion}
-                    onReviewUpload={() => setIsUploadReviewOpen(true)}
-                  />
-                )}
-              </div>
             </section>
           </div>
         </div>
@@ -1353,6 +1086,18 @@ export default function LookaheadDashboard() {
         bookingContext={bookingContext}
         isLoading={bookingContextLoading}
         onBook={() => setActivityDialogMode("booking")}
+        onRescheduleLinked={
+          canManageBookings && linkedRescheduleBookings.length > 0
+            ? () => {
+                setBulkRescheduleBookings(linkedRescheduleBookings);
+                setBulkRescheduleSuggestedDates(
+                  bookingContext?.suggested_bulk_dates ?? [],
+                );
+                setActivityDialogMode(null);
+                setIsBulkRescheduleOpen(true);
+              }
+            : undefined
+        }
       />
 
       <UploadReviewDialog
@@ -1400,6 +1145,22 @@ export default function LookaheadDashboard() {
             void refreshLookaheadWorkspace();
           }}
           activityContext={bookingContext}
+        />
+      )}
+
+      {canManageBookings && (
+        <BulkRescheduleDialog
+          open={isBulkRescheduleOpen}
+          onOpenChange={setIsBulkRescheduleOpen}
+          projectId={projectId}
+          bookings={bulkRescheduleBookings}
+          suggestedDates={bulkRescheduleSuggestedDates}
+          onComplete={() => {
+            setIsBulkRescheduleOpen(false);
+            setBulkRescheduleBookings([]);
+            setBulkRescheduleSuggestedDates([]);
+            void refreshLookaheadWorkspace();
+          }}
         />
       )}
     </div>

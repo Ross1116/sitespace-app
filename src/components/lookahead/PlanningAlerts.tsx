@@ -26,9 +26,9 @@ export const PlanningAlerts = React.memo(function PlanningAlerts({
 
   return (
     <div className="space-y-2">
-      <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+      <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
         <AlertTriangle size={16} className="text-amber-500" />
-        Active Planning Alerts
+        Planning alerts
       </h2>
       {alerts.map((alert) => (
         <div
@@ -108,9 +108,6 @@ export const PlanningAlerts = React.memo(function PlanningAlerts({
           </div>
         </div>
       ))}
-      <p className="text-[11px] text-slate-400 italic">
-        Alerts now link into the remediation workflow instead of acting as passive notices.
-      </p>
     </div>
   );
 });
