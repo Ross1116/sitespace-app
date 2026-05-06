@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { BarChart3, ChevronRight, Sparkles } from "lucide-react";
+import { BarChart3, ChevronRight } from "lucide-react";
 import type { DemandLevel, LookaheadRow } from "@/types";
 import {
   formatAssetType,
@@ -87,30 +87,30 @@ export const DemandHeatmap = React.memo(function DemandHeatmap({
   timezone,
   onCellSelect,
 }: Props) {
+  const gridTemplateColumns = `minmax(180px, 220px) repeat(${visibleWeeks.length}, minmax(170px, 1fr))`;
+
   return (
-    <section className="space-y-5 rounded-7 border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <div className="rounded-xl bg-slate-100 p-2">
-              <BarChart3 size={18} className="text-teal" />
-            </div>
-            <div>
-              <h2 className="text-xl font-black tracking-tight text-slate-950">
-                Plan bookings by week
-              </h2>
-              <p className="text-sm text-slate-500">
-                Start with red and orange cells, inspect the activity behind
-                the demand, then book directly from context.
-              </p>
-            </div>
+    <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex items-start gap-3">
+          <div className="rounded-xl bg-slate-100 p-2">
+            <BarChart3 size={18} className="text-teal" />
+          </div>
+          <div>
+            <h2 className="text-xl font-black tracking-tight text-slate-950">
+              Demand coverage matrix
+            </h2>
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">
+              Scan each asset type across the planning window. Open any demand
+              cell to inspect the programme activity behind the hours.
+            </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 lg:justify-end">
           {snapshotDate && (
             <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
-              Snapshot {formatDate(snapshotDate)}
+              Updated {formatDate(snapshotDate)}
             </span>
           )}
           {timezone && (
@@ -118,160 +118,197 @@ export const DemandHeatmap = React.memo(function DemandHeatmap({
               {timezone}
             </span>
           )}
-          {onCellSelect && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-teal-gradient px-3 py-1 text-xs font-semibold text-navy">
-              <Sparkles className="h-3.5 w-3.5" />
-              Click any demand cell to drill into activity
-            </span>
-          )}
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[11px] text-slate-500">
-        <div className="flex items-center gap-1.5">
-          <div className="h-2 w-2 rounded-full bg-teal" />
-          <span>Booked coverage</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="flex gap-0.5">
-            <div className="h-2 w-2 rounded-full bg-amber-300" />
-            <div className="h-2 w-2 rounded-full bg-amber-400" />
-            <div className="h-2 w-2 rounded-full bg-orange-500" />
-            <div className="h-2 w-2 rounded-full bg-red-500" />
-          </div>
-          <span>Unbooked gap by urgency</span>
-        </div>
-        <span className="text-slate-400">
-          Each column is a week. Each row shows one asset type.
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-[11px] text-slate-500">
+        <span className="font-semibold text-slate-700">Legend</span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full bg-teal" />
+          Booked
         </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="flex gap-0.5">
+            <span className="h-2 w-2 rounded-full bg-amber-300" />
+            <span className="h-2 w-2 rounded-full bg-amber-400" />
+            <span className="h-2 w-2 rounded-full bg-orange-500" />
+            <span className="h-2 w-2 rounded-full bg-red-500" />
+          </span>
+          Unbooked gap
+        </span>
+        {onCellSelect && (
+          <span className="text-slate-400">
+            Click a cell to drill into activity and book from context.
+          </span>
+        )}
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-slate-200">
-        <div
-          className="grid min-w-180 gap-6 p-5 sm:p-6"
-          style={{ gridTemplateColumns: `repeat(${visibleWeeks.length}, 1fr)` }}
-        >
-          {visibleWeeks.map((week, weekIndex) => (
-            <div key={week}>
-              <div className="mb-4 border-b border-slate-100 pb-3">
-                <p className="text-sm font-bold text-slate-800">
+      <div className="overflow-x-auto rounded-xl border border-slate-200">
+        <div className="min-w-[760px]">
+          <div
+            className="grid border-b border-slate-200 bg-slate-50"
+            style={{ gridTemplateColumns }}
+          >
+            <div className="border-r border-slate-200 px-4 py-3">
+              <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                Asset type
+              </p>
+            </div>
+            {visibleWeeks.map((week, weekIndex) => (
+              <div
+                key={week}
+                className="border-r border-slate-200 px-4 py-3 last:border-r-0"
+              >
+                <p className="text-sm font-bold text-slate-900">
                   Week {weekIndex + 1}
                 </p>
                 <p className="mt-0.5 text-[10px] font-mono text-slate-400">
                   {formatWeekRange(week)}
                 </p>
               </div>
+            ))}
+          </div>
 
-              <div className="space-y-3">
-                {heatmap.assets.map((asset) => {
-                  const row = heatmap.matrix.get(asset)?.get(week);
+          {heatmap.assets.map((asset) => (
+            <div
+              key={asset}
+              className="grid border-b border-slate-100 last:border-b-0"
+              style={{ gridTemplateColumns }}
+            >
+              <div className="border-r border-slate-200 bg-white px-4 py-3">
+                <p
+                  className="text-sm font-bold text-slate-900"
+                  title={formatAssetType(asset)}
+                >
+                  {formatAssetType(asset)}
+                </p>
+              </div>
 
-                  if (!row || (row.demand_hours === 0 && row.booked_hours === 0)) {
-                    return (
-                      <div
-                        key={`${asset}-${week}`}
-                        className="rounded-xl border border-transparent px-3 py-2"
-                      >
-                        <div className="mb-1.5 flex items-center justify-between gap-2">
-                          <span
-                            className="truncate text-xs font-medium text-slate-600"
-                            title={formatAssetType(asset)}
-                          >
-                            {formatAssetType(asset)}
-                          </span>
-                          <span className="shrink-0 text-xs text-slate-300">-</span>
-                        </div>
-                        <div className="h-1.5 w-full rounded-full bg-slate-100" />
+              {visibleWeeks.map((week) => {
+                const row = heatmap.matrix.get(asset)?.get(week);
+
+                if (!row || (row.demand_hours === 0 && row.booked_hours === 0)) {
+                  return (
+                    <div
+                      key={`${asset}-${week}`}
+                      className="border-r border-slate-100 bg-slate-50/50 px-3 py-3 last:border-r-0"
+                    >
+                      <div className="flex h-full min-h-23 items-center justify-center rounded-lg border border-dashed border-slate-200 text-xs text-slate-300">
+                        No demand
                       </div>
-                    );
-                  }
-
-                  const displayLevel = getDisplayLevel(row);
-                  const badge = BADGE[displayLevel];
-                  const isInteractive = row.demand_hours > 0 && Boolean(onCellSelect);
-                  const totalBarPct =
-                    row.demand_hours > 0 && maxDemand
-                      ? Math.round((row.demand_hours / maxDemand) * 100)
-                      : 0;
-                  const bookedSharePct =
-                    row.demand_hours > 0
-                      ? Math.min(
-                          100,
-                          Math.round((row.booked_hours / row.demand_hours) * 100),
-                        )
-                      : 0;
-
-                  const content = (
-                    <>
-                      <div className="mb-1.5 flex items-center justify-between gap-2">
-                        <span
-                          className="truncate text-xs font-semibold text-slate-700"
-                          title={formatAssetType(asset)}
-                        >
-                          {formatAssetType(asset)}
-                        </span>
-                        <div className="flex items-center gap-1">
-                          <span
-                            className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${badge.bg} ${badge.text}`}
-                          >
-                            {badge.label}
-                          </span>
-                          {isInteractive && (
-                            <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                        <div
-                          className="flex h-full overflow-hidden rounded-full transition-all duration-700"
-                          style={{ width: `${totalBarPct}%` }}
-                        >
-                          {bookedSharePct > 0 && (
-                            <div
-                              className="h-full bg-teal"
-                              style={{ width: `${bookedSharePct}%` }}
-                            />
-                          )}
-                          {bookedSharePct < 100 && row.demand_hours > 0 && (
-                            <div
-                              className={`h-full ${GAP_BAR_COLOR[row.demand_level]}`}
-                              style={{ width: `${100 - bookedSharePct}%` }}
-                            />
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="mt-1 flex flex-wrap items-center gap-2.5">
-                        <StatusText row={row} />
-                      </div>
-                    </>
+                    </div>
                   );
+                }
 
-                  if (!isInteractive) {
-                    return (
+                const displayLevel = getDisplayLevel(row);
+                const badge = BADGE[displayLevel];
+                const isInteractive = row.demand_hours > 0 && Boolean(onCellSelect);
+                const totalBarPct =
+                  row.demand_hours > 0 && maxDemand
+                    ? Math.round((row.demand_hours / maxDemand) * 100)
+                    : 0;
+                const bookedSharePct =
+                  row.demand_hours > 0
+                    ? Math.min(
+                        100,
+                        Math.round((row.booked_hours / row.demand_hours) * 100),
+                      )
+                    : 0;
+
+                const content = (
+                  <>
+                    <div className="flex items-start justify-between gap-2">
+                      <span
+                        className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${badge.bg} ${badge.text}`}
+                      >
+                        {badge.label}
+                      </span>
+                      {isInteractive && (
+                        <ChevronRight className="h-4 w-4 text-slate-400" />
+                      )}
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                          Need
+                        </p>
+                        <p className="mt-0.5 text-sm font-black text-slate-900">
+                          {row.demand_hours}h
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                          Booked
+                        </p>
+                        <p className="mt-0.5 text-sm font-black text-teal">
+                          {row.booked_hours}h
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                          Gap
+                        </p>
+                        <p
+                          className={`mt-0.5 text-sm font-black ${
+                            row.gap_hours > 0
+                              ? "text-red-600"
+                              : "text-emerald-600"
+                          }`}
+                        >
+                          {row.gap_hours}h
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
                       <div
-                        key={`${asset}-${week}`}
-                        className="rounded-xl border border-transparent px-3 py-2"
+                        className="flex h-full overflow-hidden rounded-full transition-all duration-700"
+                        style={{ width: `${totalBarPct}%` }}
+                      >
+                        {bookedSharePct > 0 && (
+                          <div
+                            className="h-full bg-teal"
+                            style={{ width: `${bookedSharePct}%` }}
+                          />
+                        )}
+                        {bookedSharePct < 100 && row.demand_hours > 0 && (
+                          <div
+                            className={`h-full ${GAP_BAR_COLOR[row.demand_level]}`}
+                            style={{ width: `${100 - bookedSharePct}%` }}
+                          />
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <StatusText row={row} />
+                    </div>
+                  </>
+                );
+
+                return (
+                  <div
+                    key={`${asset}-${week}`}
+                    className="border-r border-slate-100 bg-white px-3 py-3 last:border-r-0"
+                  >
+                    {isInteractive ? (
+                      <button
+                        type="button"
+                        onClick={() => onCellSelect?.(row)}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-left transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy"
+                        aria-label={`Open ${formatAssetType(asset)} activity details for week starting ${week}`}
                       >
                         {content}
+                      </button>
+                    ) : (
+                      <div className="rounded-xl border border-transparent px-3 py-3">
+                        {content}
                       </div>
-                    );
-                  }
-
-                  return (
-                    <button
-                      key={`${asset}-${week}`}
-                      type="button"
-                      onClick={() => onCellSelect?.(row)}
-                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-left transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy"
-                      aria-label={`Open ${formatAssetType(asset)} activity details for week starting ${week}`}
-                    >
-                      {content}
-                    </button>
-                  );
-                })}
-              </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           ))}
         </div>
