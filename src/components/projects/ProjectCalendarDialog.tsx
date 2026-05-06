@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { addMonths, format, parseISO } from "date-fns";
 import { CalendarDays, Loader2, Plus, Trash2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -79,6 +79,7 @@ export function ProjectCalendarDialog({
   const [closureLabel, setClosureLabel] = useState("");
   const [closureKind, setClosureKind] =
     useState<ProjectNonWorkingDayPayload["kind"]>("shutdown");
+  const loadGenRef = useRef(0);
 
   const effectiveProject = loadedProject ?? project ?? null;
   const dateRange = useMemo(() => {
@@ -91,6 +92,7 @@ export function ProjectCalendarDialog({
 
   const loadCalendar = useCallback(async () => {
     if (!projectId || !open) return;
+    const loadGen = ++loadGenRef.current;
     setLoading(true);
     setError(null);
     try {
@@ -104,6 +106,7 @@ export function ProjectCalendarDialog({
           includeRdo: true,
         }),
       ]);
+      if (loadGen !== loadGenRef.current) return;
       setLoadedProject(projectDetail);
       setDays(calendarDays);
       setWorkStart(normalizeTime(projectDetail.default_work_start_time) || DEFAULT_START);
@@ -116,15 +119,21 @@ export function ProjectCalendarDialog({
           : "default",
       );
     } catch (err) {
+      if (loadGen !== loadGenRef.current) return;
       reportError(err, "ProjectCalendarDialog: failed to load project calendar");
       setError(getApiErrorMessage(err, "Failed to load project calendar"));
     } finally {
-      setLoading(false);
+      if (loadGen === loadGenRef.current) {
+        setLoading(false);
+      }
     }
   }, [dateRange.from, dateRange.to, open, projectId]);
 
   useEffect(() => {
     void loadCalendar();
+    return () => {
+      loadGenRef.current += 1;
+    };
   }, [loadCalendar]);
 
   const manualDays = days.filter((day) => day.source === "manual");

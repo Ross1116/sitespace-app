@@ -90,13 +90,29 @@ const hasIssueMatching = (
     ),
   );
 
+/**
+ * suggestedDates must be in the same order as bookings; each suggestion is
+ * paired with the booking at the same index.
+ */
 function buildInitialTargets(
   bookings: TransformedBooking[],
   suggestedDates?: ProgrammeActivitySuggestedBookingDate[],
   shiftDays = 0,
 ): DraftTarget[] {
+  const alignedSuggestedDates =
+    suggestedDates && suggestedDates.length !== bookings.length
+      ? undefined
+      : suggestedDates;
+
+  if (suggestedDates && suggestedDates.length !== bookings.length) {
+    console.warn(
+      "BulkRescheduleDialog: suggestedDates must be parallel-ordered with bookings; ignoring suggestedDates because lengths differ.",
+      { bookings, suggestedDates },
+    );
+  }
+
   return bookings.map((booking, index) => {
-    const suggested = suggestedDates?.[index];
+    const suggested = alignedSuggestedDates?.[index];
     const baseDate = suggested?.date ?? booking.bookingTimeDt;
     return {
       bookingId: booking.bookingKey,
@@ -399,7 +415,10 @@ export function BulkRescheduleDialog({
     setAllowNonWorkingDays(false);
     setAllowOutsideWorkingHours(false);
     setComment("");
-  }, [bookings, initialShiftDays, open, suggestedDates]);
+    // Initialize from the latest open payload only when the dialog opens.
+    // Parent re-renders can refresh bookings/suggestedDates while the user is editing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const validationPayload = useMemo<BulkRescheduleRequestPayload | null>(() => {
     if (!projectId || targets.length === 0) return null;
