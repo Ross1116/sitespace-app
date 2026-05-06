@@ -38,9 +38,24 @@ import { getApiErrorMessage } from "@/types";
 
 const DEFAULT_START = "08:00";
 const DEFAULT_END = "16:00";
+type HolidayRegionCode = (typeof AU_HOLIDAY_REGIONS)[number];
+type HolidayRegionSource = "default" | "location" | "manual";
 
 function normalizeTime(value?: string | null): string {
   return (value || "").slice(0, 5) || "";
+}
+
+function normalizeHolidayRegion(value?: string | null): HolidayRegionCode {
+  const normalized = (value || "").toUpperCase();
+  return AU_HOLIDAY_REGIONS.includes(normalized as HolidayRegionCode)
+    ? (normalized as HolidayRegionCode)
+    : "SA";
+}
+
+function normalizeHolidayRegionSource(
+  value?: string | null,
+): HolidayRegionSource {
+  return value === "manual" || value === "location" ? value : "default";
 }
 
 function formatDay(value: string): string {
@@ -73,8 +88,8 @@ export function ProjectCalendarDialog({
   const [error, setError] = useState<string | null>(null);
   const [workStart, setWorkStart] = useState(DEFAULT_START);
   const [workEnd, setWorkEnd] = useState(DEFAULT_END);
-  const [region, setRegion] = useState("SA");
-  const [source, setSource] = useState<"default" | "location" | "manual">("default");
+  const [region, setRegion] = useState<HolidayRegionCode>("SA");
+  const [source, setSource] = useState<HolidayRegionSource>("default");
   const [closureDate, setClosureDate] = useState("");
   const [closureLabel, setClosureLabel] = useState("");
   const [closureKind, setClosureKind] =
@@ -111,13 +126,8 @@ export function ProjectCalendarDialog({
       setDays(calendarDays);
       setWorkStart(normalizeTime(projectDetail.default_work_start_time) || DEFAULT_START);
       setWorkEnd(normalizeTime(projectDetail.default_work_end_time) || DEFAULT_END);
-      setRegion((projectDetail.holiday_region_code || "SA").toUpperCase());
-      setSource(
-        projectDetail.holiday_region_source === "manual" ||
-          projectDetail.holiday_region_source === "location"
-          ? projectDetail.holiday_region_source
-          : "default",
-      );
+      setRegion(normalizeHolidayRegion(projectDetail.holiday_region_code));
+      setSource(normalizeHolidayRegionSource(projectDetail.holiday_region_source));
     } catch (err) {
       if (loadGen !== loadGenRef.current) return;
       reportError(err, "ProjectCalendarDialog: failed to load project calendar");
@@ -157,8 +167,8 @@ export function ProjectCalendarDialog({
         default_work_start_time: `${workStart}:00`,
         default_work_end_time: `${workEnd}:00`,
         holiday_country_code: "AU",
-        holiday_region_code: region as (typeof AU_HOLIDAY_REGIONS)[number],
-        holiday_region_source: source === "manual" ? "manual" : source,
+        holiday_region_code: normalizeHolidayRegion(region),
+        holiday_region_source: normalizeHolidayRegionSource(source),
       });
       setLoadedProject(updated);
       onSaved?.();
@@ -280,7 +290,7 @@ export function ProjectCalendarDialog({
                     <Select
                       value={region}
                       onValueChange={(value) => {
-                        setRegion(value);
+                        setRegion(normalizeHolidayRegion(value));
                         setSource("manual");
                       }}
                     >
@@ -301,7 +311,7 @@ export function ProjectCalendarDialog({
                     <Select
                       value={source}
                       onValueChange={(value) =>
-                        setSource(value as "default" | "location" | "manual")
+                        setSource(normalizeHolidayRegionSource(value))
                       }
                     >
                       <SelectTrigger>
