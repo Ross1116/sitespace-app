@@ -188,9 +188,30 @@ export default function BookingList({
     setSidebarOpen(true);
   }, []);
 
+  useEffect(() => {
+    if (!sidebarBooking) return;
+    const latestBooking = bookings.find(
+      (booking) => booking.bookingKey === sidebarBooking.bookingKey,
+    );
+    if (latestBooking && latestBooking !== sidebarBooking) {
+      setSidebarBooking(latestBooking);
+    }
+  }, [bookings, sidebarBooking]);
+
   const handleCloseSidebar = useCallback(() => {
     setSidebarOpen(false);
   }, []);
+
+  const sidebarRefreshKey = sidebarBooking
+    ? [
+        sidebarBooking.bookingKey,
+        sidebarBooking._originalData?.updated_at,
+        sidebarBooking.bookingTimeDt,
+        sidebarBooking.bookingStartTime,
+        sidebarBooking.bookingEndTime,
+        sidebarBooking.bookingStatus,
+      ].join("|")
+    : "";
 
   // 5. PAGINATION
   const totalItems = processedBookings.length;
@@ -342,6 +363,7 @@ export default function BookingList({
         booking={sidebarBooking}
         isOpen={sidebarOpen}
         onClose={handleCloseSidebar}
+        refreshKey={sidebarRefreshKey}
       />
     </>
   );

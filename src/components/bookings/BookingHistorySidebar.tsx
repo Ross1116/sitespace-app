@@ -36,6 +36,7 @@ interface BookingHistorySidebarProps {
   booking: TransformedBooking | null;
   isOpen: boolean;
   onClose: () => void;
+  refreshKey?: string;
 }
 
 const actionConfig: Record<
@@ -368,6 +369,7 @@ export default function BookingHistorySidebar({
   booking,
   isOpen,
   onClose,
+  refreshKey,
 }: BookingHistorySidebarProps) {
   const [auditTrail, setAuditTrail] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -443,7 +445,7 @@ export default function BookingHistorySidebar({
         abortControllerRef.current = null;
       }
     };
-  }, [isOpen, booking?.bookingKey, fetchAuditTrail]);
+  }, [isOpen, booking?.bookingKey, refreshKey, fetchAuditTrail]);
 
   // Trap focus inside sidebar when open
   useEffect(() => {
