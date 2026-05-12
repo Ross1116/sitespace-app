@@ -41,10 +41,14 @@ export const lookaheadKeys = {
     `/programmes/${uploadId}/mappings/unclassified`,
   activityBookingContext: (
     activityId: string,
-    params?: { selectedWeekStart?: string | null },
+    params?: {
+      selectedWeekStart?: string | null;
+      activityAssetMappingId?: string | null;
+    },
   ): string =>
     `/programmes/activities/${activityId}/booking-context${buildQuery({
       selected_week_start: params?.selectedWeekStart,
+      activity_asset_mapping_id: params?.activityAssetMappingId,
     })}`,
   planningCompleteness: (projectId: string): string =>
     `/projects/${projectId}/planning-completeness`,

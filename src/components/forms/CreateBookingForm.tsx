@@ -1310,6 +1310,8 @@ export function CreateBookingForm({
             notes: description,
             subcontractor_id: targetSubcontractorId || undefined,
             programme_activity_id: activityContext?.activity_id,
+            activity_asset_mapping_id:
+              activityContext?.activity_asset_mapping_id ?? null,
             selected_week_start:
               activityContext?.selected_week_start ??
               activityContext?.default_week_start ??

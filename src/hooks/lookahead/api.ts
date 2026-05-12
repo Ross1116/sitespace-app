@@ -71,6 +71,7 @@ const extractList = (payload: unknown, preferredKeys: string[]): Record<string, 
 const normalizeMappings = (payload: unknown): ActivityMappingResponse[] =>
   extractList(payload, ["mappings", "items", "data", "results"]).map((record) => ({
     id: asString(record.id) || asString(record.mapping_id),
+    programme_activity_id: asOptionalString(record.programme_activity_id),
     item_id: asOptionalString(record.item_id),
     activity_name:
       asOptionalString(record.activity_name) ??
@@ -89,13 +90,24 @@ const normalizeMappings = (payload: unknown): ActivityMappingResponse[] =>
       asOptionalString(record.asset_type),
     current_classification: asOptionalString(record.current_classification),
     suggested_classification: asOptionalString(record.suggested_classification),
+    asset_role: asOptionalString(record.asset_role),
+    estimated_total_hours: asNumber(record.estimated_total_hours),
+    profile_shape: asOptionalString(record.profile_shape),
+    label_confidence: asNumber(record.label_confidence),
+    requirement_source: asOptionalString(record.requirement_source),
+    is_active: asBoolean(record.is_active),
+    auto_committed: asBoolean(record.auto_committed),
+    manually_corrected: asBoolean(record.manually_corrected),
     source: asOptionalString(record.source),
     confidence: asOptionalString(record.confidence),
-    manual_correction: asBoolean(record.manual_correction),
+    manual_correction:
+      asBoolean(record.manual_correction) ?? asBoolean(record.manually_corrected),
     corrected_by:
       asOptionalString(record.corrected_by) ??
       asOptionalString(record.corrected_by_name),
     corrected_at: asOptionalString(record.corrected_at),
+    subcontractor_id: asOptionalString(record.subcontractor_id),
+    created_at: asOptionalString(record.created_at),
     level_name: asOptionalString(record.level_name),
     zone_name: asOptionalString(record.zone_name),
   }));
@@ -436,6 +448,7 @@ export async function fetchLookaheadActivities(params: {
     "results",
   ]).map((record) => ({
     activity_id: asString(record.activity_id) || asString(record.id),
+    activity_asset_mapping_id: asOptionalString(record.activity_asset_mapping_id),
     programme_upload_id: asOptionalString(record.programme_upload_id),
     activity_name:
       asString(record.activity_name) || asString(record.name) || "Untitled activity",
@@ -497,7 +510,7 @@ export async function fetchUnclassifiedMappings(
 
 export async function updateProgrammeMapping(
   mappingId: string,
-  payload: { asset_type: string },
+  payload: { asset_type: string; profile_shape?: string | null },
 ): Promise<ActivityMappingResponse> {
   const response = await api.patch<unknown>(
     `/programmes/mappings/${mappingId}`,
@@ -506,6 +519,7 @@ export async function updateProgrammeMapping(
   return normalizeMappings(response.data)[0] ?? {
     id: mappingId,
     asset_type: payload.asset_type,
+    profile_shape: payload.profile_shape ?? null,
   };
 }
 
@@ -518,11 +532,13 @@ export async function promoteItemClassification(
 
 export async function fetchProgrammeActivityBookingContext(params: {
   activityId: string;
+  activityAssetMappingId?: string | null;
   selectedWeekStart?: string | null;
 }): Promise<ProgrammeActivityBookingContextResponse> {
   const response = await api.get<unknown>(
     lookaheadKeys.activityBookingContext(params.activityId, {
       selectedWeekStart: params.selectedWeekStart,
+      activityAssetMappingId: params.activityAssetMappingId,
     }),
   );
   const payload = isRecord(response.data) ? response.data : {};
@@ -531,6 +547,10 @@ export async function fetchProgrammeActivityBookingContext(params: {
 
   return {
     activity_id: asString(payload.activity_id) || params.activityId,
+    activity_asset_mapping_id:
+      asOptionalString(payload.activity_asset_mapping_id) ??
+      params.activityAssetMappingId ??
+      null,
     activity_name:
       asString(payload.activity_name) || asString(payload.name) || "Activity",
     programme_upload_id: asOptionalString(payload.programme_upload_id),
@@ -550,6 +570,9 @@ export async function fetchProgrammeActivityBookingContext(params: {
     linked_booking_group: isRecord(payload.linked_booking_group)
       ? {
           booking_group_id: asOptionalString(payload.linked_booking_group.booking_group_id),
+          activity_asset_mapping_id: asOptionalString(
+            payload.linked_booking_group.activity_asset_mapping_id,
+          ),
           booking_count: asNumber(payload.linked_booking_group.booking_count) ?? 0,
           total_booked_hours:
             asNumber(payload.linked_booking_group.total_booked_hours) ?? 0,

@@ -28,6 +28,11 @@ interface Props {
   onViewContext: (activity: LookaheadActivityCandidate) => void;
 }
 
+const getActivityRowKey = (activity: LookaheadActivityCandidate): string => {
+  const mappingId = activity.activity_asset_mapping_id?.trim();
+  return mappingId && mappingId.length > 0 ? mappingId : activity.activity_id;
+};
+
 export function ActivityDrilldownDialog({
   open,
   onOpenChange,
@@ -89,17 +94,17 @@ export function ActivityDrilldownDialog({
           <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
             {activities.map((activity) => (
               <div
-                key={activity.activity_id}
+                key={getActivityRowKey(activity)}
                 className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
               >
-                {bookingActivityId === activity.activity_id &&
+                {bookingActivityId === getActivityRowKey(activity) &&
                   bookingContextLoading && (
                   <div className="mb-3 flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     Loading booking context...
                   </div>
                 )}
-                {bookingActivityId === activity.activity_id &&
+                {bookingActivityId === getActivityRowKey(activity) &&
                   Boolean(bookingContextError) && (
                   <div className="mb-3 flex flex-col gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 sm:flex-row sm:items-center sm:justify-between">
                     <span>
@@ -159,7 +164,7 @@ export function ActivityDrilldownDialog({
                       size="sm"
                       variant="outline"
                       disabled={
-                        bookingActivityId === activity.activity_id &&
+                        bookingActivityId === getActivityRowKey(activity) &&
                         bookingContextLoading
                       }
                       onClick={() => onViewContext(activity)}
@@ -171,12 +176,12 @@ export function ActivityDrilldownDialog({
                       type="button"
                       size="sm"
                       disabled={
-                        bookingActivityId === activity.activity_id &&
+                        bookingActivityId === getActivityRowKey(activity) &&
                         bookingContextLoading
                       }
                       onClick={() => onBook(activity)}
                     >
-                      {bookingActivityId === activity.activity_id &&
+                      {bookingActivityId === getActivityRowKey(activity) &&
                       bookingContextLoading ? (
                         <>
                           <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />

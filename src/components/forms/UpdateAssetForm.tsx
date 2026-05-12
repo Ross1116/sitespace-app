@@ -50,6 +50,7 @@ import {
   clampPendingBookingCapacity,
   clampAssetMaxHoursPerDay,
 } from "@/lib/formOptions";
+import { formatAssetType } from "@/components/lookahead/utils";
 
 // ===== TYPE DEFINITIONS (Matching AssetsTable.tsx exactly) =====
 interface AssetModalProps {
@@ -740,7 +741,7 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
                   <SelectContent>
                     {ASSET_TYPE_OPTIONS.map((type) => (
                       <SelectItem key={type} value={type}>
-                        {type}
+                        {formatAssetType(type)}
                       </SelectItem>
                     ))}
                   </SelectContent>

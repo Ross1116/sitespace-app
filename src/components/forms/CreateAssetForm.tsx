@@ -30,6 +30,7 @@ import {
   MIN_ASSET_MAX_HOURS_PER_DAY,
   clampAssetMaxHoursPerDay,
 } from "@/lib/formOptions";
+import { formatAssetType } from "@/components/lookahead/utils";
 
 // ===== TYPE DEFINITIONS =====
 interface AssetModalProps {
@@ -348,7 +349,7 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
                 <SelectContent>
                   {ASSET_TYPE_OPTIONS.map((type) => (
                     <SelectItem key={type} value={type}>
-                      {type}
+                      {formatAssetType(type)}
                     </SelectItem>
                   ))}
                 </SelectContent>

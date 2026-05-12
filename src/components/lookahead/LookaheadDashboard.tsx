@@ -155,6 +155,18 @@ function getPersistentUploadAlertMessage(
   return null;
 }
 
+function getActivityRowKey(activity: LookaheadActivityCandidate): string {
+  const mappingId = activity.activity_asset_mapping_id?.trim();
+  return mappingId && mappingId.length > 0 ? mappingId : activity.activity_id;
+}
+
+function getActivityMappingId(
+  activity: LookaheadActivityCandidate | null | undefined,
+): string | null {
+  const mappingId = activity?.activity_asset_mapping_id?.trim();
+  return mappingId && mappingId.length > 0 ? mappingId : null;
+}
+
 function getForecastLoadMessage(
   error: unknown,
   latestUploadDate: string | null,
@@ -406,6 +418,7 @@ export default function LookaheadDashboard() {
     mutate: mutateBookingContext,
   } = useProgrammeActivityBookingContext({
     activityId: selectedActivity?.activity_id ?? null,
+    activityAssetMappingId: getActivityMappingId(selectedActivity),
     selectedWeekStart: activityContextCell?.week_start,
     enabled: Boolean(selectedActivity?.activity_id),
   });
@@ -1052,7 +1065,11 @@ export default function LookaheadDashboard() {
         activities={activities}
         isLoading={activitiesLoading}
         bookingActivityId={
-          activityDialogMode === "booking" ? selectedActivity?.activity_id : null
+          activityDialogMode === "booking"
+            ? selectedActivity
+              ? getActivityRowKey(selectedActivity)
+              : null
+            : null
         }
         bookingContextLoading={bookingContextLoading}
         bookingContextError={bookingContextError}
@@ -1114,8 +1131,8 @@ export default function LookaheadDashboard() {
               unclassifiedMappingsLoading),
         )}
         userRole={user?.role}
-        onCorrectMapping={async (mappingId, assetType) => {
-          await updateProgrammeMapping(mappingId, { asset_type: assetType });
+        onCorrectMapping={async (mappingId, correction) => {
+          await updateProgrammeMapping(mappingId, correction);
           await Promise.allSettled([
             mutateMappings(),
             mutateUnclassified(),

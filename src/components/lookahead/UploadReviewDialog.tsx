@@ -36,7 +36,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ASSET_TYPE_OPTIONS } from "@/lib/formOptions";
+import {
+  ASSET_TYPE_OPTIONS,
+  WORK_PROFILE_SHAPE_OPTIONS,
+} from "@/lib/formOptions";
 import { reportError } from "@/lib/monitoring";
 import { formatAssetType } from "./utils";
 
@@ -52,7 +55,10 @@ interface Props {
   unclassifiedMappings: ActivityMappingResponse[];
   isLoading: boolean;
   userRole?: UserRole | string;
-  onCorrectMapping: (mappingId: string, assetType: string) => Promise<void>;
+  onCorrectMapping: (
+    mappingId: string,
+    correction: { asset_type: string; profile_shape?: string | null },
+  ) => Promise<void>;
   onPromoteToMemory: (itemId: string, assetType: string) => Promise<void>;
 }
 
@@ -120,6 +126,12 @@ function formatMappingConfidence(confidence: string | null | undefined): string 
   return confidence;
 }
 
+function formatOptionalHours(value: number | null | undefined): string | null {
+  return typeof value === "number" && Number.isFinite(value)
+    ? `${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}h`
+    : null;
+}
+
 function normalizeOptions(values: Array<string | null | undefined>): string[] {
   const unique = new Set<string>();
   for (const v of values) {
@@ -129,6 +141,15 @@ function normalizeOptions(values: Array<string | null | undefined>): string[] {
   return Array.from(unique).sort((a, b) =>
     formatAssetType(a).localeCompare(formatAssetType(b)),
   );
+}
+
+function getMatchingOption(
+  value: string | null | undefined,
+  options: readonly string[],
+): string {
+  const normalized = value?.trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (!normalized) return "";
+  return options.find((opt) => opt === normalized) ?? "";
 }
 
 /* ------------------------------------------------------------------ */
@@ -234,6 +255,9 @@ export function UploadReviewDialog({
   onPromoteToMemory,
 }: Props) {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [profileShapeDrafts, setProfileShapeDrafts] = useState<
+    Record<string, string>
+  >({});
   const [mappingBusy, setMappingBusy] = useState<Record<string, boolean>>({});
   const [memoryBusy, setMemoryBusy] = useState<Record<string, boolean>>({});
   const [actionErrors, setActionErrors] = useState<Record<string, string>>({});
@@ -252,23 +276,9 @@ export function UploadReviewDialog({
     [mappings, unclassifiedMappings],
   );
 
-  const baseCorrectionOptions = useMemo(
-    () =>
-      normalizeOptions([
-        ...reviewRows.flatMap((m) => [
-          m.asset_type,
-          m.classification_name,
-          m.current_classification,
-          m.suggested_classification,
-        ]),
-        ...ASSET_TYPE_OPTIONS,
-      ]),
-    [reviewRows],
-  );
-
   const correctionOptions = useMemo(
-    () => normalizeOptions([...baseCorrectionOptions, ...Object.values(drafts)]),
-    [baseCorrectionOptions, drafts],
+    () => normalizeOptions([...ASSET_TYPE_OPTIONS]),
+    [],
   );
 
   const filteredRows = useMemo(() => {
@@ -282,6 +292,8 @@ export function UploadReviewDialog({
         m.classification_name ? formatAssetType(m.classification_name) : null,
         m.current_classification ? formatAssetType(m.current_classification) : null,
         m.suggested_classification ? formatAssetType(m.suggested_classification) : null,
+        m.asset_role ? formatAssetType(m.asset_role) : null,
+        m.profile_shape ? formatAssetType(m.profile_shape) : null,
         m.level_name,
         m.zone_name,
       ].some((v) => v?.toLowerCase().includes(q)),
@@ -313,12 +325,23 @@ export function UploadReviewDialog({
 
   /* ---- actions ---- */
 
-  async function handleCorrect(mapping: ActivityMappingResponse, value: string) {
+  async function handleCorrect(
+    mapping: ActivityMappingResponse,
+    value: string,
+    profileShape?: string | null,
+  ) {
     const key = `mapping:${mapping.id}`;
     if (mappingBusy[mapping.id]) return;
     setMappingBusy((prev) => ({ ...prev, [mapping.id]: true }));
     try {
-      await onCorrectMapping(mapping.id, value);
+      const nextProfileShape =
+        profileShape === undefined
+          ? mapping.profile_shape ?? null
+          : profileShape || null;
+      await onCorrectMapping(mapping.id, {
+        asset_type: value,
+        profile_shape: nextProfileShape,
+      });
       setActionErrors((prev) => {
         const next = { ...prev };
         delete next[key];
@@ -444,7 +467,7 @@ export function UploadReviewDialog({
               <StepHint
                 step={2}
                 title="Choose the asset type"
-                description="Pick from the suggested or known types. Add a custom type only if nothing matches."
+                description="Pick the matching backend asset type and work pattern for the row."
               />
               <StepHint
                 step={3}
@@ -517,12 +540,27 @@ export function UploadReviewDialog({
           ) : (
             <div className="space-y-3 pb-2">
               {visibleRows.map((mapping) => {
-                const draft =
+                const draftCandidate =
                   drafts[mapping.id] ?? getInitialDraft(mapping);
+                const draft = getMatchingOption(
+                  draftCandidate,
+                  correctionOptions,
+                );
                 const trimmed = draft.trim();
                 const current = getCurrentMappingLabel(mapping);
                 const suggested =
                   mapping.suggested_classification?.trim();
+                const suggestedOption = getMatchingOption(
+                  suggested,
+                  correctionOptions,
+                );
+                const profileShape = getMatchingOption(
+                  profileShapeDrafts[mapping.id] ?? mapping.profile_shape,
+                  WORK_PROFILE_SHAPE_OPTIONS,
+                );
+                const estimatedHours = formatOptionalHours(
+                  mapping.estimated_total_hours,
+                );
                 const mapErr = actionErrors[`mapping:${mapping.id}`];
                 const memErr = mapping.item_id
                   ? actionErrors[`memory:${mapping.item_id}`]
@@ -568,6 +606,14 @@ export function UploadReviewDialog({
                               {formatAssetType(suggested)}
                             </Badge>
                           )}
+                          {mapping.asset_role && (
+                            <Badge
+                              variant="outline"
+                              className="rounded-md text-slate-500"
+                            >
+                              Role: {formatAssetType(mapping.asset_role)}
+                            </Badge>
+                          )}
                           {mapping.manual_correction && (
                             <Badge
                               variant="outline"
@@ -597,6 +643,22 @@ export function UploadReviewDialog({
                               Changed by{" "}
                               <span className="font-medium text-slate-700">
                                 {mapping.corrected_by}
+                              </span>
+                            </span>
+                          )}
+                          {estimatedHours && (
+                            <span>
+                              Est. hours:{" "}
+                              <span className="font-medium text-slate-700">
+                                {estimatedHours}
+                              </span>
+                            </span>
+                          )}
+                          {mapping.profile_shape && (
+                            <span>
+                              Shape:{" "}
+                              <span className="font-medium text-slate-700">
+                                {formatAssetType(mapping.profile_shape)}
                               </span>
                             </span>
                           )}
@@ -631,38 +693,46 @@ export function UploadReviewDialog({
                           </SelectContent>
                         </Select>
 
-                        {/* Custom input */}
-                        <Input
-                          value={draft}
-                          onChange={(e) =>
-                            setDrafts((prev) => ({
-                              ...prev,
-                              [mapping.id]: e.target.value,
-                            }))
-                          }
-                          placeholder="Or type a custom asset type…"
-                          aria-label={`Custom asset type for ${
-                            mapping.activity_name ||
-                            mapping.source_value ||
-                            "this mapping row"
-                          }`}
-                          className="h-9 w-full max-w-full rounded-lg border-slate-200 bg-white text-sm sm:max-w-72"
-                        />
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
+                            Work pattern
+                          </p>
+                          <Select
+                            value={profileShape || undefined}
+                            onValueChange={(v) =>
+                              setProfileShapeDrafts((prev) => ({
+                                ...prev,
+                                [mapping.id]: v,
+                              }))
+                            }
+                          >
+                            <SelectTrigger className="h-9 w-full max-w-full rounded-lg border-slate-200 bg-white text-sm sm:max-w-72">
+                              <SelectValue placeholder="Choose a work pattern" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {WORK_PROFILE_SHAPE_OPTIONS.map((shape) => (
+                                <SelectItem key={shape} value={shape}>
+                                  {formatAssetType(shape)}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
 
                         {/* Quick‑fill suggestion */}
-                        {suggested && trimmed !== suggested && (
+                        {suggestedOption && trimmed !== suggestedOption && (
                           <button
                             type="button"
                             onClick={() =>
                               setDrafts((prev) => ({
                                 ...prev,
-                                [mapping.id]: suggested,
+                                [mapping.id]: suggestedOption,
                               }))
                             }
                             className="inline-flex items-center gap-1 rounded-md bg-teal-50 px-2.5 py-1.5 text-xs font-medium text-teal-700 transition-colors hover:bg-teal-100"
                           >
                             <Zap className="h-3 w-3" />
-                            Use suggested: {formatAssetType(suggested)}
+                            Use suggested: {formatAssetType(suggestedOption)}
                           </button>
                         )}
 
@@ -673,7 +743,9 @@ export function UploadReviewDialog({
                             size="sm"
                             className="h-9 rounded-lg px-4 text-sm font-semibold"
                             disabled={!trimmed || Boolean(mappingBusy[mapping.id])}
-                            onClick={() => handleCorrect(mapping, trimmed)}
+                            onClick={() =>
+                              handleCorrect(mapping, trimmed, profileShape)
+                            }
                           >
                             {mappingBusy[mapping.id] ? (
                               <>

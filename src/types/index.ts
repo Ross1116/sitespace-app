@@ -104,6 +104,7 @@ export interface ApiBooking {
   source?: string | null;
   booking_group_id?: string | null;
   programme_activity_id?: string | null;
+  activity_asset_mapping_id?: string | null;
   programme_activity_name?: string | null;
   expected_asset_type?: string | null;
   is_modified?: boolean;
@@ -295,6 +296,7 @@ export interface TransformedBooking {
   bookingSource?: string | null;
   bookingGroupId?: string | null;
   programmeActivityId?: string | null;
+  activityAssetMappingId?: string | null;
   programmeActivityName?: string | null;
   expectedAssetType?: string | null;
   isModified?: boolean;
@@ -452,6 +454,7 @@ export interface LookaheadAlertsResponse {
 
 export interface LookaheadActivityCandidate {
   activity_id: string;
+  activity_asset_mapping_id?: string | null;
   programme_upload_id?: string | null;
   activity_name: string;
   start_date?: string | null;
@@ -474,6 +477,7 @@ export interface LookaheadActivitiesResponse {
 
 export interface ActivityBookingGroupSummary {
   booking_group_id?: string | null;
+  activity_asset_mapping_id?: string | null;
   booking_count?: number;
   total_booked_hours?: number;
   last_booking_at?: string | null;
@@ -503,6 +507,7 @@ export interface ProgrammeActivitySuggestedBookingDate {
 
 export interface ProgrammeActivityBookingContextResponse {
   activity_id: string;
+  activity_asset_mapping_id?: string | null;
   activity_name: string;
   programme_upload_id?: string | null;
   expected_asset_type?: string | null;
@@ -521,6 +526,7 @@ export interface ProgrammeActivityBookingContextResponse {
 
 export interface ActivityMappingResponse {
   id: string;
+  programme_activity_id?: string | null;
   item_id?: string | null;
   activity_name?: string | null;
   source_value?: string | null;
@@ -528,11 +534,21 @@ export interface ActivityMappingResponse {
   classification_name?: string | null;
   current_classification?: string | null;
   suggested_classification?: string | null;
+  asset_role?: string | null;
+  estimated_total_hours?: number | null;
+  profile_shape?: string | null;
+  label_confidence?: number | null;
+  requirement_source?: string | null;
+  is_active?: boolean;
+  auto_committed?: boolean;
+  manually_corrected?: boolean;
   source?: string | null;
   confidence?: string | null;
   manual_correction?: boolean;
   corrected_by?: string | null;
   corrected_at?: string | null;
+  subcontractor_id?: string | null;
+  created_at?: string | null;
   level_name?: string | null;
   zone_name?: string | null;
 }

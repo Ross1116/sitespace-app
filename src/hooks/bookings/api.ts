@@ -29,6 +29,7 @@ export type BookingCreatePayload = {
   notes?: string;
   purpose?: string;
   programme_activity_id?: string;
+  activity_asset_mapping_id?: string | null;
   selected_week_start?: string | null;
 };
 
