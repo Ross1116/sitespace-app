@@ -12,6 +12,8 @@ export const ASSET_TYPE_OPTIONS = [
   "none",
 ] as const;
 
+export type AssetType = (typeof ASSET_TYPE_OPTIONS)[number];
+
 export const WORK_PROFILE_SHAPE_OPTIONS = [
   "single_day",
   "flat",
@@ -21,6 +23,8 @@ export const WORK_PROFILE_SHAPE_OPTIONS = [
   "inverse_bell",
   "staged",
 ] as const;
+
+export type WorkProfileShape = (typeof WORK_PROFILE_SHAPE_OPTIONS)[number];
 
 export const TRADE_SPECIALTY_OPTIONS = [
   { label: "Electrician", value: "electrician" },

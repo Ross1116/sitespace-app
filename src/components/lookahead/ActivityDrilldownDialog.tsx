@@ -28,8 +28,10 @@ interface Props {
   onViewContext: (activity: LookaheadActivityCandidate) => void;
 }
 
-const getActivityRowKey = (activity: LookaheadActivityCandidate): string =>
-  activity.activity_asset_mapping_id ?? activity.activity_id;
+const getActivityRowKey = (activity: LookaheadActivityCandidate): string => {
+  const mappingId = activity.activity_asset_mapping_id?.trim();
+  return mappingId && mappingId.length > 0 ? mappingId : activity.activity_id;
+};
 
 export function ActivityDrilldownDialog({
   open,

@@ -334,9 +334,13 @@ export function UploadReviewDialog({
     if (mappingBusy[mapping.id]) return;
     setMappingBusy((prev) => ({ ...prev, [mapping.id]: true }));
     try {
+      const nextProfileShape =
+        profileShape === undefined
+          ? mapping.profile_shape ?? null
+          : profileShape || null;
       await onCorrectMapping(mapping.id, {
         asset_type: value,
-        profile_shape: profileShape || null,
+        profile_shape: nextProfileShape,
       });
       setActionErrors((prev) => {
         const next = { ...prev };

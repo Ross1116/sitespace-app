@@ -155,6 +155,18 @@ function getPersistentUploadAlertMessage(
   return null;
 }
 
+function getActivityRowKey(activity: LookaheadActivityCandidate): string {
+  const mappingId = activity.activity_asset_mapping_id?.trim();
+  return mappingId && mappingId.length > 0 ? mappingId : activity.activity_id;
+}
+
+function getActivityMappingId(
+  activity: LookaheadActivityCandidate | null | undefined,
+): string | null {
+  const mappingId = activity?.activity_asset_mapping_id?.trim();
+  return mappingId && mappingId.length > 0 ? mappingId : null;
+}
+
 function getForecastLoadMessage(
   error: unknown,
   latestUploadDate: string | null,
@@ -406,7 +418,7 @@ export default function LookaheadDashboard() {
     mutate: mutateBookingContext,
   } = useProgrammeActivityBookingContext({
     activityId: selectedActivity?.activity_id ?? null,
-    activityAssetMappingId: selectedActivity?.activity_asset_mapping_id ?? null,
+    activityAssetMappingId: getActivityMappingId(selectedActivity),
     selectedWeekStart: activityContextCell?.week_start,
     enabled: Boolean(selectedActivity?.activity_id),
   });
@@ -1054,9 +1066,9 @@ export default function LookaheadDashboard() {
         isLoading={activitiesLoading}
         bookingActivityId={
           activityDialogMode === "booking"
-            ? selectedActivity?.activity_asset_mapping_id ??
-              selectedActivity?.activity_id ??
-              null
+            ? selectedActivity
+              ? getActivityRowKey(selectedActivity)
+              : null
             : null
         }
         bookingContextLoading={bookingContextLoading}
