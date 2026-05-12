@@ -406,6 +406,7 @@ export default function LookaheadDashboard() {
     mutate: mutateBookingContext,
   } = useProgrammeActivityBookingContext({
     activityId: selectedActivity?.activity_id ?? null,
+    activityAssetMappingId: selectedActivity?.activity_asset_mapping_id ?? null,
     selectedWeekStart: activityContextCell?.week_start,
     enabled: Boolean(selectedActivity?.activity_id),
   });
@@ -1052,7 +1053,11 @@ export default function LookaheadDashboard() {
         activities={activities}
         isLoading={activitiesLoading}
         bookingActivityId={
-          activityDialogMode === "booking" ? selectedActivity?.activity_id : null
+          activityDialogMode === "booking"
+            ? selectedActivity?.activity_asset_mapping_id ??
+              selectedActivity?.activity_id ??
+              null
+            : null
         }
         bookingContextLoading={bookingContextLoading}
         bookingContextError={bookingContextError}
@@ -1114,8 +1119,8 @@ export default function LookaheadDashboard() {
               unclassifiedMappingsLoading),
         )}
         userRole={user?.role}
-        onCorrectMapping={async (mappingId, assetType) => {
-          await updateProgrammeMapping(mappingId, { asset_type: assetType });
+        onCorrectMapping={async (mappingId, correction) => {
+          await updateProgrammeMapping(mappingId, correction);
           await Promise.allSettled([
             mutateMappings(),
             mutateUnclassified(),

@@ -12,9 +12,11 @@ vi.mock("@/lib/api", () => ({
 
 import {
   fetchCapacityDashboard,
+  fetchLookaheadActivities,
   fetchLookaheadHistory,
   fetchPlanningCompleteness,
   fetchProgrammeActivityBookingContext,
+  fetchProgrammeMappings,
 } from "@/hooks/lookahead/api";
 import { lookaheadKeys } from "@/hooks/lookahead/keys";
 
@@ -31,6 +33,17 @@ describe("lookahead api", () => {
       }),
     ).toBe(
       "/lookahead/project-1/activities?week_start=2026-03-30&asset_type=scissor_lift",
+    );
+  });
+
+  it("builds activity booking context keys with mapping filters", () => {
+    expect(
+      lookaheadKeys.activityBookingContext("activity-1", {
+        selectedWeekStart: "2026-03-30",
+        activityAssetMappingId: "mapping-1",
+      }),
+    ).toBe(
+      "/programmes/activities/activity-1/booking-context?selected_week_start=2026-03-30&activity_asset_mapping_id=mapping-1",
     );
   });
 
@@ -179,6 +192,7 @@ describe("lookahead api", () => {
     getMock.mockResolvedValueOnce({
       data: {
         activity_id: "activity-1",
+        activity_asset_mapping_id: "mapping-1",
         activity_name: "Facade install",
         expected_asset_type: "scissor_lift",
         selected_week_start: "2026-03-30",
@@ -191,6 +205,7 @@ describe("lookahead api", () => {
             id: "booking-1",
             manager_id: "manager-1",
             asset_id: "asset-1",
+            activity_asset_mapping_id: "mapping-1",
             booking_date: "2026-04-01",
             start_time: "07:00:00",
             end_time: "09:00:00",
@@ -210,11 +225,13 @@ describe("lookahead api", () => {
 
     const context = await fetchProgrammeActivityBookingContext({
       activityId: "activity-1",
+      activityAssetMappingId: "mapping-1",
       selectedWeekStart: "2026-03-30",
     });
 
     expect(context).toMatchObject({
       activity_id: "activity-1",
+      activity_asset_mapping_id: "mapping-1",
       activity_name: "Facade install",
       expected_asset_type: "scissor_lift",
       suggested_bulk_dates: [
@@ -231,10 +248,85 @@ describe("lookahead api", () => {
       ],
     });
     expect(context.linked_bookings).toHaveLength(1);
+    expect(context.linked_bookings[0].activity_asset_mapping_id).toBe("mapping-1");
     expect(context.candidate_assets[0]).toMatchObject({
       id: "asset-1",
       availability_status: "available",
       planning_ready: true,
+    });
+  });
+
+  it("normalizes lookahead activities with mapping ids", async () => {
+    getMock.mockResolvedValueOnce({
+      data: {
+        project_id: "project-1",
+        week_start: "2026-03-30",
+        asset_type: "scissor_lift",
+        activities: [
+          {
+            activity_id: "activity-1",
+            activity_asset_mapping_id: "mapping-1",
+            programme_upload_id: "upload-1",
+            activity_name: "Facade install",
+            overlap_hours: 6,
+            booking_group_id: "group-1",
+            linked_booking_count: 2,
+          },
+        ],
+      },
+    });
+
+    const response = await fetchLookaheadActivities({
+      projectId: "project-1",
+      weekStart: "2026-03-30",
+      assetType: "scissor_lift",
+    });
+
+    expect(response.activities[0]).toMatchObject({
+      activity_id: "activity-1",
+      activity_asset_mapping_id: "mapping-1",
+      booking_group_id: "group-1",
+      linked_booking_count: 2,
+    });
+  });
+
+  it("normalizes programme mapping metadata", async () => {
+    getMock.mockResolvedValueOnce({
+      data: [
+        {
+          id: "mapping-1",
+          programme_activity_id: "activity-1",
+          item_id: "item-1",
+          activity_name: "Facade install",
+          asset_type: "scissor_lift",
+          asset_role: "support",
+          estimated_total_hours: "4.5",
+          profile_shape: "front_loaded",
+          label_confidence: "0.875",
+          requirement_source: "manual",
+          source: "manual",
+          confidence: "medium",
+          auto_committed: false,
+          manually_corrected: true,
+          is_active: true,
+        },
+      ],
+    });
+
+    const mappings = await fetchProgrammeMappings("upload-1");
+
+    expect(mappings[0]).toMatchObject({
+      id: "mapping-1",
+      programme_activity_id: "activity-1",
+      asset_role: "support",
+      estimated_total_hours: 4.5,
+      profile_shape: "front_loaded",
+      label_confidence: 0.875,
+      requirement_source: "manual",
+      auto_committed: false,
+      manually_corrected: true,
+      manual_correction: true,
+      is_active: true,
     });
   });
 

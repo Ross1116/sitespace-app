@@ -44,6 +44,7 @@ type UploadParams = BaseParams & {
 
 type ActivityParams = BaseParams & {
   activityId: string | null;
+  activityAssetMappingId?: string | null;
   selectedWeekStart?: string | null;
 };
 
@@ -268,6 +269,7 @@ export function useUnclassifiedMappings({
 
 export function useProgrammeActivityBookingContext({
   activityId,
+  activityAssetMappingId,
   selectedWeekStart,
   enabled = true,
 }: ActivityParams) {
@@ -276,9 +278,10 @@ export function useProgrammeActivityBookingContext({
       enabled && activityId
         ? lookaheadKeys.activityBookingContext(activityId, {
             selectedWeekStart,
+            activityAssetMappingId,
           })
         : null,
-    [enabled, activityId, selectedWeekStart],
+    [enabled, activityId, activityAssetMappingId, selectedWeekStart],
   );
   const result = useTypedSWR<ProgrammeActivityBookingContextResponse>(
     key,
@@ -286,6 +289,7 @@ export function useProgrammeActivityBookingContext({
       ? () =>
           fetchProgrammeActivityBookingContext({
             activityId: activityId as string,
+            activityAssetMappingId,
             selectedWeekStart,
           })
       : null,

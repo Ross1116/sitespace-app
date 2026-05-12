@@ -1,15 +1,25 @@
 export const ASSET_TYPE_OPTIONS = [
-  "Equipment",
-  "Vehicle",
-  "Tool",
-  "Machinery",
-  "Loading Zone",
-  "Storage Area",
-  "Crane",
-  "Excavator",
-  "Generator",
-  "Scaffolding",
-  "Other",
+  "crane",
+  "hoist",
+  "loading_bay",
+  "ewp",
+  "concrete_pump",
+  "excavator",
+  "forklift",
+  "telehandler",
+  "compactor",
+  "other",
+  "none",
+] as const;
+
+export const WORK_PROFILE_SHAPE_OPTIONS = [
+  "single_day",
+  "flat",
+  "front_loaded",
+  "back_loaded",
+  "bell",
+  "inverse_bell",
+  "staged",
 ] as const;
 
 export const TRADE_SPECIALTY_OPTIONS = [

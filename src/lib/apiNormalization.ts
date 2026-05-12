@@ -119,6 +119,8 @@ const toApiBooking = (record: UnknownRecord): ApiBooking | null => {
     booking_group_id: asOptionalString(record.booking_group_id) || null,
     programme_activity_id:
       asOptionalString(record.programme_activity_id) || null,
+    activity_asset_mapping_id:
+      asOptionalString(record.activity_asset_mapping_id) || null,
     programme_activity_name:
       asOptionalString(record.programme_activity_name) || null,
     expected_asset_type: asOptionalString(record.expected_asset_type) || null,
