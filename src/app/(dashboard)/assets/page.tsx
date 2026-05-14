@@ -42,6 +42,7 @@ import { ApiAsset, TransformedAsset, getApiErrorMessage } from "@/types";
 import { useRouter } from "next/navigation";
 import { useResolvedProjectSelection } from "@/hooks/useResolvedProjectSelection";
 import { useProjectAssets } from "@/hooks/useProjectAssets";
+import { useProjectAssetTypes } from "@/hooks/useProjectAssetTypes";
 
 type Asset = TransformedAsset;
 
@@ -59,8 +60,16 @@ const readinessOptions = [
   ["review", "Needs review"],
 ] as const;
 
-const getAssetDisplayType = (asset: Asset): string =>
-  asset.canonicalType || asset.assetType;
+const getAssetDisplayType = (
+  asset: Asset,
+  assetTypeLabels?: Map<string, string>,
+): string => {
+  const canonicalType = asset.canonicalType || "";
+  if (canonicalType) {
+    return assetTypeLabels?.get(canonicalType) || asset.assetType || canonicalType;
+  }
+  return asset.assetType;
+};
 
 const transformBackendAsset = (backendAsset: ApiAsset): Asset => {
   const descriptionText =
@@ -213,6 +222,18 @@ export default function AssetsTable() {
     error: fetchError,
     mutate,
   } = useProjectAssets(projectId);
+  const { assetTypes } = useProjectAssetTypes(projectId);
+
+  const assetTypeLabels = useMemo(
+    () =>
+      new Map(
+        assetTypes.map((type) => [
+          type.code,
+          type.display_name || type.code.replace(/_/g, " "),
+        ]),
+      ),
+    [assetTypes],
+  );
 
   const allAssets = useMemo(
     () => backendAssets.map((asset) => transformBackendAsset(asset)),
@@ -269,7 +290,7 @@ export default function AssetsTable() {
         (asset) =>
           asset.assetTitle.toLowerCase().includes(term) ||
           asset.assetCode.toLowerCase().includes(term) ||
-          getAssetDisplayType(asset).toLowerCase().includes(term),
+          getAssetDisplayType(asset, assetTypeLabels).toLowerCase().includes(term),
       );
     }
 
@@ -311,8 +332,8 @@ export default function AssetsTable() {
         }
 
         if (sortField === "assetType") {
-          aVal = getAssetDisplayType(a).toLowerCase();
-          bVal = getAssetDisplayType(b).toLowerCase();
+          aVal = getAssetDisplayType(a, assetTypeLabels).toLowerCase();
+          bVal = getAssetDisplayType(b, assetTypeLabels).toLowerCase();
         } else {
           aVal = (a[sortField] || "").toLowerCase();
           bVal = (b[sortField] || "").toLowerCase();
@@ -325,7 +346,7 @@ export default function AssetsTable() {
     }
 
     return result;
-  }, [allAssets, readinessFilter, searchTerm, sortField, sortDirection]);
+  }, [allAssets, assetTypeLabels, readinessFilter, searchTerm, sortField, sortDirection]);
 
   const paginatedAssets = useMemo(() => {
     if (!filteredAndSortedAssets || filteredAndSortedAssets.length === 0)
@@ -595,7 +616,7 @@ export default function AssetsTable() {
                           className="text-slate-400 hidden sm:block"
                         />
                         <span className="truncate capitalize">
-                          {getAssetDisplayType(asset)}
+                          {getAssetDisplayType(asset, assetTypeLabels)}
                         </span>
                       </div>
 

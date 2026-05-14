@@ -29,6 +29,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -37,9 +38,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  ASSET_TYPE_OPTIONS,
   WORK_PROFILE_SHAPE_OPTIONS,
 } from "@/lib/formOptions";
+import { useProjectAssetTypes } from "@/hooks/useProjectAssetTypes";
 import { reportError } from "@/lib/monitoring";
 import { formatAssetType } from "./utils";
 
@@ -51,6 +52,7 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   status?: UploadStatusResponse;
+  projectId?: string | null;
   mappings: ActivityMappingResponse[];
   unclassifiedMappings: ActivityMappingResponse[];
   isLoading: boolean;
@@ -247,6 +249,7 @@ export function UploadReviewDialog({
   open,
   onOpenChange,
   status,
+  projectId,
   mappings,
   unclassifiedMappings,
   isLoading,
@@ -263,6 +266,11 @@ export function UploadReviewDialog({
   const [actionErrors, setActionErrors] = useState<Record<string, string>>({});
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
+  const [showLocalTypeForm, setShowLocalTypeForm] = useState(false);
+  const [localTypeName, setLocalTypeName] = useState("");
+  const [localTypeDescription, setLocalTypeDescription] = useState("");
+  const [localTypeMaxHours, setLocalTypeMaxHours] = useState("");
+  const { assetTypes, createProjectAssetType } = useProjectAssetTypes(projectId);
 
   const isAdmin = userRole === "admin";
   const notes = status?.completeness_notes;
@@ -277,8 +285,20 @@ export function UploadReviewDialog({
   );
 
   const correctionOptions = useMemo(
-    () => normalizeOptions([...ASSET_TYPE_OPTIONS]),
-    [],
+    () => normalizeOptions(assetTypes.map((type) => type.code)),
+    [assetTypes],
+  );
+  const assetTypeLabels = useMemo(
+    () =>
+      new Map(
+        assetTypes.map((type) => [
+          type.code,
+          `${type.display_name || formatAssetType(type.code)}${
+            type.scope === "project" ? " (Project)" : ""
+          }`,
+        ]),
+      ),
+    [assetTypes],
   );
 
   const filteredRows = useMemo(() => {
@@ -372,6 +392,31 @@ export function UploadReviewDialog({
     } finally {
       setMemoryBusy((prev) => ({ ...prev, [itemId]: false }));
     }
+  }
+
+  async function handleCreateLocalType() {
+    if (!localTypeName.trim() || !localTypeDescription.trim()) {
+      setActionErrors((prev) => ({
+        ...prev,
+        localType: "Local asset type name and description are required",
+      }));
+      return;
+    }
+    const created = await createProjectAssetType({
+      display_name: localTypeName.trim(),
+      description: localTypeDescription.trim(),
+      max_hours_per_day: Number(localTypeMaxHours || 10),
+    });
+    setLocalTypeName("");
+    setLocalTypeDescription("");
+    setLocalTypeMaxHours("");
+    setShowLocalTypeForm(false);
+    setDrafts((prev) => ({ ...prev, __last_created__: created.code }));
+    setActionErrors((prev) => {
+      const next = { ...prev };
+      delete next.localType;
+      return next;
+    });
   }
 
   /* ---------------------------------------------------------------- */
@@ -687,11 +732,66 @@ export function UploadReviewDialog({
                           <SelectContent>
                             {correctionOptions.map((opt) => (
                               <SelectItem key={opt} value={opt}>
-                                {formatAssetType(opt)}
+                                {assetTypeLabels.get(opt) ?? formatAssetType(opt)}
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-8 rounded-lg"
+                          onClick={() => setShowLocalTypeForm((value) => !value)}
+                        >
+                          Add new asset type
+                        </Button>
+                        {showLocalTypeForm && (
+                          <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-3">
+                            <Input
+                              value={localTypeName}
+                              onChange={(event) => setLocalTypeName(event.target.value)}
+                              placeholder="Type name"
+                            />
+                            <Textarea
+                              value={localTypeDescription}
+                              onChange={(event) =>
+                                setLocalTypeDescription(event.target.value)
+                              }
+                              placeholder="Description"
+                            />
+                            <Input
+                              type="number"
+                              min={0}
+                              max={24}
+                              step="0.5"
+                              value={localTypeMaxHours}
+                              onChange={(event) => setLocalTypeMaxHours(event.target.value)}
+                              placeholder="Max hours per day (default 10)"
+                            />
+                            <Button
+                              type="button"
+                              size="sm"
+                              className="h-8 rounded-lg"
+                              onClick={() => {
+                                void handleCreateLocalType().catch((error) => {
+                                  reportError(error, "UploadReviewDialog: failed to create local asset type");
+                                  setActionErrors((prev) => ({
+                                    ...prev,
+                                    localType: getApiErrorMessage(error),
+                                  }));
+                                });
+                              }}
+                            >
+                              Save project type
+                            </Button>
+                          </div>
+                        )}
+                        {actionErrors.localType && (
+                          <p className="text-xs font-medium text-red-600">
+                            {actionErrors.localType}
+                          </p>
+                        )}
 
                         <div className="space-y-1">
                           <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
