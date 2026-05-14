@@ -273,6 +273,13 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
   );
   const { confirmedCount, otherCount } =
     getImpactedBookingBreakdown(impactData);
+  const assetDataProjectId =
+    assetData.assetProject || assetData._originalData?.project_id || selectedProjectId;
+  const localTypeIdPrefix = React.useId();
+  const typeNameId = `${localTypeIdPrefix}-type-name`;
+  const typeDescriptionId = `${localTypeIdPrefix}-type-description`;
+  const typeMaxHoursId = `${localTypeIdPrefix}-type-max-hours`;
+  const typeMaxHoursHelpId = `${localTypeIdPrefix}-type-max-hours-help`;
 
   //  Initialize with all required fields (assetProject is a string)
   const [asset, setAsset] = useState<Asset>({
@@ -292,7 +299,7 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
     maxHoursPerDay: null,
   });
   const { assetTypes, createProjectAssetType } = useProjectAssetTypes(
-    asset.assetProject || selectedProjectId,
+    assetDataProjectId,
   );
 
   // Load asset data when modal opens or assetData changes
@@ -531,7 +538,7 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
       }
 
       //  assetProject is already a string, no need to check type
-      const projectId = asset.assetProject;
+      const projectId = asset.assetProject || assetDataProjectId;
 
       // Build update request
       const selectedType = assetTypes.find((type) => type.code === asset.assetType);
@@ -648,7 +655,8 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
         response.data.description ||
         response.data.usage_instructions ||
         "No description provided";
-      const projectId = pendingUpdateRequest.project_id || asset.assetProject;
+      const projectId =
+        pendingUpdateRequest.project_id || asset.assetProject || assetDataProjectId;
       const pendingBookingCapacity =
         response.data.pending_booking_capacity ??
         pendingUpdateRequest.pending_booking_capacity ??
@@ -791,19 +799,31 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
                 </Button>
                 {showLocalTypeForm && (
                   <div className="space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                    <Label className="sr-only" htmlFor={typeNameId}>
+                      Type name
+                    </Label>
                     <Input
+                      id={typeNameId}
                       value={localTypeName}
                       onChange={(event) => setLocalTypeName(event.target.value)}
                       placeholder="Type name"
                     />
+                    <Label className="sr-only" htmlFor={typeDescriptionId}>
+                      Description
+                    </Label>
                     <Textarea
+                      id={typeDescriptionId}
                       value={localTypeDescription}
                       onChange={(event) =>
                         setLocalTypeDescription(event.target.value)
                       }
                       placeholder="Description"
                     />
+                    <Label className="sr-only" htmlFor={typeMaxHoursId}>
+                      Max hours per day
+                    </Label>
                     <Input
+                      id={typeMaxHoursId}
                       type="number"
                       min={MIN_ASSET_MAX_HOURS_PER_DAY}
                       max={MAX_ASSET_MAX_HOURS_PER_DAY}
@@ -811,7 +831,11 @@ const UpdateAssetModal: React.FC<AssetModalProps> = ({
                       value={localTypeMaxHours}
                       onChange={(event) => setLocalTypeMaxHours(event.target.value)}
                       placeholder="Max hours per day (default 10)"
+                      aria-describedby={typeMaxHoursHelpId}
                     />
+                    <p id={typeMaxHoursHelpId} className="sr-only">
+                      Defaults to 10 hours. Enter a value from 0.5 to 24.
+                    </p>
                     <Button
                       type="button"
                       size="sm"

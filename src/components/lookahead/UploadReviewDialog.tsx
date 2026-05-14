@@ -266,7 +266,10 @@ export function UploadReviewDialog({
   const [actionErrors, setActionErrors] = useState<Record<string, string>>({});
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
-  const [showLocalTypeForm, setShowLocalTypeForm] = useState(false);
+  const [activeLocalTypeRowId, setActiveLocalTypeRowId] = useState<string | null>(
+    null,
+  );
+  const [isCreatingLocalType, setIsCreatingLocalType] = useState(false);
   const [localTypeName, setLocalTypeName] = useState("");
   const [localTypeDescription, setLocalTypeDescription] = useState("");
   const [localTypeMaxHours, setLocalTypeMaxHours] = useState("");
@@ -394,29 +397,52 @@ export function UploadReviewDialog({
     }
   }
 
-  async function handleCreateLocalType() {
-    if (!localTypeName.trim() || !localTypeDescription.trim()) {
-      setActionErrors((prev) => ({
-        ...prev,
-        localType: "Local asset type name and description are required",
-      }));
-      return;
-    }
-    const created = await createProjectAssetType({
-      display_name: localTypeName.trim(),
-      description: localTypeDescription.trim(),
-      max_hours_per_day: Number(localTypeMaxHours || 10),
-    });
+  function resetLocalTypeForm() {
     setLocalTypeName("");
     setLocalTypeDescription("");
     setLocalTypeMaxHours("");
-    setShowLocalTypeForm(false);
-    setDrafts((prev) => ({ ...prev, __last_created__: created.code }));
-    setActionErrors((prev) => {
-      const next = { ...prev };
-      delete next.localType;
-      return next;
-    });
+    setActiveLocalTypeRowId(null);
+  }
+
+  async function handleCreateLocalType(rowId: string) {
+    if (isCreatingLocalType) return;
+    const errorKey = `localType:${rowId}`;
+    if (!localTypeName.trim() || !localTypeDescription.trim()) {
+      setActionErrors((prev) => ({
+        ...prev,
+        [errorKey]: "Local asset type name and description are required",
+      }));
+      return;
+    }
+
+    const maxHours = localTypeMaxHours.trim()
+      ? Number(localTypeMaxHours)
+      : 10;
+    if (!Number.isFinite(maxHours) || maxHours < 0 || maxHours > 24) {
+      setActionErrors((prev) => ({
+        ...prev,
+        [errorKey]: "Max hours per day must be a number from 0 to 24",
+      }));
+      return;
+    }
+
+    setIsCreatingLocalType(true);
+    try {
+      const created = await createProjectAssetType({
+        display_name: localTypeName.trim(),
+        description: localTypeDescription.trim(),
+        max_hours_per_day: maxHours,
+      });
+      resetLocalTypeForm();
+      setDrafts((prev) => ({ ...prev, [rowId]: created.code }));
+      setActionErrors((prev) => {
+        const next = { ...prev };
+        delete next[errorKey];
+        return next;
+      });
+    } finally {
+      setIsCreatingLocalType(false);
+    }
   }
 
   /* ---------------------------------------------------------------- */
@@ -610,6 +636,9 @@ export function UploadReviewDialog({
                 const memErr = mapping.item_id
                   ? actionErrors[`memory:${mapping.item_id}`]
                   : undefined;
+                const localTypeError = actionErrors[`localType:${mapping.id}`];
+                const isLocalTypeFormActive =
+                  activeLocalTypeRowId === mapping.id;
 
                 return (
                   <div
@@ -742,11 +771,17 @@ export function UploadReviewDialog({
                           size="sm"
                           variant="outline"
                           className="h-8 rounded-lg"
-                          onClick={() => setShowLocalTypeForm((value) => !value)}
+                          onClick={() => {
+                            if (isLocalTypeFormActive) {
+                              resetLocalTypeForm();
+                            } else {
+                              setActiveLocalTypeRowId(mapping.id);
+                            }
+                          }}
                         >
                           Add new asset type
                         </Button>
-                        {showLocalTypeForm && (
+                        {isLocalTypeFormActive && (
                           <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-3">
                             <Input
                               value={localTypeName}
@@ -773,23 +808,31 @@ export function UploadReviewDialog({
                               type="button"
                               size="sm"
                               className="h-8 rounded-lg"
+                              disabled={isCreatingLocalType}
                               onClick={() => {
-                                void handleCreateLocalType().catch((error) => {
+                                void handleCreateLocalType(mapping.id).catch((error) => {
                                   reportError(error, "UploadReviewDialog: failed to create local asset type");
                                   setActionErrors((prev) => ({
                                     ...prev,
-                                    localType: getApiErrorMessage(error),
+                                    [`localType:${mapping.id}`]: getApiErrorMessage(error),
                                   }));
                                 });
                               }}
                             >
-                              Save project type
+                              {isCreatingLocalType ? (
+                                <>
+                                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                  Saving...
+                                </>
+                              ) : (
+                                "Save project type"
+                              )}
                             </Button>
                           </div>
                         )}
-                        {actionErrors.localType && (
+                        {localTypeError && (
                           <p className="text-xs font-medium text-red-600">
-                            {actionErrors.localType}
+                            {localTypeError}
                           </p>
                         )}
 

@@ -110,6 +110,10 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
   const { assetTypes, createProjectAssetType } = useProjectAssetTypes(
     selectedProjectId,
   );
+  const localTypeIdPrefix = React.useId();
+  const localTypeNameId = `${localTypeIdPrefix}-type-name`;
+  const localTypeDescriptionId = `${localTypeIdPrefix}-type-description`;
+  const localTypeMaxHoursId = `${localTypeIdPrefix}-type-max-hours`;
 
   const [asset, setAsset] = useState<Asset>({
     assetTitle: "",
@@ -136,6 +140,22 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
           },
     );
   }, [selectedProjectId]);
+
+  useEffect(() => {
+    setAsset((prev) => {
+      if (
+        !prev.assetType ||
+        assetTypes.some((type) => type.code === prev.assetType)
+      ) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        assetType: "",
+      };
+    });
+  }, [assetTypes]);
 
   // Auto-generate asset code when type and title change
   useEffect(() => {
@@ -395,19 +415,31 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
               </Button>
               {showLocalTypeForm && (
                 <div className="space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                  <Label className="sr-only" htmlFor={localTypeNameId}>
+                    Type name
+                  </Label>
                   <Input
+                    id={localTypeNameId}
                     value={localTypeName}
                     onChange={(event) => setLocalTypeName(event.target.value)}
                     placeholder="Type name"
                   />
+                  <Label className="sr-only" htmlFor={localTypeDescriptionId}>
+                    Description
+                  </Label>
                   <Textarea
+                    id={localTypeDescriptionId}
                     value={localTypeDescription}
                     onChange={(event) =>
                       setLocalTypeDescription(event.target.value)
                     }
                     placeholder="Description"
                   />
+                  <Label className="sr-only" htmlFor={localTypeMaxHoursId}>
+                    Max hours per day
+                  </Label>
                   <Input
+                    id={localTypeMaxHoursId}
                     type="number"
                     min={MIN_ASSET_MAX_HOURS_PER_DAY}
                     max={MAX_ASSET_MAX_HOURS_PER_DAY}

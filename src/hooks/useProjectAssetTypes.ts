@@ -19,9 +19,30 @@ export type ProjectAssetTypeCreatePayload = {
   max_hours_per_day: number;
 };
 
+type RawAssetTypeOption = Omit<AssetTypeOption, "max_hours_per_day"> & {
+  max_hours_per_day: number | string | null;
+};
+
+function normalizeAssetTypeOption(option: RawAssetTypeOption): AssetTypeOption {
+  const maxHours =
+    option.max_hours_per_day == null
+      ? null
+      : Number(option.max_hours_per_day);
+
+  return {
+    ...option,
+    max_hours_per_day: Number.isFinite(maxHours) ? maxHours : null,
+  };
+}
+
 async function fetchProjectAssetTypes(projectId: string): Promise<AssetTypeOption[]> {
-  const response = await api.get<AssetTypeOption[]>(`/projects/${projectId}/asset-types`);
-  return Array.isArray(response.data) ? response.data : fallbackAssetTypes;
+  const response = await api.get<RawAssetTypeOption[]>(`/projects/${projectId}/asset-types`);
+  if (!Array.isArray(response.data)) {
+    throw new Error(
+      `Expected project asset types array for project ${projectId}, got status ${response.status}: ${JSON.stringify(response.data)}`,
+    );
+  }
+  return response.data.map(normalizeAssetTypeOption);
 }
 
 export function useProjectAssetTypes(projectId?: string | null) {
@@ -34,12 +55,12 @@ export function useProjectAssetTypes(projectId?: string | null) {
 
   async function createProjectAssetType(payload: ProjectAssetTypeCreatePayload) {
     if (!projectId) throw new Error("Select a project before adding a local asset type.");
-    const response = await api.post<AssetTypeOption>(
+    const response = await api.post<RawAssetTypeOption>(
       `/projects/${projectId}/asset-types`,
       payload,
     );
     await mutate();
-    return response.data;
+    return normalizeAssetTypeOption(response.data);
   }
 
   return {
