@@ -86,6 +86,20 @@ export interface ApiAsset {
   max_hours_per_day?: number | null;
 }
 
+export type AssetTypeScope =
+  | "global"
+  | "project"
+  | (string & { readonly __brand?: "AssetTypeScope" });
+
+export interface AssetTypeOption {
+  code: string;
+  display_name: string;
+  description?: string | null;
+  scope: AssetTypeScope;
+  project_id?: string | null;
+  max_hours_per_day: number | null;
+}
+
 export interface ApiBooking {
   id: string;
   project_id?: string;

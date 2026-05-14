@@ -1121,6 +1121,7 @@ export default function LookaheadDashboard() {
         open={isUploadReviewOpen}
         onOpenChange={setIsUploadReviewOpen}
         status={uploadStatus}
+        projectId={projectId}
         mappings={mappings}
         unclassifiedMappings={unclassifiedMappings}
         isLoading={Boolean(
@@ -1140,7 +1141,10 @@ export default function LookaheadDashboard() {
           ]);
         }}
         onPromoteToMemory={async (itemId, assetType) => {
-          await promoteItemClassification(itemId, { asset_type: assetType });
+          await promoteItemClassification(itemId, {
+            asset_type: assetType,
+            project_id: projectId,
+          });
           await Promise.allSettled([
             mutateMappings(),
             mutateUnclassified(),

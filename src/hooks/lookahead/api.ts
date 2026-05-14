@@ -525,7 +525,7 @@ export async function updateProgrammeMapping(
 
 export async function promoteItemClassification(
   itemId: string,
-  payload: { asset_type: string },
+  payload: { asset_type: string; project_id?: string | null },
 ): Promise<void> {
   await api.post(`/items/${itemId}/classification`, payload);
 }

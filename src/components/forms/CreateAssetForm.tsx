@@ -24,8 +24,8 @@ import { useAuth } from "@/app/context/AuthContext";
 import { getApiErrorMessage } from "@/types";
 import { reportError } from "@/lib/monitoring";
 import { useProjectSelectionStore } from "@/stores/projectSelectionStore";
+import { useProjectAssetTypes } from "@/hooks/useProjectAssetTypes";
 import {
-  ASSET_TYPE_OPTIONS,
   MAX_ASSET_MAX_HOURS_PER_DAY,
   MIN_ASSET_MAX_HOURS_PER_DAY,
   clampAssetMaxHoursPerDay,
@@ -57,6 +57,7 @@ interface AssetCreateRequest {
   asset_code: string;
   name: string;
   asset_type: string;
+  canonical_type?: string;
   description?: string;
   status: "available" | "maintenance" | "retired";
   project_id?: string;
@@ -97,11 +98,22 @@ const generateAssetCode = (assetType: string, assetTitle: string): string => {
 const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showLocalTypeForm, setShowLocalTypeForm] = useState(false);
+  const [localTypeName, setLocalTypeName] = useState("");
+  const [localTypeDescription, setLocalTypeDescription] = useState("");
+  const [localTypeMaxHours, setLocalTypeMaxHours] = useState("");
   const { user } = useAuth();
   const userId = user?.id;
   const selectedProjectId = useProjectSelectionStore((state) =>
     userId ? state.getSelectedProjectId(userId) ?? "" : "",
   );
+  const { assetTypes, createProjectAssetType } = useProjectAssetTypes(
+    selectedProjectId,
+  );
+  const localTypeIdPrefix = React.useId();
+  const localTypeNameId = `${localTypeIdPrefix}-type-name`;
+  const localTypeDescriptionId = `${localTypeIdPrefix}-type-description`;
+  const localTypeMaxHoursId = `${localTypeIdPrefix}-type-max-hours`;
 
   const [asset, setAsset] = useState<Asset>({
     assetTitle: "",
@@ -128,6 +140,22 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
           },
     );
   }, [selectedProjectId]);
+
+  useEffect(() => {
+    setAsset((prev) => {
+      if (
+        !prev.assetType ||
+        assetTypes.some((type) => type.code === prev.assetType)
+      ) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        assetType: "",
+      };
+    });
+  }, [assetTypes]);
 
   // Auto-generate asset code when type and title change
   useEffect(() => {
@@ -184,6 +212,24 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
     setAsset((prev) => ({ ...prev, assetStatus: status }));
   };
 
+  const handleCreateLocalType = async () => {
+    if (!localTypeName.trim() || !localTypeDescription.trim()) {
+      setError("Local asset type name and description are required");
+      return;
+    }
+    const maxHours = clampAssetMaxHoursPerDay(Number(localTypeMaxHours || 10));
+    const created = await createProjectAssetType({
+      display_name: localTypeName.trim(),
+      description: localTypeDescription.trim(),
+      max_hours_per_day: maxHours,
+    });
+    setAsset((prev) => ({ ...prev, assetType: created.code }));
+    setLocalTypeName("");
+    setLocalTypeDescription("");
+    setLocalTypeMaxHours("");
+    setShowLocalTypeForm(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -230,7 +276,10 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
       const createRequest: AssetCreateRequest = {
         asset_code: asset.assetCode.trim(),
         name: asset.assetTitle.trim(),
-        asset_type: asset.assetType,
+        asset_type:
+          assetTypes.find((type) => type.code === asset.assetType)?.display_name ??
+          asset.assetType,
+        canonical_type: asset.assetType,
         description: asset.usageInstructions.trim() || undefined,
         status: mapFrontendStatusToBackend(asset.assetStatus),
         project_id: asset.assetProject || undefined,
@@ -347,13 +396,73 @@ const AssetModal: React.FC<AssetModalProps> = ({ isOpen, onClose, onSave }) => {
                   <SelectValue placeholder="Select asset type" />
                 </SelectTrigger>
                 <SelectContent>
-                  {ASSET_TYPE_OPTIONS.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {formatAssetType(type)}
+                  {assetTypes.map((type) => (
+                    <SelectItem key={type.code} value={type.code}>
+                      {type.display_name || formatAssetType(type.code)}
+                      {type.scope === "project" ? " (Project)" : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 rounded-lg"
+                onClick={() => setShowLocalTypeForm((value) => !value)}
+              >
+                Add new asset type
+              </Button>
+              {showLocalTypeForm && (
+                <div className="space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                  <Label className="sr-only" htmlFor={localTypeNameId}>
+                    Type name
+                  </Label>
+                  <Input
+                    id={localTypeNameId}
+                    value={localTypeName}
+                    onChange={(event) => setLocalTypeName(event.target.value)}
+                    placeholder="Type name"
+                  />
+                  <Label className="sr-only" htmlFor={localTypeDescriptionId}>
+                    Description
+                  </Label>
+                  <Textarea
+                    id={localTypeDescriptionId}
+                    value={localTypeDescription}
+                    onChange={(event) =>
+                      setLocalTypeDescription(event.target.value)
+                    }
+                    placeholder="Description"
+                  />
+                  <Label className="sr-only" htmlFor={localTypeMaxHoursId}>
+                    Max hours per day
+                  </Label>
+                  <Input
+                    id={localTypeMaxHoursId}
+                    type="number"
+                    min={MIN_ASSET_MAX_HOURS_PER_DAY}
+                    max={MAX_ASSET_MAX_HOURS_PER_DAY}
+                    step="0.5"
+                    value={localTypeMaxHours}
+                    onChange={(event) => setLocalTypeMaxHours(event.target.value)}
+                    placeholder="Max hours per day (default 10)"
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="h-8 rounded-lg"
+                    onClick={() => {
+                      void handleCreateLocalType().catch((error) => {
+                        reportError(error, "CreateAssetForm: failed to create local asset type");
+                        setError(getApiErrorMessage(error, "Failed to create local asset type"));
+                      });
+                    }}
+                  >
+                    Save project type
+                  </Button>
+                </div>
+              )}
             </div>
 
             {/* Asset Code */}
