@@ -29,6 +29,7 @@ const ProjectCalendarDialog = dynamic(
 );
 import { Input } from "@/components/ui/input";
 import ComponentErrorBoundary from "@/components/ui/ComponentErrorBoundary";
+import { formatProjectLocalAssetName } from "@/lib/assetDisplay";
 import { combineDateAndTime } from "@/lib/bookingHelpers";
 import { isTvUser } from "@/lib/permissions";
 import { useResolvedProjectSelection } from "@/hooks/useResolvedProjectSelection";
@@ -115,8 +116,10 @@ const transformBookingToLegacyFormat = (
 
   if (booking.asset && typeof booking.asset === "object") {
     assetId = booking.asset.id || assetId;
-    assetName = booking.asset.name || assetName;
     assetCode = booking.asset.asset_code || assetCode;
+    assetName =
+      formatProjectLocalAssetName(booking.asset.name, assetCode, assetId) ||
+      assetName;
   } else if (booking.asset_id) {
     assetId = booking.asset_id;
   }

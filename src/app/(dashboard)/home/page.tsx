@@ -30,6 +30,7 @@ import {
 } from "@/lib/bookingHelpers";
 import type { ApiBooking, ApiProject } from "@/types";
 import type { LucideIcon } from "lucide-react";
+import { formatProjectLocalAssetName } from "@/lib/assetDisplay";
 import { getSubcontractorCount } from "@/lib/subcontractorNormalization";
 import { useResolvedProjectSelection } from "@/hooks/useResolvedProjectSelection";
 import { useProjectAssets } from "@/hooks/useProjectAssets";
@@ -425,7 +426,11 @@ export default function HomePage() {
                           ? `${booking.manager.first_name} ${booking.manager.last_name}`.trim()
                           : "Unknown Manager";
 
-                        const assetName = booking.asset?.name?.trim();
+                        const assetName = formatProjectLocalAssetName(
+                          booking.asset?.name,
+                          booking.asset?.asset_code,
+                          booking.asset?.id || booking.asset_id,
+                        );
                         const assetLabel =
                           assetName || booking.asset_id || "Unspecified asset";
 

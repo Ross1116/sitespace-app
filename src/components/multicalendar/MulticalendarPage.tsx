@@ -18,6 +18,10 @@ import { AssetFilter } from "./AssetFilter";
 import { MulticalendarActionsProvider } from "./MulticalendarActionsContext";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ApiAsset, ApiBooking } from "@/types";
+import {
+  formatAssetDisplayName,
+  formatProjectLocalAssetName,
+} from "@/lib/assetDisplay";
 import { isAssetRetiredOrOutOfService } from "@/lib/assetStatus";
 import { buildBookingProvenanceSummary } from "@/lib/bookingHelpers";
 import ComponentErrorBoundary from "@/components/ui/ComponentErrorBoundary";
@@ -45,8 +49,10 @@ const processBookingToEvent = (
   else if (b.notes && b.notes.trim() !== "") title = b.notes;
   const provenanceSummary = buildBookingProvenanceSummary(b);
 
-  const assetName = b.asset?.name || "Unknown Asset";
   const assetCode = b.asset?.asset_code || "";
+  const assetName =
+    formatProjectLocalAssetName(b.asset?.name, assetCode, b.asset?.id) ||
+    "Unknown Asset";
   const createdById = b.created_by_id || b.created_by?.id;
   const assignedUserId = b.subcontractor_id || b.manager_id;
   const isBookedByMe = Boolean(userId && createdById === userId);
@@ -129,7 +135,9 @@ export default function MulticalendarPage() {
     () =>
       assets
         .filter((asset) => !isAssetRetiredOrOutOfService(asset.status))
-        .sort((a: ApiAsset, b: ApiAsset) => a.name.localeCompare(b.name)),
+        .sort((a: ApiAsset, b: ApiAsset) =>
+          formatAssetDisplayName(a).localeCompare(formatAssetDisplayName(b)),
+        ),
     [assets],
   );
 
@@ -235,7 +243,7 @@ export default function MulticalendarPage() {
       const assetEvents = bookings.filter((b) => b.assetId === asset.id);
       return {
         id: asset.id,
-        name: asset.name,
+        name: formatAssetDisplayName(asset) || asset.name,
         asset: asset,
         events: assetEvents,
       };

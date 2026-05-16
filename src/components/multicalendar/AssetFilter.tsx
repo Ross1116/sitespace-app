@@ -1,6 +1,7 @@
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatProjectLocalAssetName } from "@/lib/assetDisplay";
 import { AssetCalendar } from "@/lib/multicalendarHelpers";
 
 interface AssetFilterProps {
@@ -52,9 +53,14 @@ export function AssetFilter({
         ) : (
           <div className="flex flex-col justify-evenly space-y-2">
             {assetCalendars.map((calendar, index) => {
-              const assetName = calendar.asset?.name || calendar.name || "Unknown Asset";
               const assetCode = calendar.asset?.asset_code || "";
-              
+              const assetName =
+                formatProjectLocalAssetName(
+                  calendar.asset?.name || calendar.name,
+                  assetCode,
+                  calendar.asset?.id || calendar.id,
+                ) || "Unknown Asset";
+
               return (
                 <div key={index} className="flex items-center space-x-2 group">
                   <Checkbox

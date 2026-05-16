@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/app/context/AuthContext";
 import { useResolvedProjectSelection } from "@/hooks/useResolvedProjectSelection";
+import { useProjectAssets } from "@/hooks/useProjectAssets";
 import {
   useCapacityDashboard,
   useLookaheadSnapshot,
@@ -42,6 +43,7 @@ import {
   isCompact,
   resolveCapacityStatus,
 } from "./capacityUtils";
+import { formatProjectLocalAssetName } from "@/lib/assetDisplay";
 
 const WINDOW_WEEKS: Record<CapacityWindowSize, number> = {
   "2W": 2,
@@ -88,11 +90,25 @@ function getDisplayDemandUtilizationPct(cell: CapacityCell): number | null {
   return (cell.demand_hours / cell.capacity_hours) * 100;
 }
 
-function CapacityStatCards({
-  data,
-}: {
-  data: CapacityDashboardResponse;
-}) {
+function stripTrailingNumber(value: string): string {
+  return value.replace(/\s+\d+$/, "").trim();
+}
+
+function normalizeAssetTypeKey(value: string | null | undefined): string {
+  return stripTrailingNumber(formatProjectLocalAssetName(value ?? ""))
+    .replace(/_/g, " ")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function formatCapacityAssetType(value: string): string {
+  return formatAssetType(
+    stripTrailingNumber(formatProjectLocalAssetName(value)),
+  );
+}
+
+function CapacityStatCards({ data }: { data: CapacityDashboardResponse }) {
   const summary = data.headline_summary;
 
   const cards = [
@@ -142,7 +158,9 @@ function CapacityStatCards({
             {card.value}
           </p>
           {card.detail ? (
-            <p className="mt-2 text-xs font-medium text-slate-500">{card.detail}</p>
+            <p className="mt-2 text-xs font-medium text-slate-500">
+              {card.detail}
+            </p>
           ) : null}
         </div>
       ))}
@@ -158,7 +176,9 @@ function CapacityCellCard({
   compact: boolean;
 }) {
   if (!cell) {
-    return <div className="relative flex min-h-28 flex-col justify-between p-3 bg-slate-50" />;
+    return (
+      <div className="relative flex min-h-28 flex-col justify-between p-3 bg-slate-50" />
+    );
   }
   const styles = STATUS_STYLES[cell.status];
   const displayUtilizationPct = getDisplayDemandUtilizationPct(cell);
@@ -190,15 +210,20 @@ function CapacityCellCard({
       </div>
 
       <div className="flex-1 pt-2">
-        <p className={`font-black tracking-tight ${compact ? "text-lg" : "text-3xl"}`}>
-          {displayUtilizationPct === null ? "—" : formatUtilPct(displayUtilizationPct)}
+        <p
+          className={`font-black tracking-tight ${compact ? "text-lg" : "text-3xl"}`}
+        >
+          {displayUtilizationPct === null
+            ? "—"
+            : formatUtilPct(displayUtilizationPct)}
         </p>
       </div>
 
       <div className="flex items-end justify-between gap-2">
         {!compact ? (
           <span className="text-[10px] font-medium text-slate-400">
-            {formatHours(cell.demand_hours)}h / {formatHours(cell.capacity_hours)}h
+            {formatHours(cell.demand_hours)}h /{" "}
+            {formatHours(cell.capacity_hours)}h
           </span>
         ) : (
           <span className="text-[10px] font-medium text-slate-400">
@@ -215,14 +240,20 @@ function CapacityCellCard({
   );
 }
 
-function CapacityWeekSummaryCell({ summary }: { summary: CapacityWeekSummary }) {
+function CapacityWeekSummaryCell({
+  summary,
+}: {
+  summary: CapacityWeekSummary;
+}) {
   const status = resolveCapacityStatus(summary.worst_status);
   const styles = STATUS_STYLES[status];
 
   return (
     <div className="flex min-h-24 flex-col justify-between bg-white p-3 text-slate-700">
       <div className="flex items-start justify-between gap-2">
-        <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${styles.badge}`}>
+        <span
+          className={`rounded-full px-2 py-1 text-[10px] font-bold ${styles.badge}`}
+        >
           {STATUS_STYLES[status].label}
         </span>
         <span className="text-xs font-semibold text-slate-500">
@@ -231,7 +262,8 @@ function CapacityWeekSummaryCell({ summary }: { summary: CapacityWeekSummary }) 
       </div>
       <div className="space-y-1">
         <p className="text-sm font-bold text-slate-900">
-          {formatHours(summary.total_demand_hours)}h / {formatHours(summary.total_capacity_hours)}h
+          {formatHours(summary.total_demand_hours)}h /{" "}
+          {formatHours(summary.total_capacity_hours)}h
         </p>
         <p className="text-[10px] text-slate-400">
           {formatHours(summary.total_booked_hours)}h booked
@@ -282,39 +314,59 @@ function CapacityDiagnosticsPanel({
               {formatDateTime(diagnostics.capacity_computed_at)}
             </p>
             <p>
-              <span className="font-semibold text-slate-900">Snapshot date:</span>{" "}
-              {diagnostics.snapshot_date ? formatDate(diagnostics.snapshot_date) : "Not available"}
+              <span className="font-semibold text-slate-900">
+                Snapshot date:
+              </span>{" "}
+              {diagnostics.snapshot_date
+                ? formatDate(diagnostics.snapshot_date)
+                : "Not available"}
             </p>
             <p>
-              <span className="font-semibold text-slate-900">Snapshot refreshed:</span>{" "}
+              <span className="font-semibold text-slate-900">
+                Snapshot refreshed:
+              </span>{" "}
               {formatDateTime(diagnostics.snapshot_refreshed_at)}
             </p>
             <p>
-              <span className="font-semibold text-slate-900">Assets evaluated:</span>{" "}
+              <span className="font-semibold text-slate-900">
+                Assets evaluated:
+              </span>{" "}
               {diagnostics.total_assets_evaluated}
             </p>
             <p>
-              <span className="font-semibold text-slate-900">Unresolved assets:</span>{" "}
+              <span className="font-semibold text-slate-900">
+                Unresolved assets:
+              </span>{" "}
               {diagnostics.unresolved_asset_count}
             </p>
           </div>
           <div className="space-y-3 text-sm text-slate-600">
             <p>
-              <span className="font-semibold text-slate-900">Excluded not planning ready:</span>{" "}
+              <span className="font-semibold text-slate-900">
+                Excluded not planning ready:
+              </span>{" "}
               {diagnostics.excluded_not_planning_ready}
             </p>
             <p>
-              <span className="font-semibold text-slate-900">Excluded retired:</span>{" "}
+              <span className="font-semibold text-slate-900">
+                Excluded retired:
+              </span>{" "}
               {diagnostics.excluded_retired}
             </p>
             <p>
-              <span className="font-semibold text-slate-900">Other demand hours:</span>{" "}
+              <span className="font-semibold text-slate-900">
+                Other demand hours:
+              </span>{" "}
               {formatHours(diagnostics.other_demand_hours_total)}h
             </p>
             <p>
-              <span className="font-semibold text-slate-900">Excluded asset types:</span>{" "}
+              <span className="font-semibold text-slate-900">
+                Excluded asset types:
+              </span>{" "}
               {diagnostics.excluded_asset_types.length > 0
-                ? diagnostics.excluded_asset_types.map(formatAssetType).join(", ")
+                ? diagnostics.excluded_asset_types
+                    .map(formatCapacityAssetType)
+                    .join(", ")
                 : "None"}
             </p>
           </div>
@@ -323,13 +375,18 @@ function CapacityDiagnosticsPanel({
             {diagnostics.assumptions.length > 0 ? (
               <ul className="mt-2 space-y-2 text-sm text-slate-600">
                 {diagnostics.assumptions.map((assumption) => (
-                  <li key={assumption} className="rounded-xl bg-slate-50 px-3 py-2">
+                  <li
+                    key={assumption}
+                    className="rounded-xl bg-slate-50 px-3 py-2"
+                  >
                     {assumption}
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="mt-2 text-sm text-slate-500">No assumptions were provided.</p>
+              <p className="mt-2 text-sm text-slate-500">
+                No assumptions were provided.
+              </p>
             )}
           </div>
         </div>
@@ -398,8 +455,14 @@ export function CapacityDashboard() {
   const setCapacityWindowSize = useUIIntentStore(
     (state) => state.setCapacityWindowSize,
   );
-  const { projects, projectId, selectedProject, projectBootstrapLoading, setProjectId } =
-    useResolvedProjectSelection({ userId });
+  const {
+    projects,
+    projectId,
+    selectedProject,
+    projectBootstrapLoading,
+    setProjectId,
+  } = useResolvedProjectSelection({ userId });
+  const { assets: projectAssets } = useProjectAssets(projectId);
 
   useEffect(() => {
     setHasMounted(true);
@@ -437,7 +500,8 @@ export function CapacityDashboard() {
   }, [hasUIIntentHydrated, uiScopeKey]);
 
   const requestedWeeks = WINDOW_WEEKS[windowSize];
-  const enabled = Boolean(projectId) && hasUIIntentHydrated && user?.role !== "subcontractor";
+  const enabled =
+    Boolean(projectId) && hasUIIntentHydrated && user?.role !== "subcontractor";
   const { snapshot } = useLookaheadSnapshot({ projectId, enabled });
   const heatmap = useMemo(
     () => (snapshot?.rows?.length ? pivotRows(snapshot.rows) : null),
@@ -472,6 +536,51 @@ export function CapacityDashboard() {
   const weeks = capacityData?.weeks ?? [];
   const compactMode = isCompact(weeks.length);
   const visibleAssetTypes = capacityData?.asset_types ?? [];
+  const assetTypeCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+
+    projectAssets.forEach((asset) => {
+      const candidateKeys = new Set(
+        [
+          asset.canonical_type,
+          asset.type,
+          stripTrailingNumber(
+            formatProjectLocalAssetName(asset.name, asset.asset_code, asset.id),
+          ),
+        ]
+          .map(normalizeAssetTypeKey)
+          .filter(Boolean),
+      );
+
+      candidateKeys.forEach((key) => {
+        counts.set(key, (counts.get(key) ?? 0) + 1);
+      });
+    });
+
+    return counts;
+  }, [projectAssets]);
+
+  const assetTypeMetadata = useMemo(() => {
+    return new Map(
+      visibleAssetTypes.map((assetType) => {
+        const typeKey = normalizeAssetTypeKey(assetType);
+        const rowAvailableAssets = Math.max(
+          0,
+          ...Object.values(capacityData?.rows[assetType] ?? {}).map(
+            (cell) => cell.available_assets,
+          ),
+        );
+
+        return [
+          assetType,
+          {
+            count: assetTypeCounts.get(typeKey) ?? rowAvailableAssets,
+            displayName: formatCapacityAssetType(assetType),
+          },
+        ];
+      }),
+    );
+  }, [assetTypeCounts, capacityData?.rows, visibleAssetTypes]);
 
   const updateWindowSize = (next: CapacityWindowSize) => {
     setWindowSizeLocal(next);
@@ -527,11 +636,15 @@ export function CapacityDashboard() {
               <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center xl:w-auto">
                 <div className="relative" ref={dropdownRef}>
                   <Button
-                    onClick={() => setShowProjectSelector((current) => !current)}
+                    onClick={() =>
+                      setShowProjectSelector((current) => !current)
+                    }
                     className="h-auto w-full rounded-lg bg-navy px-5 py-5 text-sm font-bold text-white shadow-md shadow-slate-900/10 hover:bg-(--navy-hover) sm:w-auto"
                   >
                     <span className="flex items-center gap-2">
-                      {isLoading ? "Loading..." : selectedProject?.name ?? "Select Project"}
+                      {isLoading
+                        ? "Loading..."
+                        : (selectedProject?.name ?? "Select Project")}
                       <ChevronDown
                         size={15}
                         className={`transition-transform duration-200 ${
@@ -567,16 +680,22 @@ export function CapacityDashboard() {
                             >
                               <div className="flex items-center justify-between gap-3">
                                 <div className="min-w-0">
-                                  <div className="truncate font-bold">{project.name}</div>
+                                  <div className="truncate font-bold">
+                                    {project.name}
+                                  </div>
                                   <div
                                     className={`truncate text-[11px] ${
-                                      isActive ? "text-slate-300" : "text-slate-400"
+                                      isActive
+                                        ? "text-slate-300"
+                                        : "text-slate-400"
                                     }`}
                                   >
                                     {project.location || "No location"}
                                   </div>
                                 </div>
-                                {isActive ? <Check size={14} className="shrink-0" /> : null}
+                                {isActive ? (
+                                  <Check size={14} className="shrink-0" />
+                                ) : null}
                               </div>
                             </button>
                           );
@@ -662,7 +781,9 @@ export function CapacityDashboard() {
 
                     {weeks.map((week, index) => (
                       <div key={week} className="bg-slate-50 p-4">
-                        <p className="text-sm font-bold text-slate-900">Week {index + 1}</p>
+                        <p className="text-sm font-bold text-slate-900">
+                          Week {index + 1}
+                        </p>
                         <p className="mt-1 text-[11px] font-medium text-slate-500">
                           {formatWeekRange(week)}
                         </p>
@@ -670,7 +791,9 @@ export function CapacityDashboard() {
                     ))}
 
                     {visibleAssetTypes.map((assetType) => {
-                      const assetSummary = capacityData.summary_by_asset_type[assetType];
+                      const assetSummary =
+                        capacityData.summary_by_asset_type[assetType];
+                      const assetTypeMeta = assetTypeMetadata.get(assetType);
 
                       return (
                         <FragmentRow
@@ -679,22 +802,32 @@ export function CapacityDashboard() {
                             <div className="flex min-h-28 flex-col justify-between bg-white p-4">
                               <div>
                                 <p className="text-sm font-bold text-slate-950">
-                                  {formatAssetType(assetType)}
+                                  <span>
+                                    {assetTypeMeta?.displayName ??
+                                      formatCapacityAssetType(assetType)}
+                                  </span>
                                 </p>
-                                <p className="mt-1 text-xs text-slate-500">
-                                  Peak{" "}
-                                  {(assetSummary?.total_capacity_hours ?? 0) > 0
-                                    ? formatUtilPct(assetSummary?.peak_demand_utilization_pct ?? 0)
-                                    : "—"}
-                                </p>
+                                <div
+                                  className="mt-1 flex flex-wrap gap-2 text-[11px] font-semibold"
+                                  title="Assets in this type"
+                                >
+                                  <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-600">
+                                    Assets: {assetTypeMeta?.count ?? 0}
+                                  </span>
+                                </div>
                               </div>
                               <div className="flex flex-wrap gap-2 text-[11px] font-semibold">
                                 <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-600">
-                                  {formatHours(assetSummary?.total_demand_hours ?? 0)}h demand
+                                  {formatHours(
+                                    assetSummary?.total_demand_hours ?? 0,
+                                  )}
+                                  h demand
                                 </span>
-                                {(assetSummary?.weeks_over_capacity ?? 0) > 0 ? (
+                                {(assetSummary?.weeks_over_capacity ?? 0) >
+                                0 ? (
                                   <span className="rounded-full bg-red-100 px-2 py-1 text-red-700">
-                                    {assetSummary?.weeks_over_capacity ?? 0} over
+                                    {assetSummary?.weeks_over_capacity ?? 0}{" "}
+                                    over
                                   </span>
                                 ) : null}
                                 {(assetSummary?.weeks_tight ?? 0) > 0 ? (
@@ -717,7 +850,9 @@ export function CapacityDashboard() {
                     })}
 
                     <div className="bg-slate-50 p-4">
-                      <p className="text-sm font-bold text-slate-950">Weekly Summary</p>
+                      <p className="text-sm font-bold text-slate-950">
+                        Weekly Summary
+                      </p>
                       <p className="mt-1 text-xs text-slate-500">
                         Aggregate demand and worst pressure status by week
                       </p>
@@ -769,13 +904,7 @@ export function CapacityDashboard() {
   );
 }
 
-function FragmentRow({
-  left,
-  cells,
-}: {
-  left: ReactNode;
-  cells: ReactNode[];
-}) {
+function FragmentRow({ left, cells }: { left: ReactNode; cells: ReactNode[] }) {
   return (
     <>
       {left}
