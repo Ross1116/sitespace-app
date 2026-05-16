@@ -1,6 +1,14 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 import { Calendar } from "lucide-react";
 import { groupBookings } from "@/lib/bookingHelpers";
 import BookingCardMobile from "./BookingCardMobile";
@@ -232,6 +240,29 @@ export default function BookingList({
     setOpenDropdownId(null);
   };
 
+  const shouldLetCheckboxHandleSelection = (target: EventTarget | null) =>
+    target instanceof HTMLElement &&
+    Boolean(target.closest("[data-booking-selection-checkbox]"));
+
+  const handleBookingSelectionClick = (
+    event: ReactMouseEvent<HTMLDivElement>,
+    bookingKey: string,
+  ) => {
+    if (!selectionMode || shouldLetCheckboxHandleSelection(event.target)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    onToggleBookingSelection?.(bookingKey);
+  };
+
+  const handleBookingSelectionKeyDown = (
+    event: ReactKeyboardEvent<HTMLDivElement>,
+    bookingKey: string,
+  ) => {
+    if (!selectionMode || (event.key !== "Enter" && event.key !== " ")) return;
+    event.preventDefault();
+    onToggleBookingSelection?.(bookingKey);
+  };
+
   if (loading) {
     return (
       <div className="space-y-3">
@@ -282,12 +313,33 @@ export default function BookingList({
                     const isHighlighted = highlightedId === booking.bookingKey;
                     const isDropdownOpen =
                       openDropdownId === booking.bookingKey;
+                    const isSelected = selectedBookingIds.includes(
+                      booking.bookingKey,
+                    );
 
                     return (
                       <div
                         key={booking.bookingKey}
                         ref={setBookingRef(booking.bookingKey)}
-                        className={`relative isolate transition-all duration-500 rounded-xl ${
+                        role={selectionMode ? "checkbox" : undefined}
+                        aria-checked={selectionMode ? isSelected : undefined}
+                        tabIndex={selectionMode ? 0 : undefined}
+                        onClickCapture={(event) =>
+                          handleBookingSelectionClick(event, booking.bookingKey)
+                        }
+                        onKeyDown={(event) =>
+                          handleBookingSelectionKeyDown(
+                            event,
+                            booking.bookingKey,
+                          )
+                        }
+                        className={`relative isolate overflow-visible transition-all duration-500 rounded-xl ${
+                          isDropdownOpen ? "z-[120]" : "z-0"
+                        } ${selectionMode ? "cursor-pointer" : ""} ${
+                          isSelected
+                            ? "ring-2 ring-navy ring-offset-2 shadow-lg shadow-slate-200/70"
+                            : ""
+                        } ${
                           isHighlighted
                             ? "ring-2 ring-blue-400 ring-offset-2 shadow-lg shadow-blue-100/50"
                             : ""
@@ -315,9 +367,13 @@ export default function BookingList({
                           </div>
                         </BookingCardActionsProvider>
                         {selectionMode && (
-                          <label className="absolute left-3 top-3 z-[150] flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-slate-200 bg-white shadow-sm">
+                          <label
+                            data-booking-selection-checkbox
+                            className="absolute left-3 top-3 z-[150] flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-slate-200 bg-white shadow-sm"
+                            onClick={(event) => event.stopPropagation()}
+                          >
                             <Checkbox
-                              checked={selectedBookingIds.includes(booking.bookingKey)}
+                              checked={isSelected}
                               onCheckedChange={() =>
                                 onToggleBookingSelection?.(booking.bookingKey)
                               }

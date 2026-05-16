@@ -47,6 +47,7 @@ import { PlanningAlerts, type PlanningAlert } from "./PlanningAlerts";
 import { UploadBanner, type UploadPhase } from "./UploadBanner";
 import { WindowSelector } from "./WindowSelector";
 import { formatPct, pivotRows } from "./utils";
+import { formatProjectLocalAssetName } from "@/lib/assetDisplay";
 
 const CreateBookingForm = dynamic(
   () =>
@@ -230,7 +231,15 @@ function getDiagnosticsLoadMessage(error: unknown): string {
 function toLinkedTransformedBooking(booking: ApiBooking): TransformedBooking {
   const start = new Date(`${booking.booking_date}T${booking.start_time || "00:00:00"}`);
   const end = new Date(`${booking.booking_date}T${booking.end_time || "00:00:00"}`);
-  const assetName = booking.asset?.name || booking.asset_id || "Unknown asset";
+  const assetCode = booking.asset?.asset_code || "";
+  const assetName =
+    formatProjectLocalAssetName(
+      booking.asset?.name,
+      assetCode,
+      booking.asset?.id || booking.asset_id,
+    ) ||
+    booking.asset_id ||
+    "Unknown asset";
   const title =
     booking.purpose?.trim() ||
     booking.programme_activity_name?.trim() ||
@@ -249,7 +258,7 @@ function toLinkedTransformedBooking(booking: ApiBooking): TransformedBooking {
     bookedAssets: [assetName],
     assetId: booking.asset?.id || booking.asset_id,
     assetName,
-    assetCode: booking.asset?.asset_code || "",
+    assetCode,
     start,
     end,
     bookingStart: start,

@@ -81,6 +81,7 @@ import {
   getSuggestedDateSlotKey,
   getSuggestedDatesWithCoverageStatus,
 } from "@/components/lookahead/activityBookingCoverage";
+import { formatProjectLocalAssetName } from "@/lib/assetDisplay";
 
 // ===== TYPE DEFINITIONS =====
 type CreateBookingFormProps = {
@@ -864,7 +865,9 @@ export function CreateBookingForm({
       .map((asset) => ({
         ...asset,
         assetKey: asset.id,
-        assetTitle: asset.name,
+        assetTitle:
+          formatProjectLocalAssetName(asset.name, asset.asset_code, asset.id) ||
+          asset.name,
         availabilityStatus:
           "availability_status" in asset ? asset.availability_status : undefined,
         availabilityReason:

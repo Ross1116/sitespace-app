@@ -30,6 +30,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { getApiErrorMessage } from "@/types";
 import { reportError } from "@/lib/monitoring";
+import { formatProjectLocalAssetName } from "@/lib/assetDisplay";
 import { fetchBookingById } from "@/hooks/bookings/api";
 import { useBookingMutations } from "@/hooks/bookings/useBookingMutations";
 import {
@@ -114,8 +115,14 @@ export default function RescheduleBookingForm({
         setProjectId(booking.project_id ?? null);
 
         if (booking.asset) {
-          setAssetName(booking.asset.name);
           setAssetCode(booking.asset.asset_code || "");
+          setAssetName(
+            formatProjectLocalAssetName(
+              booking.asset.name,
+              booking.asset.asset_code,
+              booking.asset.id,
+            ) || booking.asset.name,
+          );
         } else {
           setAssetName("");
           setAssetCode("");
