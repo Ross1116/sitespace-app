@@ -232,12 +232,14 @@ function toLinkedTransformedBooking(booking: ApiBooking): TransformedBooking {
   const start = new Date(`${booking.booking_date}T${booking.start_time || "00:00:00"}`);
   const end = new Date(`${booking.booking_date}T${booking.end_time || "00:00:00"}`);
   const assetCode = booking.asset?.asset_code || "";
+  const formattedName = formatProjectLocalAssetName(
+    booking.asset?.name,
+    assetCode,
+    booking.asset?.id || booking.asset_id,
+  );
   const assetName =
-    formatProjectLocalAssetName(
-      booking.asset?.name,
-      assetCode,
-      booking.asset?.id || booking.asset_id,
-    ) ||
+    formattedName ||
+    booking.asset?.name ||
     booking.asset_id ||
     "Unknown asset";
   const title =

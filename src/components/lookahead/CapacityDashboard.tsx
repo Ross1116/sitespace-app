@@ -540,21 +540,19 @@ export function CapacityDashboard() {
     const counts = new Map<string, number>();
 
     projectAssets.forEach((asset) => {
-      const candidateKeys = new Set(
-        [
-          asset.canonical_type,
-          asset.type,
-          stripTrailingNumber(
-            formatProjectLocalAssetName(asset.name, asset.asset_code, asset.id),
-          ),
-        ]
-          .map(normalizeAssetTypeKey)
-          .filter(Boolean),
-      );
+      const key = [
+        asset.canonical_type,
+        asset.type,
+        stripTrailingNumber(
+          formatProjectLocalAssetName(asset.name, asset.asset_code, asset.id),
+        ),
+      ]
+        .map(normalizeAssetTypeKey)
+        .find(Boolean);
 
-      candidateKeys.forEach((key) => {
+      if (key) {
         counts.set(key, (counts.get(key) ?? 0) + 1);
-      });
+      }
     });
 
     return counts;

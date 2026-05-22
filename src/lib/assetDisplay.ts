@@ -55,8 +55,9 @@ export function formatProjectLocalAssetName(
 
 export function formatAssetDisplayName(asset: AssetDisplayInput | null | undefined) {
   if (!asset) return "";
+  const name = asset.name?.trim() ? asset.name : asset.assetTitle;
   return formatProjectLocalAssetName(
-    asset.name ?? asset.assetTitle,
+    name,
     asset.asset_code ?? asset.assetCode,
     asset.id,
   );

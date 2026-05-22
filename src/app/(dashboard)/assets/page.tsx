@@ -343,6 +343,9 @@ export default function AssetsTable() {
         if (sortField === "assetType") {
           aVal = getAssetDisplayType(a, assetTypeLabels).toLowerCase();
           bVal = getAssetDisplayType(b, assetTypeLabels).toLowerCase();
+        } else if (sortField === "assetTitle") {
+          aVal = getAssetDisplayName(a).toLowerCase();
+          bVal = getAssetDisplayName(b).toLowerCase();
         } else {
           aVal = (a[sortField] || "").toLowerCase();
           bVal = (b[sortField] || "").toLowerCase();

@@ -259,6 +259,7 @@ export default function BookingList({
     bookingKey: string,
   ) => {
     if (!selectionMode || (event.key !== "Enter" && event.key !== " ")) return;
+    if (event.target !== event.currentTarget) return;
     event.preventDefault();
     onToggleBookingSelection?.(bookingKey);
   };
