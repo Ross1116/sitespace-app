@@ -1,7 +1,10 @@
 import type { LookaheadRow } from "@/types";
+import { formatProjectLocalAssetName } from "@/lib/assetDisplay";
 
 export function formatAssetType(t: string): string {
-  return t.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  return formatProjectLocalAssetName(t)
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 export function formatWeekRange(weekStart: string): string {

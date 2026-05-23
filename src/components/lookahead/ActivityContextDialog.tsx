@@ -17,6 +17,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { formatAssetType, formatDate, formatWeekRange } from "./utils";
 import { getSuggestedDatesWithCoverageStatus } from "./activityBookingCoverage";
+import { formatProjectLocalAssetName } from "@/lib/assetDisplay";
 
 interface Props {
   open: boolean;
@@ -305,7 +306,11 @@ export function ActivityContextDialog({
                         >
                           <div className="flex items-center justify-between gap-2">
                             <span className="font-medium text-slate-900">
-                              {asset.name}
+                              {formatProjectLocalAssetName(
+                                asset.name,
+                                asset.asset_code,
+                                asset.id,
+                              ) || asset.name}
                             </span>
                             <div className="flex flex-wrap items-center gap-1">
                               {asset.canonical_type && (

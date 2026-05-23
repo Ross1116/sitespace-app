@@ -3,6 +3,7 @@ import {
   CalendarEvent as BaseCalendarEvent,
   AssetCalendar as BaseAssetCalendar,
 } from "@/components/ui/full-calendar/calendar-context";
+import { formatProjectLocalAssetName } from "@/lib/assetDisplay";
 import { ApiAsset, ApiBooking } from "@/types";
 
 export type VariantProps<Component extends (...args: unknown[]) => unknown> =
@@ -60,9 +61,6 @@ export interface AssetCalendar extends Omit<BaseAssetCalendar, "events"> {
   asset?: ApiAsset | { id: string; name: string; asset_code?: string };
 }
 
-// Global debug flag (Module level variable instead of window)
-let hasLoggedDiagnostic = false;
-
 // --- CONVERSION ---
 
 export function convertBookingToCalendarEvent(
@@ -82,16 +80,23 @@ export function convertBookingToCalendarEvent(
     assetCode =
       getString(rawAsset.asset_code) || getString(rawAsset.code) || assetCode;
     const rawAssetName = getString(rawAsset.name);
-    if (rawAssetName) assetName = rawAssetName;
+    if (rawAssetName) {
+      assetName =
+        formatProjectLocalAssetName(rawAssetName, assetCode, assetId) ||
+        rawAssetName;
+    }
   } else if (raw.asset_id) {
     assetId = getId(raw.asset_id) || assetId;
     // If booking already has an assetName (from cache or create-time), preserve it
     const bookingAssetName = getString(booking.assetName);
     if (bookingAssetName && bookingAssetName !== "Unknown Asset") {
-      assetName = bookingAssetName;
+      assetName =
+        formatProjectLocalAssetName(bookingAssetName) || bookingAssetName;
     } else {
       const rawAssetName = getString(raw.asset_name);
-      if (rawAssetName) assetName = rawAssetName;
+      if (rawAssetName) {
+        assetName = formatProjectLocalAssetName(rawAssetName) || rawAssetName;
+      }
     }
   }
 

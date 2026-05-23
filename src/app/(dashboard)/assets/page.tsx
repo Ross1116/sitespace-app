@@ -43,6 +43,7 @@ import { useRouter } from "next/navigation";
 import { useResolvedProjectSelection } from "@/hooks/useResolvedProjectSelection";
 import { useProjectAssets } from "@/hooks/useProjectAssets";
 import { useProjectAssetTypes } from "@/hooks/useProjectAssetTypes";
+import { formatAssetDisplayName } from "@/lib/assetDisplay";
 
 type Asset = TransformedAsset;
 
@@ -70,6 +71,13 @@ const getAssetDisplayType = (
   }
   return asset.assetType;
 };
+
+const getAssetDisplayName = (asset: Asset): string =>
+  formatAssetDisplayName({
+    id: asset.assetKey,
+    assetCode: asset.assetCode,
+    assetTitle: asset.assetTitle,
+  }) || asset.assetTitle;
 
 const transformBackendAsset = (backendAsset: ApiAsset): Asset => {
   const descriptionText =
@@ -288,6 +296,7 @@ export default function AssetsTable() {
       const term = searchTerm.toLowerCase();
       result = result.filter(
         (asset) =>
+          getAssetDisplayName(asset).toLowerCase().includes(term) ||
           asset.assetTitle.toLowerCase().includes(term) ||
           asset.assetCode.toLowerCase().includes(term) ||
           getAssetDisplayType(asset, assetTypeLabels).toLowerCase().includes(term),
@@ -334,6 +343,9 @@ export default function AssetsTable() {
         if (sortField === "assetType") {
           aVal = getAssetDisplayType(a, assetTypeLabels).toLowerCase();
           bVal = getAssetDisplayType(b, assetTypeLabels).toLowerCase();
+        } else if (sortField === "assetTitle") {
+          aVal = getAssetDisplayName(a).toLowerCase();
+          bVal = getAssetDisplayName(b).toLowerCase();
         } else {
           aVal = (a[sortField] || "").toLowerCase();
           bVal = (b[sortField] || "").toLowerCase();
@@ -570,6 +582,7 @@ export default function AssetsTable() {
               ) : (
                 paginatedAssets.map((asset) => {
                   const isSelected = selectedAsset?.assetKey === asset.assetKey;
+                  const assetDisplayName = getAssetDisplayName(asset);
                   const statusDisplay = formatStatusForDisplay(
                     asset.assetStatus,
                   );
@@ -597,9 +610,9 @@ export default function AssetsTable() {
                         <div className="flex flex-col truncate">
                           <span
                             className="font-semibold text-slate-800 text-sm truncate"
-                            title={asset.assetTitle}
+                            title={assetDisplayName}
                           >
-                            {asset.assetTitle}
+                            {assetDisplayName}
                           </span>
                           <span className="text-[10px] font-mono text-slate-400">
                             {asset.assetCode}
@@ -754,7 +767,7 @@ export default function AssetsTable() {
                     </div>
                   </div>
                   <h2 className="text-xl font-bold leading-tight">
-                    {selectedAsset.assetTitle}
+                    {getAssetDisplayName(selectedAsset)}
                   </h2>
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-slate-300 text-sm font-mono opacity-80">

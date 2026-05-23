@@ -16,6 +16,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { formatProjectLocalAssetName } from "@/lib/assetDisplay";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -463,7 +464,11 @@ export function BookingDetailsDialog({
               <div className="mt-1 flex flex-wrap items-center gap-2">
                 <span className="text-sm text-slate-500">Asset:</span>
                 <span className="max-w-full truncate text-sm font-medium text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md">
-                  {data.asset.name}
+                  {formatProjectLocalAssetName(
+                    data.asset.name,
+                    data.asset.asset_code,
+                    data.asset.id,
+                  ) || data.asset.name}
                   <span className="text-slate-400 ml-1 font-normal">
                     ({data.asset.asset_code})
                   </span>
