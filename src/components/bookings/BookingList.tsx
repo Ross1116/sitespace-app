@@ -335,7 +335,7 @@ export default function BookingList({
                           )
                         }
                         className={`relative isolate overflow-visible transition-all duration-500 rounded-xl ${
-                          isDropdownOpen ? "z-[120]" : "z-0"
+                          isDropdownOpen ? "z-120" : "z-0"
                         } ${selectionMode ? "cursor-pointer" : ""} ${
                           isSelected
                             ? "ring-2 ring-navy ring-offset-2 shadow-lg shadow-slate-200/70"
@@ -370,7 +370,7 @@ export default function BookingList({
                         {selectionMode && (
                           <label
                             data-booking-selection-checkbox
-                            className="absolute left-3 top-3 z-[150] flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-slate-200 bg-white shadow-sm"
+                            className="absolute left-3 top-3 z-150 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-slate-200 bg-white shadow-sm"
                             onClick={(event) => event.stopPropagation()}
                           >
                             <Checkbox

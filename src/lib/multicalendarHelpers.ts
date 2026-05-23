@@ -61,9 +61,6 @@ export interface AssetCalendar extends Omit<BaseAssetCalendar, "events"> {
   asset?: ApiAsset | { id: string; name: string; asset_code?: string };
 }
 
-// Global debug flag (Module level variable instead of window)
-let hasLoggedDiagnostic = false;
-
 // --- CONVERSION ---
 
 export function convertBookingToCalendarEvent(
