@@ -272,7 +272,7 @@ const SideNav = () => {
             >
               <Image
                 src="/full-logo-dark.svg"
-                alt="SiteSpace"
+                alt="Sitespace"
                 width={140}
                 height={40}
                 className="object-contain"

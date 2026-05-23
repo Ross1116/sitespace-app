@@ -7,11 +7,10 @@ import { cn } from "@/lib/utils";
 import "./LandingPage.css";
 
 import { NavBar } from "@/components/landing/TopBar";
-import { HeroParallax } from "@/components/landing/HeroParallax";
+import { DashboardHero } from "@/components/landing/DashboardHero";
 // import { WatchVideoButton } from "@/components/landing/WatchVideoButton";
 import {
   ScrollAnimations,
-  HeroOrbs,
   LookaheadDashboard,
   ShowcaseSection,
   DemoRequestCTA,
@@ -64,57 +63,7 @@ export default function LandingPage() {
 
       <NavBar />
 
-      <section className="min-h-screen flex items-center justify-center relative overflow-hidden bg-[linear-gradient(rgba(0,0,0,0.85),rgba(0,0,0,0.9))] grid-bg">
-        <div
-          className="absolute inset-0 z-0 pointer-events-none"
-          aria-hidden="true"
-        >
-          <HeroOrbs />
-        </div>
-
-        <div className="relative z-10 max-w-7xl mx-auto px-6 w-full">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <HeroParallax>
-              {/* <div className={cn(BADGE, "mb-6")}>
-                <span>🚀 Introducing AI-Powered Lookahead Planning</span>
-              </div> */}
-              <h1 className={cn(GIANT, "mb-6")}>
-                The future of
-                <br />
-                construction
-              </h1>
-              <p className="text-xl md:text-2xl text-gray-400 max-w-3xl mb-10 font-normal">
-                Program driven predictive logistics intelligence tool
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <DemoRequestCTA
-                  label="Book a Demo"
-                  className="cursor-pointer shine bg-amber-500 text-black rounded-full px-6 py-3 text-[17px] font-semibold inline-flex items-center justify-center hover:scale-[1.02] transition-transform"
-                />
-                {/* <WatchVideoButton /> */}
-              </div>
-            </HeroParallax>
-
-            <div
-              className="animate-fade-in-up [animation-delay:0.2s]"
-              style={{ animationFillMode: "both" }}
-            >
-              <DesktopFrame className="shine md:transform-[perspective(1000px)_rotateY(-5deg)]">
-                <Image
-                  src="/static/images/Lookaheaddash.jpeg"
-                  alt="SiteSpace Lookahead dashboard"
-                  width={800}
-                  height={500}
-                  priority
-                  sizes="(max-width: 768px) 100vw, 50vw"
-                  quality={75}
-                  className="block w-full"
-                />
-              </DesktopFrame>
-            </div>
-          </div>
-        </div>
-      </section>
+      <DashboardHero />
 
       <section className="px-6 py-16 md:py-30">
         <div className="max-w-6xl mx-auto">
@@ -176,7 +125,7 @@ export default function LandingPage() {
             <DesktopFrame className="shine max-w-180 mx-auto">
               <Image
                 src="/static/images/dashtwo.jpeg"
-                alt="SiteSpace dashboard showing bookings and assets"
+                alt="Sitespace dashboard showing bookings and assets"
                 width={720}
                 height={450}
                 loading="lazy"
@@ -195,7 +144,7 @@ export default function LandingPage() {
             <DesktopFrame className="shine">
               <Image
                 src="/static/images/cal.jpg"
-                alt="SiteSpace subcontractors management dashboard"
+                alt="Sitespace subcontractors management dashboard"
                 width={720}
                 height={450}
                 loading="lazy"
@@ -449,7 +398,7 @@ export default function LandingPage() {
               <div className="flex items-center gap-2 mb-4">
                 <Image
                   src="/full-logo-dark.svg"
-                  alt="SiteSpace"
+                  alt="Sitespace"
                   width={140}
                   height={48}
                   loading="lazy"
@@ -485,14 +434,14 @@ export default function LandingPage() {
 
           <div className="border-t border-white/10 pt-6">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-600">
-              <div>© {year} SiteSpace. All rights reserved.</div>
+              <div>© {year} Sitespace. All rights reserved.</div>
               <a
                 href="https://sitespace.com.au"
                 className="hover:text-white transition-colors"
                 target="_blank"
                 rel="noreferrer"
               >
-                sitespace.com.au
+                Sitespace.com.au
               </a>
             </div>
           </div>

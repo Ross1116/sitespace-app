@@ -38,7 +38,7 @@ export function ShowcaseSection() {
             💼 Full Platform Overview
           </div>
           <h2 className="text-[clamp(2rem,6vw,5rem)] font-bold leading-[1.2] tracking-tight mb-6">
-            Explore SiteSpace
+            Explore Sitespace
             <br />
             <span className="gradient-text">in action</span>
           </h2>
@@ -88,7 +88,7 @@ export function ShowcaseSection() {
               <FrameHeader />
               <Image
                 src="/static/images/desk.png"
-                alt="SiteSpace desktop dashboard interface"
+                alt="Sitespace desktop dashboard interface"
                 width={1200}
                 height={750}
                 loading="lazy"
@@ -128,7 +128,7 @@ export function ShowcaseSection() {
                 <div className="rounded-9.5 overflow-hidden">
                   <Image
                     src="/static/images/mobile.png"
-                    alt="SiteSpace mobile app interface"
+                    alt="Sitespace mobile app interface"
                     width={380}
                     height={780}
                     loading="lazy"
@@ -166,7 +166,7 @@ export function ShowcaseSection() {
                 <FrameHeader />
                 <Image
                   src="/static/images/desk.png"
-                  alt="SiteSpace desktop interface"
+                  alt="Sitespace desktop interface"
                   width={1200}
                   height={750}
                   loading="lazy"
@@ -190,7 +190,7 @@ export function ShowcaseSection() {
                 <div className="rounded-9.5 overflow-hidden">
                   <Image
                     src="/static/images/mobile.png"
-                    alt="SiteSpace mobile interface"
+                    alt="Sitespace mobile interface"
                     width={340}
                     height={700}
                     loading="lazy"

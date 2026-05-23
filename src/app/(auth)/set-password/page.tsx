@@ -26,7 +26,7 @@ export default async function SetPasswordPage({
           <Link href="/" className="inline-flex items-center">
             <Image
               src="/full-logo-dark.svg"
-              alt="SiteSpace"
+              alt="Sitespace"
               width={160}
               height={48}
               className="h-10 brightness-0 invert"
@@ -46,7 +46,7 @@ export default async function SetPasswordPage({
         </div>
 
         <div className="z-10 text-sm text-slate-500">
-          <p>© 2026 SiteSpace.</p>
+          <p>© 2026 Sitespace.</p>
         </div>
       </div>
 

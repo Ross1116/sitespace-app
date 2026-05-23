@@ -69,10 +69,10 @@ export const siteContent = {
   },
 
   valueProp: {
-    badge: "Why Choose sitespace",
+    badge: "Why Choose Sitespace",
     heading: "The only platform built specifically for asset delivery",
     subheading:
-      "Unlike generic scheduling tools, sitespace is designed from the ground up for the unique challenges of asset delivery management.",
+      "Unlike generic scheduling tools, Sitespace is designed from the ground up for the unique challenges of asset delivery management.",
     cta: "Learn More",
     points: [
       {
@@ -145,7 +145,7 @@ export const siteContent = {
       },
       {
         quote:
-          "We've been using sitespace for our equipment deliveries for the past month and have already seen a significant improvement in on-time deliveries.",
+          "We've been using Sitespace for our equipment deliveries for the past month and have already seen a significant improvement in on-time deliveries.",
         author: "Emma Rodriguez",
         role: "Project Manager",
         company: "Urban Developers Inc.",
@@ -204,43 +204,43 @@ export const siteContent = {
   faq: {
     badge: "FAQ",
     heading: "Frequently Asked Questions",
-    subheading: "Find answers to common questions about sitespace and how it can transform your delivery operations.",
+    subheading: "Find answers to common questions about Sitespace and how it can transform your delivery operations.",
     ctaText: "Still have questions? We're here to help.",
     primaryCta: "Contact Support",
     secondaryCta: "Schedule a Demo",
     items: [
       {
-        question: "How does sitespace help optimize asset delivery scheduling?",
+        question: "How does Sitespace help optimize asset delivery scheduling?",
         answer:
-          "sitespace uses AI-powered algorithms to analyze your delivery patterns, asset availability, and customer requirements to create optimized schedules. Our platform considers factors like location, traffic patterns, asset specifications, and delivery windows to minimize travel time and maximize efficiency. This results in reduced operational costs, improved on-time delivery rates, and better resource utilization.",
+          "Sitespace uses AI-powered algorithms to analyze your delivery patterns, asset availability, and customer requirements to create optimized schedules. Our platform considers factors like location, traffic patterns, asset specifications, and delivery windows to minimize travel time and maximize efficiency. This results in reduced operational costs, improved on-time delivery rates, and better resource utilization.",
       },
       {
-        question: "How long does it take to implement sitespace?",
+        question: "How long does it take to implement Sitespace?",
         answer:
-          "Most customers are up and running with sitespace in just 1-2 weeks. Our onboarding process includes data migration, system configuration, user training, and integration with your existing systems. We provide dedicated support throughout the implementation process to ensure a smooth transition. For larger enterprises with complex requirements, implementation may take 3-4 weeks.",
+          "Most customers are up and running with Sitespace in just 1-2 weeks. Our onboarding process includes data migration, system configuration, user training, and integration with your existing systems. We provide dedicated support throughout the implementation process to ensure a smooth transition. For larger enterprises with complex requirements, implementation may take 3-4 weeks.",
       },
       {
-        question: "Can sitespace integrate with our existing systems?",
+        question: "Can Sitespace integrate with our existing systems?",
         answer:
-          "Yes, sitespace is designed to integrate seamlessly with your existing tech stack. We offer pre-built integrations with popular ERP systems, CRMs, inventory management software, and GPS tracking solutions. Our robust API also allows for custom integrations with any proprietary systems you may be using. Our integration specialists will work with your team to ensure data flows smoothly between all your systems.",
+          "Yes, Sitespace is designed to integrate seamlessly with your existing tech stack. We offer pre-built integrations with popular ERP systems, CRMs, inventory management software, and GPS tracking solutions. Our robust API also allows for custom integrations with any proprietary systems you may be using. Our integration specialists will work with your team to ensure data flows smoothly between all your systems.",
       },
       {
-        question: "Is sitespace suitable for small businesses?",
+        question: "Is Sitespace suitable for small businesses?",
         answer:
-          "sitespace is designed to scale with your business. Our Starter plan is specifically tailored for small businesses with straightforward delivery needs. As your business grows, you can easily upgrade to our Professional or Enterprise plans to access more advanced features. Many of our small business customers report significant ROI within the first month of using sitespace.",
+          "Sitespace is designed to scale with your business. Our Starter plan is specifically tailored for small businesses with straightforward delivery needs. As your business grows, you can easily upgrade to our Professional or Enterprise plans to access more advanced features. Many of our small business customers report significant ROI within the first month of using Sitespace.",
       },
       {
-        question: "How secure is our data with sitespace?",
+        question: "How secure is our data with Sitespace?",
         answer:
-          "Security is our top priority. sitespace employs bank-level encryption for all data, both in transit and at rest. We're SOC 2 Type II compliant, conduct regular security audits, and maintain strict access controls. Your data is stored in redundant, geographically distributed data centers with 99.99% uptime. We also offer data backup options and detailed security documentation upon request.",
+          "Security is our top priority. Sitespace employs bank-level encryption for all data, both in transit and at rest. We're SOC 2 Type II compliant, conduct regular security audits, and maintain strict access controls. Your data is stored in redundant, geographically distributed data centers with 99.99% uptime. We also offer data backup options and detailed security documentation upon request.",
       },
       {
-        question: "What kind of support does sitespace provide?",
+        question: "What kind of support does Sitespace provide?",
         answer:
           "All plans include email support with a 24-hour response time. Professional plans add priority support with a 4-hour response time and access to our knowledge base. Enterprise customers receive dedicated support with a named account manager, phone support, and custom training sessions. We also offer optional premium support packages for businesses with 24/7 operational needs.",
       },
       {
-        question: "Can I try sitespace before committing?",
+        question: "Can I try Sitespace before committing?",
         answer:
           "Yes, we offer a 14-day free trial on all our plans with no credit card required. During your trial, you'll have access to all features included in your selected plan, along with sample data to help you explore the platform. Our onboarding team will guide you through the trial to ensure you get the most out of your evaluation period.",
       },
@@ -277,7 +277,7 @@ export const siteContent = {
       phone: "(123) 456-7890",
       email: "info@sitespace.com",
     },
-    copyright: "© 2025 sitespace. All rights reserved.",
+    copyright: "© 2025 Sitespace. All rights reserved.",
     tagline: "Designed with ❤️ for efficient deliveries",
   },
 }

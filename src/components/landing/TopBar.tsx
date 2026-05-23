@@ -45,8 +45,17 @@ export function NavBar() {
     [closeMenu],
   );
 
-  const NAV_LINK =
-    "text-gray-300 hover:text-white transition-colors link-underline";
+  const isLightNav = !isScrolled && !isMenuOpen;
+  const NAV_LINK = cn(
+    "transition-colors link-underline",
+    isLightNav
+      ? "text-[#0b1120] hover:text-[#0e7c9b]"
+      : "text-gray-300 hover:text-white",
+  );
+  const HAMBURGER_BAR = cn(
+    "block w-6.25 h-0.5 rounded-sm transition-all duration-300",
+    isLightNav ? "bg-[#0b1120]" : "bg-[rgb(245,245,247)]",
+  );
 
   return (
     <>
@@ -54,9 +63,9 @@ export function NavBar() {
       <nav
         className={cn(
           "fixed top-0 w-full z-50 backdrop-blur-xl transition-all duration-300",
-          isScrolled
+          isScrolled || isMenuOpen
             ? "bg-black/95 shadow-[0_1px_0_rgba(255,255,255,0.1)]"
-            : "bg-black/80",
+            : "bg-white/95 shadow-[0_1px_0_rgba(11,17,32,0.08)]",
         )}
         aria-label="Primary"
       >
@@ -64,8 +73,8 @@ export function NavBar() {
           <div className="flex items-center justify-between">
             <Link href="/" className="flex items-center space-x-2">
               <Image
-                src="/full-logo-dark.svg"
-                alt="SiteSpace"
+                src={isLightNav ? "/full-logo.svg" : "/full-logo-dark.svg"}
+                alt="Sitespace"
                 width={140}
                 height={36}
                 priority
@@ -90,7 +99,12 @@ export function NavBar() {
               </a>
               <Link
                 href="/login"
-                className="text-gray-300 hover:text-white transition-colors link-underline"
+                className={cn(
+                  "transition-colors link-underline",
+                  isLightNav
+                    ? "text-[#0b1120] hover:text-[#0e7c9b]"
+                    : "text-gray-300 hover:text-white",
+                )}
               >
                 Sign In
               </Link>
@@ -111,9 +125,9 @@ export function NavBar() {
               aria-label="Toggle menu"
               aria-expanded={isMenuOpen}
             >
-              <span className="block w-6.25 h-0.5 bg-[rgb(245,245,247)] rounded-sm transition-all duration-300" />
-              <span className="block w-6.25 h-0.5 bg-[rgb(245,245,247)] rounded-sm transition-all duration-300" />
-              <span className="block w-6.25 h-0.5 bg-[rgb(245,245,247)] rounded-sm transition-all duration-300" />
+              <span className={HAMBURGER_BAR} />
+              <span className={HAMBURGER_BAR} />
+              <span className={HAMBURGER_BAR} />
             </button>
           </div>
         </div>
