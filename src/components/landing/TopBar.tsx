@@ -45,16 +45,13 @@ export function NavBar() {
     [closeMenu],
   );
 
-  const isLightNav = !isScrolled && !isMenuOpen;
   const NAV_LINK = cn(
     "transition-colors link-underline",
-    isLightNav
-      ? "text-[#0b1120] hover:text-[#0e7c9b]"
-      : "text-gray-300 hover:text-white",
+    "text-[#0b1120] hover:text-[#0e7c9b]",
   );
   const HAMBURGER_BAR = cn(
     "block w-6.25 h-0.5 rounded-sm transition-all duration-300",
-    isLightNav ? "bg-[#0b1120]" : "bg-[rgb(245,245,247)]",
+    "bg-[#0b1120]",
   );
 
   return (
@@ -64,7 +61,7 @@ export function NavBar() {
         className={cn(
           "fixed top-0 w-full z-50 backdrop-blur-xl transition-all duration-300",
           isScrolled || isMenuOpen
-            ? "bg-black/95 shadow-[0_1px_0_rgba(255,255,255,0.1)]"
+            ? "bg-white/[0.96] shadow-[0_1px_0_rgba(11,17,32,0.08),0_12px_34px_rgba(11,17,32,0.06)]"
             : "bg-white/95 shadow-[0_1px_0_rgba(11,17,32,0.08)]",
         )}
         aria-label="Primary"
@@ -73,7 +70,7 @@ export function NavBar() {
           <div className="flex items-center justify-between">
             <Link href="/" className="flex items-center space-x-2">
               <Image
-                src={isLightNav ? "/full-logo.svg" : "/full-logo-dark.svg"}
+                src="/full-logo.svg"
                 alt="Sitespace"
                 width={140}
                 height={36}
@@ -91,6 +88,9 @@ export function NavBar() {
               <a href="#lookahead" className={NAV_LINK} onClick={smoothScroll}>
                 Lookahead AI
               </a>
+              <a href="#calculator" className={NAV_LINK} onClick={smoothScroll}>
+                ROI Calculator
+              </a>
               <a href="#benefits" className={NAV_LINK} onClick={smoothScroll}>
                 Benefits
               </a>
@@ -101,9 +101,7 @@ export function NavBar() {
                 href="/login"
                 className={cn(
                   "transition-colors link-underline",
-                  isLightNav
-                    ? "text-[#0b1120] hover:text-[#0e7c9b]"
-                    : "text-gray-300 hover:text-white",
+                  "text-[#0b1120] hover:text-[#0e7c9b]",
                 )}
               >
                 Sign In
@@ -137,7 +135,7 @@ export function NavBar() {
       <button
         type="button"
         className={cn(
-          "fixed inset-0 bg-black/70 transition-all duration-300 z-98 border-none",
+          "fixed inset-0 z-98 border-none bg-slate-950/30 transition-all duration-300",
           isMenuOpen ? "opacity-100 visible" : "opacity-0 invisible",
         )}
         onClick={closeMenu}
@@ -147,25 +145,29 @@ export function NavBar() {
       {/* Mobile menu */}
       <div
         className={cn(
-          "fixed top-0 w-4/5 max-w-100 h-screen bg-[rgba(10,10,20,0.98)] backdrop-blur-2xl transition-[right] duration-400 ease-in-out z-99 pt-20 px-7.5 pb-7.5 overflow-y-auto shadow-[-5px_0_30px_rgba(0,0,0,0.5)]",
+          "fixed top-0 z-99 h-screen w-4/5 max-w-100 overflow-y-auto bg-white/[0.98] px-7.5 pb-7.5 pt-20 shadow-[-18px_0_50px_rgba(11,17,32,0.12)] backdrop-blur-2xl transition-[right] duration-400 ease-in-out",
           isMenuOpen ? "right-0" : "-right-full",
         )}
         aria-hidden={!isMenuOpen}
       >
-        {["features", "lookahead", "benefits", "contact"].map((id) => (
-          <a
-            key={id}
-            href={`#${id}`}
-            className="block py-4 text-[rgb(245,245,247)] text-lg font-semibold border-b border-white/10 hover:text-[rgba(14,124,155,1)] hover:pl-2.5 transition-all"
-            onClick={smoothScroll}
-          >
-            {id.charAt(0).toUpperCase() + id.slice(1)}
-            {id === "lookahead" ? " AI" : ""}
-          </a>
-        ))}
+        {["features", "lookahead", "calculator", "benefits", "contact"].map(
+          (id) => (
+            <a
+              key={id}
+              href={`#${id}`}
+              className="block border-b border-slate-100 py-4 text-lg font-semibold text-[#0b1120] transition-all hover:pl-2.5 hover:text-[rgba(14,124,155,1)]"
+              onClick={smoothScroll}
+            >
+              {id === "calculator"
+                ? "ROI Calculator"
+                : id.charAt(0).toUpperCase() + id.slice(1)}
+              {id === "lookahead" ? " AI" : ""}
+            </a>
+          ),
+        )}
         <Link
           href="/login"
-          className="block py-4 text-[rgb(245,245,247)] text-lg font-semibold border-b border-white/10 hover:text-[rgba(14,124,155,1)] hover:pl-2.5 transition-all"
+          className="block border-b border-slate-100 py-4 text-lg font-semibold text-[#0b1120] transition-all hover:pl-2.5 hover:text-[rgba(14,124,155,1)]"
           onClick={closeMenu}
         >
           Sign In

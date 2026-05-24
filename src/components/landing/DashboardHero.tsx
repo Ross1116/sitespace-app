@@ -3,6 +3,7 @@
 import type React from "react";
 import { useMemo, useState } from "react";
 import {
+  Calculator,
   Calendar,
   Clock,
   HardHat,
@@ -138,6 +139,14 @@ function HeroIntroComposition() {
             className="hero-demo-button inline-flex min-h-12 w-full cursor-pointer items-center justify-center rounded-full bg-amber-500 px-6 text-sm font-semibold text-black shadow-[0_10px_22px_rgba(245,158,11,0.24)] transition-transform hover:scale-[1.01] sm:w-auto"
           />
         </div>
+
+        <a
+          href="#calculator"
+          className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white/84 px-5 text-sm font-bold text-slate-700 shadow-[0_10px_28px_rgba(11,17,32,0.055)] backdrop-blur transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7c9b]/25"
+        >
+          <Calculator size={16} />
+          Estimate ROI
+        </a>
 
         <div className="mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-sm text-slate-500">
           <span>Australian-hosted</span>

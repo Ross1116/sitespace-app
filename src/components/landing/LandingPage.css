@@ -22,6 +22,40 @@
   background-clip: text;
 }
 
+.roi-range {
+  appearance: none;
+  background: #e2e8f0;
+  border-radius: 999px;
+  cursor: pointer;
+  height: 0.4rem;
+  outline: none;
+  width: 100%;
+}
+
+.roi-range::-webkit-slider-thumb {
+  appearance: none;
+  background: var(--navy);
+  border: 3px solid #fff;
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(11, 17, 32, 0.22);
+  height: 1.25rem;
+  transition: transform 0.15s ease;
+  width: 1.25rem;
+}
+
+.roi-range::-webkit-slider-thumb:hover {
+  transform: scale(1.08);
+}
+
+.roi-range::-moz-range-thumb {
+  background: var(--navy);
+  border: 3px solid #fff;
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(11, 17, 32, 0.22);
+  height: 1rem;
+  width: 1rem;
+}
+
 /* ---- Shine sweep on hover (pseudo-element) ---- */
 .shine {
   position: relative;
