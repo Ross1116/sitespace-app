@@ -77,26 +77,26 @@
 }
 
 .hero-float-a {
-  --float-x: 5px;
-  --float-y: -7px;
+  --float-x: 3px;
+  --float-y: -4px;
   animation-delay: -1.6s;
 }
 
 .hero-float-b {
-  --float-x: -5px;
-  --float-y: -6px;
+  --float-x: -3px;
+  --float-y: -4px;
   animation-delay: -3.4s;
 }
 
 .hero-float-c {
-  --float-x: 4px;
-  --float-y: 6px;
+  --float-x: 3px;
+  --float-y: 4px;
   animation-delay: -5.2s;
 }
 
 .hero-float-d {
-  --float-x: -4px;
-  --float-y: 5px;
+  --float-x: -3px;
+  --float-y: 3px;
   animation-delay: -7s;
 }
 

@@ -1,6 +1,15 @@
 import Image from "next/image";
 import type React from "react";
-import { Upload, BrainCircuit, BellRing, ShieldCheck } from "lucide-react";
+import {
+  AlertTriangle,
+  BellRing,
+  BrainCircuit,
+  CalendarDays,
+  Clock3,
+  HardHat,
+  ShieldCheck,
+  Upload,
+} from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -25,8 +34,6 @@ const GIANT =
 
 const LARGE =
   "text-[clamp(2rem,6vw,5rem)] font-bold leading-[1.2] tracking-tight";
-
-const MEDIUM = "text-[clamp(1.5rem,4vw,3rem)] font-semibold leading-[1.3]";
 
 const APPLE =
   "transition-all duration-[400ms] ease-in-out cursor-pointer hover:scale-[1.02] hover:shadow-[0_20px_60px_rgba(0,0,0,0.3)]";
@@ -65,14 +72,16 @@ export default function LandingPage() {
 
       <DashboardHero />
 
+      <ShowcaseSection />
+
       <section className="px-6 py-16 md:py-30">
         <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
             {[
-              { value: "85%", label: "Fewer conflicts" },
-              { value: "2-4", label: "Weeks advance notice" },
-              { value: "60%", label: "Time saved" },
-              { value: "100%", label: "Audit trail" },
+              { value: "42", label: "Weekly bookings tracked" },
+              { value: "2-6", label: "Weeks of forecast visibility" },
+              { value: "14", label: "Approvals ready today" },
+              { value: "100%", label: "Audit trail coverage" },
             ].map((stat, i) => (
               <div
                 key={stat.value}
@@ -123,16 +132,7 @@ export default function LandingPage() {
             style={{ transitionDelay: "0.2s" }}
           >
             <DesktopFrame className="shine max-w-180 mx-auto">
-              <Image
-                src="/static/images/dashtwo.jpeg"
-                alt="Sitespace dashboard showing bookings and assets"
-                width={720}
-                height={450}
-                loading="lazy"
-                sizes="(max-width: 768px) 100vw, 720px"
-                quality={75}
-                className="w-full h-auto object-contain"
-              />
+              <BookingIntelligencePanel />
             </DesktopFrame>
           </div>
         </div>
@@ -142,16 +142,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-16 items-center">
           <div className={cn(FADE, "order-2 md:order-1")} data-fade-in>
             <DesktopFrame className="shine">
-              <Image
-                src="/static/images/cal.jpg"
-                alt="Sitespace subcontractors management dashboard"
-                width={720}
-                height={450}
-                loading="lazy"
-                sizes="(max-width: 768px) 100vw, 720px"
-                quality={75}
-                className="w-full h-auto"
-              />
+              <ConflictPreventionPanel />
             </DesktopFrame>
           </div>
           <div className={cn(FADE, "order-1 md:order-2")} data-fade-in>
@@ -183,7 +174,7 @@ export default function LandingPage() {
       >
         <div className="max-w-7xl mx-auto px-6 text-center">
           <div className={cn(FADE, "mb-16")} data-fade-in>
-            <div className={cn(BADGE, "mb-8")}>✨ Powered by AI</div>
+            <div className={cn(BADGE, "mb-8")}>Powered by AI</div>
             <h2 className={cn(GIANT, "mb-8")}>
               Lookahead
               <br />
@@ -215,7 +206,7 @@ export default function LandingPage() {
         />
         <div className="max-w-5xl mx-auto">
           <div className={cn(FADE, "text-center mb-16")} data-fade-in>
-            <div className={cn(BADGE, "mb-6")}>⚙️ How It Works</div>
+            <div className={cn(BADGE, "mb-6")}>How It Works</div>
             <h2 className={cn(LARGE, "mb-4")}>
               Built for the way
               <br />
@@ -272,7 +263,7 @@ export default function LandingPage() {
       >
         <div className="max-w-5xl mx-auto text-center">
           <div className={FADE} data-fade-in>
-            <div className={cn(BADGE, "mb-8")}>🔮 Coming Soon</div>
+            <div className={cn(BADGE, "mb-8")}>Coming Soon</div>
             <h2 className={cn(LARGE, "mb-8")}>
               Live program sync.
               <br />
@@ -356,8 +347,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <ShowcaseSection />
-
       <section
         id="contact"
         className="min-h-screen flex items-center justify-center relative"
@@ -384,7 +373,7 @@ export default function LandingPage() {
               />
             </div>
             <p className="text-gray-600 text-sm">
-              Australian-hosted · Enterprise-ready · Implementation support
+              Australian-hosted | Enterprise-ready | Implementation support
               included
             </p>
           </div>
@@ -434,7 +423,7 @@ export default function LandingPage() {
 
           <div className="border-t border-white/10 pt-6">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-600">
-              <div>© {year} Sitespace. All rights reserved.</div>
+              <div>&copy; {year} Sitespace. All rights reserved.</div>
               <a
                 href="https://sitespace.com.au"
                 className="hover:text-white transition-colors"
@@ -504,6 +493,370 @@ function MobileFrame({
         aria-hidden="true"
       />
       <div className="rounded-9.5 overflow-hidden">{children}</div>
+    </div>
+  );
+}
+
+function BookingIntelligencePanel() {
+  return (
+    <div className="bg-(--page-bg) p-4 text-slate-800 md:p-5">
+      <div className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm">
+        <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+          <div>
+            <h3 className="text-2xl font-extrabold text-slate-900">
+              Bookings
+            </h3>
+            <p className="mt-1 text-sm font-medium text-slate-500">
+              Manage and track scheduled events
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 sm:flex">
+            <BookingCountCard label="Total" value="42" tone="navy" />
+            <BookingCountCard label="Pending" value="14" tone="orange" />
+          </div>
+        </div>
+
+        <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="h-10 w-full rounded-xl bg-slate-50 md:max-w-xs" />
+          <div className="flex gap-2 overflow-hidden">
+            {["Upcoming", "Pending", "Confirmed", "All"].map((tab, index) => (
+              <span
+                key={tab}
+                className={cn(
+                  "shrink-0 rounded-full px-4 py-2 text-xs font-bold",
+                  index === 0
+                    ? "bg-navy text-white shadow-md shadow-slate-900/10"
+                    : "bg-slate-50 text-slate-500",
+                )}
+              >
+                {tab}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <BookingPreviewCard
+            day="18"
+            month="Jun"
+            title="Facade panel delivery"
+            time="09:00 - 12:30"
+            asset="Tower Crane 01"
+            person="Northline Facades"
+            status="pending"
+          />
+          <BookingPreviewCard
+            day="19"
+            month="Jun"
+            title="Services riser install"
+            time="13:00 - 15:00"
+            asset="Hoist 02"
+            person="Site Manager"
+            status="confirmed"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BookingCountCard({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: "navy" | "orange";
+}) {
+  return (
+    <div
+      className={cn(
+        "flex min-w-24 flex-col items-center justify-center rounded-xl px-4 py-2.5 text-white shadow-md",
+        tone === "navy"
+          ? "bg-navy shadow-slate-900/10"
+          : "bg-(--brand-orange) shadow-orange-900/10",
+      )}
+    >
+      <span className="text-2xl font-bold leading-none">{value}</span>
+      <span className="text-[10px] font-medium uppercase tracking-wide opacity-85">
+        {label}
+      </span>
+    </div>
+  );
+}
+
+function BookingPreviewCard({
+  day,
+  month,
+  title,
+  time,
+  asset,
+  person,
+  status,
+}: {
+  day: string;
+  month: string;
+  title: string;
+  time: string;
+  asset: string;
+  person: string;
+  status: "pending" | "confirmed";
+}) {
+  return (
+    <div className="group relative rounded-xl border border-slate-200 bg-white p-4">
+      <div className="grid items-center gap-5 md:grid-cols-[auto_minmax(180px,280px)_1fr_auto]">
+        <div
+          className={cn(
+            "flex h-14 w-14 flex-col items-center justify-center rounded-xl border",
+            status === "pending"
+              ? "border-orange-100 bg-orange-50 text-orange-700"
+              : "border-slate-100 bg-slate-50 text-slate-600",
+          )}
+        >
+          <span className="text-[9px] font-bold uppercase tracking-wider">
+            {month}
+          </span>
+          <span className="text-xl font-bold leading-none">{day}</span>
+        </div>
+
+        <div className="min-w-0 border-slate-100 md:border-r md:pr-5">
+          <h4 className="truncate text-base font-bold leading-tight text-slate-900">
+            {title}
+          </h4>
+          <div className="mt-2 flex items-center gap-2 text-xs font-medium text-slate-500">
+            <Clock3 size={13} className="text-slate-400" />
+            {time}
+          </div>
+        </div>
+
+        <div className="min-w-0 text-sm leading-relaxed text-slate-600">
+          <span className="font-semibold text-blue-700">{asset}</span>
+          <span className="text-slate-400"> | </span>
+          <span>{person}</span>
+        </div>
+
+        <span
+          className={cn(
+            "w-fit rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+            status === "confirmed"
+              ? "border-emerald-100 bg-emerald-50 text-emerald-700"
+              : "border-amber-100 bg-amber-50 text-amber-700",
+          )}
+        >
+          {status}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function ConflictPreventionPanel() {
+  return (
+    <div className="bg-(--page-bg) p-4 text-slate-800 md:p-5">
+      <div className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm">
+        <div className="mb-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
+                Lookahead
+              </p>
+              <h3 className="mt-2 text-xl font-black tracking-tight text-slate-950">
+                18h still unbooked
+              </h3>
+              <p className="mt-1 text-sm leading-6 text-slate-600">
+                Use the demand coverage matrix to inspect the activity behind
+                each weekly gap.
+              </p>
+            </div>
+            <div className="flex w-full gap-2 sm:w-auto">
+              {["2W", "4W", "6W"].map((window, index) => (
+                <span
+                  key={window}
+                  className={cn(
+                    "rounded-full px-3 py-2 text-xs font-bold",
+                    index === 1
+                      ? "bg-navy text-white"
+                      : "bg-slate-100 text-slate-500",
+                  )}
+                >
+                  {window}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="mb-5 grid gap-3 md:grid-cols-3">
+          <LookaheadStatCard
+            label="Main action"
+            value="18h"
+            sub="Still needs bookings"
+            tone="border-amber-200 bg-amber-50 text-amber-950"
+            icon={<AlertTriangle size={18} className="text-amber-600" />}
+          />
+          <LookaheadStatCard
+            label="Booked coverage"
+            value="78%"
+            sub="64h booked of 82h demand"
+            tone="border-slate-200 bg-white text-slate-950"
+            icon={<CalendarDays size={18} className="text-navy" />}
+            progress="78%"
+          />
+          <LookaheadStatCard
+            label="Asset types tracked"
+            value="3"
+            sub="Tower crane, hoist, loading bay"
+            tone="border-slate-200 bg-white text-slate-950"
+            icon={<HardHat size={18} className="text-teal" />}
+          />
+        </div>
+
+        <div className="overflow-hidden rounded-xl border border-slate-200">
+          <div className="grid min-w-[620px] grid-cols-[190px_repeat(3,minmax(140px,1fr))] border-b border-slate-200 bg-slate-50">
+            <div className="border-r border-slate-200 px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">
+              Asset type
+            </div>
+            {["Week 1", "Week 2", "Week 3"].map((week) => (
+              <div
+                key={week}
+                className="border-r border-slate-200 px-4 py-3 text-sm font-bold text-slate-900 last:border-r-0"
+              >
+                {week}
+              </div>
+            ))}
+          </div>
+          <DemandPreviewRow
+            asset="Tower Crane"
+            cells={[
+              { label: "Covered", need: "16h", booked: "16h", gap: "0h" },
+              { label: "High", need: "20h", booked: "12h", gap: "8h" },
+              { label: "Medium", need: "14h", booked: "8h", gap: "6h" },
+            ]}
+          />
+          <DemandPreviewRow
+            asset="Loading Bay"
+            cells={[
+              { label: "Low", need: "10h", booked: "7h", gap: "3h" },
+              { label: "Covered", need: "12h", booked: "12h", gap: "0h" },
+              { label: "No demand", need: "-", booked: "-", gap: "-" },
+            ]}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LookaheadStatCard({
+  icon,
+  label,
+  value,
+  sub,
+  tone,
+  progress,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  sub: string;
+  tone: string;
+  progress?: string;
+}) {
+  return (
+    <div className={cn("rounded-2xl border p-4 shadow-sm", tone)}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+            {label}
+          </p>
+          <p className="mt-2 text-3xl font-black leading-none">{value}</p>
+        </div>
+        <div className="rounded-xl bg-white/70 p-2">{icon}</div>
+      </div>
+      <p className="mt-3 text-sm font-semibold text-slate-700">{sub}</p>
+      {progress && (
+        <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+          <div className="h-full rounded-full bg-teal" style={{ width: progress }} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DemandPreviewRow({
+  asset,
+  cells,
+}: {
+  asset: string;
+  cells: { label: string; need: string; booked: string; gap: string }[];
+}) {
+  return (
+    <div className="grid min-w-[620px] grid-cols-[190px_repeat(3,minmax(140px,1fr))] border-b border-slate-100 last:border-b-0">
+      <div className="border-r border-slate-200 bg-white px-4 py-3">
+        <p className="text-sm font-bold text-slate-900">{asset}</p>
+      </div>
+      {cells.map((cell, index) => (
+        <div
+          key={`${asset}-${index}`}
+          className="border-r border-slate-100 bg-white px-3 py-3 last:border-r-0"
+        >
+          <div className="rounded-xl border border-slate-200 bg-white px-3 py-3">
+            <span
+              className={cn(
+                "rounded-full px-2 py-0.5 text-[10px] font-bold",
+                cell.label === "Covered"
+                  ? "bg-emerald-100 text-emerald-700"
+                  : cell.label === "No demand"
+                    ? "bg-slate-100 text-slate-500"
+                    : cell.label === "High"
+                      ? "bg-orange-50 text-orange-600"
+                      : "bg-amber-50 text-amber-600",
+              )}
+            >
+              {cell.label}
+            </span>
+            <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+              <DemandNumber label="Need" value={cell.need} />
+              <DemandNumber label="Booked" value={cell.booked} tone="teal" />
+              <DemandNumber
+                label="Gap"
+                value={cell.gap}
+                tone={cell.gap === "0h" || cell.gap === "-" ? "green" : "red"}
+              />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DemandNumber({
+  label,
+  value,
+  tone = "slate",
+}: {
+  label: string;
+  value: string;
+  tone?: "slate" | "teal" | "green" | "red";
+}) {
+  const toneClass =
+    tone === "teal"
+      ? "text-teal"
+      : tone === "green"
+        ? "text-emerald-600"
+        : tone === "red"
+          ? "text-red-600"
+          : "text-slate-900";
+
+  return (
+    <div>
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+        {label}
+      </p>
+      <p className={cn("mt-0.5 text-sm font-black", toneClass)}>{value}</p>
     </div>
   );
 }
