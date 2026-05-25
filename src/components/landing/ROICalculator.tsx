@@ -1,8 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type React from "react";
-import { AlertTriangle, CalendarDays, Clock3, Layers3 } from "lucide-react";
+import type { CSSProperties, ReactNode } from "react";
+import {
+  ArrowRight,
+  CalendarDays,
+  Clock3,
+  Construction,
+  Gauge,
+} from "lucide-react";
 
 import { DemoRequestCTA } from "@/components/landing/ContactModal";
 import { cn } from "@/lib/utils";
@@ -63,7 +69,9 @@ export function ROICalculator() {
       recoveredGapHours * Math.min(subcontractors, 60) * 0.06;
     const idleSavings = idleHoursRecovered * 85;
     const coordinationHours =
-      weeks * (subcontractors * 0.28 + sharedAssets * 1.1) * selectedWindow.factor;
+      weeks *
+      (subcontractors * 0.28 + sharedAssets * 1.1) *
+      selectedWindow.factor;
     const coordinationSavings = coordinationHours * 140;
     const totalSavings = delaySavings + idleSavings + coordinationSavings;
     const monthlyFee = 8_000 + projectValue * 80 + sharedAssets * 250;
@@ -75,11 +83,9 @@ export function ROICalculator() {
       coordinationSavings,
       delayDaysAvoided,
       delaySavings,
-      idleHoursRecovered,
       idleSavings,
       paybackMonths,
       percentOfValue: (totalSavings / projectValueDollars) * 100,
-      selectedWindow,
       totalSavings,
       visibleGapHours,
     };
@@ -92,67 +98,168 @@ export function ROICalculator() {
     windowSize,
   ]);
 
+  const ringRadius = 50;
+  const ringCircumference = 2 * Math.PI * ringRadius;
+  const ringPercent = Math.max(0, Math.min(100, estimate.percentOfValue));
+  const ringOffset = ringCircumference * (1 - ringPercent / 100);
+  const ringEndAngle = ringPercent / 100 * Math.PI * 2;
+  const ringEndX = 60 + ringRadius * Math.cos(ringEndAngle);
+  const ringEndY = 60 + ringRadius * Math.sin(ringEndAngle);
+
   return (
     <section
       id="calculator"
-      className="relative overflow-hidden bg-[#eef5f7] px-5 py-20 sm:px-8 lg:py-28"
+      className="relative isolate overflow-hidden bg-[#f7fbfa] px-5 py-16 sm:px-8 lg:py-20"
     >
-      <div className="sitespace-hero-dots absolute inset-0 opacity-40" aria-hidden="true" />
+      <div className="absolute inset-0 landing-soft-survey" aria-hidden="true" />
       <div className="relative mx-auto max-w-7xl">
-        <SectionIntro
-          eyebrow="ROI calculator"
-          title="Model the cost of uncovered demand."
-          description="The calculator now follows the same app language as Lookahead and Capacity Planning: gap hours, visible window, shared assets and active subcontractors."
-        />
+        <div className="grid gap-6 lg:grid-cols-[0.68fr_0.9fr] lg:items-end lg:justify-between">
+          <div>
+            <p className="landing-mono text-[0.68rem] font-semibold uppercase text-[#d94e09]">
+              05 / Commercial case
+            </p>
+            <h2 className="mt-4 max-w-3xl text-5xl font-black leading-[1.01] text-[#0b1120] md:text-7xl">
+              Price the gap.
+            </h2>
+          </div>
+          <div className="grid grid-cols-3 gap-3 text-sm leading-6 text-slate-600 lg:max-w-xl">
+            <BreakdownLine
+              label="Delay"
+              value={`$${formatMoney(estimate.delaySavings)}`}
+            />
+            <BreakdownLine
+              label="Idle"
+              value={`$${formatMoney(estimate.idleSavings)}`}
+            />
+            <BreakdownLine
+              label="Coord."
+              value={`$${formatMoney(estimate.coordinationSavings)}`}
+            />
+          </div>
+        </div>
 
-        <div className="mt-10 grid overflow-hidden rounded-[24px] border border-slate-200/85 bg-white/92 shadow-[0_30px_90px_rgba(11,17,32,0.10)] backdrop-blur md:grid-cols-[1.04fr_0.96fr]">
-          <div className="p-5 sm:p-8 lg:p-10">
-            <div className="max-w-xl">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                Inputs from the workspace
+        <div className="mt-8 grid gap-8 lg:grid-cols-[0.84fr_1.16fr] lg:items-center">
+          <div className="landing-roi-stage group relative mx-auto flex aspect-square w-full max-w-[28rem] items-center justify-center">
+            <div className="landing-roi-halo absolute inset-[7%]" aria-hidden="true" />
+            <div className="landing-roi-outer-ring absolute inset-0" aria-hidden="true" />
+            <svg
+              className="landing-roi-gauge absolute inset-[1.2%]"
+              viewBox="0 0 120 120"
+              aria-label={`${ringPercent.toFixed(2)}% of project value`}
+            >
+              <defs>
+                <linearGradient id="roi-track-gradient" x1="18" y1="18" x2="104" y2="104">
+                  <stop offset="0%" stopColor="#f3f8f8" />
+                  <stop offset="52%" stopColor="#d8e9eb" />
+                  <stop offset="100%" stopColor="#b9d4d9" />
+                </linearGradient>
+                <linearGradient id="roi-progress-gradient" x1="16" y1="18" x2="102" y2="106">
+                  <stop offset="0%" stopColor="#0b5f78" />
+                  <stop offset="52%" stopColor="#0e7c9b" />
+                  <stop offset="100%" stopColor="#7ccce0" />
+                </linearGradient>
+                <filter id="roi-ring-soft-glow" x="-35%" y="-35%" width="170%" height="170%">
+                  <feGaussianBlur stdDeviation="2.2" result="blur" />
+                  <feColorMatrix
+                    in="blur"
+                    type="matrix"
+                    values="0 0 0 0 0.048 0 0 0 0 0.486 0 0 0 0 0.608 0 0 0 0.42 0"
+                    result="glow"
+                  />
+                  <feMerge>
+                    <feMergeNode in="glow" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+              </defs>
+              <g transform="rotate(-90 60 60)">
+                <circle
+                  className="landing-roi-gauge-track"
+                  cx="60"
+                  cy="60"
+                  r={ringRadius}
+                  pathLength={ringCircumference}
+                />
+                <circle
+                  className="landing-roi-gauge-fill-glow"
+                  cx="60"
+                  cy="60"
+                  r={ringRadius}
+                  pathLength={ringCircumference}
+                  style={{
+                    strokeDasharray: ringCircumference,
+                    strokeDashoffset: ringOffset,
+                  }}
+                />
+                <circle
+                  className="landing-roi-gauge-fill"
+                  cx="60"
+                  cy="60"
+                  r={ringRadius}
+                  pathLength={ringCircumference}
+                  style={{
+                    strokeDasharray: ringCircumference,
+                    strokeDashoffset: ringOffset,
+                  }}
+                />
+                {ringPercent > 0 ? (
+                  <circle
+                    className="landing-roi-gauge-endcap"
+                    cx={ringEndX}
+                    cy={ringEndY}
+                    r="3.9"
+                  />
+                ) : null}
+              </g>
+            </svg>
+            <div className="landing-roi-core relative flex h-[68%] w-[68%] flex-col items-center justify-center rounded-full p-7 text-center text-white">
+              <p className="landing-mono text-[0.68rem] font-semibold uppercase text-white/42">
+                Protected value
               </p>
-              <h3 className="mt-2 text-2xl font-black tracking-normal text-slate-950">
-                Tune the same levers the app exposes
-              </h3>
+              <div className="mt-4 flex items-baseline gap-2 text-6xl font-black leading-none md:text-7xl">
+                <span className="text-2xl text-white/48">$</span>
+                <span>{formatMoney(estimate.totalSavings)}</span>
+              </div>
+              <p className="mt-4 text-sm font-semibold leading-6 text-[#7ccce0]">
+                {estimate.percentOfValue.toFixed(2).replace(/\.?0+$/, "")}% of
+                project value
+              </p>
             </div>
+          </div>
 
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              <InputSnapshot
-                icon={<AlertTriangle size={16} />}
-                label="Main action"
-                value={`${gapHoursPerWeek}h`}
-                detail="Still needs bookings"
-                tone="amber"
-              />
-              <InputSnapshot
-                icon={<CalendarDays size={16} />}
-                label="Lookahead window"
-                value={windowSize}
-                detail={`${estimate.selectedWindow.weeks} weeks visible`}
-                tone="teal"
-              />
-              <InputSnapshot
+          <div>
+            <div className="grid gap-5 sm:grid-cols-4">
+              <MetricLine
                 icon={<Clock3 size={16} />}
-                label="Booked coverage"
-                value="78%"
-                detail="64h booked of 82h demand"
-                tone="slate"
+                label="Gap"
+                value={formatInt(estimate.visibleGapHours)}
+                suffix="hrs"
               />
-              <InputSnapshot
-                icon={<Layers3 size={16} />}
-                label="Asset types"
-                value="3"
-                detail="Tower Crane, Bay, Hoist"
-                tone="slate"
+              <MetricLine
+                icon={<CalendarDays size={16} />}
+                label="Delay"
+                value={estimate.delayDaysAvoided.toFixed(1)}
+                suffix="days"
+              />
+              <MetricLine
+                icon={<Gauge size={16} />}
+                label="Saved"
+                value={formatInt(estimate.coordinationHours)}
+                suffix="hrs"
+              />
+              <MetricLine
+                icon={<Construction size={16} />}
+                label="Payback"
+                value={estimate.paybackMonths.toFixed(1)}
+                suffix="mo"
               />
             </div>
 
-            <div className="mt-8 space-y-7">
+            <div className="mt-7 grid gap-x-8 gap-y-5 md:grid-cols-2">
               <RangeField
                 label="Project value"
                 valueLabel={`$${projectValue}M`}
                 minLabel="$5M"
-                midLabel="$250M"
                 maxLabel="$500M"
                 min={5}
                 max={500}
@@ -161,11 +268,10 @@ export function ROICalculator() {
                 onChange={setProjectValue}
               />
               <RangeField
-                label="Programme duration"
-                valueLabel={`${programmeMonths} months`}
-                minLabel="6 mo"
-                midLabel="33 mo"
-                maxLabel="60 mo"
+                label="Programme"
+                valueLabel={`${programmeMonths} mo`}
+                minLabel="6"
+                maxLabel="60"
                 min={6}
                 max={60}
                 step={1}
@@ -173,10 +279,9 @@ export function ROICalculator() {
                 onChange={setProgrammeMonths}
               />
               <RangeField
-                label="Active subcontractors"
+                label="Subcontractors"
                 valueLabel={formatInt(subcontractors)}
                 minLabel="5"
-                midLabel="100"
                 maxLabel="200"
                 min={5}
                 max={200}
@@ -185,10 +290,9 @@ export function ROICalculator() {
                 onChange={setSubcontractors}
               />
               <RangeField
-                label="Shared assets on site"
+                label="Shared assets"
                 valueLabel={formatInt(sharedAssets)}
                 minLabel="1"
-                midLabel="20"
                 maxLabel="40"
                 min={1}
                 max={40}
@@ -196,144 +300,56 @@ export function ROICalculator() {
                 value={sharedAssets}
                 onChange={setSharedAssets}
               />
-              <RangeField
-                label="Unbooked gap hours per week"
-                valueLabel={`${gapHoursPerWeek}h`}
-                minLabel="0h"
-                midLabel="40h"
-                maxLabel="80h"
-                min={0}
-                max={80}
-                step={2}
-                value={gapHoursPerWeek}
-                onChange={setGapHoursPerWeek}
-              />
-
-              <div>
-                <div className="mb-2 flex items-center justify-between gap-4">
-                  <span className="text-sm font-semibold text-slate-700">
-                    Lookahead window
-                  </span>
-                  <span className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 font-mono text-xs font-bold text-slate-700">
-                    {windowSize}
-                  </span>
-                </div>
-                <div className="grid grid-cols-3 gap-1 rounded-xl border border-slate-200 bg-slate-100 p-1">
-                  {windowOptions.map((option) => (
-                    <button
-                      key={option.label}
-                      type="button"
-                      onClick={() => setWindowSize(option.label)}
-                      className={cn(
-                        "cursor-pointer rounded-lg px-3 py-2 text-sm font-bold transition",
-                        windowSize === option.label
-                          ? "bg-white text-slate-950 shadow-sm"
-                          : "text-slate-500 hover:text-slate-900",
-                      )}
-                    >
-                      {option.label === "2W"
-                        ? "2 wk"
-                        : option.label === "4W"
-                          ? "4 wk"
-                          : "6 wk"}
-                    </button>
-                  ))}
-                </div>
+              <div className="md:col-span-2">
+                <RangeField
+                  label="Unbooked gap per week"
+                  valueLabel={`${gapHoursPerWeek}h`}
+                  minLabel="0h"
+                  maxLabel="80h"
+                  min={0}
+                  max={80}
+                  step={2}
+                  value={gapHoursPerWeek}
+                  onChange={setGapHoursPerWeek}
+                />
               </div>
             </div>
-          </div>
 
-          <div className="relative overflow-hidden bg-navy p-5 text-white sm:p-8 lg:p-10">
-            <div
-              className="absolute -right-24 -top-24 h-64 w-64 rounded-full bg-teal/20 blur-3xl"
-              aria-hidden="true"
-            />
-            <div
-              className="absolute -bottom-28 left-10 h-56 w-56 rounded-full bg-amber-400/10 blur-3xl"
-              aria-hidden="true"
-            />
-            <div className="relative">
-              <p className="font-mono text-xs font-semibold uppercase tracking-[0.18em] text-white/55">
-                Estimated opportunity
+            <div className="mt-6 flex flex-col gap-4 py-5 md:flex-row md:items-center md:justify-between">
+              <p className="text-sm font-semibold text-slate-700">
+                Lookahead window
               </p>
-              <h3 className="mt-2 text-xl font-extrabold text-white">
-                If gap hours are surfaced early
-              </h3>
-
-              <div className="my-7 border-y border-white/10 py-7">
-                <p className="font-mono text-xs font-semibold uppercase tracking-[0.18em] text-white/50">
-                  Protected value
-                </p>
-                <div className="mt-3 flex items-baseline gap-1 text-[clamp(3rem,7vw,5.25rem)] font-black leading-none tracking-normal text-white">
-                  <span className="text-[0.42em] text-white/70">$</span>
-                  {formatMoney(estimate.totalSavings)}
-                </div>
-                <p className="mt-3 text-sm font-semibold text-emerald-300">
-                  {estimate.percentOfValue.toFixed(2).replace(/\.?0+$/, "")}% of
-                  project value
-                </p>
+              <div className="flex gap-2">
+                {windowOptions.map((option) => (
+                  <button
+                    key={option.label}
+                    type="button"
+                    onClick={() => setWindowSize(option.label)}
+                    className={cn(
+                      "cursor-pointer border-b-2 px-1 py-2 text-sm font-semibold transition hover:-translate-y-0.5",
+                      windowSize === option.label
+                        ? "border-[#0e7c9b] text-[#0e7c9b]"
+                        : "border-transparent text-slate-500 hover:text-[#0b1120]",
+                    )}
+                  >
+                    {option.weeks} weeks
+                  </button>
+                ))}
               </div>
+            </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <OutputTile
-                  label="Gap surfaced"
-                  value={formatInt(estimate.visibleGapHours)}
-                  suffix="hrs"
-                />
-                <OutputTile
-                  label="Delay avoided"
-                  value={estimate.delayDaysAvoided.toFixed(1)}
-                  suffix="days"
-                />
-                <OutputTile
-                  label="Coord. hours saved"
-                  value={formatInt(estimate.coordinationHours)}
-                  suffix="hrs"
-                />
-                <OutputTile
-                  label="Payback period"
-                  value={estimate.paybackMonths.toFixed(1)}
-                  suffix="months"
-                />
-              </div>
-
-              <div className="mt-7 divide-y divide-white/10 rounded-2xl border border-white/10 bg-white/[0.03] px-4 text-sm text-white/70">
-                <BreakdownLine
-                  label="Delay exposure reduced"
-                  value={`$${formatMoney(estimate.delaySavings)}`}
-                />
-                <BreakdownLine
-                  label="Idle-time recovered"
-                  value={`$${formatMoney(estimate.idleSavings)}`}
-                />
-                <BreakdownLine
-                  label="Coordination reduced"
-                  value={`$${formatMoney(estimate.coordinationSavings)}`}
-                />
-                <BreakdownLine
-                  label="Lookahead window"
-                  value={`${estimate.selectedWindow.weeks} weeks`}
-                />
-              </div>
-
-              <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-                <DemoRequestCTA
-                  label="Book a tailored ROI session"
-                  className="inline-flex cursor-pointer items-center justify-center rounded-full bg-amber-500 px-5 py-3 text-sm font-bold text-black shadow-[0_14px_30px_rgba(245,158,11,0.22)] transition-transform hover:scale-[1.01]"
-                />
-                <a
-                  href="#contact"
-                  className="inline-flex items-center justify-center rounded-full border border-white/15 px-5 py-3 text-sm font-bold text-white/85 transition hover:bg-white/[0.08] hover:text-white"
-                >
-                  Talk through assumptions
-                </a>
-              </div>
-
-              <p className="mt-6 font-mono text-[10px] uppercase leading-5 tracking-[0.08em] text-white/38">
-                Indicative estimate only. Uses app-facing planning inputs:
-                gap hours, lookahead window, active subcontractors and shared
-                asset count.
-              </p>
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <DemoRequestCTA
+                label="Book ROI walkthrough"
+                className="inline-flex cursor-pointer items-center justify-center bg-[#0b1120] px-5 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5"
+              />
+              <a
+                href="#contact"
+                className="inline-flex items-center justify-center gap-2 border border-slate-300 bg-white px-5 py-3 text-sm font-bold text-[#0b1120] transition hover:-translate-y-0.5 hover:border-[#0e7c9b]"
+              >
+                Talk assumptions
+                <ArrowRight size={15} />
+              </a>
             </div>
           </div>
         </div>
@@ -342,84 +358,20 @@ export function ROICalculator() {
   );
 }
 
-function InputSnapshot({
-  icon,
-  label,
-  value,
-  detail,
-  tone,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  detail: string;
-  tone: "amber" | "teal" | "slate";
-}) {
-  const toneClass =
-    tone === "amber"
-      ? "border-amber-100 bg-amber-50/70 text-amber-700"
-      : tone === "teal"
-        ? "border-cyan-100 bg-cyan-50/70 text-[#0e7c9b]"
-        : "border-slate-200 bg-slate-50 text-slate-700";
-
-  return (
-    <div className={cn("rounded-2xl border p-4", toneClass)}>
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-current">{icon}</span>
-        <span className="font-mono text-2xl font-black leading-none">
-          {value}
-        </span>
-      </div>
-      <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
-        {label}
-      </p>
-      <p className="mt-1 text-xs font-semibold text-slate-600">{detail}</p>
-    </div>
-  );
-}
-
-function SectionIntro({
-  eyebrow,
-  title,
-  description,
-}: {
-  eyebrow: string;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="grid gap-5 lg:grid-cols-[0.86fr_0.74fr] lg:items-end lg:justify-between">
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#0f2a4a]/70">
-          {eyebrow}
-        </p>
-        <h2 className="mt-3 max-w-3xl text-[clamp(2rem,4.8vw,4.5rem)] font-black leading-[1.02] tracking-normal text-slate-950">
-          {title}
-        </h2>
-      </div>
-      <p className="max-w-xl text-base leading-7 text-slate-600 md:text-lg">
-        {description}
-      </p>
-    </div>
-  );
-}
-
 function RangeField({
   label,
-  valueLabel,
-  minLabel,
-  midLabel,
+  max,
   maxLabel,
   min,
-  max,
+  minLabel,
+  onChange,
   step,
   value,
-  onChange,
+  valueLabel,
 }: {
   label: string;
   valueLabel: string;
   minLabel: string;
-  midLabel: string;
   maxLabel: string;
   min: number;
   max: number;
@@ -427,11 +379,13 @@ function RangeField({
   value: number;
   onChange: (value: number) => void;
 }) {
+  const progress = ((value - min) / (max - min)) * 100;
+
   return (
     <div>
       <div className="mb-2 flex items-center justify-between gap-4">
         <span className="text-sm font-semibold text-slate-700">{label}</span>
-        <span className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 font-mono text-xs font-bold text-slate-700">
+        <span className="landing-mono text-xs font-semibold text-[#0e7c9b]">
           {valueLabel}
         </span>
       </div>
@@ -443,33 +397,38 @@ function RangeField({
         step={step}
         value={value}
         onChange={(event) => onChange(Number(event.target.value))}
+        style={{ "--range-pct": `${progress}%` } as CSSProperties}
       />
-      <div className="mt-2 flex justify-between font-mono text-[10px] text-slate-400">
+      <div className="landing-mono mt-1.5 flex justify-between text-[0.68rem] text-slate-400">
         <span>{minLabel}</span>
-        <span>{midLabel}</span>
         <span>{maxLabel}</span>
       </div>
     </div>
   );
 }
 
-function OutputTile({
+function MetricLine({
+  icon,
   label,
-  value,
   suffix,
+  value,
 }: {
+  icon: ReactNode;
   label: string;
   value: string;
   suffix: string;
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
-      <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-white/48">
-        {label}
-      </p>
-      <p className="mt-2 text-3xl font-black leading-none tracking-normal text-white">
+    <div className="group border-b border-slate-200 pb-4 transition duration-300 hover:-translate-y-0.5 hover:border-[#0e7c9b]/50">
+      <div className="flex items-center justify-between gap-3 text-[#0e7c9b]">
+        <p className="landing-mono text-[0.68rem] font-semibold uppercase text-slate-400">
+          {label}
+        </p>
+        {icon}
+      </div>
+      <p className="mt-3 text-3xl font-black leading-none text-[#0b1120]">
         {value}
-        <span className="ml-1 font-mono text-xs font-semibold text-white/50">
+        <span className="landing-mono ml-1 text-xs font-semibold text-slate-400">
           {suffix}
         </span>
       </p>
@@ -479,9 +438,13 @@ function OutputTile({
 
 function BreakdownLine({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between gap-4 py-3">
-      <span>{label}</span>
-      <span className="font-mono font-bold text-white">{value}</span>
-    </div>
+    <p className="transition duration-300 hover:-translate-y-0.5">
+      <span className="landing-mono block text-[0.68rem] font-semibold uppercase text-slate-400">
+        {label}
+      </span>
+      <span className="mt-1 block text-base font-semibold text-[#0b1120]">
+        {value}
+      </span>
+    </p>
   );
 }

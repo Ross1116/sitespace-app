@@ -128,25 +128,19 @@ function HeroIntroComposition() {
           can reserve shared assets before the job site gets congested.
         </p>
 
-        <div className="hero-email-shell mx-auto mt-8 flex w-full max-w-[22rem] flex-col rounded-[28px] border border-slate-200 bg-white p-1.5 shadow-[0_14px_45px_rgba(11,17,32,0.08)] sm:max-w-xl sm:flex-row sm:rounded-full">
-          <input
-            aria-label="Work email"
-            placeholder="Enter your work email"
-            className="min-h-12 min-w-0 flex-1 rounded-full bg-transparent px-5 text-sm text-[#0b1120] outline-none placeholder:text-slate-400"
-          />
+        <div className="mx-auto mt-8 flex w-full max-w-[22rem] flex-col gap-3 sm:max-w-xl sm:flex-row sm:justify-center">
           <DemoRequestCTA
             label="Book a Demo"
             className="hero-demo-button inline-flex min-h-12 w-full cursor-pointer items-center justify-center rounded-full bg-amber-500 px-6 text-sm font-semibold text-black shadow-[0_10px_22px_rgba(245,158,11,0.24)] transition-transform hover:scale-[1.01] sm:w-auto"
           />
+          <a
+            href="#calculator"
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white/84 px-6 text-sm font-bold text-slate-700 shadow-[0_10px_28px_rgba(11,17,32,0.055)] backdrop-blur transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7c9b]/25"
+          >
+            <Calculator size={16} />
+            Estimate ROI
+          </a>
         </div>
-
-        <a
-          href="#calculator"
-          className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white/84 px-5 text-sm font-bold text-slate-700 shadow-[0_10px_28px_rgba(11,17,32,0.055)] backdrop-blur transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7c9b]/25"
-        >
-          <Calculator size={16} />
-          Estimate ROI
-        </a>
 
         <div className="mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-sm text-slate-500">
           <span>Australian-hosted</span>

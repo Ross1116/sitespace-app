@@ -7,6 +7,14 @@ import { useEffect, useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { DemoRequestCTA } from "@/components/landing/ContactModal";
 
+const NAV_ITEMS = [
+  { href: "#features", label: "Product" },
+  { href: "#lookahead", label: "Lookahead" },
+  { href: "#calculator", label: "ROI" },
+  { href: "#benefits", label: "Access" },
+  { href: "#contact", label: "Contact" },
+];
+
 export function NavBar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -82,21 +90,16 @@ export function NavBar() {
 
             {/* Desktop */}
             <div className="hidden md:flex items-center space-x-10 text-sm">
-              <a href="#features" className={NAV_LINK} onClick={smoothScroll}>
-                Features
-              </a>
-              <a href="#lookahead" className={NAV_LINK} onClick={smoothScroll}>
-                Lookahead AI
-              </a>
-              <a href="#calculator" className={NAV_LINK} onClick={smoothScroll}>
-                ROI Calculator
-              </a>
-              <a href="#benefits" className={NAV_LINK} onClick={smoothScroll}>
-                Benefits
-              </a>
-              <a href="#contact" className={NAV_LINK} onClick={smoothScroll}>
-                Contact
-              </a>
+              {NAV_ITEMS.map((item) => (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  className={NAV_LINK}
+                  onClick={smoothScroll}
+                >
+                  {item.label}
+                </a>
+              ))}
               <Link
                 href="/login"
                 className={cn(
@@ -150,21 +153,16 @@ export function NavBar() {
         )}
         aria-hidden={!isMenuOpen}
       >
-        {["features", "lookahead", "calculator", "benefits", "contact"].map(
-          (id) => (
+        {NAV_ITEMS.map((item) => (
             <a
-              key={id}
-              href={`#${id}`}
+              key={item.href}
+              href={item.href}
               className="block border-b border-slate-100 py-4 text-lg font-semibold text-[#0b1120] transition-all hover:pl-2.5 hover:text-[rgba(14,124,155,1)]"
               onClick={smoothScroll}
             >
-              {id === "calculator"
-                ? "ROI Calculator"
-                : id.charAt(0).toUpperCase() + id.slice(1)}
-              {id === "lookahead" ? " AI" : ""}
+              {item.label}
             </a>
-          ),
-        )}
+        ))}
         <Link
           href="/login"
           className="block border-b border-slate-100 py-4 text-lg font-semibold text-[#0b1120] transition-all hover:pl-2.5 hover:text-[rgba(14,124,155,1)]"
