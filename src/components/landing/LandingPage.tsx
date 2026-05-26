@@ -224,7 +224,7 @@ function LookaheadAiRail() {
       <p className="landing-mono text-[0.64rem] font-semibold uppercase text-[#0e7c9b]">
         Lookahead AI
       </p>
-      <h3>Find the cells that need action.</h3>
+      <h3>Spot gaps faster.</h3>
       <div className="landing-ai-actions">
         <span>Reads the uploaded programme</span>
         <span>Forecasts shared asset demand</span>

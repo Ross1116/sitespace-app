@@ -102,9 +102,6 @@ export function ROICalculator() {
   const ringCircumference = 2 * Math.PI * ringRadius;
   const ringPercent = Math.max(0, Math.min(100, estimate.percentOfValue));
   const ringOffset = ringCircumference * (1 - ringPercent / 100);
-  const ringEndAngle = ringPercent / 100 * Math.PI * 2;
-  const ringEndX = 60 + ringRadius * Math.cos(ringEndAngle);
-  const ringEndY = 60 + ringRadius * Math.sin(ringEndAngle);
 
   return (
     <section
@@ -140,10 +137,8 @@ export function ROICalculator() {
 
         <div className="mt-8 grid gap-8 lg:grid-cols-[0.84fr_1.16fr] lg:items-center">
           <div className="landing-roi-stage group relative mx-auto flex aspect-square w-full max-w-[28rem] items-center justify-center">
-            <div className="landing-roi-halo absolute inset-[7%]" aria-hidden="true" />
-            <div className="landing-roi-outer-ring absolute inset-0" aria-hidden="true" />
             <svg
-              className="landing-roi-gauge absolute inset-[1.2%]"
+              className="landing-roi-gauge absolute inset-[3.5%]"
               viewBox="0 0 120 120"
               aria-label={`${ringPercent.toFixed(2)}% of project value`}
             >
@@ -156,21 +151,8 @@ export function ROICalculator() {
                 <linearGradient id="roi-progress-gradient" x1="16" y1="18" x2="102" y2="106">
                   <stop offset="0%" stopColor="#0b5f78" />
                   <stop offset="52%" stopColor="#0e7c9b" />
-                  <stop offset="100%" stopColor="#7ccce0" />
+                  <stop offset="100%" stopColor="#47a8bd" />
                 </linearGradient>
-                <filter id="roi-ring-soft-glow" x="-35%" y="-35%" width="170%" height="170%">
-                  <feGaussianBlur stdDeviation="2.2" result="blur" />
-                  <feColorMatrix
-                    in="blur"
-                    type="matrix"
-                    values="0 0 0 0 0.048 0 0 0 0 0.486 0 0 0 0 0.608 0 0 0 0.42 0"
-                    result="glow"
-                  />
-                  <feMerge>
-                    <feMergeNode in="glow" />
-                    <feMergeNode in="SourceGraphic" />
-                  </feMerge>
-                </filter>
               </defs>
               <g transform="rotate(-90 60 60)">
                 <circle
@@ -179,17 +161,6 @@ export function ROICalculator() {
                   cy="60"
                   r={ringRadius}
                   pathLength={ringCircumference}
-                />
-                <circle
-                  className="landing-roi-gauge-fill-glow"
-                  cx="60"
-                  cy="60"
-                  r={ringRadius}
-                  pathLength={ringCircumference}
-                  style={{
-                    strokeDasharray: ringCircumference,
-                    strokeDashoffset: ringOffset,
-                  }}
                 />
                 <circle
                   className="landing-roi-gauge-fill"
@@ -202,17 +173,9 @@ export function ROICalculator() {
                     strokeDashoffset: ringOffset,
                   }}
                 />
-                {ringPercent > 0 ? (
-                  <circle
-                    className="landing-roi-gauge-endcap"
-                    cx={ringEndX}
-                    cy={ringEndY}
-                    r="3.9"
-                  />
-                ) : null}
               </g>
             </svg>
-            <div className="landing-roi-core relative flex h-[68%] w-[68%] flex-col items-center justify-center rounded-full p-7 text-center text-white">
+            <div className="landing-roi-core relative flex h-[67%] w-[67%] flex-col items-center justify-center rounded-full p-7 text-center text-white">
               <p className="landing-mono text-[0.68rem] font-semibold uppercase text-white/42">
                 Protected value
               </p>
