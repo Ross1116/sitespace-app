@@ -1,4 +1,5 @@
 import api from "@/lib/api";
+import { normalizeProjectList } from "@/lib/apiNormalization";
 import type { ApiProject, ProjectNonWorkingDay } from "@/types";
 
 export const AU_HOLIDAY_REGIONS = [
@@ -26,8 +27,15 @@ export type ProjectNonWorkingDayPayload = {
 };
 
 export async function fetchProject(projectId: string): Promise<ApiProject> {
-  const response = await api.get<ApiProject>(`/projects/${projectId}`);
-  return response.data;
+  const response = await api.get<unknown>(`/projects/${projectId}`);
+  const normalized = normalizeProjectList({ projects: [response.data] })[0];
+
+  if (normalized) return normalized;
+
+  return {
+    id: projectId,
+    name: "Selected Project",
+  };
 }
 
 export async function updateProjectCalendar(

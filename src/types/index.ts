@@ -23,6 +23,7 @@ export interface ApiProject {
   id: string;
   name: string;
   location?: string;
+  start_date?: string | null;
   status?: string;
   is_active?: boolean;
   project_id?: string;

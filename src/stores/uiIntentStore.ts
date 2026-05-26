@@ -9,7 +9,7 @@ export type CalendarMode = "day" | "week";
 export type LookaheadWindowSize = "2W" | "4W" | "6W";
 const DEFAULT_LOOKAHEAD_WINDOW: LookaheadWindowSize = "4W";
 
-export type CapacityWindowSize = "2W" | "4W";
+export type CapacityWindowSize = "2W" | "4W" | "52W";
 const DEFAULT_CAPACITY_WINDOW: CapacityWindowSize = "4W";
 
 export type LookaheadIntent = {
@@ -141,7 +141,7 @@ const toCapacityIntentRecord = (
     .map(([scopeKey, rawIntent]) => {
       if (!isRecord(rawIntent)) return null;
       const isValidWindow = (v: unknown): v is CapacityWindowSize =>
-        v === "2W" || v === "4W";
+        v === "2W" || v === "4W" || v === "52W";
       const windowSize = isValidWindow(rawIntent.windowSize)
         ? rawIntent.windowSize
         : DEFAULT_CAPACITY_WINDOW;

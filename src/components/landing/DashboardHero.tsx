@@ -409,21 +409,21 @@ function HeroLookaheadSignalCard({ className }: { className?: string }) {
 function HeroCapacitySignalCard({ className }: { className?: string }) {
   return (
     <HeroFloatingPanel
-      ariaLabel="Capacity planning shows demand pressure before bottlenecks"
+      ariaLabel="Capacity planning shows demand risk before bottlenecks"
       className={className}
     >
-      <HeroFloatingHeader label="Capacity" signal="pressure" tone="amber" />
+      <HeroFloatingHeader label="Capacity" signal="load" tone="amber" />
 
       <div className="mt-3 space-y-3">
-        <HeroPressureBar
+        <HeroCapacityBar
           fillClassName="w-[88%] bg-amber-200/50"
           markerClassName="left-[74%]"
         />
-        <HeroPressureBar
+        <HeroCapacityBar
           fillClassName="w-[64%] bg-[#0e7c9b]/34"
           markerClassName="left-[74%]"
         />
-        <HeroPressureBar
+        <HeroCapacityBar
           fillClassName="w-[76%] bg-slate-400/45"
           markerClassName="left-[74%]"
         />
@@ -470,7 +470,7 @@ function HeroVisualLane({ barClassName }: { barClassName: string }) {
   );
 }
 
-function HeroPressureBar({
+function HeroCapacityBar({
   fillClassName,
   markerClassName,
 }: {

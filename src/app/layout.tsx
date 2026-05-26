@@ -25,21 +25,21 @@ export const metadata: Metadata = {
     template: "%s | Sitespace",
   },
   description:
-    "Sitespace turns construction programmes into shared-asset demand, booking coverage, capacity pressure, and live site coordination.",
+    "Sitespace turns construction programmes into shared-asset demand, booking coverage, capacity risk, and live site coordination.",
   metadataBase: new URL("https://sitespace.com.au"),
   openGraph: {
     type: "website",
     siteName: "Sitespace",
     title: "Sitespace | Predictive Construction Logistics",
     description:
-      "Turn programmes into shared-asset demand, booking coverage, capacity pressure, and live site coordination.",
+      "Turn programmes into shared-asset demand, booking coverage, capacity risk, and live site coordination.",
     url: "https://sitespace.com.au",
   },
   twitter: {
     card: "summary",
     title: "Sitespace | Predictive Construction Logistics",
     description:
-      "Turn programmes into shared-asset demand, booking coverage, capacity pressure, and live site coordination.",
+      "Turn programmes into shared-asset demand, booking coverage, capacity risk, and live site coordination.",
   },
 };
 

@@ -2,10 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import useSWR from "swr";
 import {
   BarChart3,
   Check,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Clock3,
   Info,
   Layers3,
@@ -14,6 +17,7 @@ import {
 import { useAuth } from "@/app/context/AuthContext";
 import { useResolvedProjectSelection } from "@/hooks/useResolvedProjectSelection";
 import { useProjectAssets } from "@/hooks/useProjectAssets";
+import { fetchProject } from "@/hooks/projects/api";
 import {
   useCapacityDashboard,
   useLookaheadSnapshot,
@@ -48,6 +52,7 @@ import { formatProjectLocalAssetName } from "@/lib/assetDisplay";
 const WINDOW_WEEKS: Record<CapacityWindowSize, number> = {
   "2W": 2,
   "4W": 4,
+  "52W": 52,
 };
 
 function isCapacityWindowSize(value: unknown): value is CapacityWindowSize {
@@ -68,6 +73,15 @@ function formatDateTime(value: string | null | undefined): string {
   });
 }
 
+function formatMonthLabel(value: string): string {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+
+  return parsed.toLocaleDateString("en-AU", {
+    month: "short",
+  });
+}
+
 function formatHours(value: number): string {
   const rounded = Math.round(value * 10) / 10;
   return Number.isInteger(rounded) ? `${rounded}` : rounded.toFixed(1);
@@ -80,6 +94,45 @@ function currentMondayISO(): string {
   const monday = new Date(today);
   monday.setDate(today.getDate() + daysToMonday);
   return monday.toLocaleDateString("en-CA");
+}
+
+function normalizeToMondayISO(value: string | null | undefined): string | null {
+  if (!value) return null;
+
+  const normalizedValue = value.slice(0, 10);
+  const match = normalizedValue.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+
+  const [, yearRaw, monthRaw, dayRaw] = match;
+  const year = Number(yearRaw);
+  const month = Number(monthRaw);
+  const day = Number(dayRaw);
+  const date = new Date(year, month - 1, day);
+
+  if (
+    Number.isNaN(date.getTime()) ||
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return null;
+  }
+
+  const dayOfWeek = date.getDay();
+  const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  date.setDate(date.getDate() + daysToMonday);
+  return date.toLocaleDateString("en-CA");
+}
+
+function shiftMondayISO(value: string, weekDelta: number): string {
+  const normalized = normalizeToMondayISO(value) ?? currentMondayISO();
+  const [yearRaw, monthRaw, dayRaw] = normalized.split("-");
+  const year = Number(yearRaw);
+  const month = Number(monthRaw);
+  const day = Number(dayRaw);
+  const date = new Date(year, month - 1, day);
+  date.setDate(date.getDate() + weekDelta * 7);
+  return date.toLocaleDateString("en-CA");
 }
 
 function getDisplayDemandUtilizationPct(cell: CapacityCell): number | null {
@@ -160,6 +213,53 @@ function getFallbackMetaTone(status: CapacityStatus): string {
     default:
       return "text-slate-500";
   }
+}
+
+function MinimalYearSummary({
+  data,
+  projectStartDate,
+  gapWeekCount,
+}: {
+  data: CapacityDashboardResponse;
+  projectStartDate: string | null;
+  gapWeekCount: number;
+}) {
+  return (
+    <section className="grid gap-2 md:grid-cols-4">
+      <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+          Avg utilization
+        </p>
+        <p className="mt-1 text-lg font-black tabular-nums text-slate-950">
+          {Math.round(data.headline_summary.avg_utilization_pct)}%
+        </p>
+      </div>
+      <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+          Weeks with gaps
+        </p>
+        <p className="mt-1 text-lg font-black tabular-nums text-slate-950">
+          {gapWeekCount}
+        </p>
+      </div>
+      <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+          Uncovered demand
+        </p>
+        <p className="mt-1 text-lg font-black tabular-nums text-slate-950">
+          {formatHours(data.headline_summary.demand_without_capacity_hours)}h
+        </p>
+      </div>
+      <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+          Start point
+        </p>
+        <p className="mt-1 text-sm font-bold text-slate-950">
+          {projectStartDate ? "Project start" : "First programme week"}
+        </p>
+      </div>
+    </section>
+  );
 }
 
 function CapacityStatCards({ data }: { data: CapacityDashboardResponse }) {
@@ -355,6 +455,57 @@ function CapacityWeekSummaryCell({
   );
 }
 
+function MinimalCapacityCell({ cell }: { cell: CapacityCell | undefined }) {
+  if (!cell) {
+    return (
+      <div className="flex h-11 items-center justify-center rounded-md bg-slate-50">
+        <span className="h-2.5 w-2.5 rounded-full bg-slate-200" />
+      </div>
+    );
+  }
+
+  const displayUtilizationPct = getDisplayDemandUtilizationPct(cell);
+  const tone = getUtilizationTone(displayUtilizationPct);
+  const surfaceClassName =
+    tone?.surface ??
+    "border border-slate-200 bg-slate-50 text-slate-500 shadow-none";
+
+  return (
+    <div
+      title={`${displayUtilizationPct === null ? "-" : formatUtilPct(displayUtilizationPct)} utilization | ${formatHours(cell.demand_hours)}h demand | ${formatHours(cell.capacity_hours)}h capacity`}
+      className={`flex h-11 items-center justify-center rounded-md border px-1 ${surfaceClassName}`}
+    >
+      <span
+        className={`text-[11px] font-bold tabular-nums ${tone?.value ?? "text-slate-500"}`}
+      >
+        {displayUtilizationPct === null ? "-" : formatUtilPct(displayUtilizationPct)}
+      </span>
+    </div>
+  );
+}
+
+function MinimalCapacityWeekSummaryCell({
+  summary,
+}: {
+  summary: CapacityWeekSummary;
+}) {
+  const status = resolveCapacityStatus(summary.worst_status);
+  const styles = STATUS_STYLES[status];
+
+  return (
+    <div
+      title={`${formatUtilPct(summary.overall_demand_utilization_pct)} utilization | ${formatHours(summary.total_demand_hours)}h demand | ${formatHours(summary.total_capacity_hours)}h capacity`}
+      className="flex h-11 items-center justify-center rounded-md border border-slate-200 bg-white"
+    >
+      <span
+        className={`rounded-full px-2 py-1 text-[10px] font-bold tabular-nums ${styles.badge}`}
+      >
+        {formatUtilPct(summary.overall_demand_utilization_pct)}
+      </span>
+    </div>
+  );
+}
+
 function CapacityLoadingState() {
   return (
     <div className="space-y-4">
@@ -409,6 +560,7 @@ export function CapacityDashboard() {
   const userId = user?.id;
   const [showProjectSelector, setShowProjectSelector] = useState(false);
   const [windowSize, setWindowSizeLocal] = useState<CapacityWindowSize>("4W");
+  const [manualStartWeek, setManualStartWeek] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const hasUIIntentHydrated = useUIIntentStore((state) => state.hasHydrated);
   const setCapacityWindowSize = useUIIntentStore(
@@ -422,6 +574,10 @@ export function CapacityDashboard() {
     setProjectId,
   } = useResolvedProjectSelection({ userId });
   const { assets: projectAssets } = useProjectAssets(projectId);
+  const { data: projectDetail } = useSWR(
+    projectId ? `/projects/${projectId}` : null,
+    projectId ? () => fetchProject(projectId) : null,
+  );
 
   useEffect(() => {
     if (user?.role === "subcontractor") {
@@ -458,11 +614,21 @@ export function CapacityDashboard() {
   const enabled =
     Boolean(projectId) && hasUIIntentHydrated && user?.role !== "subcontractor";
   const { snapshot } = useLookaheadSnapshot({ projectId, enabled });
+  const projectStartDate =
+    projectDetail?.start_date ?? selectedProject?.start_date ?? null;
   const heatmap = useMemo(
     () => (snapshot?.rows?.length ? pivotRows(snapshot.rows) : null),
     [snapshot],
   );
-  const startWeek = useMemo(() => {
+  const defaultStartWeek = useMemo(() => {
+    if (windowSize === "52W") {
+      return (
+        normalizeToMondayISO(projectStartDate) ??
+        heatmap?.weeks[0] ??
+        currentMondayISO()
+      );
+    }
+
     if (!heatmap) return currentMondayISO();
 
     const weeks = heatmap.weeks;
@@ -475,7 +641,14 @@ export function CapacityDashboard() {
     }
 
     return weeks[startIndex] ?? currentWeek;
-  }, [heatmap, windowSize]);
+  }, [heatmap, projectStartDate, windowSize]);
+
+  const startWeek =
+    windowSize === "52W" ? defaultStartWeek : manualStartWeek ?? defaultStartWeek;
+
+  useEffect(() => {
+    setManualStartWeek(null);
+  }, [projectId, windowSize]);
   const {
     capacityData,
     isLoading: capacityLoading,
@@ -540,6 +713,7 @@ export function CapacityDashboard() {
 
   const updateWindowSize = (next: CapacityWindowSize) => {
     setWindowSizeLocal(next);
+    setManualStartWeek(null);
     if (uiScopeKey) {
       setCapacityWindowSize(uiScopeKey, next);
     }
@@ -550,10 +724,26 @@ export function CapacityDashboard() {
     setShowProjectSelector(false);
     setProjectId(project.id);
   };
+  const isYearView = windowSize === "52W";
+  const canNavigateWeeks = !isYearView && Boolean(projectId);
+  const visibleRangeLabel =
+    weeks.length > 0
+      ? `${formatWeekRange(weeks[0] ?? startWeek)} to ${formatWeekRange(weeks[weeks.length - 1] ?? startWeek)}`
+      : formatWeekRange(startWeek);
+
+  const shiftVisibleWindow = (weekDelta: number) => {
+    if (!canNavigateWeeks) return;
+    setManualStartWeek((current) =>
+      shiftMondayISO(current ?? defaultStartWeek, weekDelta),
+    );
+  };
 
   const gridTemplateColumns = useMemo(
-    () => `180px repeat(${Math.max(weeks.length, 1)}, minmax(110px, 1fr))`,
-    [weeks.length],
+    () =>
+      isYearView
+        ? `160px repeat(${Math.max(weeks.length, 1)}, minmax(76px, 1fr))`
+        : `180px repeat(${Math.max(weeks.length, 1)}, minmax(0, 1fr))`,
+    [isYearView, weeks.length],
   );
 
   const isLoading = authLoading || projectBootstrapLoading;
@@ -580,8 +770,10 @@ export function CapacityDashboard() {
     : capacityError
       ? "The latest capacity snapshot could not be loaded right now. Try a refresh to pull the current planning view."
       : noData
-        ? "Planning-ready assets, configured capacity, and an uploaded programme are all needed before the dashboard can map pressure."
-        : "Use the grid below to spot pressure by asset type, then rebalance before those gaps spill into delivery.";
+        ? "Planning-ready assets, configured capacity, and an uploaded programme are all needed before the dashboard can map capacity constraints."
+        : isYearView
+          ? "The annual view strips the matrix back to utilization only so long-range patterns stay readable."
+          : "Use the grid below to spot capacity risk by asset type, then rebalance before those gaps spill into delivery.";
   const snapshotTimestamp =
     capacityData?.diagnostics?.snapshot_refreshed_at ??
     capacityData?.diagnostics?.capacity_computed_at ??
@@ -717,12 +909,19 @@ export function CapacityDashboard() {
                           )}
                           h uncovered
                         </span>
+                        {isYearView ? (
+                          <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">
+                            {projectStartDate
+                              ? "Anchored to project start"
+                              : "Anchored to first programme week"}
+                          </span>
+                        ) : null}
                       </div>
                     ) : null}
                   </div>
 
                   <div className="w-full lg:w-auto">
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-2 sm:min-w-[18rem]">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-2 sm:min-w-[22rem]">
                       <div className="mb-1.5 flex items-center justify-between gap-3 px-1">
                         <div className="text-xs font-bold uppercase tracking-wide text-slate-500">
                           Window
@@ -737,8 +936,8 @@ export function CapacityDashboard() {
                         ) : null}
                       </div>
 
-                      <div className="grid grid-cols-2 gap-1 rounded-lg bg-white p-1 shadow-sm">
-                        {(["2W", "4W"] as CapacityWindowSize[]).map((size) => (
+                      <div className="grid grid-cols-3 gap-1 rounded-lg bg-white p-1 shadow-sm">
+                        {(["2W", "4W", "52W"] as CapacityWindowSize[]).map((size) => (
                           <button
                             key={size}
                             type="button"
@@ -750,10 +949,43 @@ export function CapacityDashboard() {
                                 : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
                             }`}
                           >
-                            {size === "2W" ? "2 wk" : "4 wk"}
+                            {size === "2W" ? "2 wk" : size === "4W" ? "4 wk" : "52 wk"}
                           </button>
                         ))}
                       </div>
+
+                      {!isYearView ? (
+                        <div className="mt-2 rounded-lg bg-white p-1.5 shadow-sm">
+                          <div className="flex items-center justify-between gap-2">
+                            <button
+                              type="button"
+                              onClick={() => shiftVisibleWindow(-2)}
+                              disabled={!canNavigateWeeks}
+                              className="inline-flex items-center gap-1 rounded-md px-2.5 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              <ChevronLeft size={14} />
+                              Previous
+                            </button>
+                            <div className="min-w-0 px-2 text-center">
+                              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                                Visible range
+                              </p>
+                              <p className="truncate text-[11px] font-medium text-slate-600">
+                                {visibleRangeLabel}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => shiftVisibleWindow(2)}
+                              disabled={!canNavigateWeeks}
+                              className="inline-flex items-center gap-1 rounded-md px-2.5 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              Next
+                              <ChevronRight size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 </div>
@@ -792,7 +1024,15 @@ export function CapacityDashboard() {
 
             {!isLoading && capacityData && !capacityError && !noData ? (
               <>
-                <CapacityStatCards data={capacityData} />
+                {isYearView ? (
+                  <MinimalYearSummary
+                    data={capacityData}
+                    projectStartDate={projectStartDate}
+                    gapWeekCount={gapWeekCount}
+                  />
+                ) : (
+                  <CapacityStatCards data={capacityData} />
+                )}
 
                 {capacityData.message ? (
                   <div className="flex items-start gap-3 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
@@ -812,9 +1052,9 @@ export function CapacityDashboard() {
                           Capacity matrix
                         </h2>
                         <p className="mt-1 max-w-2xl text-sm leading-5 text-slate-500">
-                          Scan each asset type across the planning window and
-                          spot where demand is balanced, tight, or over
-                          capacity.
+                          {isYearView
+                            ? "A minimal annual utilization view for spotting when each asset type starts to run tight."
+                            : "Scan each asset type across the planning window and spot where demand is balanced, tight, or over capacity."}
                         </p>
                       </div>
                     </div>
@@ -825,6 +1065,11 @@ export function CapacityDashboard() {
                           Updated {formatDateTime(snapshotTimestamp)}
                         </span>
                       ) : null}
+                      {isYearView ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+                          52-week view
+                        </span>
+                      ) : null}
                     </div>
                   </div>
 
@@ -832,11 +1077,11 @@ export function CapacityDashboard() {
                     <span className="font-semibold text-slate-700">Legend</span>
                     <span className="inline-flex items-center gap-1.5">
                       <span className="h-2 w-2 rounded-full bg-slate-300" />
-                      0% or no demand
+                      0% / none
                     </span>
                     <span className="inline-flex items-center gap-1.5">
                       <span className="h-2 w-2 rounded-full bg-[#86efac]" />
-                      Under 90%
+                      &lt;90%
                     </span>
                     <span className="inline-flex items-center gap-1.5">
                       <span className="h-2 w-2 rounded-full bg-[#fb923c]" />
@@ -848,13 +1093,21 @@ export function CapacityDashboard() {
                     </span>
                   </div>
 
-                  <div className="overflow-x-auto rounded-xl border border-slate-200">
-                    <div className="min-w-[720px]">
+                  <div
+                    className={`rounded-xl border border-slate-200 ${
+                      isYearView ? "overflow-x-auto" : "overflow-hidden"
+                    }`}
+                  >
+                    <div className={isYearView ? "min-w-[720px]" : "w-full"}>
                       <div
                         className="grid border-b border-slate-200 bg-slate-50"
                         style={{ gridTemplateColumns }}
                       >
-                        <div className="border-r border-slate-200 px-4 py-2.5">
+                        <div
+                          className={`border-r border-slate-200 px-4 py-2.5 ${
+                            isYearView ? "sticky left-0 z-20 bg-slate-50" : ""
+                          }`}
+                        >
                           <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
                             Asset type
                           </p>
@@ -862,14 +1115,29 @@ export function CapacityDashboard() {
                         {weeks.map((week, index) => (
                           <div
                             key={week}
-                            className="border-r border-slate-200 px-4 py-2.5 last:border-r-0"
+                            className={`border-r border-slate-200 last:border-r-0 ${
+                              isYearView ? "px-1.5 py-2" : "px-4 py-2.5"
+                            }`}
                           >
-                            <p className="text-sm font-bold text-slate-900">
-                              Week {index + 1}
-                            </p>
-                            <p className="mt-0.5 text-[10px] font-mono text-slate-400">
-                              {formatWeekRange(week)}
-                            </p>
+                            {isYearView ? (
+                              <>
+                                <p className="text-center text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                                  W{index + 1}
+                                </p>
+                                <p className="mt-0.5 text-center text-[10px] text-slate-400">
+                                  {formatMonthLabel(week)}
+                                </p>
+                              </>
+                            ) : (
+                              <>
+                                <p className="text-sm font-bold text-slate-900">
+                                  Week {index + 1}
+                                </p>
+                                <p className="mt-0.5 text-[10px] font-mono text-slate-400">
+                                  {formatWeekRange(week)}
+                                </p>
+                              </>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -885,43 +1153,66 @@ export function CapacityDashboard() {
                             className="grid border-b border-slate-100 last:border-b-0"
                             style={{ gridTemplateColumns }}
                           >
-                            <div className="border-r border-slate-200 bg-white px-4 py-2.5">
+                            <div
+                              className={`border-r border-slate-200 bg-white px-4 py-2.5 ${
+                                isYearView ? "sticky left-0 z-10" : ""
+                              }`}
+                            >
                               <p className="text-sm font-bold text-slate-900">
                                 {assetTypeMeta?.displayName ??
                                   formatCapacityAssetType(assetType)}
                               </p>
-                              <div className="mt-1.5 flex flex-col items-start gap-2 text-[11px] font-semibold">
-                                <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-600">
-                                  Assets: {assetTypeMeta?.count ?? 0}
-                                </span>
-                                <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-600">
-                                  {formatHours(
-                                    assetSummary?.total_demand_hours ?? 0,
-                                  )}
-                                  h demand
-                                </span>
-                                {(assetSummary?.weeks_over_capacity ?? 0) > 0 ? (
-                                  <span className="rounded-full bg-red-100 px-2 py-1 text-red-700">
-                                    {assetSummary?.weeks_over_capacity ?? 0} over
+                              {isYearView ? (
+                                <p className="mt-1 text-[11px] font-medium text-slate-500">
+                                  {assetTypeMeta?.count ?? 0} assets
+                                  {(assetSummary?.weeks_over_capacity ?? 0) > 0
+                                    ? ` | ${assetSummary?.weeks_over_capacity ?? 0} over`
+                                    : (assetSummary?.weeks_tight ?? 0) > 0
+                                      ? ` | ${assetSummary?.weeks_tight ?? 0} tight`
+                                      : ""}
+                                </p>
+                              ) : (
+                                <div className="mt-1.5 flex flex-col items-start gap-2 text-[11px] font-semibold">
+                                  <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-600">
+                                    Assets: {assetTypeMeta?.count ?? 0}
                                   </span>
-                                ) : null}
-                                {(assetSummary?.weeks_tight ?? 0) > 0 ? (
-                                  <span className="rounded-full bg-amber-100 px-2 py-1 text-amber-700">
-                                    {assetSummary?.weeks_tight ?? 0} tight
+                                  <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-600">
+                                    {formatHours(
+                                      assetSummary?.total_demand_hours ?? 0,
+                                    )}
+                                    h demand
                                   </span>
-                                ) : null}
-                              </div>
+                                  {(assetSummary?.weeks_over_capacity ?? 0) > 0 ? (
+                                    <span className="rounded-full bg-red-100 px-2 py-1 text-red-700">
+                                      {assetSummary?.weeks_over_capacity ?? 0} over
+                                    </span>
+                                  ) : null}
+                                  {(assetSummary?.weeks_tight ?? 0) > 0 ? (
+                                    <span className="rounded-full bg-amber-100 px-2 py-1 text-amber-700">
+                                      {assetSummary?.weeks_tight ?? 0} tight
+                                    </span>
+                                  ) : null}
+                                </div>
+                              )}
                             </div>
 
                             {weeks.map((week) => (
                               <div
                                 key={`${assetType}-${week}`}
-                                className="border-r border-slate-100 bg-white px-3 py-2.5 last:border-r-0"
+                                className={`border-r border-slate-100 bg-white last:border-r-0 ${
+                                  isYearView ? "px-1.5 py-1.5" : "px-3 py-2.5"
+                                }`}
                               >
-                                <CapacityCellCard
-                                  cell={capacityData.rows[assetType]?.[week]}
-                                  compact={compactMode}
-                                />
+                                {isYearView ? (
+                                  <MinimalCapacityCell
+                                    cell={capacityData.rows[assetType]?.[week]}
+                                  />
+                                ) : (
+                                  <CapacityCellCard
+                                    cell={capacityData.rows[assetType]?.[week]}
+                                    compact={compactMode}
+                                  />
+                                )}
                               </div>
                             ))}
                           </div>
@@ -932,12 +1223,18 @@ export function CapacityDashboard() {
                         className="grid bg-slate-50"
                         style={{ gridTemplateColumns }}
                       >
-                        <div className="border-r border-slate-200 px-4 py-2.5">
+                        <div
+                          className={`border-r border-slate-200 px-4 py-2.5 ${
+                            isYearView ? "sticky left-0 z-10 bg-slate-50" : ""
+                          }`}
+                        >
                           <p className="text-sm font-bold text-slate-950">
                             Weekly Summary
                           </p>
                           <p className="mt-0.5 text-[10px] text-slate-500">
-                            Aggregate demand and worst pressure status by week
+                            {isYearView
+                              ? "Overall weekly utilization"
+                              : "Aggregate demand and highest utilization status by week"}
                           </p>
                         </div>
                         {weeks.map((week) => {
@@ -945,12 +1242,24 @@ export function CapacityDashboard() {
                           return (
                             <div
                               key={`summary-${week}`}
-                              className="border-r border-slate-200 px-3 py-2.5 last:border-r-0"
+                              className={`border-r border-slate-200 last:border-r-0 ${
+                                isYearView ? "px-1.5 py-1.5" : "px-3 py-2.5"
+                              }`}
                             >
                               {weekSummary ? (
-                                <CapacityWeekSummaryCell summary={weekSummary} />
+                                isYearView ? (
+                                  <MinimalCapacityWeekSummaryCell
+                                    summary={weekSummary}
+                                  />
+                                ) : (
+                                  <CapacityWeekSummaryCell summary={weekSummary} />
+                                )
                               ) : (
-                                <div className="flex h-full min-h-20 items-center justify-center rounded-lg border border-dashed border-slate-200 bg-white text-xs text-slate-300">
+                                <div
+                                  className={`flex items-center justify-center rounded-lg border border-dashed border-slate-200 bg-white text-xs text-slate-300 ${
+                                    isYearView ? "h-11" : "h-full min-h-20"
+                                  }`}
+                                >
                                   No summary
                                 </div>
                               )}
