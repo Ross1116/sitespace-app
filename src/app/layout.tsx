@@ -20,10 +20,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: {
-    default: "Sitespace | Predictive Construction Logistics",
-    template: "%s | Sitespace",
-  },
+  title: "Sitespace",
   description:
     "Sitespace turns construction programmes into shared-asset demand, booking coverage, capacity risk, and live site coordination.",
   metadataBase: new URL("https://sitespace.com.au"),

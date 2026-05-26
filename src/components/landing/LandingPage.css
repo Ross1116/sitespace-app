@@ -343,14 +343,9 @@
 
 .landing-mono {
   font-family:
-    var(--font-geist-mono),
-    ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    Monaco,
-    Consolas,
-    "Liberation Mono",
-    monospace;
+    var(--font-geist-sans),
+    system-ui,
+    sans-serif;
   letter-spacing: 0;
 }
 
@@ -504,8 +499,7 @@
 }
 
 .landing-review-section {
-  background:
-    linear-gradient(180deg, #f8fbfc 0%, #eef5f7 100%);
+  background: linear-gradient(180deg, #f8fbfc 0%, #eef5f7 100%);
 }
 
 .landing-review-field {
@@ -1148,6 +1142,42 @@
   );
 }
 
+.landing-thread-step {
+  transform-origin: left center;
+}
+
+.landing-thread-icon {
+  box-shadow:
+    0 14px 30px rgba(11, 17, 32, 0.08),
+    0 1px 0 rgba(255, 255, 255, 0.08) inset;
+  transition:
+    background-color 0.3s ease,
+    box-shadow 0.35s ease,
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.landing-thread-copy,
+.landing-thread-signal {
+  transition:
+    border-color 0.3s ease,
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.landing-thread-step:hover .landing-thread-icon {
+  box-shadow:
+    0 22px 42px rgba(14, 124, 155, 0.12),
+    0 1px 0 rgba(255, 255, 255, 0.14) inset;
+  transform: translateY(-2px) scale(1.02);
+}
+
+.landing-thread-step:hover .landing-thread-copy {
+  transform: translateX(4px);
+}
+
+.landing-thread-step:hover .landing-thread-signal {
+  transform: translateX(-3px);
+}
+
 @media (max-width: 767px) {
   .landing-current-river::before,
   .landing-thread-path::before {
@@ -1162,7 +1192,10 @@
   .landing-tape-week,
   .landing-pulse-core,
   .landing-signal-node,
-  .landing-pulse-path {
+  .landing-pulse-path,
+  .landing-thread-icon,
+  .landing-thread-copy,
+  .landing-thread-signal {
     transition: none;
   }
 
@@ -1170,7 +1203,10 @@
   .landing-tape-week:hover,
   .landing-tape-week:hover .landing-tape-bar,
   .landing-pulse-map:hover .landing-pulse-core,
-  .landing-signal-node:hover {
+  .landing-signal-node:hover,
+  .landing-thread-step:hover .landing-thread-icon,
+  .landing-thread-step:hover .landing-thread-copy,
+  .landing-thread-step:hover .landing-thread-signal {
     transform: none;
   }
 }

@@ -112,10 +112,7 @@ export function ROICalculator() {
       <div className="relative mx-auto max-w-7xl">
         <div className="grid gap-6 lg:grid-cols-[0.68fr_0.9fr] lg:items-end lg:justify-between">
           <div>
-            <p className="landing-mono text-[0.68rem] font-semibold uppercase text-[#d94e09]">
-              05 / Commercial case
-            </p>
-            <h2 className="mt-4 max-w-3xl text-5xl font-black leading-[1.01] text-[#0b1120] md:text-7xl">
+            <h2 className="max-w-3xl text-5xl font-black leading-[1.01] text-[#0b1120] md:text-7xl">
               Price the gap.
             </h2>
           </div>

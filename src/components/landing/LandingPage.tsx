@@ -107,8 +107,7 @@ function SitePulseSection() {
       <div className={WRAP}>
         <div className="grid gap-10 lg:grid-cols-[0.72fr_0.9fr] lg:items-center lg:justify-between">
           <div className={FADE} data-fade-in>
-            <SectionKicker dark>01 / Demand signal</SectionKicker>
-            <h2 className="mt-5 max-w-2xl text-5xl font-black leading-[1.01] text-white md:text-7xl">
+            <h2 className="max-w-2xl text-5xl font-black leading-[1.01] text-white md:text-7xl">
               See what the site will need next.
             </h2>
             <p className="mt-6 max-w-md text-base leading-7 text-white/64">
@@ -142,8 +141,7 @@ function ProductProofSection() {
       <div className="absolute inset-0 landing-review-field" aria-hidden="true" />
       <div className={WRAP}>
         <div className={FADE} data-fade-in>
-          <SectionKicker>02 / Lookahead review</SectionKicker>
-          <h2 className="mt-4 max-w-4xl text-4xl font-black leading-[1.02] text-[#0b1120] md:text-6xl">
+          <h2 className="max-w-4xl text-4xl font-black leading-[1.02] text-[#0b1120] md:text-6xl">
             Turn lookahead gaps into booked slots.
           </h2>
           <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">
@@ -320,14 +318,19 @@ function CommitmentThreadSection() {
   return (
     <section id="commitments" className="relative isolate overflow-hidden bg-white px-5 py-20 sm:px-8 lg:py-24">
       <div className={WRAP}>
-        <div className="grid gap-8 lg:grid-cols-[0.82fr_0.72fr] lg:items-end">
+        <div className="grid gap-8 lg:grid-cols-[0.82fr_0.72fr] lg:items-start lg:gap-12">
           <div className={FADE} data-fade-in>
-            <SectionKicker>03 / Commitment trail</SectionKicker>
-            <h2 className="mt-5 max-w-3xl text-5xl font-black leading-[1.01] text-[#0b1120] md:text-7xl">
+            <h2 className="max-w-3xl text-5xl font-black leading-[1.01] text-[#0b1120] md:text-7xl">
               Every booked slot keeps its reason.
             </h2>
           </div>
-          <p className={cn(FADE, "max-w-lg text-base leading-7 text-slate-600")} data-fade-in>
+          <p
+            className={cn(
+              FADE,
+              "max-w-lg text-base leading-7 text-slate-600 lg:justify-self-end",
+            )}
+            data-fade-in
+          >
             Activity, asset, source, status and comments stay attached to the
             commitment.
           </p>
@@ -354,8 +357,7 @@ function FinalCTA() {
       <div className="absolute inset-0 landing-final-current" aria-hidden="true" />
       <div className="relative mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1fr_0.58fr] lg:items-end">
         <div>
-          <SectionKicker dark>06 / Next step</SectionKicker>
-          <h2 className="mt-5 max-w-4xl text-5xl font-black leading-[1.01] text-white md:text-7xl">
+          <h2 className="max-w-4xl text-5xl font-black leading-[1.01] text-white md:text-7xl">
             Bring the programme.
           </h2>
         </div>
@@ -472,15 +474,15 @@ function ThreadStep({
     <article
       className={cn(
         FADE,
-        "group grid gap-5 transition-transform duration-300 hover:-translate-y-0.5 md:grid-cols-[4rem_1fr_11rem] md:items-start",
+        "landing-thread-step group grid gap-5 transition-transform duration-300 hover:-translate-y-0.5 md:grid-cols-[4rem_1fr_11rem] md:items-stretch",
       )}
       data-fade-in
       style={{ transitionDelay: delay }}
     >
-      <div className="flex h-11 w-11 items-center justify-center bg-[#0b1120] text-white transition-colors duration-300 group-hover:bg-[#0e7c9b]">
+      <div className="landing-thread-icon flex h-11 w-11 items-center justify-center bg-[#0b1120] text-white transition-colors duration-300 group-hover:bg-[#0e7c9b]">
         {icon}
       </div>
-      <div className="border-b border-slate-200 pb-7 transition-colors duration-300 group-hover:border-[#0e7c9b]/40">
+      <div className="landing-thread-copy flex h-full flex-col border-b border-slate-200 pb-7 transition-colors duration-300 group-hover:border-[#0e7c9b]/40">
         <p className="landing-mono text-[0.68rem] font-semibold uppercase text-slate-400">
           {index.toString().padStart(2, "0")}
         </p>
@@ -491,29 +493,10 @@ function ThreadStep({
           {body}
         </p>
       </div>
-      <p className="landing-mono border-b border-slate-200 pb-7 text-sm font-semibold uppercase text-[#0e7c9b] transition-colors duration-300 group-hover:border-[#0e7c9b]/40 group-hover:text-[#d94e09] md:pt-10 md:text-right">
+      <p className="landing-thread-signal landing-mono flex h-full items-center border-b border-slate-200 pb-7 text-sm font-semibold uppercase text-[#0e7c9b] transition-colors duration-300 group-hover:border-[#0e7c9b]/40 group-hover:text-[#d94e09] md:justify-end md:text-right">
         {signal}
       </p>
     </article>
-  );
-}
-
-function SectionKicker({
-  children,
-  dark = false,
-}: {
-  children: ReactNode;
-  dark?: boolean;
-}) {
-  return (
-    <p
-      className={cn(
-        "landing-mono text-[0.68rem] font-semibold uppercase",
-        dark ? "text-[#f8b84e]" : "text-[#d94e09]",
-      )}
-    >
-      {children}
-    </p>
   );
 }
 

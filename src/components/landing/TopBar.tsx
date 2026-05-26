@@ -67,15 +67,19 @@ export function NavBar() {
       {/* Nav bar */}
       <nav
         className={cn(
-          "fixed top-0 w-full z-50 backdrop-blur-xl transition-all duration-300",
-          isScrolled || isMenuOpen
-            ? "bg-white/[0.96] shadow-[0_1px_0_rgba(11,17,32,0.08),0_12px_34px_rgba(11,17,32,0.06)]"
-            : "bg-white/95 shadow-[0_1px_0_rgba(11,17,32,0.08)]",
+          "fixed inset-x-0 top-0 z-50 px-4 pt-4 sm:px-6 lg:px-8",
         )}
         aria-label="Primary"
       >
-        <div className="max-w-screen-2xl mx-auto px-6 lg:px-12 py-4">
-          <div className="flex items-center justify-between">
+        <div className="mx-auto max-w-screen-2xl">
+          <div
+            className={cn(
+              "flex items-center justify-between rounded-[28px] border px-5 py-3.5 transition-all duration-300 sm:px-6 lg:px-8",
+              isScrolled || isMenuOpen
+                ? "border-white/30 bg-white/42 shadow-[0_20px_60px_rgba(11,17,32,0.14)] backdrop-blur-[26px]"
+                : "border-slate-200/80 bg-white shadow-[0_18px_40px_rgba(11,17,32,0.08)] backdrop-blur-0",
+            )}
+          >
             <Link href="/" className="flex items-center space-x-2">
               <Image
                 src="/full-logo.svg"
@@ -89,7 +93,7 @@ export function NavBar() {
             </Link>
 
             {/* Desktop */}
-            <div className="hidden md:flex items-center space-x-10 text-sm">
+            <div className="hidden items-center space-x-10 text-sm md:flex">
               {NAV_ITEMS.map((item) => (
                 <a
                   key={item.href}
@@ -119,7 +123,10 @@ export function NavBar() {
             <button
               type="button"
               className={cn(
-                "flex flex-col md:hidden cursor-pointer gap-1.25 z-100 bg-transparent border-none p-1.5",
+                "z-100 flex cursor-pointer flex-col gap-1.25 rounded-full border p-2 transition-all duration-300 md:hidden",
+                isScrolled || isMenuOpen
+                  ? "border-white/30 bg-white/34 shadow-[0_10px_28px_rgba(11,17,32,0.12)] backdrop-blur-[22px]"
+                  : "border-slate-200/80 bg-white shadow-[0_8px_22px_rgba(11,17,32,0.08)] backdrop-blur-0",
                 isMenuOpen && "hamburger-open",
               )}
               onClick={toggleMenu}
