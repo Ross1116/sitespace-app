@@ -130,6 +130,7 @@ function formatSourceLabel(source: string | null | undefined): string {
   if (!source) return "Unknown";
 
   const normalized = source.trim();
+  if (normalized === "") return "Unknown";
   if (normalized.toLowerCase() === "ai") return "AI";
 
   return normalized;

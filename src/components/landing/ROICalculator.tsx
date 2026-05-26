@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import {
   ArrowRight,
@@ -288,6 +288,7 @@ export function ROICalculator() {
                     key={option.label}
                     type="button"
                     onClick={() => setWindowSize(option.label)}
+                    aria-pressed={windowSize === option.label}
                     className={cn(
                       "cursor-pointer border-b-2 px-1 py-2 text-sm font-semibold transition hover:-translate-y-0.5",
                       windowSize === option.label
@@ -342,17 +343,21 @@ function RangeField({
   value: number;
   onChange: (value: number) => void;
 }) {
+  const inputId = useId();
   const progress = ((value - min) / (max - min)) * 100;
 
   return (
     <div>
       <div className="mb-2 flex items-center justify-between gap-4">
-        <span className="text-sm font-semibold text-slate-700">{label}</span>
+        <label htmlFor={inputId} className="text-sm font-semibold text-slate-700">
+          {label}
+        </label>
         <span className="landing-mono text-xs font-semibold text-[#0e7c9b]">
           {valueLabel}
         </span>
       </div>
       <input
+        id={inputId}
         type="range"
         className="roi-range"
         min={min}
