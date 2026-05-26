@@ -20,26 +20,23 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: {
-    default: "Sitespace",
-    template: "%s | Sitespace",
-  },
+  title: "Sitespace",
   description:
-    "Your all-in-one site scheduling app. Manage bookings, assets, and subcontractors in one place.",
+    "Sitespace turns construction programmes into shared-asset demand, booking coverage, capacity risk, and live site coordination.",
   metadataBase: new URL("https://sitespace.com.au"),
   openGraph: {
     type: "website",
     siteName: "Sitespace",
-    title: "Sitespace",
+    title: "Sitespace | Predictive Construction Logistics",
     description:
-      "Your all-in-one site scheduling app. Manage bookings, assets, and subcontractors in one place.",
+      "Turn programmes into shared-asset demand, booking coverage, capacity risk, and live site coordination.",
     url: "https://sitespace.com.au",
   },
   twitter: {
     card: "summary",
-    title: "Sitespace",
+    title: "Sitespace | Predictive Construction Logistics",
     description:
-      "Your all-in-one site scheduling app. Manage bookings, assets, and subcontractors in one place.",
+      "Turn programmes into shared-asset demand, booking coverage, capacity risk, and live site coordination.",
   },
 };
 

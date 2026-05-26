@@ -243,6 +243,10 @@ export function normalizeProjectList(payload: unknown): ApiProject[] {
         asOptionalString(project.location) ||
         asOptionalString(project.project_location) ||
         undefined,
+      start_date:
+        asOptionalString(project.start_date) ??
+        asOptionalString(project.project_start_date) ??
+        null,
       status: asOptionalString(project.status) || statusFromFlag,
       is_active: asBoolean(project.is_active),
       default_work_start_time: asOptionalString(project.default_work_start_time),

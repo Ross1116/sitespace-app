@@ -43,12 +43,12 @@ function buildEmailHtml(data: z.infer<typeof contactSchema>): string {
 
   return `
     <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
-      <h2 style="color:#1f2937;">New Demo Request — SiteSpace</h2>
+      <h2 style="color:#1f2937;">New Demo Request — Sitespace</h2>
       <table style="border-collapse:collapse;width:100%;font-size:14px;">
         ${tableRows}
       </table>
       <p style="margin-top:24px;color:#6b7280;font-size:12px;">
-        Sent from sitespace.com.au demo request form.
+        Sent from Sitespace.com.au demo request form.
       </p>
     </div>
   `;
@@ -74,8 +74,8 @@ export async function POST(req: NextRequest) {
   const toEmail    = process.env.CONTACT_TO_EMAIL;
   const useSandbox = process.env.MAILTRAP_USE_SANDBOX?.toLowerCase() !== "false";
   const inboxId    = process.env.MAILTRAP_INBOX_ID;
-  const fromEmail  = process.env.FROM_EMAIL ?? "noreply@sitespace.com.au";
-  const fromName   = process.env.FROM_NAME  ?? "SiteSpace";
+  const fromEmail  = process.env.FROM_EMAIL ?? "noreply@Sitespace.com.au";
+  const fromName   = process.env.FROM_NAME  ?? "Sitespace";
 
   if (!apiToken || !toEmail) {
     if (process.env.NODE_ENV === "production") {

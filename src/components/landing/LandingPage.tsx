@@ -1,694 +1,571 @@
 import Image from "next/image";
-import type React from "react";
-import { Upload, BrainCircuit, BellRing, ShieldCheck } from "lucide-react";
+import type { ReactNode } from "react";
+import {
+  ArrowRight,
+  CalendarCheck2,
+  Gauge,
+  ScanLine,
+  Upload,
+} from "lucide-react";
 
+import { DashboardHero } from "@/components/landing/DashboardHero";
+import {
+  DemoModalProvider,
+  DemoRequestCTA,
+  ScrollAnimations,
+} from "@/components/landing/ClientDynamics";
+import { ROICalculator } from "@/components/landing/ROICalculator";
+import { NavBar } from "@/components/landing/TopBar";
 import { cn } from "@/lib/utils";
 
 import "./LandingPage.css";
 
-import { NavBar } from "@/components/landing/TopBar";
-import { HeroParallax } from "@/components/landing/HeroParallax";
-// import { WatchVideoButton } from "@/components/landing/WatchVideoButton";
-import {
-  ScrollAnimations,
-  HeroOrbs,
-  LookaheadDashboard,
-  ShowcaseSection,
-  DemoRequestCTA,
-  DemoModalProvider,
-} from "@/components/landing/ClientDynamics";
-
 const FADE =
-  "opacity-0 translate-y-10 transition-all duration-700 ease-in-out data-[visible]:opacity-100 data-[visible]:translate-y-0";
+  "opacity-0 translate-y-7 transition-all duration-700 ease-out data-[visible]:opacity-100 data-[visible]:translate-y-0";
 
-const GIANT =
-  "text-[clamp(2rem,6vw,7rem)] font-extrabold leading-[1.1] tracking-tight";
+const WRAP = "relative mx-auto max-w-7xl";
 
-const LARGE =
-  "text-[clamp(2rem,6vw,5rem)] font-bold leading-[1.2] tracking-tight";
+const productCurrent = [
+  {
+    label: "Programme",
+    verb: "updates",
+    body: "The latest upload becomes the working version.",
+  },
+  {
+    label: "Asset need",
+    verb: "appears",
+    body: "Cranes, hoists and bays are counted by week.",
+  },
+  {
+    label: "Bookings",
+    verb: "resolve",
+    body: "Requests move through approval with history.",
+  },
+  {
+    label: "Capacity",
+    verb: "holds",
+    body: "Confirmed slots are checked against the live pool.",
+  },
+];
 
-const MEDIUM = "text-[clamp(1.5rem,4vw,3rem)] font-semibold leading-[1.3]";
-
-const APPLE =
-  "transition-all duration-[400ms] ease-in-out cursor-pointer hover:scale-[1.02] hover:shadow-[0_20px_60px_rgba(0,0,0,0.3)]";
-
-const BADGE =
-  "inline-flex items-center px-4 py-1.5 rounded-full text-sm font-semibold bg-white/10 border border-white/20 backdrop-blur-[10px]";
-
-const CHECK_ICON_CLS =
-  "w-6 h-6 shrink-0 bg-brand-blue rounded-full flex items-center justify-center";
+const commitmentThread = [
+  {
+    icon: <Upload size={20} />,
+    title: "Plan changes",
+    body: "Upload the latest schedule. Keep version, status and diagnostics visible.",
+    signal: "versioned",
+  },
+  {
+    icon: <ScanLine size={20} />,
+    title: "Demand appears",
+    body: "Activities become demand on shared assets by week and type.",
+    signal: "asset demand",
+  },
+  {
+    icon: <CalendarCheck2 size={20} />,
+    title: "Slots get booked",
+    body: "Requests keep the work, asset and approval context together.",
+    signal: "audited",
+  },
+  {
+    icon: <Gauge size={20} />,
+    title: "Capacity updates",
+    body: "Confirmed bookings refresh the next lookahead review.",
+    signal: "live coverage",
+  },
+];
 
 export default function LandingPage() {
   const year = new Date().getFullYear();
 
   return (
     <DemoModalProvider>
-    <div
-      id="landing-root"
-      className="scroll-smooth overflow-x-hidden text-[rgb(245,245,247)] min-h-screen relative bg-[linear-gradient(180deg,#000_0%,#0a0a14_20%,#050510_40%,#0a0a14_60%,#000_80%,#000_100%)]"
-    >
-      {/* Ambient overlay */}
       <div
-        className="fixed inset-0 pointer-events-none -z-10"
-        aria-hidden="true"
-        style={{
-          background: `
-            radial-gradient(ellipse at 20% 30%, rgba(14,124,155,0.10) 0%, transparent 50%),
-            radial-gradient(ellipse at 80% 70%, rgba(0,78,137,0.10) 0%, transparent 50%),
-            radial-gradient(ellipse at 50% 50%, rgba(245,158,11,0.10) 0%, transparent 60%)
-          `,
-        }}
-      />
-
-      <ScrollAnimations />
-
-      <NavBar />
-
-      <section className="min-h-screen flex items-center justify-center relative overflow-hidden bg-[linear-gradient(rgba(0,0,0,0.85),rgba(0,0,0,0.9))] grid-bg">
-        <div
-          className="absolute inset-0 z-0 pointer-events-none"
-          aria-hidden="true"
-        >
-          <HeroOrbs />
-        </div>
-
-        <div className="relative z-10 max-w-7xl mx-auto px-6 w-full">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <HeroParallax>
-              {/* <div className={cn(BADGE, "mb-6")}>
-                <span>🚀 Introducing AI-Powered Lookahead Planning</span>
-              </div> */}
-              <h1 className={cn(GIANT, "mb-6")}>
-                The future of
-                <br />
-                construction
-              </h1>
-              <p className="text-xl md:text-2xl text-gray-400 max-w-3xl mb-10 font-normal">
-                Program driven predictive logistics intelligence tool
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <DemoRequestCTA
-                  label="Book a Demo"
-                  className="cursor-pointer shine bg-amber-500 text-black rounded-full px-6 py-3 text-[17px] font-semibold inline-flex items-center justify-center hover:scale-[1.02] transition-transform"
-                />
-                {/* <WatchVideoButton /> */}
-              </div>
-            </HeroParallax>
-
-            <div
-              className="animate-fade-in-up [animation-delay:0.2s]"
-              style={{ animationFillMode: "both" }}
-            >
-              <DesktopFrame className="shine md:transform-[perspective(1000px)_rotateY(-5deg)]">
-                <Image
-                  src="/static/images/Lookaheaddash.jpeg"
-                  alt="SiteSpace Lookahead dashboard"
-                  width={800}
-                  height={500}
-                  priority
-                  sizes="(max-width: 768px) 100vw, 50vw"
-                  quality={75}
-                  className="block w-full"
-                />
-              </DesktopFrame>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="px-6 py-16 md:py-30">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
-            {[
-              { value: "85%", label: "Fewer conflicts" },
-              { value: "2-4", label: "Weeks advance notice" },
-              { value: "60%", label: "Time saved" },
-              { value: "100%", label: "Audit trail" },
-            ].map((stat, i) => (
-              <div
-                key={stat.value}
-                className={cn(FADE, "text-center")}
-                data-fade-in
-                style={{ transitionDelay: `${i * 0.1}s` }}
-              >
-                <div className="stat-gradient text-[clamp(2.5rem,5vw,4rem)] font-bold">
-                  {stat.value}
-                </div>
-                <div className="text-gray-500 text-sm md:text-base mt-2">
-                  {stat.label}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section
-        id="features"
-        className="min-h-screen flex items-center justify-center relative bg-[rgba(10,10,20,0.3)]"
+        id="landing-root"
+        className={cn(
+          "landing-font min-h-screen overflow-x-hidden bg-[#f7fbfa] text-[#0b1120]",
+        )}
       >
-        <div
-          className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(14,124,155,0.04)_0%,transparent_70%)] pointer-events-none"
-          aria-hidden="true"
-        />
-        <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-16 items-center relative z-10">
-          <div className={FADE} data-fade-in>
-            <h2 className={cn(LARGE, "mb-6")}>
-              Know when to book any asset
-              <br />
-              <span className="gradient-text">in seconds</span>
-            </h2>
-            <p className="text-xl text-gray-400 mb-8 font-normal leading-relaxed">
-              Tower cranes, loading bays, hoists. Subcontractors book instantly.
-              Managers approve with one tap. No email chains. No confusion.
-            </p>
-            <div className="space-y-3">
-              <CheckItem>One-click booking requests</CheckItem>
-              <CheckItem>Instant approval workflows</CheckItem>
-              <CheckItem>Real-time notifications</CheckItem>
-            </div>
-          </div>
-          <div
-            className={FADE}
-            data-fade-in
-            style={{ transitionDelay: "0.2s" }}
-          >
-            <DesktopFrame className="shine max-w-180 mx-auto">
-              <Image
-                src="/static/images/dashtwo.jpeg"
-                alt="SiteSpace dashboard showing bookings and assets"
-                width={720}
-                height={450}
-                loading="lazy"
-                sizes="(max-width: 768px) 100vw, 720px"
-                quality={75}
-                className="w-full h-auto object-contain"
-              />
-            </DesktopFrame>
-          </div>
-        </div>
-      </section>
-
-      <section className="min-h-screen flex items-center justify-center relative bg-gray-950">
-        <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-16 items-center">
-          <div className={cn(FADE, "order-2 md:order-1")} data-fade-in>
-            <DesktopFrame className="shine">
-              <Image
-                src="/static/images/cal.jpg"
-                alt="SiteSpace subcontractors management dashboard"
-                width={720}
-                height={450}
-                loading="lazy"
-                sizes="(max-width: 768px) 100vw, 720px"
-                quality={75}
-                className="w-full h-auto"
-              />
-            </DesktopFrame>
-          </div>
-          <div className={cn(FADE, "order-1 md:order-2")} data-fade-in>
-            <h2 className={cn(LARGE, "mb-6")}>
-              Eliminate
-              <br />
-              <span className="gradient-text">double bookings</span>
-            </h2>
-            <p className="text-xl text-gray-400 mb-8 font-normal leading-relaxed">
-              Our AI detects scheduling conflicts before they happen. No more
-              delivery clashes. No more crane congestion. Just smooth
-              operations.
-            </p>
-            <div className="space-y-3">
-              <CheckItem>Intelligent conflict prevention</CheckItem>
-              <CheckItem>Real-time availability tracking</CheckItem>
-              <CheckItem>Automated clash resolution</CheckItem>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section
-        id="lookahead"
-        className="min-h-screen flex items-center justify-center relative"
-        style={{
-          background: "linear-gradient(180deg, #000 0%, #0a0a14 100%)",
-        }}
-      >
-        <div className="max-w-7xl mx-auto px-6 text-center">
-          <div className={cn(FADE, "mb-16")} data-fade-in>
-            <div className={cn(BADGE, "mb-8")}>✨ Powered by AI</div>
-            <h2 className={cn(GIANT, "mb-8")}>
-              Lookahead
-              <br />
-              Planning
-            </h2>
-            <p className="text-2xl md:text-3xl text-gray-400 max-w-4xl mx-auto font-normal leading-[1.4]">
-              Connect your construction program to intelligent forecasting. Get
-              alerts 2-6 weeks in advance. Plan smarter, not harder.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section className="px-6 py-16 md:py-30">
-        <div className="max-w-6xl mx-auto">
-          <LookaheadDashboard />
-        </div>
-      </section>
-
-      <section className="relative px-6 pt-24 pb-16 md:pt-40 md:pb-30">
-        {/* Faint separator from the dashboard above */}
-        <div
-          className="absolute top-0 inset-x-0 h-px"
-          style={{
-            background:
-              "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%)",
-          }}
-          aria-hidden="true"
-        />
-        <div className="max-w-5xl mx-auto">
-          <div className={cn(FADE, "text-center mb-16")} data-fade-in>
-            <div className={cn(BADGE, "mb-6")}>⚙️ How It Works</div>
-            <h2 className={cn(LARGE, "mb-4")}>
-              Built for the way
-              <br />
-              <span className="gradient-text">you build</span>
-            </h2>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-6">
-            <FeatureBlurb
-              icon={<Upload size={22} className="text-[rgba(14,124,155,1)]" />}
-              accent="rgba(14,124,155,1)"
-              title="Program Integration"
-              delay="0s"
-            >
-              Upload from Primavera P6, MS Project, or PDF. We analyse upcoming
-              milestones and identify asset needs automatically.
-            </FeatureBlurb>
-            <FeatureBlurb
-              icon={<BrainCircuit size={22} className="text-amber-400" />}
-              accent="rgba(245,158,11,1)"
-              title="Smart Forecasting"
-              delay="0.1s"
-            >
-              AI identifies which activities need cranes, bays, or hoists.
-              Predicts congestion weeks in advance, not after it happens.
-            </FeatureBlurb>
-            <FeatureBlurb
-              icon={<BellRing size={22} className="text-[rgba(14,124,155,1)]" />}
-              accent="rgba(14,124,155,1)"
-              title="Proactive Alerts"
-              delay="0.2s"
-            >
-              Neutral, actionable notifications. Weekly digests keep teams
-              informed without overwhelming them.
-            </FeatureBlurb>
-            <FeatureBlurb
-              icon={<ShieldCheck size={22} className="text-amber-400" />}
-              accent="rgba(245,158,11,1)"
-              title="Zero Risk"
-              delay="0.3s"
-            >
-              Read-only program access. No edits, no overrides. Complete audit
-              trail for compliance and claims defense.
-            </FeatureBlurb>
-          </div>
-        </div>
-      </section>
-
-      <section
-        className="px-6 py-16 md:py-30"
-        style={{
-          background: "linear-gradient(180deg, #0a0a14 0%, #000 100%)",
-        }}
-      >
-        <div className="max-w-5xl mx-auto text-center">
-          <div className={FADE} data-fade-in>
-            <div className={cn(BADGE, "mb-8")}>🔮 Coming Soon</div>
-            <h2 className={cn(LARGE, "mb-8")}>
-              Live program sync.
-              <br />
-              <span className="gradient-text">Zero manual updates.</span>
-            </h2>
-            <p className="text-xl md:text-2xl text-gray-400 max-w-3xl mx-auto mb-12 font-normal leading-relaxed">
-              When the construction program changes, bookings adapt
-              automatically. Everyone stays aligned in real-time.
-            </p>
-            <div className="flex flex-wrap gap-6 justify-center text-gray-400">
-              <CompactCheck>Auto-detection</CompactCheck>
-              <CompactCheck>Smart resolution</CompactCheck>
-              <CompactCheck>Instant sync</CompactCheck>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section
-        id="benefits"
-        className="px-6 py-16 md:py-30"
-        style={{
-          background:
-            "linear-gradient(180deg, #000 0%, #0a0a14 50%, #000 100%)",
-        }}
-      >
-        <div className="max-w-7xl mx-auto">
-          <div className={cn(FADE, "text-center mb-20")} data-fade-in>
-            <h2 className={cn(LARGE, "mb-6")}>
-              Built for everyone
-              <br />
-              <span className="gradient-text">on site</span>
-            </h2>
-          </div>
-
-          <div className="mx-auto grid w-full max-w-5xl px-2 md:px-6 md:grid-cols-2 gap-16">
-            <div className={FADE} data-fade-in>
-              <h3 className="text-3xl font-semibold mb-8">
-                For Subcontractors
-              </h3>
-              <div className="space-y-4">
-                <BenefitItem
-                  title="Book assets in under 60 seconds"
-                  description="No complex forms. Just simple, fast bookings."
-                />
-                <BenefitItem
-                  title="Get advance notice"
-                  description="Plan 2-4 weeks ahead before demand peaks."
-                />
-                <BenefitItem
-                  title="Avoid delays and conflicts"
-                  description="No more delivery clashes or site access issues."
-                />
-              </div>
-            </div>
-
-            <div
-              className={FADE}
-              data-fade-in
-              style={{ transitionDelay: "0.2s" }}
-            >
-              <h3 className="text-3xl font-semibold mb-8">
-                For Project Managers
-              </h3>
-              <div className="space-y-4">
-                <BenefitItem
-                  title="Spot congestion early"
-                  description="See bottlenecks weeks in advance, not after."
-                />
-                <BenefitItem
-                  title="Complete audit trail"
-                  description="Immutable logs for claims defense and compliance."
-                />
-                <BenefitItem
-                  title="Zero legal risk"
-                  description="Read-only program access. No edits, no liability."
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <ShowcaseSection />
-
-      <section
-        id="contact"
-        className="min-h-screen flex items-center justify-center relative"
-      >
-        <div id="demo" />
-        <div className="max-w-4xl mx-auto px-6 text-center">
-          <div className={FADE} data-fade-in>
-            <h2 className={cn(LARGE, "mb-8")}>
-              Ready to transform
-              <br />
-              <span className="gradient-text">your site?</span>
-            </h2>
-            <p className="text-xl text-gray-400 mb-12 font-normal">
-              Join forward-thinking teams already using AI to plan smarter.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-              <DemoRequestCTA
-                label="Schedule a Demo"
-                className="cursor-pointer bg-amber-500 text-black rounded-full px-6 py-3 text-[17px] font-semibold hover:scale-[1.02] transition-transform"
-              />
-              <DemoRequestCTA
-                label="Contact Sales"
-                className="cursor-pointer bg-transparent text-amber-500 border-2 border-amber-500 rounded-full px-5.5 py-2.5 text-[17px] font-semibold hover:bg-amber-500 hover:text-black transition-colors"
-              />
-            </div>
-            <p className="text-gray-600 text-sm">
-              Australian-hosted · Enterprise-ready · Implementation support
-              included
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <footer className="border-t border-white/10 py-15 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-5 gap-12 mb-12">
-            <div className="md:col-span-2">
-              <div className="flex items-center gap-2 mb-4">
-                <Image
-                  src="/full-logo-dark.svg"
-                  alt="SiteSpace"
-                  width={140}
-                  height={48}
-                  loading="lazy"
-                  className="h-9 block"
-                  style={{ width: "auto" }}
-                />
-              </div>
-              <p className="text-gray-500 text-sm leading-relaxed">
-                The intelligent asset booking platform designed for the
-                complexities of
-                <br />
-                the modern job site.
-              </p>
-            </div>
-
-            <FooterCol title="Product">
-              <FooterLink href="#features">Features</FooterLink>
-              <FooterLink href="#lookahead">Lookahead AI</FooterLink>
-            </FooterCol>
-
-            <FooterCol title="Company">
-              <FooterLink href="#">About</FooterLink>
-              <FooterLink href="#contact">Contact</FooterLink>
-              <FooterLink href="#">Support</FooterLink>
-            </FooterCol>
-
-            <FooterCol title="Legal">
-              <FooterLink href="#">Privacy</FooterLink>
-              <FooterLink href="#">Terms</FooterLink>
-              <FooterLink href="#">Compliance</FooterLink>
-            </FooterCol>
-          </div>
-
-          <div className="border-t border-white/10 pt-6">
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-600">
-              <div>© {year} SiteSpace. All rights reserved.</div>
-              <a
-                href="https://sitespace.com.au"
-                className="hover:text-white transition-colors"
-                target="_blank"
-                rel="noreferrer"
-              >
-                sitespace.com.au
-              </a>
-            </div>
-          </div>
-        </div>
-      </footer>
-    </div>
+        <ScrollAnimations />
+        <NavBar />
+        <DashboardHero />
+        <SitePulseSection />
+        <ProductProofSection />
+        <CommitmentThreadSection />
+        <ROICalculator />
+        <FinalCTA />
+        <Footer year={year} />
+      </div>
     </DemoModalProvider>
   );
 }
 
-//  Server sub-components
-function DesktopFrame({
-  children,
-  className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
+function SitePulseSection() {
   return (
-    <div
-      className={cn(
-        "bg-[rgb(42,42,42)] rounded-xl overflow-hidden shadow-[0_25px_60px_rgba(0,0,0,0.5)]",
-        APPLE,
-        className,
-      )}
-    >
-      <div className="bg-[rgb(26,26,26)] px-4 py-3 flex items-center gap-2">
-        <div className="flex gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-[#ff5f56]" />
-          <div className="w-3 h-3 rounded-full bg-[#ffbd2e]" />
-          <div className="w-3 h-3 rounded-full bg-[#27c93f]" />
+    <section id="features" className="relative isolate overflow-hidden bg-[#0b1120] px-5 py-20 text-white sm:px-8 lg:py-28">
+      <div className="absolute inset-0 landing-pulse-field" aria-hidden="true" />
+      <div className={WRAP}>
+        <div className="grid gap-10 lg:grid-cols-[0.72fr_0.9fr] lg:items-center lg:justify-between">
+          <div className={FADE} data-fade-in>
+            <h2 className="max-w-2xl text-5xl font-black leading-[1.01] text-white md:text-7xl">
+              See what the site will need next.
+            </h2>
+            <p className="mt-6 max-w-md text-base leading-7 text-white/64">
+              Sitespace reads the programme against shared assets, then shows the
+              upcoming demand before crews start competing for the same slot.
+            </p>
+          </div>
+          <div className={FADE} data-fade-in>
+            <PulseMap />
+          </div>
+        </div>
+
+        <div className="landing-current-river mt-12 grid gap-8 md:grid-cols-4">
+          {productCurrent.map((item, index) => (
+            <CurrentPoint
+              key={item.label}
+              index={index + 1}
+              {...item}
+              delay={`${index * 0.06}s`}
+            />
+          ))}
         </div>
       </div>
-      {children}
+    </section>
+  );
+}
+
+function ProductProofSection() {
+  return (
+    <section id="lookahead" className="landing-review-section relative isolate overflow-hidden px-5 py-14 text-[#0b1120] sm:px-8 lg:py-16">
+      <div className="absolute inset-0 landing-review-field" aria-hidden="true" />
+      <div className={WRAP}>
+        <div className={FADE} data-fade-in>
+          <h2 className="max-w-4xl text-4xl font-black leading-[1.02] text-[#0b1120] md:text-6xl">
+            Turn lookahead gaps into booked slots.
+          </h2>
+          <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">
+            Uncovered crane, hoist and loading bay time sits beside the activity
+            that needs it, so teams can book before the programme tightens.
+          </p>
+        </div>
+
+        <div className={cn(FADE, "landing-review-workspace mt-8")} data-fade-in>
+          <LookaheadDataRail />
+
+          <div className="landing-review-product-stack">
+            <div className="landing-review-product">
+              <Image
+                src="/static/images/lookaheadplan.png"
+                alt="Sitespace lookahead demand coverage matrix"
+                fill
+                className="object-contain"
+                sizes="(min-width: 1024px) 860px, 100vw"
+              />
+            </div>
+            <CoverageTape />
+          </div>
+
+          <LookaheadAiRail />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function LookaheadDataRail() {
+  return (
+    <aside className="landing-lookahead-rail landing-lookahead-rail-left">
+      <RailMetric
+        label="Window"
+        value="6 wk"
+        detail="selected in the screenshot"
+      />
+      <RailMetric
+        label="Still unbooked"
+        value="170.5h"
+        detail="shown above the matrix"
+        accent
+      />
+      <RailMetric
+        label="Crane / Week 3"
+        value="50h gap"
+        detail="50h need, 0h booked"
+      />
+    </aside>
+  );
+}
+
+function RailMetric({
+  accent,
+  detail,
+  label,
+  value,
+}: {
+  accent?: boolean;
+  detail: string;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="landing-rail-metric">
+      <span className="landing-mono">{label}</span>
+      <strong className={cn(accent && "text-[#d94e09]")}>{value}</strong>
+      <p>{detail}</p>
     </div>
   );
 }
 
-function MobileFrame({
-  children,
-  className,
-  style,
-}: {
-  children: React.ReactNode;
-  className?: string;
-  style?: React.CSSProperties;
-}) {
+function LookaheadAiRail() {
+  return (
+    <aside className="landing-lookahead-rail landing-lookahead-rail-right">
+      <p className="landing-mono text-[0.64rem] font-semibold uppercase text-[#0e7c9b]">
+        Lookahead AI
+      </p>
+      <h3>Spot gaps faster.</h3>
+      <div className="landing-ai-actions">
+        <span>Reads the uploaded programme</span>
+        <span>Forecasts shared asset demand</span>
+        <span>Opens the activity behind each gap</span>
+      </div>
+
+      <div className="mt-7 flex flex-col gap-3">
+        <DemoRequestCTA
+          label="Review your programme"
+          className="inline-flex cursor-pointer items-center justify-center rounded-full bg-[#0b1120] px-5 py-3 text-sm font-bold text-white shadow-[0_16px_36px_rgba(11,17,32,0.14)] transition hover:-translate-y-0.5"
+        />
+        <a
+          href="#calculator"
+          className="inline-flex items-center justify-center gap-2 px-5 py-2 text-sm font-bold text-[#0b1120] transition hover:-translate-y-0.5 hover:text-[#0e7c9b]"
+        >
+          Price the gap
+          <ArrowRight size={15} />
+        </a>
+      </div>
+    </aside>
+  );
+}
+
+function CoverageTape() {
   return (
     <div
-      className={cn(
-        "relative w-full max-w-93.75 mx-auto bg-[rgb(26,26,26)] rounded-12.5 p-4 shadow-[0_30px_80px_rgba(0,0,0,0.6)]",
-        APPLE,
-        "shine",
-        className,
-      )}
-      style={style}
+      className="landing-capacity-tape"
+      aria-label="Crane demand coverage shown in the lookahead screenshot"
     >
-      <div
-        className="absolute top-2 left-1/2 -translate-x-1/2 w-30 h-6.25 bg-[rgb(26,26,26)] rounded-b-5 z-2"
-        aria-hidden="true"
-      />
-      <div className="rounded-9.5 overflow-hidden">{children}</div>
-    </div>
-  );
-}
-
-function CheckItem({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex items-start gap-3 py-3">
-      <CheckIcon />
-      <span className="text-gray-300">{children}</span>
-    </div>
-  );
-}
-
-function CompactCheck({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex items-center gap-2">
-      <CheckIcon />
-      <span>{children}</span>
-    </div>
-  );
-}
-
-function CheckIcon() {
-  return (
-    <div className={CHECK_ICON_CLS}>
-      <svg
-        className="w-3 h-3 text-white"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-        aria-hidden="true"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="3"
-          d="M5 13l4 4L19 7"
-        />
-      </svg>
-    </div>
-  );
-}
-
-function BenefitItem({
-  title,
-  description,
-}: {
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="flex items-start gap-3 py-3">
-      <CheckIcon />
-      <div>
-        <div className="font-medium mb-1">{title}</div>
-        <div className="text-gray-500 text-sm">{description}</div>
+      <div className="landing-tape-key" aria-hidden="true">
+        <span>Crane row</span>
+        <span>Need</span>
+        <span>Booked</span>
+        <span>Gap</span>
+      </div>
+      <div className="landing-tape-grid">
+        <TapeWeek label="Week 1" need="33.5h" booked="12h" gap="21.5h" needWidth="67%" bookedWidth="24%" gapWidth="43%" />
+        <TapeWeek label="Week 2" need="28.5h" booked="6h" gap="22.5h" needWidth="57%" bookedWidth="12%" gapWidth="45%" />
+        <TapeWeek label="Week 3" need="50h" booked="0h" gap="50h" needWidth="100%" bookedWidth="0%" gapWidth="100%" active />
+        <TapeWeek label="Week 4" need="33h" booked="0h" gap="33h" needWidth="66%" bookedWidth="0%" gapWidth="66%" />
+        <TapeWeek label="Week 5" need="13h" booked="0h" gap="13h" needWidth="26%" bookedWidth="0%" gapWidth="26%" />
+        <TapeWeek label="Week 6" need="13h" booked="0h" gap="13h" needWidth="26%" bookedWidth="0%" gapWidth="26%" />
       </div>
     </div>
   );
 }
 
-function FeatureBlurb({
-  icon,
-  accent,
-  title,
-  children,
-  delay,
+function TapeWeek({
+  active,
+  booked,
+  bookedWidth,
+  gap,
+  gapWidth,
+  label,
+  need,
+  needWidth,
 }: {
-  icon: React.ReactNode;
-  accent: string;
-  title: string;
-  children: React.ReactNode;
+  active?: boolean;
+  booked: string;
+  bookedWidth: string;
+  gap: string;
+  gapWidth: string;
+  label: string;
+  need: string;
+  needWidth: string;
+}) {
+  return (
+    <div className={cn("landing-tape-week", active && "is-active")}>
+      <div className="landing-tape-week-head">
+        <span>{label}</span>
+        <strong>{gap} gap</strong>
+      </div>
+      <i
+        className="landing-tape-bar landing-tape-need"
+        style={{ width: needWidth }}
+        aria-label={`${label} need ${need}`}
+      />
+      <i
+        className="landing-tape-bar landing-tape-booked"
+        style={{ width: bookedWidth }}
+        aria-label={`${label} booked ${booked}`}
+      />
+      <i
+        className="landing-tape-bar landing-tape-gap"
+        style={{ width: gapWidth }}
+        aria-label={`${label} gap ${gap}`}
+      />
+    </div>
+  );
+}
+
+function CommitmentThreadSection() {
+  return (
+    <section id="commitments" className="relative isolate overflow-hidden bg-white px-5 py-20 sm:px-8 lg:py-24">
+      <div className={WRAP}>
+        <div className="grid gap-8 lg:grid-cols-[0.82fr_0.72fr] lg:items-start lg:gap-12">
+          <div className={FADE} data-fade-in>
+            <h2 className="max-w-3xl text-5xl font-black leading-[1.01] text-[#0b1120] md:text-7xl">
+              Every booked slot keeps its reason.
+            </h2>
+          </div>
+          <p
+            className={cn(
+              FADE,
+              "max-w-lg text-base leading-7 text-slate-600 lg:justify-self-end",
+            )}
+            data-fade-in
+          >
+            Activity, asset, source, status and comments stay attached to the
+            commitment.
+          </p>
+        </div>
+
+        <div className="landing-thread-path mt-10 space-y-8">
+          {commitmentThread.map((step, index) => (
+            <ThreadStep
+              key={step.title}
+              {...step}
+              index={index + 1}
+              delay={`${index * 0.06}s`}
+            />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FinalCTA() {
+  return (
+    <section id="contact" className="relative isolate overflow-hidden bg-[#0b1120] px-5 py-20 text-white sm:px-8 lg:py-24">
+      <div className="absolute inset-0 landing-final-current" aria-hidden="true" />
+      <div className="relative mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1fr_0.58fr] lg:items-end">
+        <div>
+          <h2 className="max-w-4xl text-5xl font-black leading-[1.01] text-white md:text-7xl">
+            Bring the programme.
+          </h2>
+        </div>
+        <div>
+          <p className="text-base leading-7 text-white/66">
+            We will map demand, bookings and available capacity from the assets
+            your site already shares.
+          </p>
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row lg:flex-col xl:flex-row">
+            <DemoRequestCTA
+              label="Book a Demo"
+              className="inline-flex cursor-pointer items-center justify-center bg-[#f8b84e] px-6 py-3 text-sm font-bold text-[#0b1120] shadow-[0_18px_40px_rgba(248,184,78,0.24)] transition hover:-translate-y-0.5"
+            />
+            <a
+              href="#calculator"
+              className="inline-flex items-center justify-center gap-2 border border-white/18 px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-white/8"
+            >
+              Estimate ROI
+              <ArrowRight size={15} />
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PulseMap() {
+  return (
+    <div className="landing-pulse-map mx-auto h-[25rem] max-w-[36rem]">
+      <div className="landing-pulse-core">
+        <span className="landing-mono text-[0.62rem] font-bold uppercase text-[#f8b84e]">
+          Lookahead
+        </span>
+        <strong>asset demand</strong>
+      </div>
+      <SignalNode className="left-[6%] top-[16%]" label="Programme" value="uploaded" />
+      <SignalNode className="right-[4%] top-[22%]" label="Uncovered demand" value="26h" />
+      <SignalNode className="bottom-[15%] left-[12%]" label="Slots to book" value="14" />
+      <SignalNode className="bottom-[10%] right-[10%]" label="Booked coverage" value="74%" />
+      <span className="landing-pulse-path landing-pulse-path-a" />
+      <span className="landing-pulse-path landing-pulse-path-b" />
+    </div>
+  );
+}
+
+function SignalNode({
+  className,
+  label,
+  value,
+}: {
+  className: string;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className={cn("landing-signal-node", className)}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function CurrentPoint({
+  body,
+  delay,
+  index,
+  label,
+  verb,
+}: {
+  body: string;
   delay: string;
+  index: number;
+  label: string;
+  verb: string;
 }) {
   return (
     <div
       className={cn(
         FADE,
-        "group relative rounded-2xl border border-white/10 bg-white/3 p-7 md:p-8 overflow-hidden",
-        "hover:bg-white/6 hover:border-white/20 transition-all duration-300",
+        "group relative pt-9 transition-transform duration-300 hover:-translate-y-1",
       )}
       data-fade-in
       style={{ transitionDelay: delay }}
     >
-      {/* Corner radial accent */}
-      <div
-        className="absolute -top-10 -right-10 w-40 h-40 rounded-full opacity-[0.08] pointer-events-none transition-opacity duration-300 group-hover:opacity-[0.14]"
-        style={{ background: `radial-gradient(circle, ${accent}, transparent 70%)` }}
-        aria-hidden="true"
-      />
-
-      {/* Icon pill */}
-      <div
-        className="w-11 h-11 rounded-xl flex items-center justify-center mb-5 shrink-0"
-        style={{ background: `color-mix(in srgb, ${accent} 15%, transparent)` }}
-      >
-        {icon}
-      </div>
-
-      <h3 className="text-xl font-semibold mb-3">{title}</h3>
-      <p className="text-gray-400 leading-relaxed">{children}</p>
+      <span className="absolute left-0 top-0 flex h-5 w-5 items-center justify-center bg-[#f8b84e] text-[0.62rem] font-semibold text-[#0b1120] transition-colors duration-300 group-hover:bg-[#0e7c9b] group-hover:text-white">
+        {index}
+      </span>
+      <p className="landing-mono text-[0.68rem] font-semibold uppercase text-white/38 transition-colors duration-300 group-hover:text-white/56">
+        {label}
+      </p>
+      <p className="mt-2 text-3xl font-black text-white transition-colors duration-300 group-hover:text-[#f8b84e]">{verb}</p>
+      <p className="mt-3 text-sm leading-6 text-white/58">{body}</p>
     </div>
   );
 }
 
-function FooterCol({
+function ThreadStep({
+  body,
+  delay,
+  icon,
+  index,
+  signal,
   title,
-  children,
 }: {
+  body: string;
+  delay: string;
+  icon: ReactNode;
+  index: number;
+  signal: string;
   title: string;
-  children: React.ReactNode;
+}) {
+  return (
+    <article
+      className={cn(
+        FADE,
+        "landing-thread-step group grid gap-5 transition-transform duration-300 hover:-translate-y-0.5 md:grid-cols-[4rem_1fr_11rem] md:items-stretch",
+      )}
+      data-fade-in
+      style={{ transitionDelay: delay }}
+    >
+      <div className="landing-thread-icon flex h-11 w-11 items-center justify-center bg-[#0b1120] text-white transition-colors duration-300 group-hover:bg-[#0e7c9b]">
+        {icon}
+      </div>
+      <div className="landing-thread-copy flex h-full flex-col border-b border-slate-200 pb-7 transition-colors duration-300 group-hover:border-[#0e7c9b]/40">
+        <p className="landing-mono text-[0.68rem] font-semibold uppercase text-slate-400">
+          {index.toString().padStart(2, "0")}
+        </p>
+        <h3 className="mt-2 text-3xl font-black leading-tight text-[#0b1120]">
+          {title}
+        </h3>
+        <p className="mt-3 max-w-2xl text-base leading-7 text-slate-600">
+          {body}
+        </p>
+      </div>
+      <p className="landing-thread-signal landing-mono flex h-full items-center border-b border-slate-200 pb-7 text-sm font-semibold uppercase text-[#0e7c9b] transition-colors duration-300 group-hover:border-[#0e7c9b]/40 group-hover:text-[#d94e09] md:justify-end md:text-right">
+        {signal}
+      </p>
+    </article>
+  );
+}
+
+function Footer({ year }: { year: number }) {
+  return (
+    <footer className="border-t border-slate-200 bg-[#f7fbfa] px-5 py-12 sm:px-8">
+      <div className="mx-auto grid max-w-7xl gap-10 md:grid-cols-[1.4fr_repeat(3,0.6fr)]">
+        <div>
+          <Image
+            src="/full-logo.svg"
+            alt="Sitespace"
+            width={150}
+            height={40}
+            loading="lazy"
+            className="h-9 w-auto"
+          />
+          <p className="mt-4 max-w-sm text-sm leading-6 text-slate-500">
+            Predictive logistics for construction teams managing programme
+            demand, shared assets, bookings and available capacity.
+          </p>
+        </div>
+
+        <FooterColumn title="Product">
+          <FooterLink href="#features">Operating layer</FooterLink>
+          <FooterLink href="#lookahead">Lookahead</FooterLink>
+          <FooterLink href="#calculator">ROI calculator</FooterLink>
+        </FooterColumn>
+        <FooterColumn title="Company">
+          <FooterLink href="#contact">Contact</FooterLink>
+          <FooterLink href="https://sitespace.com.au">Sitespace.com.au</FooterLink>
+        </FooterColumn>
+        <FooterColumn title="Access">
+          <FooterLink href="/login">Sign in</FooterLink>
+          <FooterLink href="#contact">Book a demo</FooterLink>
+        </FooterColumn>
+      </div>
+      <div className="mx-auto mt-10 flex max-w-7xl flex-col gap-3 border-t border-slate-200 pt-6 text-sm text-slate-400 sm:flex-row sm:items-center sm:justify-between">
+        <span>&copy; {year} Sitespace. All rights reserved.</span>
+        <span>Australian-hosted construction logistics software.</span>
+      </div>
+    </footer>
+  );
+}
+
+function FooterColumn({
+  children,
+  title,
+}: {
+  children: ReactNode;
+  title: string;
 }) {
   return (
     <div>
-      <div className="font-medium mb-4 text-sm">{title}</div>
-      <div className="space-y-3 text-sm text-gray-500">{children}</div>
+      <h3 className="text-sm font-semibold uppercase text-[#0b1120]">{title}</h3>
+      <div className="mt-4 space-y-3 text-sm text-slate-500">{children}</div>
     </div>
   );
 }
 
 function FooterLink({
-  href,
   children,
+  href,
 }: {
+  children: ReactNode;
   href: string;
-  children: React.ReactNode;
 }) {
   return (
-    <div>
-      <a href={href} className="hover:text-white transition-colors">
-        {children}
-      </a>
-    </div>
+    <a href={href} className="block transition-colors hover:text-[#0e7c9b]">
+      {children}
+    </a>
   );
 }
-
-export { DesktopFrame, MobileFrame, FADE, BADGE, APPLE, GIANT, LARGE };

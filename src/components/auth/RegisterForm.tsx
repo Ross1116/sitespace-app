@@ -93,7 +93,7 @@ export function RegisterForm() {
       <div className="w-full max-w-md space-y-8 my-auto">
         <div className="text-center lg:text-left">
           <h2 className="text-3xl font-bold text-slate-900">Create Account</h2>
-          <p className="text-slate-500 mt-2">Get started with SiteSpace</p>
+          <p className="text-slate-500 mt-2">Get started with Sitespace</p>
         </div>
 
         {error && (
