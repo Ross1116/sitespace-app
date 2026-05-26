@@ -1,15 +1,15 @@
 "use client";
 
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  AlertTriangle,
+  BarChart3,
   Check,
   ChevronDown,
+  Clock3,
   Info,
   Layers3,
   MapPin,
-  RefreshCw,
 } from "lucide-react";
 import { useAuth } from "@/app/context/AuthContext";
 import { useResolvedProjectSelection } from "@/hooks/useResolvedProjectSelection";
@@ -21,6 +21,7 @@ import {
 import {
   type CapacityCell,
   type CapacityDashboardResponse,
+  type CapacityStatus,
   type CapacityWeekSummary,
   type ApiProject,
   getApiErrorMessage,
@@ -33,7 +34,6 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   formatAssetType,
-  formatDate,
   formatWeekRange,
   pivotRows,
 } from "./utils";
@@ -108,57 +108,128 @@ function formatCapacityAssetType(value: string): string {
   );
 }
 
+type UtilizationTone = {
+  surface: string;
+  badge: string;
+  value: string;
+  meta: string;
+};
+
+const UTILIZATION_TONES: Record<"healthy" | "watch" | "critical", UtilizationTone> =
+  {
+    healthy: {
+      surface:
+        "border-[#b7e4cf] bg-[#ecfdf5] text-[#14532d] shadow-[0_12px_28px_-24px_rgba(20,83,45,0.28)]",
+      badge: "bg-[#dff7eb] text-[#166534]",
+      value: "text-[#14532d]",
+      meta: "text-[#166534]/75",
+    },
+    watch: {
+      surface:
+        "border-[#fed7aa] bg-[#fff7ed] text-[#9a3412] shadow-[0_12px_28px_-24px_rgba(154,52,18,0.24)]",
+      badge: "bg-[#ffedd5] text-[#9a3412]",
+      value: "text-[#9a3412]",
+      meta: "text-[#9a3412]/75",
+    },
+    critical: {
+      surface:
+        "border-[#fecaca] bg-[#fef2f2] text-[#991b1b] shadow-[0_12px_28px_-24px_rgba(153,27,27,0.24)]",
+      badge: "bg-[#fee2e2] text-[#991b1b]",
+      value: "text-[#991b1b]",
+      meta: "text-[#991b1b]/75",
+    },
+  };
+
+function getUtilizationTone(value: number | null | undefined): UtilizationTone | null {
+  if (value == null || !Number.isFinite(value)) return null;
+  if (value <= 0) return null;
+  if (value >= 100) return UTILIZATION_TONES.critical;
+  if (value >= 90) return UTILIZATION_TONES.watch;
+  if (value < 90) return UTILIZATION_TONES.healthy;
+  return null;
+}
+
+function getFallbackMetaTone(status: CapacityStatus): string {
+  switch (status) {
+    case "no_capacity":
+      return "text-slate-500";
+    case "review_needed":
+      return "text-orange-700/80";
+    case "idle":
+      return "text-slate-400";
+    default:
+      return "text-slate-500";
+  }
+}
+
 function CapacityStatCards({ data }: { data: CapacityDashboardResponse }) {
   const summary = data.headline_summary;
 
-  const cards = [
+  const cards: Array<{
+    label: string;
+    value: string;
+    cardClass: string;
+    tone: string;
+    detail: string | null;
+    detailTone?: string;
+  }> = [
     {
       label: "Total demand hours",
       value: `${formatHours(summary.total_demand_hours)}h`,
+      cardClass:
+        "border-slate-200/80 bg-linear-to-br from-white via-white to-slate-50",
       tone: "text-slate-950",
       detail: null,
     },
     {
       label: "Total capacity hours",
       value: `${formatHours(summary.total_capacity_hours)}h`,
+      cardClass:
+        "border-slate-200/80 bg-linear-to-br from-white via-white to-slate-50",
       tone: "text-slate-950",
       detail: null,
     },
     {
       label: "Capacity-backed utilization",
       value: `${Math.round(summary.avg_utilization_pct)}%`,
-      tone:
-        summary.demand_without_capacity_hours > 0
-          ? "text-amber-700"
-          : "text-slate-950",
+      cardClass:
+        "border-slate-200/80 bg-linear-to-br from-white via-white to-slate-50",
+      tone: "text-slate-950",
       detail:
         summary.demand_without_capacity_hours > 0
           ? `${formatHours(summary.demand_without_capacity_hours)}h has no capacity`
           : null,
+      detailTone: "text-slate-500",
     },
     {
       label: "Weeks with gaps",
       value: String(summary.weeks_with_gaps),
-      tone: summary.weeks_with_gaps > 0 ? "text-amber-700" : "text-slate-950",
+      cardClass:
+        "border-slate-200/80 bg-linear-to-br from-white via-white to-slate-50",
+      tone: "text-slate-950",
       detail: null,
     },
   ];
 
   return (
-    <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
       {cards.map((card) => (
         <div
           key={card.label}
-          className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+          className={`rounded-[24px] border p-4 shadow-[0_20px_44px_-40px_rgba(15,23,42,0.28)] ${card.cardClass}`}
         >
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
             {card.label}
           </p>
-          <p className={`mt-3 text-3xl font-black tracking-tight ${card.tone}`}>
+          <p className={`mt-2.5 text-[1.7rem] font-black tracking-tight ${card.tone}`}>
             {card.value}
           </p>
           {card.detail ? (
-            <p className="mt-2 text-xs font-medium text-slate-500">
+            <p
+              className={`mt-1.5 text-xs font-medium ${
+                card.detailTone ?? "text-slate-500"
+              }`}
+            >
               {card.detail}
             </p>
           ) : null}
@@ -177,41 +248,40 @@ function CapacityCellCard({
 }) {
   if (!cell) {
     return (
-      <div className="relative flex min-h-28 flex-col justify-between p-3 bg-slate-50" />
+      <div className="flex h-full min-h-20 items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 text-xs text-slate-300">
+        No demand
+      </div>
     );
   }
   const styles = STATUS_STYLES[cell.status];
   const displayUtilizationPct = getDisplayDemandUtilizationPct(cell);
+  const tone = getUtilizationTone(displayUtilizationPct);
+  const metaTone = tone ? tone.meta : getFallbackMetaTone(cell.status);
 
   return (
     <div
-      className={`relative flex min-h-28 flex-col justify-between p-3 ${styles.cell} ${
-        compact ? "min-h-20" : ""
-      }`}
+      className={`relative flex min-h-20 flex-col justify-between rounded-lg border px-3 py-2.5 ${
+        tone
+          ? tone.surface
+          : `${styles.cell} border-slate-200/80`
+      } ${compact ? "min-h-20" : ""}`}
     >
       <div className="flex items-start justify-between gap-2">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+        <span
+          className={`text-[10px] font-semibold uppercase tracking-[0.16em] ${metaTone}`}
+        >
           Demand
         </span>
-        {cell.is_anomalous ? (
-          compact ? (
-            <span
-              className="h-2.5 w-2.5 rounded-full bg-orange-500"
-              aria-label="Anomalous capacity cell"
-              title="Anomalous capacity cell"
-            />
-          ) : (
-            <AlertTriangle
-              className="h-3.5 w-3.5 text-orange-500"
-              aria-label="Anomalous capacity cell"
-            />
-          )
-        ) : null}
+        <span className="text-[10px] font-medium text-slate-300">
+          {compact ? "Util" : "Utilization"}
+        </span>
       </div>
 
-      <div className="flex-1 pt-2">
+      <div className="flex-1 pt-1.5">
         <p
-          className={`font-black tracking-tight ${compact ? "text-lg" : "text-3xl"}`}
+          className={`font-black tabular-nums tracking-tight ${
+            tone ? tone.value : ""
+          } ${compact ? "text-base leading-none" : "text-[1.55rem] leading-none"}`}
         >
           {displayUtilizationPct === null
             ? "—"
@@ -221,17 +291,18 @@ function CapacityCellCard({
 
       <div className="flex items-end justify-between gap-2">
         {!compact ? (
-          <span className="text-[10px] font-medium text-slate-400">
-            {formatHours(cell.demand_hours)}h /{" "}
-            {formatHours(cell.capacity_hours)}h
+          <span className={`text-[10px] font-medium ${metaTone}`}>
+            {formatHours(cell.demand_hours)}h / {formatHours(cell.capacity_hours)}h
           </span>
         ) : (
-          <span className="text-[10px] font-medium text-slate-400">
+          <span className={`text-[10px] font-medium ${metaTone}`}>
             {formatHours(cell.uncovered_demand_hours)}h gap
           </span>
         )}
         <span
-          className={`rounded-full px-2 py-1 text-[10px] font-bold ${styles.badge}`}
+          className={`rounded-full px-2 py-1 text-[10px] font-bold ${
+            tone ? tone.badge : styles.badge
+          }`}
         >
           {styles.label}
         </span>
@@ -249,168 +320,57 @@ function CapacityWeekSummaryCell({
   const styles = STATUS_STYLES[status];
 
   return (
-    <div className="flex min-h-24 flex-col justify-between bg-white p-3 text-slate-700">
-      <div className="flex items-start justify-between gap-2">
+    <div className="flex min-h-20 flex-col justify-between rounded-lg border border-slate-200/80 bg-white px-3 py-2.5 text-slate-700">
+      <div className="flex items-center justify-between gap-3">
         <span
           className={`rounded-full px-2 py-1 text-[10px] font-bold ${styles.badge}`}
         >
           {STATUS_STYLES[status].label}
         </span>
-        <span className="text-xs font-semibold text-slate-500">
+        <span className="text-sm font-black tabular-nums tracking-tight text-slate-700">
           {formatUtilPct(summary.overall_demand_utilization_pct)}
         </span>
       </div>
-      <div className="space-y-1">
-        <p className="text-sm font-bold text-slate-900">
-          {formatHours(summary.total_demand_hours)}h /{" "}
-          {formatHours(summary.total_capacity_hours)}h
-        </p>
-        <p className="text-[10px] text-slate-400">
-          {formatHours(summary.total_booked_hours)}h booked
-        </p>
+
+      <div className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-1.5">
+        <div className="space-y-1">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+            Demand / Capacity
+          </p>
+          <p className="text-sm font-bold tabular-nums text-slate-900">
+            {formatHours(summary.total_demand_hours)}h /{" "}
+            {formatHours(summary.total_capacity_hours)}h
+          </p>
+        </div>
+        <div className="space-y-1 text-right">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+            Booked
+          </p>
+          <p className="text-sm font-bold tabular-nums text-slate-700">
+            {formatHours(summary.total_booked_hours)}h
+          </p>
+        </div>
       </div>
     </div>
   );
 }
 
-function CapacityDiagnosticsPanel({
-  data,
-}: {
-  data: CapacityDashboardResponse;
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-  const diagnostics = data.diagnostics;
-
-  if (!diagnostics) return null;
-
-  return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-sm font-bold text-slate-950">Diagnostics</p>
-          <p className="mt-1 text-sm text-slate-500">
-            Trace exclusions, assumptions, and the capacity snapshot timestamp.
-          </p>
-        </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => setIsOpen((current) => !current)}
-          className="gap-2"
-        >
-          {isOpen ? "Hide details" : "Show details"}
-          <ChevronDown
-            className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
-          />
-        </Button>
-      </div>
-
-      {isOpen ? (
-        <div className="mt-5 grid gap-5 lg:grid-cols-2">
-          <div className="space-y-3 text-sm text-slate-600">
-            <p>
-              <span className="font-semibold text-slate-900">Computed at:</span>{" "}
-              {formatDateTime(diagnostics.capacity_computed_at)}
-            </p>
-            <p>
-              <span className="font-semibold text-slate-900">
-                Snapshot date:
-              </span>{" "}
-              {diagnostics.snapshot_date
-                ? formatDate(diagnostics.snapshot_date)
-                : "Not available"}
-            </p>
-            <p>
-              <span className="font-semibold text-slate-900">
-                Snapshot refreshed:
-              </span>{" "}
-              {formatDateTime(diagnostics.snapshot_refreshed_at)}
-            </p>
-            <p>
-              <span className="font-semibold text-slate-900">
-                Assets evaluated:
-              </span>{" "}
-              {diagnostics.total_assets_evaluated}
-            </p>
-            <p>
-              <span className="font-semibold text-slate-900">
-                Unresolved assets:
-              </span>{" "}
-              {diagnostics.unresolved_asset_count}
-            </p>
-          </div>
-          <div className="space-y-3 text-sm text-slate-600">
-            <p>
-              <span className="font-semibold text-slate-900">
-                Excluded not planning ready:
-              </span>{" "}
-              {diagnostics.excluded_not_planning_ready}
-            </p>
-            <p>
-              <span className="font-semibold text-slate-900">
-                Excluded retired:
-              </span>{" "}
-              {diagnostics.excluded_retired}
-            </p>
-            <p>
-              <span className="font-semibold text-slate-900">
-                Other demand hours:
-              </span>{" "}
-              {formatHours(diagnostics.other_demand_hours_total)}h
-            </p>
-            <p>
-              <span className="font-semibold text-slate-900">
-                Excluded asset types:
-              </span>{" "}
-              {diagnostics.excluded_asset_types.length > 0
-                ? diagnostics.excluded_asset_types
-                    .map(formatCapacityAssetType)
-                    .join(", ")
-                : "None"}
-            </p>
-          </div>
-          <div className="lg:col-span-2">
-            <p className="text-sm font-semibold text-slate-900">Assumptions</p>
-            {diagnostics.assumptions.length > 0 ? (
-              <ul className="mt-2 space-y-2 text-sm text-slate-600">
-                {diagnostics.assumptions.map((assumption) => (
-                  <li
-                    key={assumption}
-                    className="rounded-xl bg-slate-50 px-3 py-2"
-                  >
-                    {assumption}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="mt-2 text-sm text-slate-500">
-                No assumptions were provided.
-              </p>
-            )}
-          </div>
-        </div>
-      ) : null}
-    </section>
-  );
-}
-
 function CapacityLoadingState() {
   return (
-    <div className="space-y-6">
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <div className="space-y-4">
+      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         {[1, 2, 3, 4].map((index) => (
           <div
             key={index}
-            className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+            className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
           >
             <Skeleton className="h-4 w-28" />
-            <Skeleton className="mt-3 h-9 w-24" />
+            <Skeleton className="mt-2.5 h-8 w-24" />
           </div>
         ))}
       </section>
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <Skeleton className="h-80 w-full rounded-xl" />
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <Skeleton className="h-72 w-full rounded-xl" />
       </div>
     </div>
   );
@@ -447,7 +407,6 @@ export function CapacityDashboard() {
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const userId = user?.id;
-  const [hasMounted, setHasMounted] = useState(false);
   const [showProjectSelector, setShowProjectSelector] = useState(false);
   const [windowSize, setWindowSizeLocal] = useState<CapacityWindowSize>("4W");
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -463,10 +422,6 @@ export function CapacityDashboard() {
     setProjectId,
   } = useResolvedProjectSelection({ userId });
   const { assets: projectAssets } = useProjectAssets(projectId);
-
-  useEffect(() => {
-    setHasMounted(true);
-  }, []);
 
   useEffect(() => {
     if (user?.role === "subcontractor") {
@@ -535,7 +490,10 @@ export function CapacityDashboard() {
 
   const weeks = capacityData?.weeks ?? [];
   const compactMode = isCompact(weeks.length);
-  const visibleAssetTypes = capacityData?.asset_types ?? [];
+  const visibleAssetTypes = useMemo(
+    () => capacityData?.asset_types ?? [],
+    [capacityData?.asset_types],
+  );
   const assetTypeCounts = useMemo(() => {
     const counts = new Map<string, number>();
 
@@ -605,21 +563,44 @@ export function CapacityDashboard() {
     visibleAssetTypes.length === 0 &&
     !capacityError &&
     !capacityLoading;
+  const gapWeekCount = capacityData?.headline_summary.weeks_with_gaps ?? 0;
+  const focusHeadline = !projectId
+    ? "Start by selecting a project"
+    : capacityError
+      ? "Capacity snapshot temporarily unavailable"
+      : noData
+        ? "Capacity inputs need more setup"
+        : gapWeekCount > 0
+          ? `${gapWeekCount} week${gapWeekCount === 1 ? "" : "s"} need attention`
+          : (capacityData?.headline_summary.avg_utilization_pct ?? 0) >= 90
+            ? "Capacity is running tight across this window"
+            : "Capacity is balanced across this window";
+  const focusDescription = !projectId
+    ? "Choose a project to compare weekly demand against available hours and surfaced gaps."
+    : capacityError
+      ? "The latest capacity snapshot could not be loaded right now. Try a refresh to pull the current planning view."
+      : noData
+        ? "Planning-ready assets, configured capacity, and an uploaded programme are all needed before the dashboard can map pressure."
+        : "Use the grid below to spot pressure by asset type, then rebalance before those gaps spill into delivery.";
+  const snapshotTimestamp =
+    capacityData?.diagnostics?.snapshot_refreshed_at ??
+    capacityData?.diagnostics?.capacity_computed_at ??
+    null;
 
   return (
-    <div className="min-h-screen bg-(--page-bg) p-4 font-sans sm:p-6 lg:p-8">
-      <div className="mx-auto max-w-screen-2xl space-y-6">
-        <div className="rounded-3xl border border-slate-100 bg-white p-1 shadow-sm">
-          <div className="space-y-6 p-6">
-            <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+    <div className="min-h-screen bg-(--page-bg) p-4 font-sans sm:p-5 lg:p-6">
+      <div className="mx-auto max-w-screen-2xl space-y-4">
+        <div className="min-h-[85vh] overflow-hidden rounded-3xl border border-slate-100 bg-white p-1 shadow-sm">
+          <div className="flex flex-1 flex-col space-y-5 p-5">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
                   Capacity Planning
                 </p>
-                <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950">
+                <h1 className="mt-1.5 text-[1.9rem] font-black tracking-tight text-slate-950">
                   Balance capacity against forecast demand
                 </h1>
-                <p className="mt-2 flex items-center gap-1 text-sm font-medium text-slate-500">
+                <p className="mt-1.5 flex items-center gap-1 text-sm font-medium text-slate-500">
                   {selectedProject?.location ? (
                     <>
                       <MapPin size={13} className="text-slate-300" />
@@ -637,7 +618,7 @@ export function CapacityDashboard() {
                     onClick={() =>
                       setShowProjectSelector((current) => !current)
                     }
-                    className="h-auto w-full rounded-lg bg-navy px-5 py-5 text-sm font-bold text-white shadow-md shadow-slate-900/10 hover:bg-(--navy-hover) sm:w-auto"
+                    className="h-auto w-full rounded-lg bg-navy px-5 py-3 text-sm font-bold text-white shadow-md shadow-slate-900/10 hover:bg-(--navy-hover) sm:w-auto"
                   >
                     <span className="flex items-center gap-2">
                       {isLoading
@@ -703,27 +684,81 @@ export function CapacityDashboard() {
                   ) : null}
                 </div>
 
-                <div className="rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
-                  <div className="flex items-center gap-1 rounded-xl bg-slate-100 p-1">
-                    {(["2W", "4W"] as CapacityWindowSize[]).map((size) => (
-                      <button
-                        key={size}
-                        type="button"
-                        onClick={() => updateWindowSize(size)}
-                        aria-pressed={windowSize === size}
-                        className={`rounded-lg px-3 py-2 text-sm font-semibold transition-all ${
-                          windowSize === size
-                            ? "bg-navy text-white shadow-md shadow-slate-900/10"
-                            : "text-slate-500 hover:text-slate-900"
-                        }`}
-                      >
-                        {size}
-                      </button>
-                    ))}
+              </div>
+            </div>
+
+            <section className="space-y-3">
+              <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm">
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                  <div className="min-w-0 max-w-3xl">
+                    <h2 className="text-lg font-black tracking-tight text-slate-950">
+                      {focusHeadline}
+                    </h2>
+                    <p className="mt-1 text-sm leading-5 text-slate-600">
+                      {focusDescription}
+                    </p>
+                    {capacityData ? (
+                      <div className="mt-2.5 flex flex-wrap gap-2 text-[11px] font-semibold">
+                        <span
+                          className="rounded-full bg-slate-100 px-3 py-1 text-slate-600"
+                        >
+                          Avg {Math.round(
+                            capacityData.headline_summary.avg_utilization_pct,
+                          )}
+                          % utilized
+                        </span>
+                        <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">
+                          {gapWeekCount} week{gapWeekCount === 1 ? "" : "s"} with gaps
+                        </span>
+                        <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">
+                          {formatHours(
+                            capacityData.headline_summary
+                              .demand_without_capacity_hours,
+                          )}
+                          h uncovered
+                        </span>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="w-full lg:w-auto">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-2 sm:min-w-[18rem]">
+                      <div className="mb-1.5 flex items-center justify-between gap-3 px-1">
+                        <div className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                          Window
+                        </div>
+                        {snapshotTimestamp ? (
+                          <div className="inline-flex min-w-0 items-center gap-1 text-[11px] font-medium text-slate-500">
+                            <Clock3 className="h-3.5 w-3.5" />
+                            <span className="truncate">
+                              Updated {formatDateTime(snapshotTimestamp)}
+                            </span>
+                          </div>
+                        ) : null}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-1 rounded-lg bg-white p-1 shadow-sm">
+                        {(["2W", "4W"] as CapacityWindowSize[]).map((size) => (
+                          <button
+                            key={size}
+                            type="button"
+                            onClick={() => updateWindowSize(size)}
+                            aria-pressed={windowSize === size}
+                            className={`rounded-md px-3 py-2 text-sm font-semibold transition-all ${
+                              windowSize === size
+                                ? "bg-navy text-white shadow-sm"
+                                : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                            }`}
+                          >
+                            {size === "2W" ? "2 wk" : "4 wk"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            </section>
 
             {isLoading || capacityLoading ? <CapacityLoadingState /> : null}
 
@@ -766,66 +801,108 @@ export function CapacityDashboard() {
                   </div>
                 ) : null}
 
-                <section className="overflow-x-auto rounded-2xl border border-slate-200 shadow-sm">
-                  <div
-                    className="grid min-w-max gap-px bg-slate-200"
-                    style={{ gridTemplateColumns }}
-                  >
-                    <div className="bg-slate-50 p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                        Asset type
-                      </p>
-                    </div>
-
-                    {weeks.map((week, index) => (
-                      <div key={week} className="bg-slate-50 p-4">
-                        <p className="text-sm font-bold text-slate-900">
-                          Week {index + 1}
-                        </p>
-                        <p className="mt-1 text-[11px] font-medium text-slate-500">
-                          {formatWeekRange(week)}
+                <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="flex items-start gap-3">
+                      <div className="rounded-xl bg-slate-100 p-2">
+                        <BarChart3 size={18} className="text-slate-700" />
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-black tracking-tight text-slate-950">
+                          Capacity matrix
+                        </h2>
+                        <p className="mt-1 max-w-2xl text-sm leading-5 text-slate-500">
+                          Scan each asset type across the planning window and
+                          spot where demand is balanced, tight, or over
+                          capacity.
                         </p>
                       </div>
-                    ))}
+                    </div>
 
-                    {visibleAssetTypes.map((assetType) => {
-                      const assetSummary =
-                        capacityData.summary_by_asset_type[assetType];
-                      const assetTypeMeta = assetTypeMetadata.get(assetType);
+                    <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+                      {snapshotTimestamp ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+                          Updated {formatDateTime(snapshotTimestamp)}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
 
-                      return (
-                        <FragmentRow
-                          key={assetType}
-                          left={
-                            <div className="flex min-h-28 flex-col justify-between bg-white p-4">
-                              <div>
-                                <p className="text-sm font-bold text-slate-950">
-                                  <span>
-                                    {assetTypeMeta?.displayName ??
-                                      formatCapacityAssetType(assetType)}
-                                  </span>
-                                </p>
-                                <div
-                                  className="mt-1 flex flex-wrap gap-2 text-[11px] font-semibold"
-                                  title="Assets in this type"
-                                >
-                                  <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-600">
-                                    Assets: {assetTypeMeta?.count ?? 0}
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="flex flex-wrap gap-2 text-[11px] font-semibold">
+                  <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-[11px] text-slate-500">
+                    <span className="font-semibold text-slate-700">Legend</span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-slate-300" />
+                      0% or no demand
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-[#86efac]" />
+                      Under 90%
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-[#fb923c]" />
+                      90-100%
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-[#f87171]" />
+                      100%+
+                    </span>
+                  </div>
+
+                  <div className="overflow-x-auto rounded-xl border border-slate-200">
+                    <div className="min-w-[720px]">
+                      <div
+                        className="grid border-b border-slate-200 bg-slate-50"
+                        style={{ gridTemplateColumns }}
+                      >
+                        <div className="border-r border-slate-200 px-4 py-2.5">
+                          <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                            Asset type
+                          </p>
+                        </div>
+                        {weeks.map((week, index) => (
+                          <div
+                            key={week}
+                            className="border-r border-slate-200 px-4 py-2.5 last:border-r-0"
+                          >
+                            <p className="text-sm font-bold text-slate-900">
+                              Week {index + 1}
+                            </p>
+                            <p className="mt-0.5 text-[10px] font-mono text-slate-400">
+                              {formatWeekRange(week)}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+
+                      {visibleAssetTypes.map((assetType) => {
+                        const assetSummary =
+                          capacityData.summary_by_asset_type[assetType];
+                        const assetTypeMeta = assetTypeMetadata.get(assetType);
+
+                        return (
+                          <div
+                            key={assetType}
+                            className="grid border-b border-slate-100 last:border-b-0"
+                            style={{ gridTemplateColumns }}
+                          >
+                            <div className="border-r border-slate-200 bg-white px-4 py-2.5">
+                              <p className="text-sm font-bold text-slate-900">
+                                {assetTypeMeta?.displayName ??
+                                  formatCapacityAssetType(assetType)}
+                              </p>
+                              <div className="mt-1.5 flex flex-col items-start gap-2 text-[11px] font-semibold">
+                                <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-600">
+                                  Assets: {assetTypeMeta?.count ?? 0}
+                                </span>
                                 <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-600">
                                   {formatHours(
                                     assetSummary?.total_demand_hours ?? 0,
                                   )}
                                   h demand
                                 </span>
-                                {(assetSummary?.weeks_over_capacity ?? 0) >
-                                0 ? (
+                                {(assetSummary?.weeks_over_capacity ?? 0) > 0 ? (
                                   <span className="rounded-full bg-red-100 px-2 py-1 text-red-700">
-                                    {assetSummary?.weeks_over_capacity ?? 0}{" "}
-                                    over
+                                    {assetSummary?.weeks_over_capacity ?? 0} over
                                   </span>
                                 ) : null}
                                 {(assetSummary?.weeks_tight ?? 0) > 0 ? (
@@ -835,78 +912,61 @@ export function CapacityDashboard() {
                                 ) : null}
                               </div>
                             </div>
-                          }
-                          cells={weeks.map((week) => (
-                            <CapacityCellCard
-                              key={`${assetType}-${week}`}
-                              cell={capacityData.rows[assetType]?.[week]}
-                              compact={compactMode}
-                            />
-                          ))}
-                        />
-                      );
-                    })}
 
-                    <div className="bg-slate-50 p-4">
-                      <p className="text-sm font-bold text-slate-950">
-                        Weekly Summary
-                      </p>
-                      <p className="mt-1 text-xs text-slate-500">
-                        Aggregate demand and worst pressure status by week
-                      </p>
-                    </div>
-
-                    {weeks.map((week) => {
-                      const weekSummary = capacityData.summary_by_week[week];
-                      if (!weekSummary) {
-                        return (
-                          <div
-                            key={`summary-${week}`}
-                            className="relative flex min-h-28 flex-col justify-between p-3 bg-slate-50"
-                          />
+                            {weeks.map((week) => (
+                              <div
+                                key={`${assetType}-${week}`}
+                                className="border-r border-slate-100 bg-white px-3 py-2.5 last:border-r-0"
+                              >
+                                <CapacityCellCard
+                                  cell={capacityData.rows[assetType]?.[week]}
+                                  compact={compactMode}
+                                />
+                              </div>
+                            ))}
+                          </div>
                         );
-                      }
-                      return (
-                        <CapacityWeekSummaryCell
-                          key={`summary-${week}`}
-                          summary={weekSummary}
-                        />
-                      );
-                    })}
+                      })}
+
+                      <div
+                        className="grid bg-slate-50"
+                        style={{ gridTemplateColumns }}
+                      >
+                        <div className="border-r border-slate-200 px-4 py-2.5">
+                          <p className="text-sm font-bold text-slate-950">
+                            Weekly Summary
+                          </p>
+                          <p className="mt-0.5 text-[10px] text-slate-500">
+                            Aggregate demand and worst pressure status by week
+                          </p>
+                        </div>
+                        {weeks.map((week) => {
+                          const weekSummary = capacityData.summary_by_week[week];
+                          return (
+                            <div
+                              key={`summary-${week}`}
+                              className="border-r border-slate-200 px-3 py-2.5 last:border-r-0"
+                            >
+                              {weekSummary ? (
+                                <CapacityWeekSummaryCell summary={weekSummary} />
+                              ) : (
+                                <div className="flex h-full min-h-20 items-center justify-center rounded-lg border border-dashed border-slate-200 bg-white text-xs text-slate-300">
+                                  No summary
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
                 </section>
 
-                <CapacityDiagnosticsPanel data={capacityData} />
               </>
-            ) : null}
-
-            {hasMounted && capacityData ? (
-              <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500">
-                <span>Start week {formatDate(capacityData.start_week)}</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    void mutate();
-                  }}
-                  className="inline-flex items-center gap-1 font-semibold text-slate-700"
-                >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  Refresh
-                </button>
-              </div>
             ) : null}
           </div>
         </div>
       </div>
     </div>
-  );
-}
-
-function FragmentRow({ left, cells }: { left: ReactNode; cells: ReactNode[] }) {
-  return (
-    <>
-      {left}
-      {cells}
-    </>
   );
 }
