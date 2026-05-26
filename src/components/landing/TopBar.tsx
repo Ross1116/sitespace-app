@@ -11,7 +11,7 @@ const NAV_ITEMS = [
   { href: "#features", label: "Product" },
   { href: "#lookahead", label: "Lookahead" },
   { href: "#calculator", label: "ROI" },
-  { href: "#contact", label: "Access" },
+  { href: "#commitments", label: "Access" },
   { href: "#contact", label: "Contact" },
 ];
 
