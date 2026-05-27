@@ -1,4 +1,27 @@
 import type { Config } from "tailwindcss";
+import flattenColorPalette from "tailwindcss/lib/util/flattenColorPalette";
+
+// Tailwind v4 does not expose every color as a CSS variable by default.
+// This keeps animation utilities like the aurora background easy to theme.
+
+function addVariablesForColors({
+  addBase,
+  theme,
+}: {
+  addBase: (base: Record<string, Record<string, string>>) => void;
+  theme: (path: string) => unknown;
+}) {
+  const allColors = flattenColorPalette(
+    theme("colors") as Record<string, string | Record<string, string>>,
+  );
+  const newVars = Object.fromEntries(
+    Object.entries(allColors).map(([key, value]) => [`--${key}`, String(value)]),
+  );
+
+  addBase({
+    ":root": newVars,
+  });
+}
 
 const config: Config = {
   content: [
@@ -6,6 +29,7 @@ const config: Config = {
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
+  darkMode: "class",
   theme: {
     extend: {
       colors: {
@@ -31,16 +55,25 @@ const config: Config = {
           "0%": { opacity: "0", transform: "translateY(20px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
+        aurora: {
+          from: {
+            backgroundPosition: "50% 50%, 50% 50%",
+          },
+          to: {
+            backgroundPosition: "350% 50%, 350% 50%",
+          },
+        },
       },
       animation: {
         "fade-in-up": "fade-in-up 1s ease forwards",
         float: "float 20s ease-in-out infinite",
         "hero-bg-fade": "hero-bg-fade 1s ease 0.2s forwards",
         "showcase-fade": "showcase-fade 0.5s ease forwards",
+        aurora: "aurora 60s linear infinite",
       },
     },
   },
-  plugins: [],
+  plugins: [addVariablesForColors],
 };
 
 export default config;
