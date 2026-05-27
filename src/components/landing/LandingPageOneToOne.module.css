@@ -68,26 +68,32 @@
   left: 0;
   width: 100%;
   z-index: 50;
+  padding-top: 0;
+  transition: padding-top 0.48s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.scrolled {
+  padding-top: 14px;
+}
+
+.navSurface {
+  width: 100%;
+  border: 1px solid transparent;
   background: rgba(245, 249, 252, 0.88);
   backdrop-filter: saturate(180%) blur(18px);
+  box-shadow: 0 1px 0 rgba(11, 17, 32, 0.06);
   transition:
-    top 0.48s cubic-bezier(0.16, 1, 0.3, 1),
     width 0.48s cubic-bezier(0.16, 1, 0.3, 1),
-    left 0.48s cubic-bezier(0.16, 1, 0.3, 1),
-    transform 0.48s cubic-bezier(0.16, 1, 0.3, 1),
     border-radius 0.48s cubic-bezier(0.16, 1, 0.3, 1),
     background 0.48s cubic-bezier(0.16, 1, 0.3, 1),
     box-shadow 0.48s cubic-bezier(0.16, 1, 0.3, 1),
     border-color 0.48s cubic-bezier(0.16, 1, 0.3, 1),
     backdrop-filter 0.48s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 1px 0 rgba(11, 17, 32, 0.06);
 }
 
-.scrolled {
-  top: 14px;
-  left: 50%;
+.navSurfaceScrolled {
   width: min(calc(100% - 28px), 1440px);
-  transform: translateX(-50%);
+  margin-inline: auto;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.58);
   background: rgba(244, 249, 252, 0.62);
@@ -175,10 +181,17 @@
 }
 
 .giantText {
-  font-size: clamp(2rem, 6vw, 7rem);
+  font-size: clamp(1.85rem, 4.9vw, 5.6rem);
   font-weight: 800;
   line-height: 1.1;
   letter-spacing: -0.02em;
+}
+
+.heroHeadline {
+  font-size: clamp(1.65rem, 3.8vw, 4.15rem);
+  font-weight: 800;
+  line-height: 1.06;
+  letter-spacing: -0.03em;
 }
 
 .largeText {
@@ -766,9 +779,11 @@
 
 @media (max-width: 768px) {
   .scrolled {
-    top: 10px;
+    padding-top: 10px;
+  }
+
+  .navSurfaceScrolled {
     width: calc(100% - 16px);
-    border-radius: 999px;
   }
 
   .hamburger {

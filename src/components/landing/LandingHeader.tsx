@@ -26,13 +26,33 @@ export default function LandingHeader() {
   }, [isMenuOpen]);
 
   useEffect(() => {
-    const onScroll = () => {
-      setIsNavScrolled(window.scrollY > 50);
+    let frameId = 0;
+
+    const updateScrolledState = () => {
+      const y = window.scrollY;
+      setIsNavScrolled((current) => {
+        if (!current && y > 72) return true;
+        if (current && y < 28) return false;
+        return current;
+      });
     };
 
-    onScroll();
+    const onScroll = () => {
+      if (frameId) return;
+      frameId = window.requestAnimationFrame(() => {
+        frameId = 0;
+        updateScrolledState();
+      });
+    };
+
+    updateScrolledState();
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (frameId) {
+        window.cancelAnimationFrame(frameId);
+      }
+    };
   }, []);
 
   const closeMenu = () => setIsMenuOpen(false);
@@ -44,7 +64,13 @@ export default function LandingHeader() {
         className={cn(styles.nav, isNavScrolled && styles.scrolled)}
         aria-label="Primary"
       >
-        <div className="mx-auto max-w-screen-2xl px-6 py-4 lg:px-12">
+        <div
+          className={cn(
+            styles.navSurface,
+            isNavScrolled && styles.navSurfaceScrolled,
+          )}
+        >
+          <div className="mx-auto max-w-screen-2xl px-6 py-4 lg:px-12">
           <div className="flex items-center justify-between">
             <Link href="/" className="flex items-center space-x-2">
               <Image
@@ -110,6 +136,7 @@ export default function LandingHeader() {
               <span />
             </button>
           </div>
+        </div>
         </div>
       </nav>
 

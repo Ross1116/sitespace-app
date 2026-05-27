@@ -13,18 +13,18 @@ export default function LandingHero() {
     <AuroraBackground className="bg-[#f1f6fa]">
       <LandingHeroGrid />
       <div className="pointer-events-none relative z-10 mx-auto w-full max-w-7xl px-6 pt-16 md:pt-20">
-        <div className="grid items-center gap-12 lg:grid-cols-2">
+        <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
           <div className={cn(styles.heroContent, "max-w-3xl text-left")}>
-            <h1 className={cn(styles.giantText, "mb-6")}>
-              The future of
+            <h3 className={cn(styles.heroHeadline, "mb-6")}>
+              Assets planning & 
               <br />
-              construction
-            </h1>
+              booking redefined
+            </h3>
             <p
-              className="mb-10 max-w-3xl text-xl text-gray-400 md:text-2xl"
+              className="mb-10 max-w-3xl text-xl text-gray-400 md:text-xl"
               style={{ fontWeight: 400 }}
             >
-              Program driven predictive logistics intelligence tool
+              See every shared asset, booking conflict, and site bottleneck before the day starts.
             </p>
             <DemoRequestCTA
               label="Book a Demo"
@@ -40,7 +40,7 @@ export default function LandingHero() {
             className={cn(styles.heroContent, "relative justify-self-end")}
             style={{ transitionDelay: "0.2s" }}
           >
-            <div className="relative w-fit">
+            <div className="relative w-fit lg:w-[min(100%,46rem)]">
               <div
                 className={cn(
                   styles.desktopFrame,
