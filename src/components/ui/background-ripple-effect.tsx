@@ -51,7 +51,7 @@ export const BackgroundRippleEffect = ({
             className="pointer-events-none absolute inset-0 z-[1]"
             style={{
               background:
-                "radial-gradient(circle at top, rgba(255,255,255,0.3), transparent 40%), linear-gradient(180deg, rgba(255,255,255,0.02) 0%, transparent 34%, rgba(255,255,255,0.1) 100%)",
+                "radial-gradient(circle at top, rgba(255,255,255,0.42), transparent 42%), linear-gradient(180deg, rgba(255,255,255,0.05) 0%, transparent 34%, rgba(255,255,255,0.14) 100%)",
             }}
           />
           <DivGrid
@@ -77,24 +77,43 @@ export const BackgroundRippleEffect = ({
       <style jsx global>{`
         @keyframes cell-ripple {
           0% {
-            opacity: 0.28;
+            opacity: calc(var(--ripple-strength, 1) * 0.24);
             transform: scale(1);
             background-color: var(--cell-fill-color);
-            box-shadow: inset 0 0 0 0 var(--cell-shadow-color);
+            box-shadow:
+              inset 0 1px 0 0 rgba(255, 255, 255, 0.18),
+              inset 0 0 0 0 var(--cell-shadow-color),
+              0 0 0 0 transparent;
           }
 
-          50% {
-            opacity: 0.85;
-            transform: scale(0.96);
+          32% {
+            opacity: calc(var(--ripple-strength, 1) * 1);
+            transform: scale(calc(0.92 + var(--ripple-strength, 1) * 0.02));
+            background-color: var(--cell-ripple-color-soft);
+            box-shadow:
+              inset 0 1px 0 0 rgba(255, 255, 255, 0.5),
+              inset 0 0 36px 2px var(--cell-shadow-color),
+              0 0 14px 1px var(--cell-shadow-color);
+          }
+
+          68% {
+            opacity: calc(var(--ripple-strength, 1) * 0.46);
+            transform: scale(0.985);
             background-color: var(--cell-ripple-color);
-            box-shadow: inset 0 0 24px 1px var(--cell-shadow-color);
+            box-shadow:
+              inset 0 1px 0 0 rgba(255, 255, 255, 0.22),
+              inset 0 0 14px 0 rgba(255, 255, 255, 0.08),
+              0 0 8px 0 rgba(255, 255, 255, 0.1),
+              0 0 0 0 transparent;
           }
 
           100% {
-            opacity: 0.38;
-            transform: scale(1);
+            opacity: calc(var(--ripple-strength, 1) * 0.14);
+            transform: scale(1.01);
             background-color: var(--cell-fill-color);
-            box-shadow: inset 0 0 0 0 transparent;
+            box-shadow:
+              inset 0 1px 0 0 rgba(255, 255, 255, 0.06),
+              0 0 0 0 transparent;
           }
         }
       `}</style>
@@ -160,8 +179,13 @@ const DivGrid = ({
         const distance = clickedCell
           ? Math.hypot(clickedCell.row - rowIdx, clickedCell.col - colIdx)
           : 0;
-        const delay = clickedCell ? Math.max(0, distance * 55) : 0;
-        const duration = 220 + distance * 85;
+        const maxDistance = Math.hypot(rows - 1, cols - 1) || 1;
+        const normalizedDistance = Math.min(distance / maxDistance, 1);
+        const rippleStrength = clickedCell
+          ? Math.max(0.18, 1 - normalizedDistance * 1.35)
+          : 1;
+        const delay = clickedCell ? Math.max(0, distance * 48) : 0;
+        const duration = 340 + distance * 130;
 
         const cellStyle: CellStyle = {
           backgroundColor: fillColor,
@@ -171,20 +195,24 @@ const DivGrid = ({
         if (clickedCell) {
           cellStyle["--delay"] = `${delay}ms`;
           cellStyle["--duration"] = `${duration}ms`;
-          cellStyle.animation = `cell-ripple var(--duration) ease-out var(--delay)`;
+          cellStyle["--ripple-strength"] = `${rippleStrength}`;
+          cellStyle.animation = `cell-ripple var(--duration) cubic-bezier(0.12, 0.82, 0.22, 1) var(--delay)`;
         }
 
         return (
           <div
             key={idx}
             className={cn(
-              "relative border-[0.5px] opacity-50 transition-all duration-150 will-change-transform",
-              interactive && "cursor-pointer hover:opacity-90 hover:scale-[0.985]",
+              "relative border-[0.5px] opacity-58 transition-all duration-150 will-change-transform",
+              interactive &&
+                "cursor-pointer hover:opacity-100 hover:scale-[0.975]",
               !interactive && "pointer-events-none",
             )}
             style={
               {
                 ...cellStyle,
+                ["--cell-ripple-color-soft" as string]:
+                  "color-mix(in srgb, var(--cell-ripple-color) 48%, rgba(255,255,255,0.92))",
                 ["--cell-ripple-color" as string]: rippleColor,
               } as React.CSSProperties
             }

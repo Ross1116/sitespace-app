@@ -309,42 +309,123 @@ export function DemoModalProvider({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <DemoModalCtx.Provider value={{ openModal: () => setOpen(true) }}>
-      {children}
-      <Dialog.Root open={open} onOpenChange={setOpen}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-100 bg-black/75 transition-opacity duration-250 ease-out data-[state=closed]:opacity-0 data-[state=open]:opacity-100" />
-          <Dialog.Content
-            className="fixed left-1/2 top-1/2 z-100 w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-white/10 bg-[#0a0a14] p-6 shadow-2xl max-h-[90vh] overflow-y-auto data-[state=closed]:opacity-0 data-[state=open]:opacity-100 data-[state=open]:scale-100 data-[state=closed]:scale-[0.93]"
-            style={{
-              transition: "opacity 220ms ease, scale 300ms cubic-bezier(0.16,1,0.3,1)",
-            }}
-          >
-            <div className="flex items-start justify-between mb-6">
-              <div>
-                <Dialog.Title className="text-xl font-bold text-white">
-                  Book a Demo
-                </Dialog.Title>
-                <Dialog.Description className="text-sm text-gray-400 mt-1">
-                  Tell us about your project and we&apos;ll reach out within one
-                  to three business days.
-                </Dialog.Description>
+    <>
+      <DemoModalCtx.Provider value={{ openModal: () => setOpen(true) }}>
+        {children}
+        <Dialog.Root open={open} onOpenChange={setOpen}>
+          <Dialog.Portal>
+            <Dialog.Overlay className="demo-modal-overlay fixed inset-0 z-100 bg-[rgba(5,8,16,0.68)] backdrop-blur-[3px]" />
+            <Dialog.Content className="demo-modal-content fixed left-1/2 top-1/2 z-100 w-full max-w-2xl rounded-[28px] border border-white/10 bg-[#0a0a14]/98 p-6 shadow-[0_32px_120px_rgba(0,0,0,0.45)] max-h-[90vh] overflow-y-auto">
+              <div className="mb-6 flex items-start justify-between">
+                <div className="demo-modal-heading">
+                  <Dialog.Title className="text-xl font-bold text-white">
+                    Book a Demo
+                  </Dialog.Title>
+                  <Dialog.Description className="mt-1 text-sm text-gray-400">
+                    Tell us about your project and we&apos;ll reach out within one
+                    to three business days.
+                  </Dialog.Description>
+                </div>
+                <Dialog.Close asChild>
+                  <button
+                    className="mt-0.5 shrink-0 cursor-pointer text-gray-600 transition-colors hover:text-white"
+                    aria-label="Close"
+                  >
+                    <X size={18} />
+                  </button>
+                </Dialog.Close>
               </div>
-              <Dialog.Close asChild>
-                <button
-                  className="text-gray-600 hover:text-white transition-colors mt-0.5 shrink-0 cursor-pointer"
-                  aria-label="Close"
-                >
-                  <X size={18} />
-                </button>
-              </Dialog.Close>
-            </div>
 
-            <ContactModalContent onClose={() => setOpen(false)} />
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
-    </DemoModalCtx.Provider>
+              <ContactModalContent onClose={() => setOpen(false)} />
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
+      </DemoModalCtx.Provider>
+
+      <style>{`
+        .demo-modal-overlay {
+          animation: demo-modal-overlay-in 260ms cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .demo-modal-content {
+          transform: translate(-50%, -50%);
+          transform-origin: center;
+          animation: demo-modal-content-in 320ms cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .demo-modal-heading {
+          animation: demo-modal-heading-in 360ms cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .demo-modal-overlay[data-state="closed"] {
+          animation: demo-modal-overlay-out 180ms ease-in forwards;
+        }
+
+        .demo-modal-content[data-state="closed"] {
+          animation: demo-modal-content-out 180ms ease-in forwards;
+        }
+
+        @keyframes demo-modal-overlay-in {
+          from {
+            opacity: 0;
+          }
+
+          to {
+            opacity: 1;
+          }
+        }
+
+        @keyframes demo-modal-overlay-out {
+          from {
+            opacity: 1;
+          }
+
+          to {
+            opacity: 0;
+          }
+        }
+
+        @keyframes demo-modal-content-in {
+          from {
+            opacity: 0;
+            transform: translate(-50%, calc(-50% + 16px)) scale(0.96);
+            filter: blur(10px);
+          }
+
+          to {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+            filter: blur(0);
+          }
+        }
+
+        @keyframes demo-modal-content-out {
+          from {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+            filter: blur(0);
+          }
+
+          to {
+            opacity: 0;
+            transform: translate(-50%, calc(-50% + 10px)) scale(0.985);
+            filter: blur(4px);
+          }
+        }
+
+        @keyframes demo-modal-heading-in {
+          from {
+            opacity: 0;
+            transform: translateY(6px);
+          }
+
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
+    </>
   );
 }
 
