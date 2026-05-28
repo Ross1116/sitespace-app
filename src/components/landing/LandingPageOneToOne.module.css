@@ -234,7 +234,7 @@
 .heroHeadline {
   margin: 0;
   max-width: 14.5ch;
-  font-size: 2.2rem;
+  font-size: 2rem;
   font-weight: 500;
   line-height: 0.98;
   letter-spacing: 0;
@@ -250,7 +250,7 @@
 
 @media (min-width: 1024px) {
   .heroHeadline {
-    font-size: 4rem;
+    font-size: 3.85rem;
   }
 }
 
