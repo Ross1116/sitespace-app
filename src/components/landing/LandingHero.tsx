@@ -1,52 +1,82 @@
 import Image from "next/image";
+import { Outfit } from "next/font/google";
 
 import { AuroraBackground } from "@/components/ui/aurora-background";
 import { cn } from "@/lib/utils";
 
 import dashhome from "../../../public/static/images/dashhome.png";
+import mobileApp from "../../../public/static/images/mobile.png";
 import styles from "./LandingPageOneToOne.module.css";
 import { DemoRequestCTA } from "./ContactModal";
 import LandingHeroGrid from "./LandingHeroGrid";
+
+const outfit = Outfit({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+});
 
 export default function LandingHero() {
   return (
     <AuroraBackground className="bg-[#f1f6fa]">
       <LandingHeroGrid />
-      <div className="pointer-events-none relative z-10 mx-auto w-full max-w-7xl px-6 pt-16 md:pt-20">
-        <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-          <div className={cn(styles.heroContent, "max-w-3xl text-left")}>
-            <h3 className={cn(styles.heroHeadline, "mb-6")}>
-              Assets planning & 
-              <br />
-              booking redefined
-            </h3>
-            <p
-              className="mb-10 max-w-3xl text-xl text-gray-400 md:text-xl"
-              style={{ fontWeight: 400 }}
-            >
-              See every shared asset, booking conflict, and site bottleneck before the day starts.
+
+      <section
+        className={cn(
+          styles.heroOuter,
+          "pointer-events-none relative z-10 mx-auto w-full max-w-[1440px] px-4 sm:px-5 md:px-6 lg:px-7",
+        )}
+      >
+        <div
+          className={cn(
+            styles.heroLayout,
+            "grid items-center lg:grid-cols-[minmax(0,520px)_minmax(0,1fr)]",
+          )}
+        >
+          <div
+            className={cn(
+              styles.heroContent,
+              styles.heroCopy,
+              outfit.className,
+            )}
+          >
+            <div className={styles.heroEyebrow}>
+              The Future of Construction
+            </div>
+
+            <h1 className={styles.heroHeadline}>
+              Asset planning & booking redefined
+            </h1>
+
+            <p className={styles.heroLead}>
+              See every shared asset, booking conflict, and site bottleneck
+              before the day starts.
             </p>
-            <DemoRequestCTA
-              label="Book a Demo"
-              className={cn(
-                styles.btnPrimary,
-                styles.shine,
-                "pointer-events-auto",
-              )}
-            />
+
+            <div className={styles.heroActions}>
+              <DemoRequestCTA
+                label="Book a Demo"
+                className={cn(
+                  styles.btnPrimary,
+                  styles.shine,
+                  "pointer-events-auto",
+                )}
+              />
+            </div>
           </div>
 
           <div
-            className={cn(styles.heroContent, "relative justify-self-end")}
+            className={cn(styles.heroContent, styles.heroVisual)}
             style={{ transitionDelay: "0.2s" }}
           >
-            <div className="relative w-fit lg:w-[min(100%,46rem)]">
+            <div className={styles.heroVisualStage}>
               <div
                 className={cn(
                   styles.desktopFrame,
                   styles.heroDesktopTilt,
                   styles.appleCard,
-                  styles.shine,
+                  styles.heroVisualShine,
+                  styles.heroDesktopPanel,
                   "pointer-events-auto",
                 )}
               >
@@ -57,20 +87,43 @@ export default function LandingHero() {
                     <div className={styles.desktopFrameDot} />
                   </div>
                 </div>
+
                 <Image
                   src={dashhome}
                   alt="SiteSpace home dashboard"
                   priority
                   fetchPriority="high"
                   placeholder="blur"
-                  sizes="(max-width: 1024px) 92vw, 50vw"
+                  sizes="(max-width: 640px) 92vw, (max-width: 1024px) 86vw, 58vw"
                   className="block h-auto w-full"
                 />
+              </div>
+
+              <div className={cn(styles.heroMobilePanel, "pointer-events-auto")}>
+                <div
+                  className={cn(
+                    styles.heroPhoneShell,
+                    styles.heroPhoneInteractive,
+                    styles.heroVisualShine,
+                  )}
+                >
+                  <div className={styles.heroPhoneScreen}>
+                    <Image
+                      src={mobileApp}
+                      alt="SiteSpace mobile app"
+                      priority
+                      sizes="(max-width: 640px) 34vw, (max-width: 1024px) 24vw, 300px"
+                      className={styles.heroPhoneImage}
+                    />
+                  </div>
+
+                  <span className={styles.heroPhoneHomeBar} aria-hidden="true" />
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      </section>
     </AuroraBackground>
   );
 }

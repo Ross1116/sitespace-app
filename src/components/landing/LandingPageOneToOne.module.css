@@ -165,6 +165,50 @@
   animation: fade-in-up 1s ease forwards;
 }
 
+.heroCopy {
+  width: 100%;
+  max-width: 570px;
+  padding-right: 20px;
+  text-wrap: balance;
+}
+
+@media (min-width: 1024px) {
+  .heroCopy {
+    padding-right: 0;
+    padding-top: 0.5rem;
+  }
+}
+
+.heroEyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 1.15rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  color: var(--lp-navy);
+  opacity: 0.76;
+}
+
+.heroEyebrow::before {
+  content: "";
+  display: block;
+  width: 1.75rem;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--lp-accent);
+  box-shadow: 0 0 18px rgba(247, 186, 87, 0.62);
+}
+
+@media (min-width: 768px) {
+  .heroEyebrow {
+    margin-bottom: 1.65rem;
+  }
+}
+
 @keyframes fade-in-up {
   to {
     opacity: 1;
@@ -188,10 +232,71 @@
 }
 
 .heroHeadline {
-  font-size: clamp(1.65rem, 3.8vw, 4.15rem);
-  font-weight: 800;
-  line-height: 1.06;
-  letter-spacing: -0.03em;
+  margin: 0;
+  max-width: 14.5ch;
+  font-size: 2rem;
+  font-weight: 500;
+  line-height: 0.98;
+  letter-spacing: 0;
+  color: #020819;
+  text-wrap: balance;
+}
+
+@media (min-width: 768px) {
+  .heroHeadline {
+    font-size: 3.65rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .heroHeadline {
+    font-size: 3.85rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .heroHeadline {
+    font-size: 4rem;
+  }
+}
+
+.heroLead {
+  margin: 1.25rem 0 0;
+  max-width: 31rem;
+  font-size: 1.125rem;
+  font-weight: 400;
+  line-height: 1.52;
+  letter-spacing: 0;
+  color: var(--lp-navy);
+  opacity: 0.72;
+}
+
+@media (min-width: 768px) {
+  .heroLead {
+    font-size: 1.25rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .heroLead {
+    margin-top: 1.35rem;
+    font-size: 1.3125rem;
+  }
+}
+
+.heroActions {
+  margin-top: 1.75rem;
+  display: flex;
+  width: 100%;
+  max-width: 413px;
+  align-items: center;
+  min-height: 56px;
+}
+
+@media (min-width: 1024px) {
+  .heroActions {
+    margin-top: 2.75rem;
+  }
 }
 
 .largeText {
@@ -208,27 +313,48 @@
 }
 
 .btnPrimary {
-  background: var(--lp-accent);
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #ffc868 0%, var(--lp-accent) 58%, #f3a834 100%);
   color: var(--lp-navy);
   border-radius: 980px;
-  padding: 12px 24px;
-  font-size: 17px;
-  font-weight: 600;
+  min-height: 56px;
+  padding: 0 32px;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  letter-spacing: 0;
   border: none;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition:
+    transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+    filter 0.28s ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 10px 26px rgba(248, 184, 78, 0.28);
-}
-
-.heroDesktopTilt {
-  transform: perspective(1000px) rotateY(-5deg);
+  box-shadow:
+    0 18px 38px rgba(248, 184, 78, 0.33),
+    0 2px 0 rgba(255, 255, 255, 0.42) inset,
+    0 -2px 0 rgba(139, 83, 4, 0.08) inset;
 }
 
 .btnPrimary:hover {
-  transform: scale(1.02);
+  transform: translateY(-2px) scale(1.025);
+  filter: saturate(1.04);
+  box-shadow:
+    0 24px 48px rgba(248, 184, 78, 0.38),
+    0 2px 0 rgba(255, 255, 255, 0.5) inset,
+    0 -2px 0 rgba(139, 83, 4, 0.1) inset;
+}
+
+.btnPrimary:focus-visible {
+  outline: 3px solid rgba(14, 124, 155, 0.28);
+  outline-offset: 4px;
+}
+
+.heroDesktopTilt {
+  transform: perspective(1200px) scale(1.02) rotateY(-5deg) rotateX(0.45deg);
+  transform-origin: bottom left;
 }
 
 .btnSecondary {
@@ -306,6 +432,220 @@
   border-radius: 29px;
   width: 100%;
   display: block;
+}
+
+.heroVisual {
+  position: relative;
+  width: 97%;
+  margin-top: 6rem;
+  margin-right: 0;
+}
+
+@media (min-width: 640px) {
+  .heroVisual {
+    width: 96%;
+    margin-top: 1.25rem;
+    margin-right: 0;
+  }
+}
+
+@media (min-width: 768px) {
+  .heroVisual {
+    width: 95%;
+    margin-top: 0;
+    margin-right: 0;
+  }
+}
+
+@media (min-width: 1280px) {
+  .heroVisual {
+    width: 93%;
+    margin-right: 0;
+  }
+}
+
+@media (min-width: 1536px) {
+  .heroVisual {
+    width: 92%;
+    margin-right: 0;
+  }
+}
+
+.heroVisualStage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1040 / 635;
+  --hero-phone-left: 3%;
+  --hero-phone-width: 48%;
+  --hero-desktop-right: 11%;
+  --hero-visual-baseline: 0%;
+  --hero-phone-lift: 6%;
+}
+
+@media (min-width: 640px) {
+  .heroVisualStage {
+    --hero-phone-left: 2.75%;
+    --hero-phone-width: 32.5%;
+    --hero-desktop-right: 11.5%;
+    --hero-phone-lift: 7%;
+  }
+}
+
+@media (min-width: 1024px) {
+  .heroVisualStage {
+    --hero-phone-left: 2.5%;
+    --hero-phone-width: 20.75%;
+    --hero-desktop-right: 12.5%;
+    --hero-phone-lift: 9.5%;
+  }
+}
+
+@media (min-width: 1280px) {
+  .heroVisualStage {
+    --hero-phone-left: 2.2%;
+    --hero-phone-width: 20.4%;
+    --hero-desktop-right: 13%;
+    --hero-phone-lift: 10.75%;
+  }
+}
+
+.heroDesktopPanel {
+  position: absolute;
+  left: calc(var(--hero-phone-left) + (var(--hero-phone-width) / 2));
+  right: var(--hero-desktop-right);
+  bottom: var(--hero-visual-baseline);
+  width: auto;
+  max-width: none;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.heroDesktopPanel img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.heroDesktopPanel::before {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent);
+}
+
+.heroMobilePanel {
+  position: absolute;
+  left: var(--hero-phone-left);
+  bottom: calc(var(--hero-visual-baseline) + var(--hero-phone-lift));
+  width: min(var(--hero-phone-width), 14.75rem);
+  max-width: none;
+  margin: 0;
+  z-index: 3;
+  pointer-events: auto;
+}
+
+@media (min-width: 640px) {
+  .heroMobilePanel {
+    width: min(var(--hero-phone-width), 15.75rem);
+  }
+}
+
+@media (min-width: 1024px) {
+  .heroMobilePanel {
+    width: min(var(--hero-phone-width), 16.5rem);
+  }
+}
+
+@media (min-width: 1280px) {
+  .heroMobilePanel {
+    width: min(var(--hero-phone-width), 17.25rem);
+  }
+}
+
+.heroPhoneShell {
+  position: relative;
+  width: 100%;
+  border-radius: 1.2rem;
+  padding: 0.3rem;
+  border: 1px solid rgba(14, 124, 155, 0.12);
+  background: linear-gradient(180deg, #fbfdff 0%, #f4f8fb 100%);
+  box-shadow:
+    0 30px 70px rgba(11, 17, 32, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.74);
+}
+
+.heroPhoneInteractive {
+  transform: perspective(1200px) scale(1) rotateY(5deg) rotateX(0.45deg);
+  transform-origin: bottom right;
+  transition:
+    transform 0.42s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.42s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+
+.heroPhoneInteractive:hover {
+  transform: perspective(1200px) scale(1.045) rotateY(0deg) rotateX(0deg);
+  box-shadow:
+    0 36px 84px rgba(11, 17, 32, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78);
+}
+
+.heroVisualShine {
+  position: relative;
+  overflow: hidden;
+}
+
+.heroVisualShine::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -64%;
+  width: 38%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transform: skewX(-18deg);
+  transition: left 0.7s ease;
+  pointer-events: none;
+}
+
+.heroVisualShine:hover::after {
+  left: 124%;
+}
+
+.heroPhoneShell::before {
+  content: "";
+  position: absolute;
+  inset: 0.12rem;
+  border-radius: 1.06rem;
+  border: 1px solid rgba(14, 124, 155, 0.08);
+  pointer-events: none;
+}
+
+.heroPhoneScreen {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0.96rem;
+  background: #070b12;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 0 0 1px rgba(14, 22, 38, 0.18);
+}
+
+.heroPhoneImage {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 0.96rem;
+}
+
+.heroPhoneHomeBar {
+  position: absolute;
+  bottom: 0.38rem;
+  left: 50%;
+  z-index: 2;
+  width: 31%;
+  height: 0.16rem;
+  border-radius: 999px;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.56);
+  pointer-events: none;
 }
 
 .desktopFrame {
@@ -525,6 +865,10 @@
 .appleCard:hover {
   transform: scale(1.02);
   box-shadow: 0 20px 60px rgba(11, 17, 32, 0.16);
+}
+
+.heroDesktopTilt.appleCard:hover {
+  transform: perspective(1200px) scale(1.1) rotateY(0deg) rotateX(0deg);
 }
 
 .shine {
@@ -799,6 +1143,23 @@
 
   .heroContent {
     text-align: center !important;
+  }
+
+  .heroCopy {
+    margin-inline: auto;
+    padding-right: 0;
+  }
+
+  .heroHeadline,
+  .heroLead {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .heroActions {
+    justify-content: center;
+    margin-left: auto;
+    margin-right: auto;
   }
 
   .heroDesktopTilt {
