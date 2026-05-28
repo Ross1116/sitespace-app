@@ -145,13 +145,13 @@ export function NavBar() {
       />
 
       {/* Mobile menu */}
-      <div
-        className={cn(
-          "fixed top-0 w-4/5 max-w-100 h-screen bg-[rgba(10,10,20,0.98)] backdrop-blur-2xl transition-[right] duration-400 ease-in-out z-99 pt-20 px-7.5 pb-7.5 overflow-y-auto shadow-[-5px_0_30px_rgba(0,0,0,0.5)]",
-          isMenuOpen ? "right-0" : "-right-full",
-        )}
-        aria-hidden={!isMenuOpen}
-      >
+        <div
+          className={cn(
+            "fixed top-0 w-4/5 max-w-100 h-screen bg-[rgba(10,10,20,0.98)] backdrop-blur-2xl transition-[right] duration-400 ease-in-out z-99 pt-20 px-7.5 pb-7.5 overflow-y-auto shadow-[-5px_0_30px_rgba(0,0,0,0.5)]",
+            isMenuOpen ? "right-0" : "-right-full",
+          )}
+          aria-hidden={!isMenuOpen}
+        >
         {["features", "lookahead", "benefits", "contact"].map((id) => (
           <a
             key={id}
@@ -173,6 +173,7 @@ export function NavBar() {
         <DemoRequestCTA
           label="Book a Demo"
           className="cursor-pointer block mt-5 w-full text-center bg-amber-500 text-black rounded-full px-6 py-3 text-lg font-semibold hover:bg-amber-400 transition-colors"
+          onClick={closeMenu}
         />
       </div>
     </>

@@ -15,37 +15,36 @@ export const AuroraBackground = ({
 }: AuroraBackgroundProps) => {
   return (
     <>
-      <main>
-        <div
-          className={cn(
-            "relative flex h-[100vh] w-full flex-col items-center justify-center overflow-hidden bg-zinc-50 text-slate-950 transition-bg",
-            className
-          )}
-          style={
-            {
-              "--white": "var(--color-white)",
-              "--black": "var(--color-black)",
-              "--transparent": "transparent",
-              "--blue-500": "var(--color-blue-500)",
-              "--indigo-300": "var(--color-indigo-300)",
-              "--blue-300": "var(--color-blue-300)",
-              "--violet-200": "var(--color-violet-200)",
-              "--blue-400": "var(--color-blue-400)",
-              ...style,
-            } as React.CSSProperties
-          }
-          {...props}
-        >
-          <div className="absolute inset-0 overflow-hidden">
-            <div
-              //   I'm sorry but this is what peak developer performance looks like // trigger warning
-              className={cn(
-                "aurora-motion",
-                `
-            [--white-gradient:repeating-linear-gradient(100deg,var(--white)_0%,var(--white)_7%,var(--transparent)_10%,var(--transparent)_12%,var(--white)_16%)]
-            [--dark-gradient:repeating-linear-gradient(100deg,var(--black)_0%,var(--black)_7%,var(--transparent)_10%,var(--transparent)_12%,var(--black)_16%)]
-            [--aurora:repeating-linear-gradient(100deg,var(--blue-500)_10%,var(--indigo-300)_15%,var(--blue-300)_20%,var(--violet-200)_25%,var(--blue-400)_30%)]
-            [background-image:var(--white-gradient),var(--aurora)]
+      <div
+        className={cn(
+          "relative flex h-[100vh] w-full flex-col items-center justify-center overflow-hidden bg-zinc-50 text-slate-950 transition-bg",
+          className
+        )}
+        style={
+          {
+            "--white": "var(--color-white)",
+            "--black": "var(--color-black)",
+            "--transparent": "transparent",
+            "--blue-500": "var(--color-blue-500)",
+            "--indigo-300": "var(--color-indigo-300)",
+            "--blue-300": "var(--color-blue-300)",
+            "--violet-200": "var(--color-violet-200)",
+            "--blue-400": "var(--color-blue-400)",
+            ...style,
+          } as React.CSSProperties
+        }
+        {...props}
+      >
+        <div className="absolute inset-0 overflow-hidden">
+          <div
+            //   I'm sorry but this is what peak developer performance looks like // trigger warning
+            className={cn(
+              "aurora-motion",
+              `
+             [--white-gradient:repeating-linear-gradient(100deg,var(--white)_0%,var(--white)_7%,var(--transparent)_10%,var(--transparent)_12%,var(--white)_16%)]
+             [--dark-gradient:repeating-linear-gradient(100deg,var(--black)_0%,var(--black)_7%,var(--transparent)_10%,var(--transparent)_12%,var(--black)_16%)]
+             [--aurora:repeating-linear-gradient(100deg,var(--blue-500)_10%,var(--indigo-300)_15%,var(--blue-300)_20%,var(--violet-200)_25%,var(--blue-400)_30%)]
+             [background-image:var(--white-gradient),var(--aurora)]
             dark:[background-image:var(--dark-gradient),var(--aurora)]
             [background-size:300%,_200%]
             [background-position:50%_50%,50%_50%]
@@ -57,14 +56,13 @@ export const AuroraBackground = ({
             pointer-events-none
             absolute -inset-[14%] opacity-32 will-change-transform`,
 
-                showRadialGradient &&
-                  `[mask-image:radial-gradient(ellipse_at_100%_0%,black_10%,var(--transparent)_70%)]`
-              )}
-            ></div>
-          </div>
-          {children}
+              showRadialGradient &&
+                `[mask-image:radial-gradient(ellipse_at_100%_0%,black_10%,var(--transparent)_70%)]`
+            )}
+          ></div>
         </div>
-      </main>
+        {children}
+      </div>
 
       <style>{`
         @keyframes aurora {

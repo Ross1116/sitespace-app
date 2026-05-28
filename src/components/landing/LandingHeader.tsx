@@ -150,6 +150,7 @@ export default function LandingHeader() {
       <div
         className={cn(styles.mobileMenu, isMenuOpen && styles.active)}
         aria-hidden={!isMenuOpen}
+        inert={!isMenuOpen}
       >
         <a
           href="#features"

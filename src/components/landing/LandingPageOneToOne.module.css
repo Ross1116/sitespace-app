@@ -162,10 +162,10 @@
 .heroContent {
   opacity: 0;
   transform: translateY(30px);
-  animation: fadeInUp 1s ease forwards;
+  animation: fade-in-up 1s ease forwards;
 }
 
-@keyframes fadeInUp {
+@keyframes fade-in-up {
   to {
     opacity: 1;
     transform: translateY(0);
@@ -702,8 +702,9 @@
   visibility: visible;
 }
 
-/* Intentionally empty: used as a toggle class with CSS-module selectors like `.mobileMenu.active` */
+/* Toggle class exported for CSS-module selectors like `.mobileMenu.active`. */
 .active {
+  pointer-events: auto;
 }
 
 .showcaseTabs {

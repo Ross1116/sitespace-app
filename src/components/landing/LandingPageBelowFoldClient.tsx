@@ -34,6 +34,7 @@ export default function LandingPageBelowFoldClient() {
         entries.forEach((entry) => {
           if (!entry.isIntersecting) return;
           (entry.target as HTMLElement).classList.add(styles.visible);
+          fadeObserver.unobserve(entry.target);
         });
       },
       { threshold: 0.1, rootMargin: "0px 0px -100px 0px" },
@@ -64,6 +65,8 @@ export default function LandingPageBelowFoldClient() {
               fill.style.width = width;
             }, 100);
           });
+
+          progressObserver.unobserve(entry.target);
         });
       },
       { threshold: 0.5 },
@@ -168,11 +171,13 @@ export default function LandingPageBelowFoldClient() {
                   <div className={styles.desktopFrameDot} />
                 </div>
               </div>
-              <img
+              <Image
                 src="/static/images/bookingspage.png"
                 alt="SiteSpace bookings dashboard"
-                loading="lazy"
-                decoding="async"
+                width={2559}
+                height={1245}
+                sizes="(max-width: 768px) 100vw, 720px"
+                className="w-full h-auto"
               />
             </div>
           </div>
@@ -197,11 +202,13 @@ export default function LandingPageBelowFoldClient() {
                   <div className={styles.desktopFrameDot} />
                 </div>
               </div>
-              <img
+              <Image
                 src="/static/images/cal.jpg"
                 alt="SiteSpace subcontractors management dashboard"
-                loading="lazy"
-                decoding="async"
+                width={3802}
+                height={1971}
+                sizes="(max-width: 768px) 100vw, 720px"
+                className="w-full h-auto"
               />
             </div>
           </div>
@@ -412,6 +419,8 @@ export default function LandingPageBelowFoldClient() {
               description="See all active bookings, assets, and subcontractors at a glance"
               src="/static/images/dash.png"
               alt="SiteSpace mobile dashboard"
+              width={4182}
+              height={3932}
             />
             <PhoneShot
               delay="0.15s"
@@ -419,6 +428,8 @@ export default function LandingPageBelowFoldClient() {
               description="Monitor equipment status, location, and availability in real-time"
               src="/static/images/ASSETS.png"
               alt="SiteSpace assets management"
+              width={402}
+              height={870}
             />
             <PhoneShot
               delay="0.3s"
@@ -426,6 +437,8 @@ export default function LandingPageBelowFoldClient() {
               description="Book assets, view schedules, and avoid conflicts effortlessly"
               src="/static/images/Calender.png"
               alt="SiteSpace calendar interface"
+              width={402}
+              height={871}
             />
           </div>
 
@@ -746,11 +759,13 @@ export default function LandingPageBelowFoldClient() {
                   <div className={styles.desktopFrameDot} />
                 </div>
               </div>
-              <img
+              <Image
                 src="/static/images/desk.png"
                 alt="SiteSpace desktop dashboard interface"
-                loading="lazy"
-                decoding="async"
+                width={3801}
+                height={1980}
+                sizes="(max-width: 1024px) 100vw, 1200px"
+                className="w-full h-auto"
               />
             </div>
             <div className="text-center mt-8">
@@ -783,11 +798,13 @@ export default function LandingPageBelowFoldClient() {
                 )}
                 style={{ maxWidth: 380 }}
               >
-                <img
+                <Image
                   src="/static/images/mobile.png"
                   alt="SiteSpace mobile app interface"
-                  loading="lazy"
-                  decoding="async"
+                  width={402}
+                  height={867}
+                  sizes="(max-width: 768px) 100vw, 380px"
+                  className="w-full h-auto"
                 />
               </div>
               <div className="text-center mt-8">
@@ -827,11 +844,13 @@ export default function LandingPageBelowFoldClient() {
                       <div className={styles.desktopFrameDot} />
                     </div>
                   </div>
-                  <img
+                  <Image
                     src="/static/images/desk.png"
                     alt="SiteSpace desktop interface"
-                    loading="lazy"
-                    decoding="async"
+                    width={3801}
+                    height={1980}
+                    sizes="(max-width: 1024px) 100vw, 50vw"
+                    className="w-full h-auto"
                   />
                 </div>
               </div>
@@ -846,11 +865,13 @@ export default function LandingPageBelowFoldClient() {
                   )}
                   style={{ maxWidth: 340 }}
                 >
-                <img
+                <Image
                   src="/static/images/mobile.png"
                   alt="SiteSpace mobile interface"
-                  loading="lazy"
-                  decoding="async"
+                  width={402}
+                  height={867}
+                  sizes="(max-width: 768px) 100vw, 340px"
+                  className="w-full h-auto"
                 />
                 </div>
               </div>
@@ -1086,12 +1107,16 @@ function PhoneShot({
   description,
   src,
   alt,
+  width,
+  height,
 }: {
   delay: string;
   title: string;
   description: string;
   src: string;
   alt: string;
+  width: number;
+  height: number;
 }) {
   return (
     <div
@@ -1107,7 +1132,14 @@ function PhoneShot({
           "mx-auto",
         )}
       >
-        <img src={src} alt={alt} loading="lazy" decoding="async" />
+        <Image
+          src={src}
+          alt={alt}
+          width={width}
+          height={height}
+          sizes="(max-width: 768px) 50vw, 252px"
+          className="w-full h-auto"
+        />
       </div>
       <div className="text-center mt-6">
         <h3 className="text-xl font-semibold mb-2">{title}</h3>

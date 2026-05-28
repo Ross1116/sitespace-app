@@ -1,8 +1,32 @@
 import type { Config } from "tailwindcss";
-import flattenColorPalette from "tailwindcss/lib/util/flattenColorPalette";
 
 // Tailwind v4 does not expose every color as a CSS variable by default.
 // This keeps animation utilities like the aurora background easy to theme.
+
+function flattenThemeColors(
+  colors: unknown,
+  prefix = "",
+): Record<string, string> {
+  if (!colors || typeof colors !== "object") {
+    return {};
+  }
+
+  return Object.entries(colors as Record<string, unknown>).reduce<
+    Record<string, string>
+  >((acc, [key, value]) => {
+    const nextKey = key === "DEFAULT" ? prefix : prefix ? `${prefix}-${key}` : key;
+
+    if (typeof value === "string") {
+      if (nextKey) {
+        acc[nextKey] = value;
+      }
+      return acc;
+    }
+
+    Object.assign(acc, flattenThemeColors(value, nextKey));
+    return acc;
+  }, {});
+}
 
 function addVariablesForColors({
   addBase,
@@ -11,9 +35,7 @@ function addVariablesForColors({
   addBase: (base: Record<string, Record<string, string>>) => void;
   theme: (path: string) => unknown;
 }) {
-  const allColors = flattenColorPalette(
-    theme("colors") as Record<string, string | Record<string, string>>,
-  );
+  const allColors = flattenThemeColors(theme("colors"));
   const newVars = Object.fromEntries(
     Object.entries(allColors).map(([key, value]) => [`--${key}`, String(value)]),
   );

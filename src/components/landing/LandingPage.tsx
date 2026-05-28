@@ -26,8 +26,6 @@ const GIANT =
 const LARGE =
   "text-[clamp(2rem,6vw,5rem)] font-bold leading-[1.2] tracking-tight";
 
-const MEDIUM = "text-[clamp(1.5rem,4vw,3rem)] font-semibold leading-[1.3]";
-
 const APPLE =
   "transition-all duration-[400ms] ease-in-out cursor-pointer hover:scale-[1.02] hover:shadow-[0_20px_60px_rgba(0,0,0,0.3)]";
 
@@ -492,7 +490,7 @@ function MobileFrame({
   return (
     <div
       className={cn(
-        "relative w-full max-w-93.75 mx-auto bg-[rgb(26,26,26)] rounded-12.5 p-4 shadow-[0_30px_80px_rgba(0,0,0,0.6)]",
+        "relative w-full max-w-[375px] mx-auto bg-[rgb(26,26,26)] rounded-[50px] p-4 shadow-[0_30px_80px_rgba(0,0,0,0.6)]",
         APPLE,
         "shine",
         className,
@@ -500,10 +498,10 @@ function MobileFrame({
       style={style}
     >
       <div
-        className="absolute top-2 left-1/2 -translate-x-1/2 w-30 h-6.25 bg-[rgb(26,26,26)] rounded-b-5 z-2"
+        className="absolute top-2 left-1/2 -translate-x-1/2 w-30 h-[25px] bg-[rgb(26,26,26)] rounded-b-[20px] z-2"
         aria-hidden="true"
       />
-      <div className="rounded-9.5 overflow-hidden">{children}</div>
+      <div className="rounded-[38px] overflow-hidden">{children}</div>
     </div>
   );
 }

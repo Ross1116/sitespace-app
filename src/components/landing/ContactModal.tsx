@@ -1,7 +1,12 @@
 "use client";
 
 import * as Dialog from "@radix-ui/react-dialog";
-import { createContext, useContext, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  type MouseEventHandler,
+} from "react";
 import { z } from "zod";
 import { X, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 
@@ -433,9 +438,11 @@ export function DemoModalProvider({ children }: { children: React.ReactNode }) {
 export function DemoRequestCTA({
   label = "Book a Demo",
   className,
+  onClick,
 }: {
   label?: string;
   className?: string;
+  onClick?: MouseEventHandler<HTMLButtonElement>;
 }) {
   const ctx = useContext(DemoModalCtx);
   if (!ctx) {
@@ -448,7 +455,10 @@ export function DemoRequestCTA({
     <button
       type="button"
       className={className}
-      onClick={() => ctx.openModal()}
+      onClick={(event) => {
+        ctx.openModal();
+        onClick?.(event);
+      }}
     >
       {label}
     </button>

@@ -31,23 +31,25 @@ export function ShowcaseSection() {
         background: "linear-gradient(180deg, #000 0%, #0a0a14 100%)",
       }}
     >
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className={cn(FADE, "text-center mb-16")} data-fade-in>
-          <div className="inline-flex items-center px-4 py-1.5 rounded-full text-sm font-semibold bg-white/10 border border-white/20 backdrop-blur-[10px] mb-6">
-            💼 Full Platform Overview
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          {/* `data-fade-in` consumed by parent scroll observer. */}
+          <div className={cn(FADE, "text-center mb-16")} data-fade-in>
+            <div className="inline-flex items-center px-4 py-1.5 rounded-full text-sm font-semibold bg-white/10 border border-white/20 backdrop-blur-[10px] mb-6">
+              💼 Full Platform Overview
+            </div>
+            <h2 className="text-[clamp(2rem,6vw,5rem)] font-bold leading-[1.2] tracking-tight mb-6">
+              Explore SiteSpace
+              <br />
+              <span className="gradient-text">in action</span>
+            </h2>
+            <p className="text-xl text-gray-400 max-w-3xl mx-auto font-normal">
+              See how teams manage construction projects across desktop and mobile
+            </p>
           </div>
-          <h2 className="text-[clamp(2rem,6vw,5rem)] font-bold leading-[1.2] tracking-tight mb-6">
-            Explore Sitespace
-            <br />
-            <span className="gradient-text">in action</span>
-          </h2>
-          <p className="text-xl text-gray-400 max-w-3xl mx-auto font-normal">
-            See how teams manage construction projects across desktop and mobile
-          </p>
-        </div>
 
         {/* Tabs */}
+        {/* `data-fade-in` consumed by parent scroll observer. */}
         <div
           className={cn(FADE, "flex gap-3 mb-8 justify-center flex-wrap")}
           data-fade-in
@@ -88,7 +90,7 @@ export function ShowcaseSection() {
               <FrameHeader />
               <Image
                 src="/static/images/desk.png"
-                alt="Sitespace desktop dashboard interface"
+                alt="SiteSpace desktop dashboard interface"
                 width={1200}
                 height={750}
                 loading="lazy"
@@ -128,7 +130,7 @@ export function ShowcaseSection() {
                 <div className="rounded-9.5 overflow-hidden">
                   <Image
                     src="/static/images/mobile.png"
-                    alt="Sitespace mobile app interface"
+                    alt="SiteSpace mobile app interface"
                     width={380}
                     height={780}
                     loading="lazy"
@@ -166,7 +168,7 @@ export function ShowcaseSection() {
                 <FrameHeader />
                 <Image
                   src="/static/images/desk.png"
-                  alt="Sitespace desktop interface"
+                  alt="SiteSpace desktop interface"
                   width={1200}
                   height={750}
                   loading="lazy"
@@ -190,7 +192,7 @@ export function ShowcaseSection() {
                 <div className="rounded-9.5 overflow-hidden">
                   <Image
                     src="/static/images/mobile.png"
-                    alt="Sitespace mobile interface"
+                    alt="SiteSpace mobile interface"
                     width={340}
                     height={700}
                     loading="lazy"
