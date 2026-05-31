@@ -1294,6 +1294,7 @@
   .heroVisualStage {
     aspect-ratio: 1.44;
     --hero-desktop-right: 4%;
+
     display: flex;
     align-items: center;
     justify-content: center;

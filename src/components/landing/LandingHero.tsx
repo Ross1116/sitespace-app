@@ -116,7 +116,7 @@ export default function LandingHero() {
                     <Image
                       src={mobileApp}
                       alt="SiteSpace mobile app"
-                      priority
+                      loading="lazy"
                       sizes="(max-width: 640px) 34vw, (max-width: 1024px) 24vw, 300px"
                       className={styles.heroPhoneImage}
                     />
