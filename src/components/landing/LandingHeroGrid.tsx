@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 
 import { BackgroundRippleEffect } from "@/components/ui/background-ripple-effect";
 
+const GRID_CELL_SIZE = 48;
+
 type IdleWindow = Window & {
   cancelIdleCallback?: (handle: number) => void;
   requestIdleCallback?: (
@@ -14,6 +16,7 @@ type IdleWindow = Window & {
 
 export default function LandingHeroGrid() {
   const [isReady, setIsReady] = useState(false);
+  const [gridSize, setGridSize] = useState({ rows: 18, cols: 32 });
 
   useEffect(() => {
     const idleWindow = window as IdleWindow;
@@ -33,6 +36,32 @@ export default function LandingHeroGrid() {
     return () => window.clearTimeout(timeoutId);
   }, []);
 
+  useEffect(() => {
+    let frameId = 0;
+
+    const updateGridSize = () => {
+      setGridSize({
+        rows: Math.ceil(window.innerHeight / GRID_CELL_SIZE) + 2,
+        cols: Math.ceil(window.innerWidth / GRID_CELL_SIZE) + 2,
+      });
+    };
+
+    const onResize = () => {
+      if (frameId) return;
+      frameId = window.requestAnimationFrame(() => {
+        frameId = 0;
+        updateGridSize();
+      });
+    };
+
+    updateGridSize();
+    window.addEventListener("resize", onResize, { passive: true });
+    return () => {
+      window.removeEventListener("resize", onResize);
+      if (frameId) window.cancelAnimationFrame(frameId);
+    };
+  }, []);
+
   if (!isReady) {
     return null;
   }
@@ -40,10 +69,9 @@ export default function LandingHeroGrid() {
   return (
     <div className="absolute inset-0 z-0">
       <BackgroundRippleEffect
-        rows={13}
-        cols={30}
-        cellSize={50}
-        fillContainer
+        rows={gridSize.rows}
+        cols={gridSize.cols}
+        cellSize={GRID_CELL_SIZE}
         className="opacity-100"
         style={
           {

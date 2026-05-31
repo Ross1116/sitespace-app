@@ -5,7 +5,7 @@ import { AuroraBackground } from "@/components/ui/aurora-background";
 import { cn } from "@/lib/utils";
 
 import dashhome from "../../../public/static/images/dashhome.png";
-import mobileApp from "../../../public/static/images/mobile.png";
+import mobileApp from "../../../public/static/images/mobile.jpeg";
 import styles from "./LandingPageOneToOne.module.css";
 import { DemoRequestCTA } from "./ContactModal";
 import LandingHeroGrid from "./LandingHeroGrid";
@@ -18,7 +18,7 @@ const outfit = Outfit({
 
 export default function LandingHero() {
   return (
-    <AuroraBackground className="bg-[#f1f6fa]">
+    <AuroraBackground className="bg-[#f1f6fa] max-lg:h-auto max-lg:min-h-[100svh] max-lg:overflow-visible">
       <LandingHeroGrid />
 
       <section
@@ -99,7 +99,12 @@ export default function LandingHero() {
                 />
               </div>
 
-              <div className={cn(styles.heroMobilePanel, "pointer-events-auto")}>
+              <div
+                className={cn(
+                  styles.heroMobilePanel,
+                  "pointer-events-auto max-lg:hidden",
+                )}
+              >
                 <div
                   className={cn(
                     styles.heroPhoneShell,
@@ -111,7 +116,7 @@ export default function LandingHero() {
                     <Image
                       src={mobileApp}
                       alt="SiteSpace mobile app"
-                      priority
+                      loading="lazy"
                       sizes="(max-width: 640px) 34vw, (max-width: 1024px) 24vw, 300px"
                       className={styles.heroPhoneImage}
                     />

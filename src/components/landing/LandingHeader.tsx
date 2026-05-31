@@ -70,73 +70,78 @@ export default function LandingHeader() {
             isNavScrolled && styles.navSurfaceScrolled,
           )}
         >
-          <div className="mx-auto max-w-screen-2xl px-6 py-4 lg:px-12">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center space-x-2">
-              <Image
-                src="/full-logo.svg"
-                alt="SiteSpace"
-                width={140}
-                height={48}
-                priority
-                className={styles.logoMark}
-              />
-            </Link>
-
-            <div className="hidden items-center space-x-10 text-sm md:flex">
-              <a
-                href="#features"
-                className={cn(styles.navLink, styles.linkUnderline)}
-              >
-                Features
-              </a>
-              <a
-                href="#lookahead"
-                className={cn(styles.navLink, styles.linkUnderline)}
-              >
-                Lookahead AI
-              </a>
-              <a
-                href="#benefits"
-                className={cn(styles.navLink, styles.linkUnderline)}
-              >
-                Benefits
-              </a>
-              <a
-                href="#contact"
-                className={cn(styles.navLink, styles.linkUnderline)}
-              >
-                Contact
-              </a>
-              <Link
-                href="/login"
-                className={cn(styles.navLink, styles.linkUnderline)}
-              >
-                Sign In
+          <div
+            className={cn(
+              styles.navInner,
+              "mx-auto max-w-screen-2xl px-6 py-4 lg:px-12",
+            )}
+          >
+            <div className={styles.navRow}>
+              <Link href="/" className="flex items-center space-x-2">
+                <Image
+                  src="/full-logo.svg"
+                  alt="SiteSpace"
+                  width={187}
+                  height={36}
+                  priority
+                  className={styles.logoMark}
+                />
               </Link>
-              <DemoRequestCTA
-                label="Book a Demo"
-                className={cn(
-                  styles.btnPrimary,
-                  styles.shine,
-                  "px-5 py-2.5 text-sm",
-                )}
-              />
-            </div>
 
-            <button
-              type="button"
-              className={cn(styles.hamburger, isMenuOpen && styles.active)}
-              onClick={toggleMenu}
-              aria-label="Toggle menu"
-              aria-expanded={isMenuOpen}
-            >
-              <span />
-              <span />
-              <span />
-            </button>
+              <div className="hidden items-center space-x-10 text-sm lg:flex">
+                <a
+                  href="#features"
+                  className={cn(styles.navLink, styles.linkUnderline)}
+                >
+                  Features
+                </a>
+                <a
+                  href="#lookahead"
+                  className={cn(styles.navLink, styles.linkUnderline)}
+                >
+                  Lookahead AI
+                </a>
+                <a
+                  href="#benefits"
+                  className={cn(styles.navLink, styles.linkUnderline)}
+                >
+                  Benefits
+                </a>
+                <a
+                  href="#contact"
+                  className={cn(styles.navLink, styles.linkUnderline)}
+                >
+                  Contact
+                </a>
+                <Link
+                  href="/login"
+                  className={cn(styles.navLink, styles.linkUnderline)}
+                >
+                  Sign In
+                </Link>
+                <DemoRequestCTA
+                  label="Book a Demo"
+                  className={cn(
+                    styles.btnPrimary,
+                    styles.shine,
+                    "px-5 py-2.5 text-sm",
+                  )}
+                />
+              </div>
+
+              <button
+                type="button"
+                className={cn(styles.hamburger, isMenuOpen && styles.active)}
+                onClick={toggleMenu}
+                aria-label="Toggle menu"
+                aria-expanded={isMenuOpen}
+              >
+                <span />
+                <span />
+                <span />
+              </button>
+            </div>
           </div>
-        </div>
         </div>
       </nav>
 
