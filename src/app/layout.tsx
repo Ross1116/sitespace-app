@@ -27,6 +27,12 @@ export const metadata: Metadata = {
   description:
     "Your all-in-one site scheduling app. Manage bookings, assets, and subcontractors in one place.",
   metadataBase: new URL("https://sitespace.com.au"),
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "32x32", type: "image/x-icon" },
+      { url: "/icon.png", sizes: "96x96", type: "image/png" },
+    ],
+  },
   openGraph: {
     type: "website",
     siteName: "Sitespace",
