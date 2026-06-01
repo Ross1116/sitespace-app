@@ -2,38 +2,35 @@
 
 import { useEffect } from "react";
 
-type NetworkInformation = {
-  saveData?: boolean;
-};
-
-type NavigatorWithConnection = Navigator & {
-  connection?: NetworkInformation;
-};
+import {
+  getMotionCapabilities,
+  HERO_MOTION_MEDIA_QUERY,
+} from "@/lib/device-capabilities";
 
 const REDUCED_HERO_MOTION = "reduced";
 
 export default function LandingHeroMotionPreference() {
   useEffect(() => {
-    const mediaQuery = window.matchMedia(
-      "(prefers-reduced-motion: reduce), (update: slow)",
-    );
-    const navigatorWithConnection = navigator as NavigatorWithConnection;
-    const hasConstrainedCpu =
-      typeof navigator.hardwareConcurrency === "number" &&
-      navigator.hardwareConcurrency <= 4;
+    const mediaQuery = window.matchMedia(HERO_MOTION_MEDIA_QUERY);
 
-    const shouldReduceMotion =
-      mediaQuery.matches ||
-      Boolean(navigatorWithConnection.connection?.saveData) ||
-      hasConstrainedCpu;
+    const applyMotionPreference = () => {
+      const { prefersReducedMotion, saveData, hasConstrainedCpu } =
+        getMotionCapabilities(mediaQuery.matches);
+      const shouldReduceMotion =
+        prefersReducedMotion || saveData || hasConstrainedCpu;
 
-    if (shouldReduceMotion) {
-      document.documentElement.dataset.heroMotion = REDUCED_HERO_MOTION;
-    } else {
-      delete document.documentElement.dataset.heroMotion;
-    }
+      if (shouldReduceMotion) {
+        document.documentElement.dataset.heroMotion = REDUCED_HERO_MOTION;
+      } else {
+        delete document.documentElement.dataset.heroMotion;
+      }
+    };
+
+    applyMotionPreference();
+    mediaQuery.addEventListener("change", applyMotionPreference);
 
     return () => {
+      mediaQuery.removeEventListener("change", applyMotionPreference);
       delete document.documentElement.dataset.heroMotion;
     };
   }, []);

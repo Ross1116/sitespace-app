@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { BackgroundRippleEffect } from "@/components/ui/background-ripple-effect";
+import { getMotionCapabilities } from "@/lib/device-capabilities";
 
 const GRID_CELL_SIZE = 48;
 
@@ -14,27 +15,19 @@ type IdleWindow = Window & {
   ) => number;
 };
 
-type NetworkInformation = {
-  saveData?: boolean;
-};
-
-type NavigatorWithConnection = Navigator & {
-  connection?: NetworkInformation;
-};
-
 const canUseEnhancedGrid = () => {
-  const mediaQuery = window.matchMedia(
-    "(prefers-reduced-motion: reduce), (update: slow), (pointer: coarse)",
-  );
-  const navigatorWithConnection = navigator as NavigatorWithConnection;
-  const hasConstrainedCpu =
-    typeof navigator.hardwareConcurrency === "number" &&
-    navigator.hardwareConcurrency <= 4;
+  const {
+    prefersReducedMotion,
+    saveData,
+    hasConstrainedCpu,
+    isCoarsePointer,
+  } = getMotionCapabilities();
 
   return (
-    !mediaQuery.matches &&
-    !navigatorWithConnection.connection?.saveData &&
-    !hasConstrainedCpu
+    !prefersReducedMotion &&
+    !saveData &&
+    !hasConstrainedCpu &&
+    !isCoarsePointer
   );
 };
 
