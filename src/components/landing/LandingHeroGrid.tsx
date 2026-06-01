@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { BackgroundRippleEffect } from "@/components/ui/background-ripple-effect";
+import { getMotionCapabilities } from "@/lib/device-capabilities";
 
 const GRID_CELL_SIZE = 48;
 
@@ -14,24 +15,45 @@ type IdleWindow = Window & {
   ) => number;
 };
 
+const canUseEnhancedGrid = () => {
+  const {
+    prefersReducedMotion,
+    saveData,
+    hasConstrainedCpu,
+    isCoarsePointer,
+  } = getMotionCapabilities();
+
+  return (
+    !prefersReducedMotion &&
+    !saveData &&
+    !hasConstrainedCpu &&
+    !isCoarsePointer
+  );
+};
+
 export default function LandingHeroGrid() {
-  const [isReady, setIsReady] = useState(false);
+  const [showEnhancedGrid, setShowEnhancedGrid] = useState(false);
   const [gridSize, setGridSize] = useState({ rows: 18, cols: 32 });
 
   useEffect(() => {
+    if (!canUseEnhancedGrid()) return;
+
     const idleWindow = window as IdleWindow;
 
     if (idleWindow.requestIdleCallback) {
-      const idleId = idleWindow.requestIdleCallback(() => {
-        setIsReady(true);
-      });
+      const idleId = idleWindow.requestIdleCallback(
+        () => {
+          setShowEnhancedGrid(true);
+        },
+        { timeout: 1600 },
+      );
 
       return () => idleWindow.cancelIdleCallback?.(idleId);
     }
 
     const timeoutId = window.setTimeout(() => {
-      setIsReady(true);
-    }, 250);
+      setShowEnhancedGrid(true);
+    }, 500);
 
     return () => window.clearTimeout(timeoutId);
   }, []);
@@ -62,26 +84,32 @@ export default function LandingHeroGrid() {
     };
   }, []);
 
-  if (!isReady) {
-    return null;
-  }
-
   return (
-    <div className="absolute inset-0 z-0">
-      <BackgroundRippleEffect
-        rows={gridSize.rows}
-        cols={gridSize.cols}
-        cellSize={GRID_CELL_SIZE}
-        className="opacity-100"
-        style={
-          {
-            "--cell-border-color": "rgba(158, 181, 220, 0.18)",
-            "--cell-fill-color": "rgba(232, 243, 255, 0.078)",
-            "--cell-ripple-color": "rgba(186, 212, 248, 0.34)",
-            "--cell-shadow-color": "rgba(192, 214, 246, 0.26)",
-          } as React.CSSProperties
-        }
-      />
+    <div
+      aria-hidden="true"
+      className="absolute inset-0 z-0 opacity-100"
+    >
+      {showEnhancedGrid ? (
+        <BackgroundRippleEffect
+          rows={gridSize.rows}
+          cols={gridSize.cols}
+          cellSize={GRID_CELL_SIZE}
+          className="opacity-100"
+          style={
+            {
+              "--cell-border-color": "rgba(158, 181, 220, 0.18)",
+              "--cell-fill-color": "rgba(232, 243, 255, 0.078)",
+              "--cell-ripple-color": "rgba(186, 212, 248, 0.34)",
+              "--cell-shadow-color": "rgba(192, 214, 246, 0.26)",
+            } as React.CSSProperties
+          }
+        />
+      ) : (
+        <>
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.42),transparent_42%),linear-gradient(180deg,rgba(255,255,255,0.05)_0%,transparent_34%,rgba(255,255,255,0.14)_100%)]" />
+          <div className="pointer-events-none absolute inset-0 [background-image:linear-gradient(rgba(158,181,220,0.18)_1px,transparent_1px),linear-gradient(90deg,rgba(158,181,220,0.18)_1px,transparent_1px)] [background-size:48px_48px] [mask-image:radial-gradient(circle_at_center,rgba(0,0,0,1),rgba(0,0,0,0.92)_56%,rgba(0,0,0,0.46)_78%,transparent)]" />
+        </>
+      )}
     </div>
   );
 }

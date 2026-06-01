@@ -114,6 +114,25 @@ export const AuroraBackground = ({
             aurora 30s linear infinite reverse,
             aurora-drift-reverse 34s ease-in-out infinite alternate;
         }
+
+        @media (prefers-reduced-motion: reduce) {
+          .aurora-motion,
+          .aurora-motion::after {
+            animation: none;
+          }
+        }
+
+        @media (update: slow) {
+          .aurora-motion,
+          .aurora-motion::after {
+            animation: none;
+          }
+        }
+
+        :root[data-hero-motion="reduced"] .aurora-motion,
+        :root[data-hero-motion="reduced"] .aurora-motion::after {
+          animation: none;
+        }
       `}</style>
     </>
   );
