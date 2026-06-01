@@ -9,6 +9,7 @@ import mobileApp from "../../../public/static/images/mobile.jpeg";
 import styles from "./LandingPageOneToOne.module.css";
 import { DemoRequestCTA } from "./ContactModal";
 import LandingHeroGrid from "./LandingHeroGrid";
+import LandingHeroMotionPreference from "./LandingHeroMotionPreference";
 
 const outfit = Outfit({
   subsets: ["latin"],
@@ -19,6 +20,7 @@ const outfit = Outfit({
 export default function LandingHero() {
   return (
     <AuroraBackground className="bg-[#f1f6fa] max-lg:h-auto max-lg:min-h-[100svh] max-lg:overflow-visible">
+      <LandingHeroMotionPreference />
       <LandingHeroGrid />
 
       <section

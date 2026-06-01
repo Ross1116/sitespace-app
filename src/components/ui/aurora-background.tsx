@@ -3,10 +3,12 @@ import React, { ReactNode } from "react";
 
 interface AuroraBackgroundProps extends React.HTMLProps<HTMLDivElement> {
   children: ReactNode;
+  animate?: boolean;
   showRadialGradient?: boolean;
 }
 
 export const AuroraBackground = ({
+  animate = true,
   className,
   children,
   showRadialGradient = true,
@@ -39,7 +41,7 @@ export const AuroraBackground = ({
           <div
             //   I'm sorry but this is what peak developer performance looks like // trigger warning
             className={cn(
-              "aurora-motion",
+              animate && "aurora-motion",
               `
              [--white-gradient:repeating-linear-gradient(100deg,var(--white)_0%,var(--white)_7%,var(--transparent)_10%,var(--transparent)_12%,var(--white)_16%)]
              [--dark-gradient:repeating-linear-gradient(100deg,var(--black)_0%,var(--black)_7%,var(--transparent)_10%,var(--transparent)_12%,var(--black)_16%)]
@@ -113,6 +115,25 @@ export const AuroraBackground = ({
           animation:
             aurora 30s linear infinite reverse,
             aurora-drift-reverse 34s ease-in-out infinite alternate;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .aurora-motion,
+          .aurora-motion::after {
+            animation: none;
+          }
+        }
+
+        @media (update: slow) {
+          .aurora-motion,
+          .aurora-motion::after {
+            animation: none;
+          }
+        }
+
+        :root[data-hero-motion="reduced"] .aurora-motion,
+        :root[data-hero-motion="reduced"] .aurora-motion::after {
+          animation: none;
         }
       `}</style>
     </>
