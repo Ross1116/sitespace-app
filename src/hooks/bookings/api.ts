@@ -15,6 +15,7 @@ import type { CalendarDayResponse } from "./types";
 type BookingStatusForWrite =
   | "pending"
   | "confirmed"
+  | "in_progress"
   | "completed"
   | "cancelled"
   | "denied";
@@ -328,6 +329,16 @@ export async function patchBookingStatus(
   await api.patch(`${bookingsKeys.detail(bookingId)}/status`, {
     status: String(status).toUpperCase(),
   });
+}
+
+export async function patchBookingStart(bookingId: string): Promise<ApiBooking> {
+  const response = await api.patch<ApiBooking>(`${bookingsKeys.detail(bookingId)}/start`, {});
+  return response.data;
+}
+
+export async function patchBookingEnd(bookingId: string): Promise<ApiBooking> {
+  const response = await api.patch<ApiBooking>(`${bookingsKeys.detail(bookingId)}/end`, {});
+  return response.data;
 }
 
 export async function hardDeleteBooking(bookingId: string): Promise<void> {

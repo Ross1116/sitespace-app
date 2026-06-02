@@ -13,6 +13,8 @@ describe("apiNormalization", () => {
           start_time: "07:00:00",
           end_time: "08:00:00",
           status: "confirmed",
+          started_at: "2026-04-01T07:03:00Z",
+          ended_at: "2026-04-01T08:11:00Z",
           source: "programme_activity",
           booking_group_id: "group-1",
           programme_activity_id: "activity-1",
@@ -34,6 +36,8 @@ describe("apiNormalization", () => {
     expect(bookings).toHaveLength(1);
     expect(bookings[0]).toMatchObject({
       source: "programme_activity",
+      started_at: "2026-04-01T07:03:00Z",
+      ended_at: "2026-04-01T08:11:00Z",
       booking_group_id: "group-1",
       programme_activity_id: "activity-1",
       activity_asset_mapping_id: "mapping-1",

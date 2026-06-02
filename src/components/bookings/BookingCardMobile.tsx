@@ -69,6 +69,8 @@ function BookingCardMobile({ booking, onViewHistory }: BookingCardMobileProps) {
                       ${
                         status === "confirmed"
                           ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                          : status === "in_progress"
+                            ? "bg-blue-50 text-blue-700 border-blue-100"
                           : status === "pending"
                             ? "bg-amber-50 text-amber-700 border-amber-100"
                             : status === "cancelled" || status === "denied"
@@ -164,6 +166,8 @@ function BookingCardMobile({ booking, onViewHistory }: BookingCardMobileProps) {
           <BookingCardDropdown
             bookingKey={booking.bookingKey}
             bookingStatus={booking.bookingStatus}
+            startedAt={booking.startedAt}
+            endedAt={booking.endedAt}
             subcontractorId={booking.subcontractorId}
             projectId={booking._originalData?.project_id ?? null}
           />

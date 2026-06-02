@@ -5,6 +5,7 @@ import { AxiosError } from "axios";
 export type BookingStatus =
   | "pending"
   | "confirmed"
+  | "in_progress"
   | "completed"
   | "cancelled"
   | "denied";
@@ -117,6 +118,8 @@ export interface ApiBooking {
   created_at?: string;
   updated_at?: string;
   source?: string | null;
+  started_at?: string | null;
+  ended_at?: string | null;
   booking_group_id?: string | null;
   programme_activity_id?: string | null;
   activity_asset_mapping_id?: string | null;
@@ -309,6 +312,8 @@ export interface TransformedBooking {
   managerId?: string;
   competingPendingCount?: number;
   bookingSource?: string | null;
+  startedAt?: string | null;
+  endedAt?: string | null;
   bookingGroupId?: string | null;
   programmeActivityId?: string | null;
   activityAssetMappingId?: string | null;
