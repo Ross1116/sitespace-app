@@ -135,8 +135,6 @@ export default function BookingCardDropdown({
     }
   };
 
-  const completeBooking = () => handleUpdateBookingStatus("completed");
-
   const handleStartBooking = async () => {
     setIsLoading(true);
     try {
@@ -292,12 +290,6 @@ export default function BookingCardDropdown({
                           <Play size={14} className="mr-2" /> Mark Started
                         </button>
                       )}
-                      <button
-                        onClick={completeBooking}
-                        className="flex items-center px-4 py-2.5 text-xs font-medium text-blue-600 hover:bg-blue-50 w-full text-left"
-                      >
-                        <Calendar size={14} className="mr-2" /> Mark Completed
-                      </button>
                     </>
                   )}
                   <button
