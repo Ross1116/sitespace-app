@@ -21,6 +21,8 @@ import {
   ChevronDown,
   ChevronUp,
   UserPlus,
+  PlayCircle,
+  StopCircle,
 } from "lucide-react";
 import api from "@/lib/api";
 import { format, parseISO, formatDistanceToNow, isValid } from "date-fns";
@@ -106,6 +108,22 @@ const actionConfig: Record<
     borderColor: "border-emerald-200",
     dotColor: "bg-emerald-500",
   },
+  started: {
+    label: "Started",
+    icon: PlayCircle,
+    color: "text-emerald-700",
+    bgColor: "bg-emerald-50",
+    borderColor: "border-emerald-200",
+    dotColor: "bg-emerald-500",
+  },
+  ended: {
+    label: "Ended",
+    icon: StopCircle,
+    color: "text-blue-700",
+    bgColor: "bg-blue-50",
+    borderColor: "border-blue-200",
+    dotColor: "bg-blue-500",
+  },
 };
 
 const getActionConfig = (action: string) => {
@@ -142,6 +160,10 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   completed: {
     label: "Completed",
     className: "text-emerald-300 bg-emerald-500/20 border-emerald-500/30",
+  },
+  in_progress: {
+    label: "In Progress",
+    className: "text-blue-300 bg-blue-500/20 border-blue-500/30",
   },
   rescheduled: {
     label: "Rescheduled",
@@ -256,6 +278,8 @@ const formatChangeValue = (key: string, value: unknown): string => {
     "end_time",
     "created_at",
     "updated_at",
+    "started_at",
+    "ended_at",
   ];
   if (dateFields.includes(key) && typeof value === "string") {
     try {
@@ -265,6 +289,9 @@ const formatChangeValue = (key: string, value: unknown): string => {
         !value.includes("-")
       ) {
         return value.split(":").slice(0, 2).join(":");
+      }
+      if (key.endsWith("_at")) {
+        return safeFormatDate(value);
       }
       const date = safeParse(value);
       if (!date) return String(value);
@@ -283,6 +310,8 @@ const formatChangeKey = (key: string): string => {
     start_time: "Start Time",
     end_time: "End Time",
     status: "Status",
+    started_at: "Started At",
+    ended_at: "Ended At",
     notes: "Notes",
     purpose: "Purpose",
     asset_id: "Asset",

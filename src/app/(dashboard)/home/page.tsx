@@ -708,12 +708,12 @@ function UpcomingHolidaysSectionSkeleton() {
         </h2>
         <Skeleton className="h-9 w-9 rounded-lg" />
       </div>
-      <div className="flex min-h-100 flex-col rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+      <div className="flex h-100 min-h-0 flex-col rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
         <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
           <Skeleton className="h-4 w-28" />
           <Skeleton className="h-6 w-20 rounded-full" />
         </div>
-        <div className="space-y-3">
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
           {[1, 2, 3, 4].map((item) => (
             <Skeleton key={item} className="h-20 w-full rounded-xl" />
           ))}

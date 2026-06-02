@@ -116,6 +116,8 @@ const toApiBooking = (record: UnknownRecord): ApiBooking | null => {
     created_at: asOptionalString(record.created_at) || undefined,
     updated_at: asOptionalString(record.updated_at) || undefined,
     source: asOptionalString(record.source) || null,
+    started_at: asOptionalString(record.started_at) || null,
+    ended_at: asOptionalString(record.ended_at) || null,
     booking_group_id: asOptionalString(record.booking_group_id) || null,
     programme_activity_id:
       asOptionalString(record.programme_activity_id) || null,

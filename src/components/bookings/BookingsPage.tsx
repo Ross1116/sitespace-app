@@ -180,6 +180,8 @@ const transformBookingToLegacyFormat = (
     subcontractorName: subName,
     competingPendingCount: booking.competing_pending_count ?? 0,
     bookingSource: trimmedSource,
+    startedAt: booking.started_at ?? null,
+    endedAt: booking.ended_at ?? null,
     bookingGroupId: booking.booking_group_id ?? null,
     programmeActivityId: booking.programme_activity_id ?? null,
     programmeActivityName: booking.programme_activity_name ?? null,

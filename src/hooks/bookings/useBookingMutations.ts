@@ -9,6 +9,8 @@ import {
   BookingUpdatePayload,
   createBooking,
   hardDeleteBooking,
+  patchBookingEnd,
+  patchBookingStart,
   patchBookingStatus,
   putBooking,
 } from "./api";
@@ -207,6 +209,66 @@ export function useBookingMutations() {
     [mutateProjectBookingCaches, revalidateBookingsForProject],
   );
 
+  const startBooking = useCallback(
+    async ({
+      bookingId,
+      projectId,
+    }: {
+      bookingId: string;
+      projectId?: string | null;
+    }) => {
+      const startedAt = new Date().toISOString();
+      await mutateProjectBookingCaches(
+        { projectId, bookingId },
+        (booking) => ({
+          ...booking,
+          status: "in_progress",
+          started_at: booking.started_at ?? startedAt,
+        }),
+      );
+
+      try {
+        await patchBookingStart(bookingId);
+      } catch (error) {
+        await revalidateBookingsForProject(projectId);
+        throw error;
+      }
+
+      await revalidateBookingsForProject(projectId);
+    },
+    [mutateProjectBookingCaches, revalidateBookingsForProject],
+  );
+
+  const endBooking = useCallback(
+    async ({
+      bookingId,
+      projectId,
+    }: {
+      bookingId: string;
+      projectId?: string | null;
+    }) => {
+      const endedAt = new Date().toISOString();
+      await mutateProjectBookingCaches(
+        { projectId, bookingId },
+        (booking) => ({
+          ...booking,
+          status: "completed",
+          ended_at: booking.ended_at ?? endedAt,
+        }),
+      );
+
+      try {
+        await patchBookingEnd(bookingId);
+      } catch (error) {
+        await revalidateBookingsForProject(projectId);
+        throw error;
+      }
+
+      await revalidateBookingsForProject(projectId);
+    },
+    [mutateProjectBookingCaches, revalidateBookingsForProject],
+  );
+
   const deleteBooking = useCallback(
     async ({
       bookingId,
@@ -248,6 +310,8 @@ export function useBookingMutations() {
     createBookings,
     updateBookingStatus,
     updateBooking,
+    startBooking,
+    endBooking,
     deleteBooking,
     bulkRescheduleBookings,
     revalidateBookingsForProject,

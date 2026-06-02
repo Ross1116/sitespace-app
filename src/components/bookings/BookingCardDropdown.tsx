@@ -8,6 +8,8 @@ import {
   AlertTriangle,
   Trash2,
   Edit,
+  Play,
+  Square,
 } from "lucide-react";
 import { getApiErrorMessage } from "@/types";
 import { useAuth } from "@/app/context/AuthContext";
@@ -34,6 +36,8 @@ import { useBookingMutations } from "@/hooks/bookings/useBookingMutations";
 interface BookingCardDropdownProps {
   bookingKey: string;
   bookingStatus: string;
+  startedAt?: string | null;
+  endedAt?: string | null;
   subcontractorId?: string;
   projectId?: string | null;
 }
@@ -41,6 +45,8 @@ interface BookingCardDropdownProps {
 export default function BookingCardDropdown({
   bookingKey,
   bookingStatus,
+  startedAt,
+  endedAt,
   subcontractorId,
   projectId,
 }: BookingCardDropdownProps) {
@@ -62,7 +68,8 @@ export default function BookingCardDropdown({
   const [competingPendingBookings, setCompetingPendingBookings] = useState<
     ApiBooking[]
   >([]);
-  const { updateBookingStatus, deleteBooking } = useBookingMutations();
+  const { updateBookingStatus, startBooking, endBooking, deleteBooking } =
+    useBookingMutations();
 
   useEffect(() => {
     setResolvedProjectId(projectId ?? null);
@@ -78,6 +85,7 @@ export default function BookingCardDropdown({
     user?.role === "admin" || user?.role === "manager";
   const isMyBooking =
     user?.role === "subcontractor" && user?.id === subcontractorId;
+  const canManageLifecycle = hasManagerPrivileges || isMyBooking;
 
   // Type definition for status
   type BookingStatusType =
@@ -127,7 +135,39 @@ export default function BookingCardDropdown({
     }
   };
 
-  const completeBooking = () => handleUpdateBookingStatus("completed");
+  const handleStartBooking = async () => {
+    setIsLoading(true);
+    try {
+      await startBooking({
+        bookingId: bookingKey,
+        projectId: resolvedProjectId,
+      });
+      onActionComplete?.();
+    } catch (error: unknown) {
+      setErrorMessage(getApiErrorMessage(error, "Failed to start booking"));
+      reportError(error, "BookingCardDropdown: failed to start booking");
+    } finally {
+      setIsLoading(false);
+      if (isOpen) onToggle();
+    }
+  };
+
+  const handleEndBooking = async () => {
+    setIsLoading(true);
+    try {
+      await endBooking({
+        bookingId: bookingKey,
+        projectId: resolvedProjectId,
+      });
+      onActionComplete?.();
+    } catch (error: unknown) {
+      setErrorMessage(getApiErrorMessage(error, "Failed to end booking"));
+      reportError(error, "BookingCardDropdown: failed to end booking");
+    } finally {
+      setIsLoading(false);
+      if (isOpen) onToggle();
+    }
+  };
 
   const handleConfirmClick = async () => {
     setIsLoading(true);
@@ -240,13 +280,17 @@ export default function BookingCardDropdown({
 
               {normalizedStatus === "confirmed" && (
                 <>
-                  {hasManagerPrivileges && (
-                    <button
-                      onClick={completeBooking}
-                      className="flex items-center px-4 py-2.5 text-xs font-medium text-blue-600 hover:bg-blue-50 w-full text-left"
-                    >
-                      <Calendar size={14} className="mr-2" /> Mark Completed
-                    </button>
+                  {canManageLifecycle && (
+                    <>
+                      {!startedAt && (
+                        <button
+                          onClick={handleStartBooking}
+                          className="flex items-center px-4 py-2.5 text-xs font-medium text-emerald-600 hover:bg-emerald-50 w-full text-left"
+                        >
+                          <Play size={14} className="mr-2" /> Mark Started
+                        </button>
+                      )}
+                    </>
                   )}
                   <button
                     onClick={handleRescheduleClick}
@@ -269,6 +313,25 @@ export default function BookingCardDropdown({
                       <Trash2 size={14} className="mr-2" /> Cancel Booking
                     </button>
                   )}
+                </>
+              )}
+
+              {normalizedStatus === "in_progress" && (
+                <>
+                  {canManageLifecycle && !endedAt && (
+                    <button
+                      onClick={handleEndBooking}
+                      className="flex items-center px-4 py-2.5 text-xs font-medium text-blue-600 hover:bg-blue-50 w-full text-left"
+                    >
+                      <Square size={14} className="mr-2" /> Mark Ended
+                    </button>
+                  )}
+                  <button
+                    onClick={handleRescheduleClick}
+                    className="flex items-center px-4 py-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50 w-full text-left"
+                  >
+                    <Edit size={14} className="mr-2" /> Reschedule
+                  </button>
                 </>
               )}
 
