@@ -35,6 +35,7 @@ import {
   Ban,
   HardHat,
   Link2,
+  Play,
 } from "lucide-react";
 import { format } from "date-fns";
 import api from "@/lib/api";
@@ -111,7 +112,8 @@ export function BookingDetailsDialog({
   onActionComplete,
 }: BookingDetailsDialogProps) {
   const { user } = useAuth();
-  const { updateBookingStatus, deleteBooking } = useBookingMutations();
+  const { updateBookingStatus, startBooking, endBooking, deleteBooking } =
+    useBookingMutations();
 
   // Data States
   const [data, setData] = useState<BookingDetail | null>(null);
@@ -193,6 +195,7 @@ export function BookingDetailsDialog({
     user?.role === "admin" || user?.role === "manager";
   const isMyBooking =
     user?.role === "subcontractor" && user?.id === data?.subcontractor_id;
+  const canManageLifecycle = hasManagerPrivileges || isMyBooking;
 
   // UI LOGIC: Always lowercase for comparison
   const status = (data?.status || "pending").toLowerCase();
@@ -325,6 +328,8 @@ export function BookingDetailsDialog({
     switch (st?.toLowerCase()) {
       case "confirmed":
         return "bg-emerald-100 text-emerald-800 border-emerald-200";
+      case "in_progress":
+        return "bg-blue-50 text-blue-700 border-blue-200";
       case "pending":
         return "bg-amber-100 text-amber-800 border-amber-200";
       case "cancelled":
@@ -375,6 +380,44 @@ export function BookingDetailsDialog({
       onClose();
     } catch (err: unknown) {
       setError(getApiErrorMessage(err, "Failed to delete booking"));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleStartBooking = async () => {
+    setActionLoading(true);
+    try {
+      if (!bookingId) {
+        throw new Error("Missing booking id");
+      }
+      await startBooking({
+        bookingId,
+        projectId: data?.project_id ?? null,
+      });
+      if (onActionComplete) onActionComplete();
+      onClose();
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, "Failed to start booking"));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleEndBooking = async () => {
+    setActionLoading(true);
+    try {
+      if (!bookingId) {
+        throw new Error("Missing booking id");
+      }
+      await endBooking({
+        bookingId,
+        projectId: data?.project_id ?? null,
+      });
+      if (onActionComplete) onActionComplete();
+      onClose();
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, "Failed to complete booking"));
     } finally {
       setActionLoading(false);
     }
@@ -716,7 +759,9 @@ export function BookingDetailsDialog({
                     Close
                   </Button>
 
-                  {(status === "pending" || status === "confirmed") && (
+                  {(status === "pending" ||
+                    status === "confirmed" ||
+                    status === "in_progress") && (
                     <>
                       {/* Reschedule is always available for active bookings */}
                       {(hasManagerPrivileges || isMyBooking) && (
@@ -738,13 +783,23 @@ export function BookingDetailsDialog({
                           <Check className="h-4 w-4 mr-2" /> Approve Request
                         </Button>
                       )}
-                      {hasManagerPrivileges && status === "confirmed" && (
+                      {canManageLifecycle && status === "confirmed" && (
+                        <Button
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white justify-start sm:justify-center"
+                          onClick={handleStartBooking}
+                          disabled={actionLoading}
+                        >
+                          <Play className="h-4 w-4 mr-2" /> Mark Started
+                        </Button>
+                      )}
+                      {canManageLifecycle && status === "in_progress" && (
                         <Button
                           className="bg-blue-600 hover:bg-blue-700 text-white justify-start sm:justify-center"
-                          onClick={() => openConfirm("complete")}
+                          onClick={handleEndBooking}
+                          disabled={actionLoading}
                         >
-                          <CheckCircle2 className="h-4 w-4 mr-2" /> Mark Job
-                          Complete
+                          <CheckCircle2 className="h-4 w-4 mr-2" /> Mark
+                          Completed
                         </Button>
                       )}
                     </>

@@ -41,6 +41,7 @@ const processBookingToEvent = (
   const status = b.status?.toLowerCase() || "pending";
   let color: CalendarEvent["color"] = "yellow";
   if (status === "confirmed") color = "green";
+  if (status === "in_progress") color = "blue";
   if (status === "completed") color = "blue";
   if (status === "cancelled" || status === "denied") color = "pink";
 
