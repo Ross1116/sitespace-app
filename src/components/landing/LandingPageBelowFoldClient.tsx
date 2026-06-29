@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 
 import { DemoRequestCTA } from "./ContactModal";
 import styles from "./LandingPageOneToOne.module.css";
+import ProgressiveImage from "./ProgressiveImage";
 
 type ShowcaseView = "desktop" | "mobile" | "combined";
 
@@ -171,8 +172,9 @@ export default function LandingPageBelowFoldClient() {
                   <div className={styles.desktopFrameDot} />
                 </div>
               </div>
-              <Image
+              <ProgressiveImage
                 src="/static/images/bookingspage.png"
+                lowQualitySrc="/static/images/lqip/bookingspage.webp"
                 alt="SiteSpace bookings dashboard"
                 width={2559}
                 height={1245}
@@ -202,8 +204,9 @@ export default function LandingPageBelowFoldClient() {
                   <div className={styles.desktopFrameDot} />
                 </div>
               </div>
-              <Image
+              <ProgressiveImage
                 src="/static/images/cal.jpg"
+                lowQualitySrc="/static/images/lqip/cal.webp"
                 alt="SiteSpace subcontractors management dashboard"
                 width={3802}
                 height={1971}
@@ -759,8 +762,9 @@ export default function LandingPageBelowFoldClient() {
                   <div className={styles.desktopFrameDot} />
                 </div>
               </div>
-              <Image
+              <ProgressiveImage
                 src="/static/images/desk.png"
+                lowQualitySrc="/static/images/lqip/desk.webp"
                 alt="SiteSpace desktop dashboard interface"
                 width={3801}
                 height={1980}
@@ -798,11 +802,12 @@ export default function LandingPageBelowFoldClient() {
                 )}
                 style={{ maxWidth: 380 }}
               >
-                <Image
-                  src="/static/images/mobile.png"
+                <ProgressiveImage
+                  src="/static/images/mobile.jpeg"
+                  lowQualitySrc="/static/images/lqip/mobile.webp"
                   alt="SiteSpace mobile app interface"
-                  width={402}
-                  height={867}
+                  width={740}
+                  height={1600}
                   sizes="(max-width: 768px) 100vw, 380px"
                   className="w-full h-auto"
                 />
@@ -844,8 +849,9 @@ export default function LandingPageBelowFoldClient() {
                       <div className={styles.desktopFrameDot} />
                     </div>
                   </div>
-                  <Image
+                  <ProgressiveImage
                     src="/static/images/desk.png"
+                    lowQualitySrc="/static/images/lqip/desk.webp"
                     alt="SiteSpace desktop interface"
                     width={3801}
                     height={1980}
@@ -865,11 +871,12 @@ export default function LandingPageBelowFoldClient() {
                   )}
                   style={{ maxWidth: 340 }}
                 >
-                <Image
-                  src="/static/images/mobile.png"
+                <ProgressiveImage
+                  src="/static/images/mobile.jpeg"
+                  lowQualitySrc="/static/images/lqip/mobile.webp"
                   alt="SiteSpace mobile interface"
-                  width={402}
-                  height={867}
+                  width={740}
+                  height={1600}
                   sizes="(max-width: 768px) 100vw, 340px"
                   className="w-full h-auto"
                 />
@@ -1132,8 +1139,9 @@ function PhoneShot({
           "mx-auto",
         )}
       >
-        <Image
+        <ProgressiveImage
           src={src}
+          lowQualitySrc={getLowQualitySrc(src)}
           alt={alt}
           width={width}
           height={height}
@@ -1147,6 +1155,12 @@ function PhoneShot({
       </div>
     </div>
   );
+}
+
+function getLowQualitySrc(src: string) {
+  const filename = src.split("/").pop() ?? "";
+  const base = filename.replace(/\.[^.]+$/, "");
+  return `/static/images/lqip/${base}.webp`;
 }
 
 function HighlightCard({

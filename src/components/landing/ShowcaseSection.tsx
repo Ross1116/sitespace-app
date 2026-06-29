@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { cn } from "@/lib/utils";
+
+import ProgressiveImage from "./ProgressiveImage";
 
 type View = "desktop" | "mobile" | "combined";
 
@@ -88,8 +89,9 @@ export function ShowcaseSection() {
               )}
             >
               <FrameHeader />
-              <Image
+              <ProgressiveImage
                 src="/static/images/desk.png"
+                lowQualitySrc="/static/images/lqip/desk.webp"
                 alt="SiteSpace desktop dashboard interface"
                 width={1200}
                 height={750}
@@ -128,11 +130,12 @@ export function ShowcaseSection() {
                   aria-hidden="true"
                 />
                 <div className="rounded-9.5 overflow-hidden">
-                  <Image
-                    src="/static/images/mobile.png"
+                  <ProgressiveImage
+                    src="/static/images/mobile.jpeg"
+                    lowQualitySrc="/static/images/lqip/mobile.webp"
                     alt="SiteSpace mobile app interface"
-                    width={380}
-                    height={780}
+                    width={740}
+                    height={1600}
                     loading="lazy"
                     sizes="380px"
                     quality={75}
@@ -166,8 +169,9 @@ export function ShowcaseSection() {
                 )}
               >
                 <FrameHeader />
-                <Image
+                <ProgressiveImage
                   src="/static/images/desk.png"
+                  lowQualitySrc="/static/images/lqip/desk.webp"
                   alt="SiteSpace desktop interface"
                   width={1200}
                   height={750}
@@ -190,11 +194,12 @@ export function ShowcaseSection() {
                   aria-hidden="true"
                 />
                 <div className="rounded-9.5 overflow-hidden">
-                  <Image
-                    src="/static/images/mobile.png"
+                  <ProgressiveImage
+                    src="/static/images/mobile.jpeg"
+                    lowQualitySrc="/static/images/lqip/mobile.webp"
                     alt="SiteSpace mobile interface"
-                    width={340}
-                    height={700}
+                    width={740}
+                    height={1600}
                     loading="lazy"
                     sizes="340px"
                     quality={75}

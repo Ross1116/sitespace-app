@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { Outfit } from "next/font/google";
 
 import { AuroraBackground } from "@/components/ui/aurora-background";
@@ -10,6 +9,7 @@ import styles from "./LandingPageOneToOne.module.css";
 import { DemoRequestCTA } from "./ContactModal";
 import LandingHeroGrid from "./LandingHeroGrid";
 import LandingHeroMotionPreference from "./LandingHeroMotionPreference";
+import ProgressiveImage from "./ProgressiveImage";
 
 const outfit = Outfit({
   subsets: ["latin"],
@@ -90,12 +90,12 @@ export default function LandingHero() {
                   </div>
                 </div>
 
-                <Image
+                <ProgressiveImage
                   src={dashhome}
+                  lowQualitySrc="/static/images/lqip/dashhome.webp"
                   alt="SiteSpace home dashboard"
                   priority
                   fetchPriority="high"
-                  placeholder="blur"
                   sizes="(max-width: 640px) 92vw, (max-width: 1024px) 86vw, 58vw"
                   className="block h-auto w-full"
                 />
@@ -115,8 +115,9 @@ export default function LandingHero() {
                   )}
                 >
                   <div className={styles.heroPhoneScreen}>
-                    <Image
+                    <ProgressiveImage
                       src={mobileApp}
+                      lowQualitySrc="/static/images/lqip/mobile.webp"
                       alt="SiteSpace mobile app"
                       loading="lazy"
                       sizes="(max-width: 640px) 34vw, (max-width: 1024px) 24vw, 300px"
