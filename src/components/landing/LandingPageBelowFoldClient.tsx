@@ -3,10 +3,12 @@
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { getLowQualitySrc } from "@/lib/imageSources";
 import { cn } from "@/lib/utils";
 
 import { DemoRequestCTA } from "./ContactModal";
 import styles from "./LandingPageOneToOne.module.css";
+import ProgressiveImage from "./ProgressiveImage";
 
 type ShowcaseView = "desktop" | "mobile" | "combined";
 
@@ -171,8 +173,9 @@ export default function LandingPageBelowFoldClient() {
                   <div className={styles.desktopFrameDot} />
                 </div>
               </div>
-              <Image
+              <ProgressiveImage
                 src="/static/images/bookingspage.png"
+                lowQualitySrc={getLowQualitySrc("/static/images/bookingspage.png")}
                 alt="SiteSpace bookings dashboard"
                 width={2559}
                 height={1245}
@@ -202,8 +205,9 @@ export default function LandingPageBelowFoldClient() {
                   <div className={styles.desktopFrameDot} />
                 </div>
               </div>
-              <Image
+              <ProgressiveImage
                 src="/static/images/cal.jpg"
+                lowQualitySrc={getLowQualitySrc("/static/images/cal.jpg")}
                 alt="SiteSpace subcontractors management dashboard"
                 width={3802}
                 height={1971}
@@ -759,8 +763,9 @@ export default function LandingPageBelowFoldClient() {
                   <div className={styles.desktopFrameDot} />
                 </div>
               </div>
-              <Image
+              <ProgressiveImage
                 src="/static/images/desk.png"
+                lowQualitySrc={getLowQualitySrc("/static/images/desk.png")}
                 alt="SiteSpace desktop dashboard interface"
                 width={3801}
                 height={1980}
@@ -798,11 +803,12 @@ export default function LandingPageBelowFoldClient() {
                 )}
                 style={{ maxWidth: 380 }}
               >
-                <Image
-                  src="/static/images/mobile.png"
+                <ProgressiveImage
+                  src="/static/images/mobile.jpeg"
+                  lowQualitySrc={getLowQualitySrc("/static/images/mobile.jpeg")}
                   alt="SiteSpace mobile app interface"
-                  width={402}
-                  height={867}
+                  width={740}
+                  height={1600}
                   sizes="(max-width: 768px) 100vw, 380px"
                   className="w-full h-auto"
                 />
@@ -844,8 +850,9 @@ export default function LandingPageBelowFoldClient() {
                       <div className={styles.desktopFrameDot} />
                     </div>
                   </div>
-                  <Image
+                  <ProgressiveImage
                     src="/static/images/desk.png"
+                    lowQualitySrc={getLowQualitySrc("/static/images/desk.png")}
                     alt="SiteSpace desktop interface"
                     width={3801}
                     height={1980}
@@ -865,11 +872,12 @@ export default function LandingPageBelowFoldClient() {
                   )}
                   style={{ maxWidth: 340 }}
                 >
-                <Image
-                  src="/static/images/mobile.png"
+                <ProgressiveImage
+                  src="/static/images/mobile.jpeg"
+                  lowQualitySrc={getLowQualitySrc("/static/images/mobile.jpeg")}
                   alt="SiteSpace mobile interface"
-                  width={402}
-                  height={867}
+                  width={740}
+                  height={1600}
                   sizes="(max-width: 768px) 100vw, 340px"
                   className="w-full h-auto"
                 />
@@ -1132,8 +1140,9 @@ function PhoneShot({
           "mx-auto",
         )}
       >
-        <Image
+        <ProgressiveImage
           src={src}
+          lowQualitySrc={getLowQualitySrc(src)}
           alt={alt}
           width={width}
           height={height}

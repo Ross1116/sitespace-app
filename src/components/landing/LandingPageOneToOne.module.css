@@ -542,6 +542,7 @@
     --hero-phone-left: 2.5%;
     --hero-phone-width: 20.75%;
     --hero-desktop-right: 12.5%;
+    --hero-visual-baseline: clamp(-1.25rem, -2vh, -0.75rem);
     --hero-phone-lift: 9.5%;
   }
 }
