@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { getLowQualitySrc } from "@/lib/imageSources";
 import { cn } from "@/lib/utils";
 
 import { DemoRequestCTA } from "./ContactModal";
@@ -174,7 +175,7 @@ export default function LandingPageBelowFoldClient() {
               </div>
               <ProgressiveImage
                 src="/static/images/bookingspage.png"
-                lowQualitySrc="/static/images/lqip/bookingspage.webp"
+                lowQualitySrc={getLowQualitySrc("/static/images/bookingspage.png")}
                 alt="SiteSpace bookings dashboard"
                 width={2559}
                 height={1245}
@@ -206,7 +207,7 @@ export default function LandingPageBelowFoldClient() {
               </div>
               <ProgressiveImage
                 src="/static/images/cal.jpg"
-                lowQualitySrc="/static/images/lqip/cal.webp"
+                lowQualitySrc={getLowQualitySrc("/static/images/cal.jpg")}
                 alt="SiteSpace subcontractors management dashboard"
                 width={3802}
                 height={1971}
@@ -764,7 +765,7 @@ export default function LandingPageBelowFoldClient() {
               </div>
               <ProgressiveImage
                 src="/static/images/desk.png"
-                lowQualitySrc="/static/images/lqip/desk.webp"
+                lowQualitySrc={getLowQualitySrc("/static/images/desk.png")}
                 alt="SiteSpace desktop dashboard interface"
                 width={3801}
                 height={1980}
@@ -804,7 +805,7 @@ export default function LandingPageBelowFoldClient() {
               >
                 <ProgressiveImage
                   src="/static/images/mobile.jpeg"
-                  lowQualitySrc="/static/images/lqip/mobile.webp"
+                  lowQualitySrc={getLowQualitySrc("/static/images/mobile.jpeg")}
                   alt="SiteSpace mobile app interface"
                   width={740}
                   height={1600}
@@ -851,7 +852,7 @@ export default function LandingPageBelowFoldClient() {
                   </div>
                   <ProgressiveImage
                     src="/static/images/desk.png"
-                    lowQualitySrc="/static/images/lqip/desk.webp"
+                    lowQualitySrc={getLowQualitySrc("/static/images/desk.png")}
                     alt="SiteSpace desktop interface"
                     width={3801}
                     height={1980}
@@ -873,7 +874,7 @@ export default function LandingPageBelowFoldClient() {
                 >
                 <ProgressiveImage
                   src="/static/images/mobile.jpeg"
-                  lowQualitySrc="/static/images/lqip/mobile.webp"
+                  lowQualitySrc={getLowQualitySrc("/static/images/mobile.jpeg")}
                   alt="SiteSpace mobile interface"
                   width={740}
                   height={1600}
@@ -1155,12 +1156,6 @@ function PhoneShot({
       </div>
     </div>
   );
-}
-
-function getLowQualitySrc(src: string) {
-  const filename = src.split("/").pop() ?? "";
-  const base = filename.replace(/\.[^.]+$/, "");
-  return `/static/images/lqip/${base}.webp`;
 }
 
 function HighlightCard({

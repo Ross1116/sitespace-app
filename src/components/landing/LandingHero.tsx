@@ -1,6 +1,7 @@
 import { Outfit } from "next/font/google";
 
 import { AuroraBackground } from "@/components/ui/aurora-background";
+import { getLowQualitySrc } from "@/lib/imageSources";
 import { cn } from "@/lib/utils";
 
 import dashhome from "../../../public/static/images/dashhome.png";
@@ -92,7 +93,7 @@ export default function LandingHero() {
 
                 <ProgressiveImage
                   src={dashhome}
-                  lowQualitySrc="/static/images/lqip/dashhome.webp"
+                  lowQualitySrc={getLowQualitySrc(dashhome)}
                   alt="SiteSpace home dashboard"
                   priority
                   fetchPriority="high"
@@ -117,7 +118,7 @@ export default function LandingHero() {
                   <div className={styles.heroPhoneScreen}>
                     <ProgressiveImage
                       src={mobileApp}
-                      lowQualitySrc="/static/images/lqip/mobile.webp"
+                      lowQualitySrc={getLowQualitySrc(mobileApp)}
                       alt="SiteSpace mobile app"
                       loading="lazy"
                       sizes="(max-width: 640px) 34vw, (max-width: 1024px) 24vw, 300px"

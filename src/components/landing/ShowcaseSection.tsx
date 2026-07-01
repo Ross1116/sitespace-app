@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { getLowQualitySrc } from "@/lib/imageSources";
 import { cn } from "@/lib/utils";
 
 import ProgressiveImage from "./ProgressiveImage";
@@ -91,7 +92,7 @@ export function ShowcaseSection() {
               <FrameHeader />
               <ProgressiveImage
                 src="/static/images/desk.png"
-                lowQualitySrc="/static/images/lqip/desk.webp"
+                lowQualitySrc={getLowQualitySrc("/static/images/desk.png")}
                 alt="SiteSpace desktop dashboard interface"
                 width={1200}
                 height={750}
@@ -132,7 +133,7 @@ export function ShowcaseSection() {
                 <div className="rounded-9.5 overflow-hidden">
                   <ProgressiveImage
                     src="/static/images/mobile.jpeg"
-                    lowQualitySrc="/static/images/lqip/mobile.webp"
+                    lowQualitySrc={getLowQualitySrc("/static/images/mobile.jpeg")}
                     alt="SiteSpace mobile app interface"
                     width={740}
                     height={1600}
@@ -171,7 +172,7 @@ export function ShowcaseSection() {
                 <FrameHeader />
                 <ProgressiveImage
                   src="/static/images/desk.png"
-                  lowQualitySrc="/static/images/lqip/desk.webp"
+                  lowQualitySrc={getLowQualitySrc("/static/images/desk.png")}
                   alt="SiteSpace desktop interface"
                   width={1200}
                   height={750}
@@ -196,7 +197,7 @@ export function ShowcaseSection() {
                 <div className="rounded-9.5 overflow-hidden">
                   <ProgressiveImage
                     src="/static/images/mobile.jpeg"
-                    lowQualitySrc="/static/images/lqip/mobile.webp"
+                    lowQualitySrc={getLowQualitySrc("/static/images/mobile.jpeg")}
                     alt="SiteSpace mobile interface"
                     width={740}
                     height={1600}
